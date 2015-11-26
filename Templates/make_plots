@@ -1,0 +1,23 @@
+#! /usr/bin/env python
+#This is a plotting script for maddm
+#Places where you have to make changes by hand are marked by "<---"
+#There are several options for plotting:
+#1. LinePlot()
+#2. ContourPlot()
+#3. Histogram()
+#
+#  Please see plotting.py for more details on how to use the routines
+#
+#
+from plotting import *
+filename='' #<--- Change here!
+
+#MadDM comes pre-loaded with several experimental results located in the ExpData folder
+LUX_data='../../ExpData/LUX_data.txt' #(formatted as DM_mass, sigma_SI (pb)
+#----------------------------------------
+# Here add calls to the plotting routines
+#----------------------------------------
+#Examples:
+#ContourPlot([filename],columns=[0,1,2], nXvals=40, nYvals=40, title=r'$\Omega h^2$', xlab=r'$m_{\chi}$', ylab=r'$g$', colormap='rainbow', contours=10)
+#LinePlot([filename, LUX_data], columns=[0,3], xlab=r'$m_{\chi}$', ylab=r'$\Omega h^2$', title=r'$\sigma_{SI}$',\
+#				colors=['red, darkblue'], styles=['dashed, solid'], labels=['dataset1', 'LUX-bound'])

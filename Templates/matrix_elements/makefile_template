@@ -1,0 +1,20 @@
+fort= gfortran
+
+libname = matrix_elements
+incdir = ../include
+
+flags = -O -fno-align-commons -ffixed-line-length-132 -I$(incdir)
+
+objs = #MAKEFILE_MADDM --- generates this line when MadDM is run
+
+.f.o:
+	$(fort) -c $(flags) $*.f
+
+all: make_lib
+
+clean:
+	-rm -f *.o
+	-rm -f ../lib/lib$(libname).a
+
+make_lib: $(objs)
+	-ar r lib$(libname).a $(objs)

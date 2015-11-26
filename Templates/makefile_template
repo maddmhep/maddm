@@ -1,0 +1,30 @@
+all:
+	-cd Source/DHELAS/ && make
+	-cd Source/MODEL/ && make
+	-cd matrix_elements/ && make
+	-mv matrix_elements/libmatrix_elements.a lib/
+	-ranlib lib/libmatrix_elements.a
+#MAKEFILE_MADDM
+	-mv src/maddm.x .
+
+relic_density:
+	-cd Source/DHELAS/ && make
+	-cd Source/MODEL/ && make
+	-cd matrix_elements/ && make
+	-mv matrix_elements/libmatrix_elements.a lib/
+	-ranlib lib/libmatrix_elements.a
+	-cd src/ && make relic_density
+	-mv src/maddm.x .
+
+direct_detection:
+	-cd Source/DHELAS/ && make
+	-cd Source/MODEL/ && make
+	-cd matrix_elements/ && make
+	-mv matrix_elements/libmatrix_elements.a lib/
+	-ranlib lib/libmatrix_elements.a
+	-cd src/ && make direct_detection
+	-mv src/maddm.x .
+
+clean:
+	-cd matrix_elements/ && make clean
+	-cd src/ && make clean
