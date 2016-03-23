@@ -1,3 +1,192 @@
+c Duplicates (sets the array element to 10 for now)
+      subroutine Duplicates(alist, length)
+         double precision alist(length)
+         integer i, j
+
+         i = 1
+         do while (alist(i).le.1.d0)
+           j = i+1
+           do while (j.le.1.d0)
+                if (alist(i).eq.alist(j)) then
+                 alist(j) = 10.d0
+                 j = j+1
+                endif
+           enddo
+           i = i+1
+          enddo
+       end subroutine Duplicates
+c Bubblesort
+
+        SUBROUTINE Bubble_Sort(a, length)
+          double precision a(length)
+          double precision :: temp
+          INTEGER :: i, j
+          LOGICAL :: swapped
+
+          DO j = length-1, 1, -1
+            swapped = .FALSE.
+            DO i = 1, j
+              IF (a(i) > a(i+1)) THEN
+                temp = a(i)
+                a(i) = a(i+1)
+                a(i+1) = temp
+                swapped = .TRUE.
+              END IF
+            END DO
+            IF (.NOT. swapped) EXIT
+          END DO
+        END SUBROUTINE Bubble_Sort
+
+c  coordinate transformation
+c      function eps_trans(beta1, beta0, gamma_beta)
+c         implicit none
+c         include 'maddm.inc'
+c         include 'coupl.inc'
+
+c         double precision beta1, beta0, gamma_beta
+c
+c        eps_trans = atan((beta1*beta1 - beta0*beta0)/(beta0*gamma_beta))
+c         return
+c      end
+
+c  beta
+c      function beta_fun(eps, beta0, gamma_beta)
+c         implicit none
+c         include 'maddm.inc'
+c         include 'coupl.inc'
+c
+c         double precision eps, beta0, gamma_beta
+c         beta_fun = sqrt(beta0**2+tan(eps)*beta0*gamma_beta)
+c      return
+c      end
+
+c  jacobian
+c      function jacobian(beta1, beta0, gamma_beta)
+c         implicit none
+c         include 'maddm.inc'
+c         include 'coupl.inc'
+c         double precision beta1, beta0, gamma_beta
+c         jacobian = 2*beta1/(beta0*(1.d0+( (beta1**2 - beta0**2)**2/ (beta0**2*gamma_beta**2) )*gamma_beta*beta0  ))
+c         return
+c      end
+
+
+c-------------------------------------------------------------------------c
+c 1-D function integration using the Simpson's method
+c-------------------------------------------------------------------------c
+      function simpson(func, a,b, tolerance, grid_npts)
+
+         implicit none
+         include 'maddm.inc'
+         include 'coupl.inc'
+
+         double precision tolerance, a,b, func, additional_pt, exponent
+         double precision left, right, whole, end_pt, start_pt
+         external func
+         integer ii, jj,kk, grid_pos, grid_npts
+         double precision grid(grid_npts)
+
+         include 'resonances.inc'
+c    Set up the integration grid
+c    Initialize to 10*b, so that we can identify the relevant points
+c    by going only to b in the integration grid and neglecting the rest.
+         grid_pos = 1
+         grid=10.d0*b
+
+c         write(*,*) 'width: ', beta_res_width(1)
+
+c    Make sure that the array is large enough to store the grid
+         if (grid_npts.lt.ngrid_init) then
+            write(*,*) 'Error: grid array not large enough!'
+            call exit(1)
+         endif
+
+         do ii=1, ngrid_init+1
+             grid(grid_pos) = (b-a)/ngrid_init*(ii-1)
+             grid_pos=grid_pos+1
+         enddo
+
+c add the resonance positions first
+       do ii=1, nres
+            if (beta_res(ii).ge.a.and.beta_res(ii).lt.b) then
+                grid(grid_pos) = beta_res(ii)
+                grid_pos = grid_pos+1
+            endif
+       enddo
+
+c then add more points around the resonance
+       do ii=1, nres
+          if (beta_res(ii).ge.a.and.beta_res(ii).lt.b.and.beta_res(ii).ge.0.d0) then
+              do jj=0, nres_points
+c                pts_to_add_adaptive = ceiling(real(pts_to_add_adaptive / 2))
+c                do kk = 1, pts_to_add_adaptive
+                    additional_pt = beta_res(ii) + (exp(real(beta_res_width(ii))/10.d0*exp(real(jj)))-1.d0)
+                    if (additional_pt.lt.b) then
+                        grid(grid_pos) = additional_pt
+                        grid_pos=grid_pos+1
+                        if (grid_npts.lt.grid_pos) then
+                            write(*,*) 'Error: grid array not large enough!'
+                            call exit(1)
+                        endif
+                    endif
+
+                    additional_pt = beta_res(ii) - (exp(real(beta_res_width(ii))/10.d0*exp(real(jj)))-1.d0)
+                    if (additional_pt.gt.a) then
+                        grid(grid_pos) = additional_pt
+                        grid_pos=grid_pos+1
+                        if (grid_npts.lt.grid_pos) then
+                            write(*,*) 'Error: grid array not large enough!'
+                            call exit(1)
+                        endif
+                    endif
+c                enddo
+              enddo
+           endif
+       enddo
+
+c remove duplicates
+c sort the grid
+       call Duplicates(grid, grid_npts)
+       call  Bubble_Sort(grid, grid_npts)
+
+c       write(*,*) 'grid:', grid_pos
+c       do ii=1, grid_pos
+c           write(*,*) grid(ii)
+c       enddo
+
+c transform the grid
+c      ii=1
+c      do while (grid(ii).le.1.d0)
+c           val = eps_trans(grid(ii), beta_res(1), beta_res_width(1))
+c           if (val.ge.0.d0) then
+c               grid_transform(ii) = eps_trans(grid(ii), beta_res(1), beta_res_width(1))
+c           endif
+c           ii=ii+1
+c      enddo
+
+
+c now integrate over the grid using simpson's rule
+      simpson = 0.d0
+      ii = 1
+c      write (*,*) 'grid(ii)', grid(ii)
+c      open(101,file='./test.out',status='unknown')
+      do while (grid(ii+1).le.1.d0)
+           start_pt = grid(ii)
+           end_pt =  grid(ii+1)
+c            write(101,*) start_pt, func(start_pt)
+c           write(*,*) 'start, end', start_pt, end_pt
+c           write(*,*) 'func: ', func(0.d0), func(0.00001d0)
+           simpson = simpson+ (end_pt - start_pt)/6.d0*(func(start_pt) + 4.d0*func(0.5d0*
+     .                                  (start_pt+end_pt)) + func(end_pt) )
+c            simpson = simpson+ (end_pt - start_pt)/8.d0*(max(0.d0, func(start_pt))
+c     .             + 3.d0*max(0.d0,func(0.33d0*(2.d0*start_pt+end_pt)))
+c     .             + 3.d0*max(0.d0,func(0.33d0*(start_pt+2.d0*end_pt)))  + max(0.d0,func(end_pt)))
+           ii = ii+1
+      enddo
+c      close(101)
+c      write(*,*) 'simpson: ', simpson
+       end function simpson
+
 c-------------------------------------------------------------------------c
 c 1-D function integration
 c-------------------------------------------------------------------------c
@@ -22,7 +211,7 @@ c  k - the number of points used in the extrapolation.                    c
 c                                                                         c
 c-------------------------------------------------------------------------c
       implicit none
-      
+
 c input parameters
       double precision func, a, b, integral, eps
       integer iter
@@ -47,12 +236,12 @@ c relative stepsizes
           if (dabs(dss).le.eps*dabs(integral)) return
         endif
         s(j+1)=s(j)
-        
+
 c This is a key step: The factor is 0.25 even though the stepsize decrease is only 0.5
 c This makes the extrapolation a polynomial in h^2.
         h(j+1)=0.25d0*h(j)
       enddo
-      
+
 c      pause 'too many steps in romberg'
       end
 
@@ -386,9 +575,9 @@ c        if (xnew.eq.x) pause 'stepsize underflow in rkqs'
         return
       endif
       end
-      
-      
-      
+
+
+
 c-------------------------------------------------------------------------c
 c Monte Carlo Integration
 c-------------------------------------------------------------------------c
@@ -430,7 +619,7 @@ c Means for random number initialization
 c Normal entry. Enter here on cold start
       if (init.le.0) then
 
-c Change mds = 0 to disable stratified sampling (i.e. use importance 
+c Change mds = 0 to disable stratified sampling (i.e. use importance
 c sampling only)
         mds = 1
         ndo = 1
@@ -532,7 +721,7 @@ c Main iteration loop
         if (f2b.le.0.d0) f2b=tiny
         ti = ti+fb
         tsi = tsi+f2b
-        
+
 c Use stratified sampling
         if (mds.lt.0) then
           do j=1,ndim
@@ -562,7 +751,7 @@ c Compute final results with this iteration
             enddo
           endif
         endif
-        
+
 c Refine the grid
         do j=1,ndim
           xo = d(1,j)
@@ -665,12 +854,12 @@ c Here idum is shuffled, idum and idum2 are combined to generate output
 
 c The endpoints are not expected in random number generators
       random = min(am*iy,rnmx)
-     
+
       return
       end
-      
-      
-      
+
+
+
 c-------------------------------------------------------------------------c
       subroutine rebin(rc,nd,r,xin,xi)
 c-------------------------------------------------------------------------c

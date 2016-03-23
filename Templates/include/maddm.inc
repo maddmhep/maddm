@@ -1,4 +1,6 @@
 c function names
+c integrate.f
+      double precision simpson, simpson_adaptive
 c init.f
       double precision get_Y_eq, get_gstar, get_Wij_ann, Wij_ann_integrand
 c interpolate.f
@@ -105,7 +107,7 @@ c number of annihilation particles and associated diagrams
 	  common/ dd_tot_process_ids/ dd_tot_process_ids
       logical ann_process_iden_init(maxdms,maxdms,100), dm2dm_process_iden_init(maxdms,maxdms,100)
       logical relic_canonical, calc_taacs_ann_array, calc_taacs_dm2dm_array, calc_taacs_scattering_array
-      logical do_relic_density, do_direct_detection
+      logical do_relic_density, do_direct_detection, xd_approx
       common/process_logical/ ann_process_iden_init, dm2dm_process_iden_init, relic_canonical,
      . calc_taacs_ann_array, calc_taacs_dm2dm_array, calc_taacs_scattering_array
 
@@ -165,3 +167,12 @@ c  Directional detection switch
       double precision En_min,En_max,cos_min,cos_max,day_min,day_max
       common/simu/Energy_bins,cos_theta_bins,day_bins,En_min,En_max,cos_min,cos_max,day_min,day_max
 
+c------------------------ Resonance information --------------------------
+! s-channel Resonance locations
+      Integer nres, ngrid_init, nres_points
+      parameter (nres = %(n_resonances)d)
+      double precision resonances(nres)
+      double precision resonance_widths(nres)
+      double precision beta_res(nres)
+      double precision beta_res_width(nres)
+      common/resonancevars/resonances, resonance_widths, beta_res, beta_res_width, nres_points, ngrid_init

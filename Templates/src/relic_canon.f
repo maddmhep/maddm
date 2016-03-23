@@ -13,9 +13,11 @@ c-------------------------------------------------------------------------c
       include 'coupl.inc'
 
 c parameters for the odeintegrator
-      integer nok, nbad
-      double precision Y0, Y1, x_1, x_2, h1, hmin, min_mass
+      integer nok, nbad, nres_above_threshold, ii
+      double precision Y0, Y1, x_1, x_2, h1, hmin, min_mass, Bfact
       external derivative_canon, rkqs
+
+      include 'resonances.inc'
 
 c setting up the boundaries and set sizes for the ODE integrator
       nvar = 1    !may not necessarily be true in the future
@@ -26,52 +28,58 @@ c setting up the boundaries and set sizes for the ODE integrator
       Y0 = 0.d0
       Y1 = 1.d-20
 
-c We start at x_i = 30 and step back the integration until the results of two concecutive
-c claculations return a result that has a relative difference of epsilon.      
-      do while (dabs((Y1-Y0)/Y1).gt.eps_ode)
+c	  if (.true.) then
+c            Bfact = 0.038d0*10d0*mpl*mdm(1)*taacs_canon(3.d0*x_1)!using 10.0 for 0.145*g/sqrt(g*)
+c	  		x_1 = log((3.d0)*Bfact) - (1.5d0)*log(log((3.d0)*Bfact))+25.d0
+c	  endif
 
-c Allows us to compare this iteration to the previous one
-        Y0 = Y1
+c 	      We start at x_i = 30 and step back the integration until the results of two concecutive
+c    	  claculations return a result that has a relative difference of epsilon.
+		  do while (dabs((Y1-Y0)/Y1).gt.eps_ode)
 
-c Initial value of the relativistic degrees of freedom and number density per entropy density, Y
-        g_star_S = get_gstar(mdm(1)/x_1)
-C         g_star_S = lineint(mdm(1)/x_1,gstarS_temperature,gstarS,100)
+c   	  	  Allows us to compare this iteration to the previous one
+		  	  Y0 = Y1
 
-c Initial thermal equilibrium of the number density per comoving volume
-c Y_1 = Y_eq = 45/(4*pi^4) g_1/g_*S x^2 K_2(x), with x=m/T
-        Y1 = 0.d0
-        do x1=1,ndmparticles
-          Y1 = Y1 + get_Y_eq(mdm(x1),mdm(1)/x_1,dof_total(x1),g_star_S)
-        enddo
+c    		  Initial value of the relativistic degrees of freedom and number density per entropy density, Y
+			  g_star_S = get_gstar(mdm(1)/x_1)
+C             g_star_S = lineint(mdm(1)/x_1,gstarS_temperature,gstarS,100)
 
-c passese the temperature so that other functions can use it
-        x_pass = x_1
+c    		  Initial thermal equilibrium of the number density per comoving volume
+c   		  Y_1 = Y_eq = 45/(4*pi^4) g_1/g_*S x^2 K_2(x), with x=m/T
+			  Y1 = 0.d0
+			  do x1=1,ndmparticles
+			      Y1 = Y1 + get_Y_eq(mdm(x1),mdm(1)/x_1,dof_total(x1),g_star_S)
+			  enddo
 
-C c if we wish to save the ODE integration and print it to a file or the screen we need to set
-C c the step size to save and the maximum number of saved points
-C         dxsav = 0.5d0
-C         kmax = 200
-C         kount = 0
+c             passes the temperature so that other functions can use it
+			  x_pass = x_1
 
-c calls the ODE integrator to get the final number density per entropy density.
-        call odeint(Y1,nvar,x_1,x_2,eps_ode,h1,hmin,nok,nbad,derivative_canon,rkqs)
+C c           if we wish to save the ODE integration and print it to a file or the screen we need to set
+C c           the step size to save and the maximum number of saved points
+C             dxsav = 0.5d0
+C             kmax = 200
+C             kount = 0
 
-C c For testing purposes we can print out the saved steps of each iteration to the screen
-C         call odeint_check(0)
-C 
-C c Also, for testing purposes we can print out the initial x_i and the resulting Y_inf
-C         write(*,*) x_1, Y1
+c             calls the ODE integrator to get the final number density per entropy density.
+			  call odeint(Y1,nvar,x_1,x_2,eps_ode,h1,hmin,nok,nbad,derivative_canon,rkqs)
 
-c steps back the start of the ODE integration until we find the correct starting point below freezeout
-        x_1 = x_1 - dx_step
+C c         For testing purposes we can print out the saved steps of each iteration to the screen
+C           call odeint_check(0)
+C
+C c         Also, for testing purposes we can print out the initial x_i and the resulting Y_inf
+C           write(*,*) x_1, Y1
 
-        if (x_1.le.1d0) then
-                write(*,*) 'Freezeout occurs too early! Relic density too big to comprehend. Seeting Omegah^2 = -1.0 \n'
-                relic_canon=-1.0
-                return
-        endif
+c             steps back the start of the ODE integration until we find the correct starting point below freezeout
+			  x_1 = x_1 - dx_step
 
-      enddo
+			  if (x_1.le.1d0) then
+					write(*,*) 'Freezeout occurs too early! Relic density too big to comprehend. Seeting Omegah^2 = -1.0 \n'
+					relic_canon=-1.0
+					return
+			  endif
+
+		  enddo
+
 
 c find the minimum DM particle mass (to calculate the overall relic density)
       min_mass = 1.d20
@@ -107,6 +115,8 @@ c input parameters
 c parameters in this subroutine only
       double precision s, Y_eq, taacs_value
 
+      include 'resonances.inc'
+
 c finding the number of relativistic degrees of freedom given temperature x_i
       g_star_S = get_gstar(mdm(1)/x_i)
       g_star = g_star_S
@@ -137,7 +147,12 @@ C       write(*,fmt='(4(ES14.8,1x))') x_i,Y_i,Y_eq,dYdx
       return
       end
 
-
+      double precision function cosine(x)
+         implicit none
+         double precision x, cos
+         cosine = cos(x)
+         return
+      end
 
 c-------------------------------------------------------------------------c
       function taacs_canon(x)
@@ -147,27 +162,32 @@ c  This function calculates the thermally averaged annihilation cross     c
 c  section.                                                               c
 c                                                                         c
 c-------------------------------------------------------------------------c
-      implicit none
       include 'maddm.inc'
-
+      include 'coupl.inc'
 c input parameters
-      double precision x
+      double precision x, integral, result, testvar, cosine
 
 c external function to be integrated over
-      external taacs_integrand_canon
+      external taacs_integrand_canon, cosine
+
+      include 'resonances.inc'
+
 
 c passing x so that taacs_integrand can use it
       x_pass = x
 
 c This is used if we are doing a 1-d integration of taacs
-      call romberg(taacs_integrand_canon, 0.d0, 1.d0, taacs_canon, eps_taacs, iter_taacs)
+c      call romberg(taacs_integrand_canon, 0.d0, 1.d0, taacs_canon, eps_taacs, iter_taacs)
+
+c call simpson's rule
+        testvar =simpson(taacs_integrand_canon, 0.d0, 1.d0, eps_taacs, 10000)
+c       write(*,*) 'test: ', testvar
 
 C c Return a constant value for taacs (for testing purposes ONLY)
 C       taacs = 1.0d-10
 
       return
       end
-
 
 
 c-------------------------------------------------------------------------c
@@ -187,6 +207,9 @@ c input parameters
 
 c parameters used in this function only
       double precision T, s, Wij_value, Wij_sum, K2_sum
+
+
+      include 'resonances.inc'
 
 c making sure that we don't hit any beta = 1 singularities
       if ((1.d0-beta**2).eq.0.d0) then

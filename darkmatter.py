@@ -19,6 +19,8 @@ import madgraph.core.helas_objects as helas_objects
 import madgraph.iolibs.file_writers as writers
 import madgraph.various.misc as misc
 
+import madgraph.iolibs.drawing_eps as draw
+
 
 #Set up logging
 logging.basicConfig(filename='maddm.log',level=logging.DEBUG, filemode='w')
@@ -84,6 +86,7 @@ class darkmatter(base_objects.Particle):
           self._wanted_lorentz = []
           self._wanted_couplings = []
           self._new_proj = True
+          self._projectpath = ''
           self._modelname = ''
           self._projectname = ''
           self._paramcard = ''
@@ -96,6 +99,8 @@ class darkmatter(base_objects.Particle):
           self._eff_operators_SD = {1:False, 2:'SDEFFF', 3:'SDEFFV'}
           self._eff_model_dm_names = {1:'~sdm', 2:'~fdm', 3:'~vdm'}
           self._excluded_particles = []
+          self._resonances = []
+          self._dm_mass = -1.0
 
           #Results of the calculation
           self._omegah2 = -1.0
@@ -106,10 +111,9 @@ class darkmatter(base_objects.Particle):
           self._sigmaN_SD_proton=-1.0
           self._sigmaN_SD_neutron=-1.0
           self._Nevents=-1.0
-          self._dm_mass = -1.0
 
         #-----------------------------------------------------------------------#
-        def init_from_model(self,modelname, projectname):
+        def init_from_model(self,modelname, projectname, overwrite=False):
         #-----------------------------------------------------------------------#
         #                                                                            #
         #  Given a user input model this routine initializes the project            #
@@ -130,7 +134,7 @@ class darkmatter(base_objects.Particle):
           else:
                 new_project = False
 
-          if (new_project == False):
+          if (new_project == False and (not overwrite)):
                     legit_answer = False
                     while (not legit_answer):
                           answer = raw_input("Project directory already exists. Overwrite?[n] (y/n):")
@@ -152,6 +156,7 @@ class darkmatter(base_objects.Particle):
           self._MG5Cmd = master_interface.MasterCmd()
           self._mgme_dir = self._MG5Cmd._mgme_dir
           self._MG5Cmd.do_import('model %s --modelname' % self._modelname)
+          #self._MG5Cmd.do_import('model %s' % self._modelname)
           self._Model = self._MG5Cmd._curr_model
 
           # Gets a list of all the particles in the user-supplied model
@@ -206,7 +211,7 @@ class darkmatter(base_objects.Particle):
         #-----------------------------------------------------------------------#
 
           #If there are particles to exclude, set that string up first
-          self._excluded_particles = exclude_particles
+          self._excluded_particles = exclude_particles.split()
 
           # initialize boolean flags for the multiple ways of inputting the DM particles
           found_DM_particle = False
@@ -214,11 +219,21 @@ class darkmatter(base_objects.Particle):
 
           # All the particles with pdg_codes > 25 are added to the array of BSM particles
           for i in range(len(self._particles)):
-                if (self._particles[i]['pdg_code'] > 25):
+                particle_code = self._particles[i].get('pdg_code')
+                if (particle_code > 25):
+                  #This stores the LOCATION of the particle in the self._particles list.
                   self._bsm_particles.append(i)
 
+
+          #Exclude the particles specified by the user
+          #for excl_part in self._excluded_particles:
+          #    for location in self._bsm_particles:
+          #    	if self._particles[location].get('name') == excl_part:
+          #    		self._bsm_particles.remove(location)
+
+
           # When manually entering in the DM and coannihilation particles, both particle and anti-particle
-          # are not both required to be listed.         If one is not included then it is added later.
+          # are not both required to be listed. If one is not included then it is added later.
           while (not found_DM_particle):
 
                 if (prompts == True):
@@ -248,20 +263,20 @@ class darkmatter(base_objects.Particle):
                                 # If nothing has been found so far then set the first DM candidate
                                 if (len(self._dm_particles) == 0):
                                   self._dm_particles.append(self._particles[self._bsm_particles[i]])
-                                  self._dm_mass = self._bsm_masses[i]
+                                  self._dm_mass = abs(self.GetMass(self._particles[self._bsm_particles[i]]['pdg_code']))
                                 # If we already found a candidate, comare the masses and keep the one that's lighter
                                 elif (self._bsm_masses[i] < self._dm_mass):
                                   self._dm_particles[0] = self._particles[self._bsm_particles[i]]
-                                  self._dm_mass = self._bsm_masses[i]
+                                  self._dm_mass = abs(self.GetMass(self._particles[self._bsm_particles[i]]['pdg_code']))
 
                           # If the width is not set to 'ZERO' then we have to get the width from the param card
                           elif (self.GetWidth(self._particles[self._bsm_particles[i]]['pdg_code']) == 0.0):
                                 if (len(self._dm_particles) == 0):
                                   self._dm_particles.append(self._particles[self._bsm_particles[i]])
-                                  self._dm_mass = self._bsm_masses[i]
+                                  self._dm_mass = abs(self.GetMass(self._particles[self._bsm_particles[i]]['pdg_code']))
                                 elif (self._bsm_masses[i] < self._dm_mass):
                                   self._dm_particles[0] = self._particles[self._bsm_particles[i]]
-                                  self._dm_mass = self._bsm_masses[i]
+                                  self._dm_mass = abs(self.GetMass(self._particles[self._bsm_particles[i]]['pdg_code']))
 
                   # Check to see if we actually found a DM candidate
                   if (self._dm_particles == []):
@@ -276,10 +291,14 @@ class darkmatter(base_objects.Particle):
                         if ( (particle['name'] == dm_candidate) or (particle['antiname'] == dm_candidate)):
                           self._dm_particles.append(particle)
                           found_DM_particle = True
-                          self._dm_mass = -1.0
                   if found_DM_particle == False:
                         print "ERROR: Dark Matter candidate "+dm_candidate+" does not exist in this model!"
                         sys.exit(0)
+                  else:
+                  	       # Now that we have the param card set, we can set up the model reader
+          					# This is necessary to get the numerical value for the particle masses
+          					self._fullmodel = model_reader.ModelReader(self._Model)
+          					self._fullmodel.set_parameters_and_couplings(param_card=self._paramcard)
 
                 elif (dm_answer != ''):
 
@@ -293,17 +312,23 @@ class darkmatter(base_objects.Particle):
                           dm_answer = dm_answer_split[0].rstrip()
                           #if there are particles to exclude, exclude them.
                           if (len(dm_answer_split) > 1):
-                                        self._excluded_particles = dm_answer_split[1].lstrip()
+                                        self._excluded_particles = dm_answer_split[1].lstrip().split()
                           # We loop over all the particles and check to see if the desired DM candidate is indeed in the model
                           for particle in self._particles:
                                 if ((particle['name'] == dm_answer) or (particle['antiname'] == dm_answer)):
                                   self._dm_particles.append(particle)
                                   found_DM_particle = True
-                                  self._dm_mass = -1.0
+
 
                           # Check to see if we found the desired DM candidate in the model.
                           if (self._dm_particles == []):
                                 print "WARNING: Dark Matter candidate not present in the model! Try again."
+                          else:
+                           		                  	       # Now that we have the param card set, we can set up the model reader
+          					# This is necessary to get the numerical value for the particle masses
+          					self._fullmodel = model_reader.ModelReader(self._Model)
+          					self._fullmodel.set_parameters_and_couplings(param_card=self._paramcard)
+          					self._dm_mass = abs(self.GetMass(self._dm_particles[0]['pdg_code']))
 
                 else:
                    print "WARNING: Unknown command! Try again"
@@ -318,7 +343,7 @@ class darkmatter(base_objects.Particle):
 
 
         #-----------------------------------------------------------------------------#
-        def FindCoannParticles(self, prompts = True, coann_eps = 0.1):
+        def FindCoannParticles(self, coann_partners='', prompts = True, coann_eps = 0.1):
         #-----------------------------------------------------------------------------#
         #                                                                                  #
         #  This routine finds the coannihilation particles for the relic                  #
@@ -336,104 +361,99 @@ class darkmatter(base_objects.Particle):
 
           # Time to find the coannihilation particles
           while (not legit_coann_answer):
-
-                if prompts == True:
-                        print "Enter the coannihilation particles:"
-                        print "(press Enter to automatically find the coannihilation particles)"
-                        print "(Enter 'particles' to see a list of particles)"
-                        coann_answer = raw_input()
-
-                else:
-                  coann_answer =''
-
-                # Automatically find the coannihilation candidates
-                if (coann_answer == ''):
-                  legit_coann_answer = True
-
-                  ratio_answer = ''
-                  if prompts == True:
-                         print "Enter the mass difference ratio desired for coannihilating particles [0.1]:"
-                         print "(Enter 0 for no coannihilating particles)"
-                         ratio_answer = raw_input()
-
-                  if ratio_answer == '':
-                        self._coann_eps = coann_eps
-                  else:
-                        self._coann_eps = float(ratio_answer)
-
-                  # If the param card hasn't been changed then as if the param card needs to be changed.
-                  if (not self._ask_param_card):
-                        self.ChangeParamCard(prompts)
-                        self._ask_param_card = True
-                        if (self._dm_mass < 0.0):
-                          self._dm_mass = abs(self.GetMass(self._dm_particles[0]['pdg_code']))
-
-                  # If the user wishes to find coannihilation candidates we simply loop over the rest of the BSM particles
-                  # and see which particles have a mass within the input fractional mass difference.
-                  if (self._coann_eps > 0.0):
-
-                        # Loop over BSM particles
-                        for i in range(len(self._bsm_particles)):
-                          if (self._particles[self._bsm_particles[i]] != self._dm_particles[0]):
-                                if (abs(self._dm_mass-self._bsm_masses[i])/self._dm_mass <= self._coann_eps):
-                                  self._coann_particles.append(self._particles[self._bsm_particles[i]])
-
-                                # If there are BSM particles that are too small to be included in the coannihilation they
-                                # are still tabulated to include in the final state particles with the SM particles.
-                                elif (self._bsm_masses[i] < (1.0-self._coann_eps)*self._dm_mass):
-                                  self._bsm_final_states.append(self._particles[self._bsm_particles[i]])
+				  if coann_partners=='':
+					coann_answer=''
+					if prompts == True:
+							print "Enter the coannihilation particles:"
+							print "(press Enter to automatically find the coannihilation particles)"
+							print "(Enter 'particles' to see a list of particles)"
+							coann_answer = raw_input()
 
 
-                # This is the case where the user inputs their own set of coannihilation particles
-                elif (coann_answer != 'particles'):
-                  legit_coann_answer = True
+					# Automatically find the coannihilation candidates
+					if (coann_answer == ''):
+					  legit_coann_answer = True
 
-                  # break up the string into a list of particles
-                  input_coann_names_list = coann_answer.split(" ")
+					  ratio_answer = ''
+					  if prompts == True:
+							 print "Enter the mass difference ratio desired for coannihilating particles [0.1]:"
+							 print "(Enter 0 for no coannihilating particles)"
+							 ratio_answer = raw_input()
 
-                  # Loop over the model particles so we can add them to the self._dm_particles list
-                  for i in range(len(input_coann_names_list)):
-                        for particle in self._particles:
-                          # Checks to see if either the particle or anti-particle is in the model as well as if the
-                          # particle isn't already included in the list of DM particles (to avoid double counting)
-                          if ((particle['name'] == input_coann_names_list[i]) and (not (particle in self._dm_particles)) \
-                                  and (not (particle in self._coann_particles))):
-                                self._coann_particles.append(particle)
-                          elif ((particle['antiname'] == input_coann_names_list[i]) and (not (particle in self._dm_particles)) \
-                                  and (not (particle in self._coann_particles))):
-                                self._coann_particles.append(particle)
+					  if ratio_answer == '':
+							self._coann_eps = coann_eps
+					  else:
+							self._coann_eps = float(ratio_answer)
 
-                  # If the param card hasn't been changed then as if the param card needs to be changed.
-                  if (not self._ask_param_card):
-                        self.ChangeParamCard(prompts)
-                        self._ask_param_card = True
-                        if (self._dm_mass < 0.0):
-                          self._dm_mass = abs(self.GetMass(self._dm_particles[0]['pdg_code']))
+					  print "INFO: Using coann_eps="+str(self._coann_eps)
+					  # If the param card hasn't been changed then as if the param card needs to be changed.
+					  if (not self._ask_param_card):
+							self.ChangeParamCard(prompts)
+							self._ask_param_card = True
+							self._dm_mass = abs(self.GetMass(self._dm_particles[0]['pdg_code']))
 
-                  # Tabulates all the BSM particles that are lighter than the DM candidate so they can be included in the
-                  # final state particles along with the SM particles.
-                  for i in range(len(self._bsm_particles)):
-                        if ((not (self._particles[self._bsm_particles[i]] in self._dm_particles)) and \
-                                (not (self._particles[self._bsm_particles[i]] in self._coann_particles))):
-                          if (self._bsm_masses[i] < self._dm_mass):
-                                self._bsm_final_states.append(self._particles[self._bsm_particles[i]])
+					  # If the user wishes to find coannihilation candidates we simply loop over the rest of the BSM particles
+					  # and see which particles have a mass within the input fractional mass difference.
+					  if (self._coann_eps > 0.0):
 
-                else:
-                  print ''
-                  self._MG5Cmd.do_display('particles')
-                  print ''
+							# Loop over BSM particles
+							for i in range(len(self._bsm_particles)):
+							  if (self._particles[self._bsm_particles[i]] != self._dm_particles[0]):
+									if (abs(self._dm_mass-self._bsm_masses[i])/self._dm_mass <= self._coann_eps):
+									  self._coann_particles.append(self._particles[self._bsm_particles[i]])
 
-          # For organizational purposes we put the coannihilation particles by alphabetical order by name
-          coann_ordered = sorted(self._coann_particles, key=lambda k: k['name'])
-          self._dm_particles += coann_ordered
+									# If there are BSM particles that are too small to be included in the coannihilation they
+									# are still tabulated to include in the final state particles with the SM particles.
+									elif ((self._bsm_masses[i] < (1.0-self._coann_eps)*self._dm_mass) and \
+										not ('all' in self._excluded_particles) and \
+										not (self._particles[self._bsm_particles[i]] in self._excluded_particles)):
+									  		self._bsm_final_states.append(self._particles[self._bsm_particles[i]])
 
-          # If we found any coannihilation particles then print out the candidates
-          if (len(self._coann_particles) > 0 and prompts == True):
-                print "-------------------------------"
-                print "COANNIHILATION PARTNERS:"
-                print "-------------------------------"
-                for i in range(len(self._coann_particles)):
-                  print self._coann_particles[i]
+
+					# This is the case where the user inputs their own set of coannihilation particles
+					elif (coann_answer != 'particles'):
+					  legit_coann_answer = True
+					else:
+				  		print ''
+				  		self._MG5Cmd.do_display('particles')
+				  		print ''
+				  else:
+				  	   coann_answer = coann_partners
+				  	   legit_coann_answer = True
+
+				  # break up the string into a list of particles
+				  input_coann_names_list = coann_answer.split(" ")
+
+				  # Loop over the model particles so we can add them to the self._dm_particles list
+				  for i in range(len(input_coann_names_list)):
+						for particle in self._particles:
+						  # Checks to see if either the particle or anti-particle is in the model as well as if the
+						  # particle isn't already included in the list of DM particles (to avoid double counting)
+						  if ((particle['name'] == input_coann_names_list[i]) and (not (particle in self._dm_particles)) \
+								  and (not (particle in self._coann_particles))):
+								self._coann_particles.append(particle)
+						  elif ((particle['antiname'] == input_coann_names_list[i]) and (not (particle in self._dm_particles)) \
+								  and (not (particle in self._coann_particles))):
+								self._coann_particles.append(particle)
+
+				  # If the param card hasn't been changed then as if the param card needs to be changed.
+				  if (not self._ask_param_card):
+						self.ChangeParamCard(prompts)
+						self._ask_param_card = True
+						if (self._dm_mass < 0.0):
+						  self._dm_mass = abs(self.GetMass(self._dm_particles[0]['pdg_code']))
+
+				  # For organizational purposes we put the coannihilation particles by alphabetical order by name
+				  coann_ordered = sorted(self._coann_particles, key=lambda k: k['name'])
+				  self._dm_particles += coann_ordered
+
+				  # If we found any coannihilation particles then print out the candidates
+				  if (len(self._coann_particles) > 0 and prompts == True):
+						print "-------------------------------"
+						print "COANNIHILATION PARTNERS:"
+						print "-------------------------------"
+				  		for i in range(len(self._coann_particles)):
+				  				print self._coann_particles[i]
 
 
 
@@ -513,7 +533,7 @@ class darkmatter(base_objects.Particle):
           self._fullmodel.set_parameters_and_couplings(param_card=self._paramcard)
 
           # For all the bsm particles we create the array of each particle's mass.
-          for i in self._bsm_particles:
+          for i in range(len(self._bsm_particles)):
                 self._bsm_masses.append(abs(self.GetMass(self._particles[i]['pdg_code'])))
 
 
@@ -622,9 +642,9 @@ class darkmatter(base_objects.Particle):
                 #loop over quarks
                 for i in range(0, 6):
                         try:
-                                if self._excluded_particles!='':
+                                if self._excluded_particles!=[] and 'all' not in self._excluded_particles:
                                         proc = self._dm_names_list[i_dm]+' '+quarks[i]+' > '+self._dm_names_list[i_dm]+' '+quarks[i]+' /'\
-                                                        +self._excluded_particles+' '\
+                                                        +' '.join(self._excluded_particles)+' '\
                                                         +str(eff_operators_SD)+'='+str(SD_order)+' '+str(eff_operators_SI)+\
                                                         '='+str(SI_order)+' QED='+str(QED_order)
                                 else:
@@ -661,9 +681,9 @@ class darkmatter(base_objects.Particle):
                         #Loop over the antiquarks
                 for i in range(0, 6):
                         try:
-                                if self._excluded_particles!='':
+                                if self._excluded_particles!=[] and 'all' not in self._excluded_particles:
                                         proc2 = self._dm_names_list[i_dm]+' '+antiquarks[i]+' > '+self._dm_names_list[i_dm]+' '+antiquarks[i]+' /'\
-                                                        +self._excluded_particles+' '\
+                                                        +' '.join(self._excluded_particles)+' '\
                                                         +str(eff_operators_SD)+'='+str(SD_order)+' '+str(eff_operators_SI)+\
                                                         '='+str(SI_order)+' QED='+str(QED_order)
                                 else:
@@ -727,22 +747,22 @@ class darkmatter(base_objects.Particle):
                   operators_folder = 'COMPLEX'
           print "\nAdding effective vertices from folder "+operators_folder+" to the model file...\n"
           print 'model '+rp+'/'+pp+'/EffOperators/'+operators_folder
-          if True:
-          #try:
+          try:
                   eff_dm_name = self._eff_model_dm_names[int(self._dm_particles[0]['spin'])]
+                  print eff_dm_name
                   mg5_command = 'model '+rp+'/'+pp+'/EffOperators/'+\
-                                  operators_folder+' '+eff_dm_name+'='+self._dm_particles[0].get_name()+' --recreate'
-                  print "Merging command: "+mg5_command
+                                  operators_folder+' '+eff_dm_name+'='+self._dm_particles[0].get('name')+' --recreate'
+                  print mg5_command
                   self._MG5Cmd.do_add(mg5_command)
                   print "Current model: ",
                   print self._MG5Cmd._curr_model.get('modelpath')
                   self._Model = self._MG5Cmd._curr_model
                   #self._MG5Cmd.do_add_model(rp+'/'+pp+'/EffOperators/'+operators_folder)
-          #except Exception, error:
-          #      logging.debug(error)
-          #      print "ERROR: Failed to add the effective vertices!"\
-          #                +" Try to add the effective vertices to your model in MadGraph as a check."
-          #      sys.exit(1)
+          except Exception, error:
+                logging.debug(error)
+                print "ERROR: Failed to add the effective vertices!"\
+                          +" Try to add the effective vertices to your model in MadGraph as a check."
+                sys.exit(1)
           print "INFO: Finished adding the Effective vertex model."
 
           #Now figure out the label of the effective vertex to use. The convention is:
@@ -817,7 +837,7 @@ class darkmatter(base_objects.Particle):
                                 print "INFO: Done!"
 
         #-----------------------------------------------------------------------#
-        def GenerateDiagramsIndirDetect(self, finalstate=['a a'], excluded_particles=' '):
+        def GenerateDiagramsIndirDetect(self, finalstate=['a a'], excluded_particles=''):
         #-----------------------------------------------------------------------#
         #   Comment here...
         #-----------------------------------------------------------------------#
@@ -851,9 +871,9 @@ class darkmatter(base_objects.Particle):
 
                   # Create the appropriate string of initial to final state particles
                   try:
-                        if self._excluded_particles!='':
+                        if self._excluded_particles!=[]:
                                 proc = 'DM_particle'+str(i+1)+' DM_particle'+str(i+1)+fs+' /'\
-                                +self._excluded_particles\
+                                +' '.join(self._excluded_particles)\
                                 +' QED=4 SIEFFS=0 SIEFFF=0 SIEFFV=0 SDEFFF=0 SDEFFV=0'
                         else:
                                 proc = 'DM_particle'+str(i+1)+' DM_particle'+str(i+1)+fs\
@@ -875,7 +895,7 @@ class darkmatter(base_objects.Particle):
 
 
         #-----------------------------------------------------------------------#
-        def GenerateDiagramsRelicDensity(self, excluded_particles=''):
+        def GenerateDiagramsRelicDensity(self):
         #-----------------------------------------------------------------------#
         #                                                                        #
         #  This routine generates all the 2 -> 2 annihilation matrix elements.        #
@@ -891,9 +911,18 @@ class darkmatter(base_objects.Particle):
           if (self._project_exists):
                 return
 
-          #If there are any excluded particles in the propagator, set them up
-          if (excluded_particles!=''):
-               self._excluded_particles = excluded_particles
+          # Tabulates all the BSM particles so they can be included in the
+          # final state particles along with the SM particles.
+          print "INFO: Excluding the following BSM particles from the final state: "+str(self._excluded_particles)
+          if not ('all' in self._excluded_particles):
+	  	       for i in self._bsm_particles:
+                          if ((not (self._particles[i] in self._dm_particles)) and\
+                          (not (self._particles[i].get('width') == 'ZERO') ) and\
+                          (not (self._particles[i].get('name') in self._excluded_particles))):
+                          #if (self._bsm_masses[i] < self._dm_mass):
+                          #_bsm_particles holds the location in the array of particles
+                                self._bsm_final_states.append(self._particles[i])
+
 
           # Else generate the matrix elements
           #print "----- Generating Matrix Elements -----\n",
@@ -930,13 +959,19 @@ class darkmatter(base_objects.Particle):
           # With the list of BSM particles tabulated in FindDMCandidate we can get the list of bsm names
           bsm_names_list = []
           for bsm_particle in self._bsm_final_states:
-                bsm_names_list.append(bsm_particle['name'])
+                bsm_names_list.append(bsm_particle.get('name'))
                 if (not bsm_particle['self_antipart']):
-                  bsm_names_list.append(bsm_particle['antiname'])
+                  bsm_names_list.append(bsm_particle.get('antiname'))
 
           # Create a MadGraph multiparticle that conatins all three groups of particles
           sm_names = ' '.join(sm_names_list)
-          bsm_names = ' '.join(bsm_names_list)
+          if bsm_names_list!=[]:
+          	bsm_names = ' '.join(bsm_names_list)
+          else:
+            bsm_names=''
+          print "INFO: DM is allowed to annihilate into the following BSM particles"
+          print "INFO: (If you want to exclude them, do so using the standard '/' MadGraph notation):"
+          print str(bsm_names)
           dm_names = ' '.join(self._DM_all_names)
           self._MG5Cmd.do_define('dm_particles = '+dm_names)
           self._MG5Cmd.do_define('fs_particles = '+sm_names+' '+bsm_names)
@@ -948,16 +983,24 @@ class darkmatter(base_objects.Particle):
                 for j in range(i,len(self._dm_particles)):
 
                   # Create the appropriate string of initial to final state particles
-                  try:
-                        if self._excluded_particles!='':
+                  if True:
+                        print self._excluded_particles
+                  #try:
+                        print "Dm_particle: "+str(self._DM_init_state[i])
+                        print "dm_names_list: "+str(self._dm_names_list[i])
+                        if self._excluded_particles!=[] and 'all' not in self._excluded_particles:
                                 proc = 'DM_particle'+str(i+1)+' DM_particle'+str(j+1)+' > fs_particles fs_particles /'\
-                                +self._excluded_particles\
+                                +' '.join(self._excluded_particles)\
                                 +' QED=4 SIEFFS=0 SIEFFF=0 SIEFFV=0 SDEFFF=0 SDEFFV=0'
                         else:
                                 proc = 'DM_particle'+str(i+1)+' DM_particle'+str(j+1)+' > fs_particles fs_particles'\
                                 +' QED=4 SIEFFS=0 SIEFFF=0 SIEFFV=0 SDEFFF=0 SDEFFV=0'
                         print "Trying "+proc
-                        self._MG5Cmd.do_generate(proc)
+                        try:
+                           print proc
+                           self._MG5Cmd.do_generate(proc)
+                        except Exception, error:
+                           continue
 
                         # Once we generate the diagrams, we then immediately get the matrix elements for this process
                         # so we can keep track of the number of processes as well as generate the next set
@@ -965,8 +1008,54 @@ class darkmatter(base_objects.Particle):
                         self._annihilation_me[i][j] = curr_matrix_elements.get_matrix_elements()
                         self._wanted_lorentz += curr_matrix_elements.get_used_lorentz()
                         self._wanted_couplings += curr_matrix_elements.get_used_couplings()
-                  except Exception, error:
-                        logging.debug(error)
+
+						#---------------------------------------------------------------
+
+                        #Find the resonances
+                        print "Finding the locations of resonances..."
+
+                        for helas_matrix_element in self._annihilation_me[i][j]:
+                        		helas_model = helas_matrix_element.get('processes')[0].get('model')
+                        		amp = helas_matrix_element.get_base_amplitude()
+                        		diagrams = amp.get('diagrams')
+
+								#Plot the annihilation diagrams
+                        		plot = draw.MultiEpsDiagramDrawer(diagrams,
+                                          'maddm_plot.eps',
+                                          model=helas_model,
+                                          amplitude=amp,
+                                          legend=amp.get('process').input_string(),
+                                          diagram_type='')
+                            		plot.draw()
+
+					for diag in helas_matrix_element.get('diagrams'):
+										for amp in diag.get('amplitudes'):
+											helas_n_initial_states = helas_matrix_element.get('processes')[0].get_ninitial()
+											#print "Model name: ",
+											#print helas_model.get('name')
+											#print helas_model.get('particle_dict').keys()
+											s_channels, t_channels = amp.\
+												get_s_and_t_channels(helas_n_initial_states, helas_model,0)
+											for s_channel in s_channels:
+												resonance_pdg = s_channel.get('legs')[-1].get('id')
+												#If the resonance pdg code is 0, that's a fake resonance
+												#used to emulate a 4 point interaction
+												if resonance_pdg ==0:
+													continue
+												#print "Resonance PDG: ",
+												#print resonance_pdg
+												#print "s-channel legs: ",
+												#print s_channel.get('legs')
+												resonance_mass = helas_model.get_particle(resonance_pdg).get('mass')
+												resonance_width = helas_model.get_particle(resonance_pdg).get('width')
+												self._resonances.append((resonance_pdg, resonance_mass, resonance_width))
+
+					#Select only the unique occurences of resonances
+					self._resonances=list(set(self._resonances))
+                          #---------------------------------------------------------------
+
+                 # except Exception, error:
+                 #       logging.debug(error)
 
           if len(self._annihilation_me[i][j])==0:
                     print "WARNING: No DM annihilation diagrams. Relic density calculation can not proceed!"
@@ -979,9 +1068,9 @@ class darkmatter(base_objects.Particle):
 
                   # Create the appropriate string of initial to final state particles
                   try:
-                        if self._excluded_particles!='':
+                        if self._excluded_particles!=[]:
                                 proc = 'DM_particle'+str(i+1)+' DM_particle'+str(j+1)+' > dm_particles dm_particles /'\
-                                +self._excluded_particles+' '\
+                                +' '.join(self._excluded_particles)+' '\
                                 +'QED=4 SIEFFS=0 SIEFFF=0 SIEFFV=0 SDEFFF=0 SDEFFV=0'
                         else:
                                 proc = 'DM_particle'+str(i+1)+' DM_particle'+str(j+1)+' > dm_particles dm_particles'\
@@ -1010,9 +1099,9 @@ class darkmatter(base_objects.Particle):
 
                         # Create the appropriate strong of initial to final state particles
                         try:
-                          if self._excluded_particles!='':
+                          if self._excluded_particles!=[]:
                                   proc = 'DM_particle'+str(i+1)+' fs_particles > DM_particle'+str(j+1)+' fs_particles /'
-                                  +self._excluded_particles+' '\
+                                  +' '.join(self._excluded_particles)+' '\
                                   +' QED=4 SIEFFS=0 SIEFFF=0 SIEFFV=0 SDEFFF=0 SDEFFV=0'
                           else:
                                   proc = 'DM_particle'+str(i+1)+' fs_particles > DM_particle'+str(j+1)+' fs_particles'\
@@ -1024,6 +1113,7 @@ class darkmatter(base_objects.Particle):
                           self._scattering_me[i][j] = curr_matrix_elements.get_matrix_elements()
                           self._wanted_lorentz += curr_matrix_elements.get_used_lorentz()
                           self._wanted_couplings += curr_matrix_elements.get_used_couplings()
+
                         except Exception, error:
                           logging.debug(error)
                           continue
@@ -1479,6 +1569,12 @@ class darkmatter(base_objects.Particle):
           # Create the makefile for compiling all the matrix elements
           self.Write_makefile()
 
+          # Write the include file
+          self.WriteMadDMinc()
+
+          #Write the include file containing all the resonance locations
+          self.Write_resonance_info()
+
           # This creates the fortran files for the model
           # v4 model
           if self._MG5Cmd._model_v4_path:
@@ -1677,10 +1773,24 @@ class darkmatter(base_objects.Particle):
 
           # open up the file and first print out the number of dm particles
           diagramsfile = open('Projects/'+self._projectname+'/include/diagrams.inc','w')
-          stringtowrite = 'c Total number of IS particles participating in the coannihilations \n'+\
-                                                  '                 ndmparticles = '+str(len(self._dm_particles))+'\n\n' +\
-                                                  'c Processes by class'
-          diagramsfile.write(stringtowrite)
+
+          #don't include the bsm particles which are not dark matter
+          ndm_particles =0
+          for dm_part in self._dm_particles:
+          	if (dm_part['charge']==0 and \
+          		(dm_part['width']=='ZERO' or self.GetWidth(dm_part['pdg_code']) == 0.0 )):
+          		ndm_particles = ndm_particles+1
+
+#  	  stringtowrite = 'c Total number of IS particles participating in the coannihilations \n'+\
+#  												  '                 ndmparticles = '+str(ndm_particles)+'\n\n' +\
+#  												  'c Processes by class'
+#  	  diagramsfile.write(stringtowrite)
+
+	  stringtowrite = 'c Total number of IS particles participating in the coannihilations \n'+\
+												  '                 ndmparticles = '+str(len(self._dm_particles))+'\n\n' +\
+												  'c Processes by class'
+	  diagramsfile.write(stringtowrite)
+
 
           # Write out how many annihlation processes for each combinations of initial states
           diagramsfile.write('\nc Number of annihilation processes for each DM pair\n')
@@ -1872,6 +1982,19 @@ class darkmatter(base_objects.Particle):
 
           process_names_file.close()
 
+	#-----------------------------------------------------------------------#
+	def Write_resonance_info(self):
+	#-----------------------------------------------------------------------#
+		#Write the locations of resonances
+		resonances_inc_file = open('Projects/'+self._projectname+'/include/resonances.inc','w+')
+          	for i in range (len(self._resonances)):
+          				new_line = '                resonances(%d)     =   %s \n'% (i+1, self._resonances[i][1])
+          				resonances_inc_file.write(new_line)
+          	for i in range (len(self._resonances)):
+          				new_line = '                resonance_widths(%d)     =   %s \n'% (i+1, self._resonances[i][2])
+          				resonances_inc_file.write(new_line)
+
+		resonances_inc_file.close()
 
 
         #-----------------------------------------------------------------------#
@@ -1904,7 +2027,6 @@ class darkmatter(base_objects.Particle):
           # which are flagged with __flag1 and __flag2 in the smatrix_template.f file.
           # Write the output into smatrix.f
           for line in smatrix_lines:
-
                 # Include all the combinations of external pmass.inc files for the annihlation processes
                 if __flag1 in line:
                   firstentry = True
@@ -2280,9 +2402,31 @@ class darkmatter(base_objects.Particle):
                             else:
                                     self._MG5Cmd.do_compute_widths('%s %s --nlo' % (' '.join(pdg), path))
 
-            #-------------------------------------------------------------------#
+    	#-------------------------------------------------------------------#
+	# Routine which writes the maddm.inc file. It takes the existing file and adds
+	# the information about the location of s-channel resonances.
+	#---------------------------------------------------------------------------------
+	def WriteMadDMinc(self):
 
+			print "(PDG, Mass, Width) of Resonances:"
+			print self._resonances
 
+			incfile_template = open('Templates/include/maddm.inc','r').read()
+			res_dict = {}
+
+# 			chunk_size = 5
+ 			init_lines=[]
+# 			for i,k in enumerate(self._resonances):
+# 				init_lines.append("resonances(%d)=%s"%(i+1,k[1]))
+
+			res_dict['resonances_initialization'] = '\n'.join(init_lines)
+			res_dict['n_resonances'] = len(self._resonances)
+
+			writer = writers.FortranWriter(os.path.join(self._projectpath, 'include', 'maddm.inc'))
+			writer.write(incfile_template % res_dict)
+			writer.close()
+
+	#---------------------------------------------------------------------------------
 
 
         #-----------------------------------------------------------------------#

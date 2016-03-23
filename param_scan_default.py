@@ -14,6 +14,7 @@ import pickle
 #Set the proper paths
 maddm_path = os.path.split(os.path.dirname(os.path.realpath( __file__ )))[0]
 pieces = maddm_path.split('/')
+#MAKE SURE TO ADD REAL AND COMPLEX FOLDERS TO PATH
 maddm_path = maddm_path.replace(pieces[-1], '')
 sys.path.append(maddm_path)
 

@@ -7,11 +7,11 @@ c print out the values of the annihilation cross section at x_f (s = 4m^2/(1-2/x
 c flag to use the canonical calculation or the coupled relic density calculation
       relic_canonical = .true.
 
-c flags to determine which calculations to perform 
+c flags to determine which calculations to perform
 c WARNING: Do not turn on if you haven't already generated a specific process in maddm.
-      do_relic_density         = .true.
-      do_direct_detection      = .true.
-      do_directional_detection = .true.
+      do_relic_density          = .true.
+      do_direct_detection       = .false.
+      do_directional_detection  = .false.
 
 c flags for calculating an array of taacs values or calculate them on the spot
       calc_taacs_ann_array = .true.
@@ -20,24 +20,31 @@ c flags for calculating an array of taacs values or calculate them on the spot
 
 c precision of the ODE integrator which solves for relic density.
       eps_ode = 1.0d-2
-      
-c "step back" parameters for the ODE integrator (see manual for more details)
-c decrease in dx results in slower calculations
-      x_start = 30.0d0 
+
+c use an approximation for the decoupling temperature in the relic density calc?
+      xd_approx = .true.
+
+c if xd_approx = .false. use "step back" parameters for the ODE integrator
+c (see manual for more details). Slower, but more accurate.
+      x_start = 50.0d0
       x_end = 1.0d3
       dx_step = 1.0d0
 
-c precision of the romberg integration for Wij and taacs
+c integration precision parameters
+
+c Simpson's rule parameters
+c     For the calculation of taacs only, initial number of points in the grid (of dm velocity)
+      ngrid_init = 20
+
+c     Number of points to add for one width
+c     (the code will add points which exponentially increase in distance from the pole)
+      nres_points = 20
+
+c precision of the romberg integration for Wij
       eps_wij = 1.0d-2
-      eps_taacs = 1.0d-2
 
-c minimum number of iterations in the romberg integration algorithm for both Wij and taacs
-      iter_wij = 10
-      iter_taacs = 10
-
-c In the cacluation of the wij's these set the min and max of the adaptive step size
-      beta_step_min = 0.0001d0
-      beta_step_max = 0.01d0
+c minimum number of iterations in the romberg integration algorithm for both Wij
+      iter_wij = 2
 
 c Direct Detection nucleon form factors (fPx - proton, fNx - neutron)
 
@@ -51,11 +58,11 @@ c Scalar FF
       SNd = 0.0273d0
       SNs = 0.0447d0
       SNg = 1.d0 - SNu - SNd - SNs
-      
+
 c Vector FF
       VPu = 2.0d0
       VPd = 1.0d0
-      
+
       VNu = 1.0d0
       VNd = 2.0d0
 
@@ -63,7 +70,7 @@ c Axial Vector FF
       AVPu = 0.842d0
       AVPd = -0.427d0
       AVPs = -0.085d0
-      
+
       AVNu = -0.427d0
       AVNd = 0.842d0
       AVNs = -0.085d0
@@ -72,7 +79,7 @@ c Sigma(mu,nu) FF
       SigPu = 0.84d0
       SigPd = -0.23d0
       SigPs = -0.046d0
-      
+
       SigNu = -0.23d0
       SigNd = 0.84d0
       SigNs = -0.046d0
@@ -83,10 +90,10 @@ c For Directional detection and direct detection rates
 ! Xenon = 1, Germanium = 2, Silicon = 3, Argon = 4, Neon = 5
 ! Sodium = 6, Iodine = 7, Carbon = 8, Flourine = 9, Sulphur = 10
 ! For Compounds: NaI = 11, CF4 = 12, CS2 = 13
- 
+
       material = 1
 
-c Setting up the DM constants 
+c Setting up the DM constants
       vMP      = 220.d0  ! The most probable WIMP velocity v_0 (km/s)
       vescape  = 650.d0  ! The escape velocity of WIMPS in the Halo (km/s)
       rhoDM    = 0.3d0   ! The density of WIMPs in our local Universe (GeV/c^2/cm^-3)

@@ -19,7 +19,8 @@ dm.init_from_model(model_name, project_name)
 if dm._new_proj == True:
 	# Find the DM candidate and coannihilaton particles
 	dm.FindDMCandidate()
-	dm.FindCoannParticles()
+	if do_relic_density:
+	     dm.FindCoannParticles()
 	dm.GetProjectName()
 
 

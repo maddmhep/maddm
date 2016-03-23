@@ -119,6 +119,7 @@ c input parameters
       double precision p_ext(0:3,4)
       integer i, j, k
 
+
 #SMATRIX_MADDM2 --- generates series of if-then-else statements to call appropriate smatrix
 
 
@@ -146,6 +147,7 @@ c-------------------------------------------------------------------------c
 c input parameters
       double precision p_ext(0:3,4)
       integer i, j, k
+
 
 #SMATRIX_MADDM3 --- generates series of if-then-else statements to call appropriate smatrix
 

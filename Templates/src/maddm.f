@@ -22,6 +22,8 @@ c include files generated my the python side that contains necessary information
       include 'maddm_card.inc'
       include 'diagrams.inc'
 
+      include 'resonances.inc'
+
 c Sets all the parameters used in MG/ME to the values in the param card
       call setpara('Cards/param_card.dat')
 
@@ -118,7 +120,7 @@ C      Here write the output.
 	  write(33,*) 'sigmaN_SD_n: ', sigma_neutron_SD, ' GeV^-2',
      &                ':', sigma_neutron_SD*gevtopb, ' pb'
           write(33,*) 'Nevents: ', Nint(total_events)
-          write(33,*) 'smearing: ', sm_flag 
+          write(33,*) 'smearing: ', sm_flag
 
 	  close(33)
 
@@ -139,7 +141,7 @@ C       call Wij_check()
 C
 
 C c taacs test (min_x, max_x, nsteps, logscale)
-C       call taacs_check(1.00d0,100d0,101,1)
+c       call taacs_check(1.00d0,100d0,101,0)
 C
 
 C c check all cross sections for a range of inital state momenta (xinit_min, x_init_max, nsteps, p_or_E, logscale)

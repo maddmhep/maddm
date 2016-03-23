@@ -7,11 +7,11 @@ from numpy import loadtxt
 dm=darkmatter()
 #Initialize it from the rsxSM model in the MadGraph model folder,
 #and store all the results in the Projects/rsxSM subfolder.
-dm.init_from_model('DMsimp_s_spin0_LO_UFO_wgluons', 'test2')
+dm.init_from_model('DMsimp_s_spin0_LO_UFO_wgluons', 'todel')
 
 
 # Determine the dark matter candidate...
-dm.FindDMCandidate(prompts=False, dm_candidate='xd')
+dm.FindDMCandidate(prompts=False, dm_candidate='xd' , exclude_particles='xr xc')
 
 print str(dm._bsm_particles)
 
@@ -28,10 +28,10 @@ dm.GenerateDiagramsRelicDensity()
 
 #Generate the diagrams for direct detection.
 #print "Generating direct detection diagrams..."
-#dm.GenerateDiagramsDirDetect()
+dm.GenerateDiagramsDirDetect()
 
 #Switch to turn on directional detection and recoil rate calculations
-#dm._do_directional_detection = True
+dm._do_directional_detection = True
 
 print "Relic density? -"+str(dm._do_relic_density)
 print "Direct detection? - "+str(dm._do_direct_detection)
