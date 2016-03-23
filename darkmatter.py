@@ -101,6 +101,7 @@ class darkmatter(base_objects.Particle):
           self._excluded_particles = []
           self._resonances = []
           self._dm_mass = -1.0
+          self._allowed_ID_fs=['a a', 'v v', 've ve~', 'vm vm~', 'vt vt~', 'g g']
 
           #Results of the calculation
           self._omegah2 = -1.0
@@ -291,6 +292,7 @@ class darkmatter(base_objects.Particle):
                         if ( (particle['name'] == dm_candidate) or (particle['antiname'] == dm_candidate)):
                           self._dm_particles.append(particle)
                           found_DM_particle = True
+                          #self._dm_mass = abs(self.GetMass(self._dm_particles[0]['pdg_code']))
                   if found_DM_particle == False:
                         print "ERROR: Dark Matter candidate "+dm_candidate+" does not exist in this model!"
                         sys.exit(0)
@@ -837,10 +839,17 @@ class darkmatter(base_objects.Particle):
                                 print "INFO: Done!"
 
         #-----------------------------------------------------------------------#
-        def GenerateDiagramsIndirDetect(self, finalstate=['a a'], excluded_particles=''):
+        def GenerateDiagramsIDLoopIndiced(self, finalstate='a a', excluded_particles=''):
         #-----------------------------------------------------------------------#
         #   Comment here...
         #-----------------------------------------------------------------------#
+
+          #For neutrinos, define the 'v' symbol to be all neutrinos
+          self._MG5Cmd.do_define('v= ve vt vm ve~ vt~ vm~')
+
+          if finalstate not in self._allowed_ID_fs:
+          	print "Final state ["+finalstate+"] not supported"
+          	sys.exit()
 
           self._do_indirect_detection = True
 
@@ -853,7 +862,7 @@ class darkmatter(base_objects.Particle):
                self._excluded_particles = excluded_particles
 
           #Set up the array for indirect detection matrix elements
-          self._annihilationIndirDet_me = [[] for i in range(len(self._dm_particles))]
+#          self._annihilationIndirDet_me = [[] for i in range(len(self._dm_particles))]
 
           # Set up the initial state multiparticles that contain the particle and antiparticle
           self._DM_all_names = list(set(self._dm_names_list + self._dm_antinames_list))
@@ -867,28 +876,40 @@ class darkmatter(base_objects.Particle):
 
 		  # Generate the annihilation diagrams by going through all the combinations of
           # initial state particles
+          at_counter = 1
           for i in range(len(self._dm_particles)):
 
                   # Create the appropriate string of initial to final state particles
                   try:
                         if self._excluded_particles!=[]:
-                                proc = 'DM_particle'+str(i+1)+' DM_particle'+str(i+1)+fs+' /'\
+                                proc = self._dm_names_list[i]+' '+self._dm_antinames_list[i]+' > '+finalstate+' /'\
                                 +' '.join(self._excluded_particles)\
-                                +' QED=4 SIEFFS=0 SIEFFF=0 SIEFFV=0 SDEFFF=0 SDEFFV=0'
+                                +' [virt=ALL] @'+str(at_counter)\
+                                #+' @ID_'+finalstate.replace(' ', '')
                         else:
-                                proc = 'DM_particle'+str(i+1)+' DM_particle'+str(i+1)+fs\
-                                +' QED=4 SIEFFS=0 SIEFFF=0 SIEFFV=0 SDEFFF=0 SDEFFV=0'
+                                proc = self._dm_names_list[i]+' '+self._dm_antinames_list[i]+' > '+finalstate\
+                                +' [virt=ALL] @'+str(at_counter)\
+                                #+' @ID_'+finalstate.replace(' ', '')
                         print "Trying "+proc
                         self._MG5Cmd.do_generate(proc)
+                        at_counter = at_counter+1
 
                         # Once we generate the diagrams, we then immediately get the matrix elements for this process
                         # so we can keep track of the number of processes as well as generate the next set
-                        curr_matrix_elements = helas_objects.HelasMultiProcess(self._MG5Cmd._curr_amps)
-                        self._annihilationIndirDet_me[i] = curr_matrix_elements.get_matrix_elements()
-                        self._wanted_lorentz += curr_matrix_elements.get_used_lorentz()
-                        self._wanted_couplings += curr_matrix_elements.get_used_couplings()
+#                        curr_matrix_elements = helas_objects.HelasMultiProcess(self._MG5Cmd._curr_amps)
+#                        self._annihilationIndirDet_me[i] = curr_matrix_elements.get_matrix_elements()
+#                        self._wanted_lorentz += curr_matrix_elements.get_used_lorentz()
+#                        self._wanted_couplings += curr_matrix_elements.get_used_couplings()
+
+                        #check if the project folder has been created. If not create it.
+                        if  glob.glob(self._projectpath+'_*')==[]:
+                            os.makedirs(self._projectpath)
+
+                        self._MG5Cmd.do_output(self._projectpath+'/ID_loop_induced_'+finalstate.replace(' ', '')+' --standalone')
 
                   except Exception, error:
+                        print "ERROR: Something went wrong with the loop calculation!"
+                        print "ERROR: "+str(error)
                         logging.debug(error)
                         continue
 
@@ -1217,9 +1238,9 @@ class darkmatter(base_objects.Particle):
           self._dd_tot_initial_dofs_total = [[[] for i in range(len(self._dm_particles))] for j in range(len(self._dm_particles))]
 
           #Arrays needed for Indirect Detection
-          self._id_ann_nprocesses = [[0 for i in range(len(self._dm_particles))] for j in range(len(self._dm_particles))]
-          self._id_ann_process_names = [[[] for i in range(len(self._dm_particles))] for j in range(len(self._dm_particles))]
-          self._id_ann_process_iden_init = [[[] for i in range(len(self._dm_particles))] for j in range(len(self._dm_particles))]
+#          self._id_ann_nprocesses = [[0 for i in range(len(self._dm_particles))] for j in range(len(self._dm_particles))]
+#          self._id_ann_process_names = [[[] for i in range(len(self._dm_particles))] for j in range(len(self._dm_particles))]
+ #         self._id_ann_process_iden_init = [[[] for i in range(len(self._dm_particles))] for j in range(len(self._dm_particles))]
 
           path_matrix = os.path.join(self._projectpath, 'matrix_elements')
 
@@ -1508,38 +1529,38 @@ class darkmatter(base_objects.Particle):
                                 ii=ii+1
 
           #FOR INDIRECT DETECTION
-          if (self._do_indirect_detection == True):
-          # writing the matrix elements
-                  # Annihilation matrix elements
-                  for i in range(len(self._dm_particles)):
-
-                          # Get the total number of annihilation processes
-                          self._ann_nprocesses_indirect_det[i] = len(self._annihilationIndirDet_me[i])
-
-                          for me in self._annihilationIndirDet_me[i]:
-
-                                # Get the name of the process (we disregard the first two characters in the name '0_')
-                                process_name = me.get('processes')[0].shell_string()
-                                process_name = process_name[2:len(process_name)]
-                                self._id_ann_process_names[i].append(process_name)
-
-                                # Check to see if the initial state particles are identical
-                                initial_state = me.get('processes')[0].get_initial_ids()
-                                if (initial_state[0] == initial_state[1]):
-                                  self._id_ann_process_iden_init[i][j].append(True)
-                                else:
-                                  self._id_ann_process_iden_init[i][j].append(False)
-
-                                # Using the proess name we create the filename for each process and export the fortran file
-                                filename_matrix = os.path.join(path_matrix, 'matrix_' + process_name + '.f')
-                                self._exporter.write_matrix_element(\
-                                                writers.FortranWriter(filename_matrix),\
-                                                me, self._MG5Cmd._curr_fortran_model)
-
-                                # We also need the external mass include file for each process.
-                                filename_pmass = os.path.join(self._projectpath, 'include', 'pmass_' + process_name + '.inc')
-                                self._exporter.write_pmass_file(\
-                                                writers.FortranWriter(filename_pmass), me)
+#           if (self._do_indirect_detection == True):
+#           # writing the matrix elements
+#                   # Annihilation matrix elements
+#                   for i in range(len(self._dm_particles)):
+#
+#                           # Get the total number of annihilation processes
+#                           self._ann_nprocesses_indirect_det[i] = len(self._annihilationIndirDet_me[i])
+#
+#                           for me in self._annihilationIndirDet_me[i]:
+#
+#                                 # Get the name of the process (we disregard the first two characters in the name '0_')
+#                                 process_name = me.get('processes')[0].shell_string()
+#                                 process_name = process_name[2:len(process_name)]
+#                                 self._id_ann_process_names[i].append(process_name)
+#
+#                                 # Check to see if the initial state particles are identical
+#                                 initial_state = me.get('processes')[0].get_initial_ids()
+#                                 if (initial_state[0] == initial_state[1]):
+#                                   self._id_ann_process_iden_init[i][j].append(True)
+#                                 else:
+#                                   self._id_ann_process_iden_init[i][j].append(False)
+#
+#                                 # Using the proess name we create the filename for each process and export the fortran file
+#                                 filename_matrix = os.path.join(path_matrix, 'matrix_' + process_name + '.f')
+#                                 self._exporter.write_matrix_element(\
+#                                                 writers.FortranWriter(filename_matrix),\
+#                                                 me, self._MG5Cmd._curr_fortran_model)
+#
+#                                 # We also need the external mass include file for each process.
+#                                 filename_pmass = os.path.join(self._projectpath, 'include', 'pmass_' + process_name + '.inc')
+#                                 self._exporter.write_pmass_file(\
+#                                                 writers.FortranWriter(filename_pmass), me)
 
 
 #===================================================================================
