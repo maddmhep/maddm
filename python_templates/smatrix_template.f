@@ -14,8 +14,8 @@ c-------------------------------------------------------------------------c
 c input parameters
       integer i, j, k
 
-#PMASS_MADDM1 --- generates series of if-then-else to read appropriate final state masses
-
+c
+      %(pmass_ann)s
 
       return
       end
@@ -39,7 +39,7 @@ c input parameters
       integer i, j, k
 
 #PMASS_MADDM2 --- generates series of if-then-else to read appropriate final state masses
-
+      %(pmass_dm2dm)s
 
       return
       end
@@ -63,7 +63,7 @@ c input parameters
       integer i, j, k
 
 #PMASS_MADDM3 --- generates series of if-then-else to read appropriate final state masses
-
+      %(pmass_scattering)s
 
       return
       end
@@ -86,14 +86,15 @@ c-------------------------------------------------------------------------c
       implicit none
       include 'maddm.inc'
       include 'coupl.inc'
-
+      double precision smatrix
 c input parameters
       double precision p_ext(0:3,4)
       integer i, j, k
 
 #SMATRIX_MADDM1 --- generates series of if-then-else statements to call appropriate smatrix
+      %(smatrix_ann)s
 
-
+      smatrix_ann = smatrix
       return
       end
 
@@ -114,15 +115,16 @@ c-------------------------------------------------------------------------c
       implicit none
       include 'maddm.inc'
       include 'coupl.inc'
-
+      double precision smatrix
 c input parameters
       double precision p_ext(0:3,4)
       integer i, j, k
 
 
 #SMATRIX_MADDM2 --- generates series of if-then-else statements to call appropriate smatrix
+      %(smatrix_dm2dm)s
 
-
+      smatrix_dm2dm = smatrix
       return
       end
 
@@ -143,15 +145,16 @@ c-------------------------------------------------------------------------c
       implicit none
       include 'maddm.inc'
       include 'coupl.inc'
-
+      double precision smatrix
 c input parameters
       double precision p_ext(0:3,4)
       integer i, j, k
 
 
 #SMATRIX_MADDM3 --- generates series of if-then-else statements to call appropriate smatrix
+      %(smatrix_scattering)s
 
-
+      smatrix_scattering = smatrix
       return
       end
 
@@ -170,14 +173,15 @@ c-------------------------------------------------------------------------c
       implicit none
       include 'maddm.inc'
       include 'coupl.inc'
-
+      double precision smatrix
 c input parameters
       double precision p_ext(0:3,4)
       integer i, j, k
 
 #SMATRIX_MADDM_DD --- generates series of if-then-else statements to call appropriate smatrix
+      %(smatrix_dd)s
 
-
+      smatrix_dd = smatrix
       return
       end
 
@@ -203,8 +207,9 @@ c input parameters
       integer i, j, k
 
 #SMATRIX_MADDM_EFF_DD --- generates series of if-then-else statements to call appropriate smatrix
+      %(smatrix_dd_eff)s
 
-
+      smatrix_dd_eff = smatrix
       return
       end
 
@@ -224,13 +229,14 @@ c-------------------------------------------------------------------------c
       implicit none
       include 'maddm.inc'
       include 'coupl.inc'
-
+      double precision smatrix
 c input parameters
       double precision p_ext(0:3,4)
       integer i, j, k
 
 #SMATRIX_MADDM_TOT_DD --- generates series of if-then-else statements to call appropriate smatrix
+      %(smatrix_dd_tot)s
 
-
+      smatrix = smatrix_dd_tot
       return
       end
