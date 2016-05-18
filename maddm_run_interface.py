@@ -145,9 +145,15 @@ class MADDMRunCmd(cmd.Cmd):
         for key, value in self.mode.items():
             if value == 'ON':
                 self.mode[key] = True
+
             else:
                 self.mode[key] = False
+        self.maddm_card.set('do_relic_density', self.mode['relic'], user=False)
+        self.maddm_card.set('do_direct_detection', self.mode['direct'], user=False)
+        self.maddm_card.set('do_directional_detection', self.mode['directional'], user=False)
         
+        self.maddm_card.write_include_file(pjoin(self.dir_path, 'include', 'maddm_card.inc'))
+               
         logger.info("Start computing %s" % ','.join([name for name, value in self.mode.items() if value]))
         return self.mode
 
@@ -441,6 +447,8 @@ class InvalidMaddmCard(banner_mod.InvalidRunCard):
              
 class MadDMCard(banner_mod.RunCard):
     """MadDM card use the read/write of the runcard object"""
+    
+    filename = 'maddm_card'
     
     def __new__(cls, finput=None):
         """Bypass the standard RunCard one"""

@@ -32,7 +32,7 @@
 #flags for calculating an array of taacs values or calculate them on the spot
   %(calc_taacs_ann_array)s       = calc_taacs_ann_array 
   %(calc_taacs_dm2dm_array)s       = calc_taacs_dm2dm_array
-  %(calc_taacs_scattering_array)s       = calc_taacs_dm2dm_array
+  %(calc_taacs_scattering_array)s       = calc_taacs_scattering_array
 
 # precision of the ODE integrator which solves for relic density.
   %(eps_ode)s       = eps_ode
@@ -43,7 +43,7 @@
 # if xd_approx = .false. use "step back" parameters for the ODE integrator
 # (see manual for more details). Slower, but more accurate.
    %(x_start)s      = x_start
-   %(x_end)s    =  x_end
+   %(x_end)s    = x_end
    %(dx_step)s       = dx_step
 
 #
