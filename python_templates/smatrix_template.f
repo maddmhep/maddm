@@ -1,4 +1,4 @@
-c-------------------------------------------------------------------------c
+C------------------------------------------------------------------------c
       subroutine getfsmasses_ann(pmass, i, j, k)
 c-------------------------------------------------------------------------c
 c                                                                         c
@@ -201,7 +201,7 @@ c-------------------------------------------------------------------------c
       implicit none
       include 'maddm.inc'
       include 'coupl.inc'
-
+      double precision smatrix
 c input parameters
       double precision p_ext(0:3,4)
       integer i, j, k

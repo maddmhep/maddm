@@ -4,11 +4,15 @@ import shutil
 import sys
 import collections
 from StringIO import StringIO
+
+import maddm_run_interface
+
 # python routines from MadGraph
 import madgraph.iolibs.export_v4 as export_v4
 import madgraph.iolibs.file_writers as writers
 import madgraph.various.misc as misc
 import madgraph.iolibs.file_writers as file_writers
+import madgraph.various.banner as banner_mod
 import madgraph.iolibs.files as files
 import aloha
 import aloha.create_aloha as create_aloha
@@ -31,8 +35,20 @@ MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
 pjoin = os.path.join
 logger = logging.getLogger('madgraph.maddm')
 
+class MADDMProcCharacteristic(banner_mod.ProcCharacteristic):
+    
+    def default_setup(self):
+        """initialize the directory to the default value""" 
+
+        self.add_param('has_relic_density', False)
+        self.add_param('has_direct_detection', False)
+        self.add_param('has_directional_detection', False)
+        self.add_param('dm_candidate', [0])
+        self.add_param('coannihilator', [0])
+
+
 #-------------------------------------------------------------------------#
-class ProcessExporterMadDM(export_v4.ProcessExporterFortran):
+class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
     """_________________________________________________________________________#
     #                                                                         #
     #  This class is used to export the matrix elements generated from        #
@@ -53,7 +69,9 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortran):
     def __init__(self, dir_path = "", opt=None):
         misc.sprint(dir_path, opt)
         super(ProcessExporterMadDM, self).__init__(dir_path, opt)
-        self.resonances = set()
+        self.resonances = set() 
+        self.proc_characteristic = MADDMProcCharacteristic()
+        
 
 
     def convert_model(self, model, wanted_lorentz = [], wanted_couplings = []):
@@ -75,7 +93,6 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortran):
         
         out =  super(ProcessExporterMadDM, self).convert_model(model, 
                                                wanted_lorentz, wanted_couplings)
-        misc.sprint("convert_model", out)
         return out
     
     def make_model_symbolic_link(self):
@@ -103,6 +120,10 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortran):
         
         self.model = cmd._curr_model
         self.dm_particles = cmd._dm_candidate + cmd._coannihilation
+        
+        # update the process python information
+        self.proc_characteristic['dm_candidate'] = [p.get('pdg_code') for p in cmd._dm_candidate]
+        self.proc_characteristic['coannihilator'] = [p.get('pdg_code') for p in cmd._coannihilation]
 
     #-----------------------------------------------------------------------#  
     def copy_template(self, model):
@@ -128,7 +149,6 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortran):
         os.mkdir(os.path.join(project_path, 'Source', 'MODEL'))
         os.mkdir(os.path.join(project_path, 'Source', 'DHELAS'))
         os.mkdir(os.path.join(project_path, 'lib'))
-        os.mkdir(os.path.join(project_path, 'Cards'))
 
         temp_dir = os.path.join(self.mgme_dir, 'Template')        
         # Add make_opts file in Source
@@ -189,70 +209,27 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortran):
             raise writers.FortranWriter.FortranWriterError(\
                 "writer not FortranWriter")
 
+
         # first track the S-channel resonances:
-        if matrix_element.get('processes')[0].get('id') == self.DM2SM:
+        proc_id = matrix_element.get('processes')[0].get('id') 
+        if  proc_id == self.DM2SM:
             self.add_resonances(matrix_element, fortran_model)
         
-
+        # track the type of matrix-element and update the process python info
+        if proc_id in [self.DM2SM, self.DM2DM, self.DMSM]:
+            self.proc_characteristic['has_relic_density'] = True
 
         # Set lowercase/uppercase Fortran code
         writers.FortranWriter.downcase = False
 
-        replace_dict = {}
+
+        replace_dict = super(ProcessExporterMadDM,self).write_matrix_element_v4(
+                                            None, matrix_element, fortran_model)
+
 
         # Extrace the process information to name the subroutine
-        process_name = matrix_element.get('processes')[0].shell_string()
-        replace_dict['process_name'] = process_name[2:len(process_name)]
-
-        # Extract version number and date from VERSION file
-        info_lines = self.get_mg5_info_lines()
-        replace_dict['info_lines'] = info_lines
-
-        # Extract process info lines
-        process_lines = self.get_process_info_lines(matrix_element)
-        replace_dict['process_lines'] = process_lines
-
-        # Extract number of external particles
-        (nexternal, ninitial) = matrix_element.get_nexternal_ninitial()
-        replace_dict['nexternal'] = nexternal
-
-        # Extract ncomb
-        ncomb = matrix_element.get_helicity_combinations()
-        replace_dict['ncomb'] = ncomb
-
-        # Extract helicity lines
-        helicity_lines = self.get_helicity_lines(matrix_element)
-        replace_dict['helicity_lines'] = helicity_lines
-
-        # Extract overall denominator
-        # Averaging initial state color, spin, and identical FS particles
-        den_factor_line = self.get_den_factor_line(matrix_element)
-        replace_dict['den_factor_line'] = den_factor_line
-
-        # Extract ngraphs
-        ngraphs = matrix_element.get_number_of_amplitudes()
-        replace_dict['ngraphs'] = ngraphs
-
-        # Extract nwavefuncs
-        nwavefuncs = matrix_element.get_number_of_wavefunctions()
-        replace_dict['nwavefuncs'] = nwavefuncs
-
-        # Extract ncolor
-        ncolor = max(1, len(matrix_element.get('color_basis')))
-        replace_dict['ncolor'] = ncolor
-
-        # Extract color data lines
-        color_data_lines = self.get_color_data_lines(matrix_element)
-        replace_dict['color_data_lines'] = "\n".join(color_data_lines)
-
-        # Extract helas calls
-        helas_calls = fortran_model.get_matrix_element_calls(\
-                    matrix_element)
-        replace_dict['helas_calls'] = "\n".join(helas_calls)
-
-        # Extract JAMP lines
-        jamp_lines = self.get_JAMP_lines(matrix_element)
-        replace_dict['jamp_lines'] = '\n'.join(jamp_lines)
+        process_name = matrix_element.get('processes')[0].shell_string(print_id=False)
+        replace_dict['process_name'] = process_name
 
         p = pjoin(MDMDIR, 'Templates', 'matrix_elements', 'matrix_template.inc')
         file = open(p).read()
@@ -261,7 +238,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortran):
         # Write the file
         writer.writelines(file)
 
-        return len(filter(lambda call: call.find('#') != 0, helas_calls))
+        return replace_dict['return_value']
     
     def add_resonances(self, matrix_element, fortran_model):
         """keep track of all the s-channel resonances in DM DM > SM SM"""
@@ -303,7 +280,11 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortran):
 
         # Create the process_names.inc file that contains the names of all the individual processes
         self.WriteProcessNames(matrix_element)
- 
+
+        # add quark masses definition in DirectDetection file (needed even for 
+        #relic density since the code needs to compile.
+        self.WriteMassDirectDetection()
+        
 #           # Modify the matrix element files for DD so that they return the matrix element value
 #           # and not the matrix element squared.
 #           self.Modify_dd_matrix_files(whichME = 'full') #For the full matrix elements
@@ -320,8 +301,16 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortran):
         self.WriteMadDMinc()
 # 
 #           #Write the include file containing all the resonance locations
-        self.Write_resonance_info()    
+        self.Write_resonance_info()
+        
+        # write the details for python
+        self.proc_characteristic.write(pjoin(self.dir_path, 'matrix_elements', 'proc_characteristics'))    
 
+
+        # write maddm_card
+        maddm_card = maddm_run_interface.MadDMCard()
+        maddm_card.write(pjoin(self.dir_path, 'Cards', 'maddm_card.dat'))
+        maddm_card.write(pjoin(self.dir_path, 'Cards', 'maddm_card_default.dat'))
 
 
     #-----------------------------------------------------------------------#
@@ -356,7 +345,6 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortran):
         #          self._dm_thermal_scattering.append(True)
 
         path = pjoin(self.dir_path, 'include', 'dm_info.inc')
-        misc.sprint(path)
         writer = file_writers.FortranWriter(path, 'w')
         
         # Write out some header comments for the file
@@ -696,7 +684,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortran):
             for j,dm2 in enumerate(self.dm_particles[i:], start_second):
                 ids = self.make_ids(dm1, dm2, flag)
                 for k,info in enumerate(pmass[tuple(ids)]):
-                    output.append(' if ((i.eq.%s) .and. (j.eq.%s) .and. (k.eq.%s) then \n %s \n'\
+                    output.append('if ((i.eq.%s) .and. (j.eq.%s) .and. (k.eq.%s)) then \n %s \n'\
                                       % (i+1, j+1, k+1, info))
                     
         return '%s \n %s' % (' else'.join(output), ' endif' if output else '')
@@ -721,7 +709,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortran):
             for j,dm2 in enumerate(self.dm_particles[i:], start_second):
                 ids = self.make_ids(dm1, dm2, flag)
                 for k,info in enumerate(smatrix[tuple(ids)]):
-                    output.append(' if ((i.eq.%s) .and. (j.eq.%s) .and. (k.eq.%s) then \n %s \n'\
+                    output.append('if ((i.eq.%s) .and. (j.eq.%s) .and. (k.eq.%s)) then \n %s \n'\
                                       % (i+1, j+1, k+1, info)) 
 
         return '%s \n %s' % (' else'.join(output), ' endif' if output else '')
@@ -817,9 +805,23 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortran):
             resonances_inc_file.write(new_line)
 
         resonances_inc_file.close()
-    
-    
-    
+ 
+
+    #-----------------------------------------------------------------------#   
+    def WriteMassDirectDetection(self):
+        """Adding the light quark mass definition in direct_detection.f"""
+        
+        writer = open(pjoin(self.dir_path, 'src', 'direct_detection.f'), 'w')
+        
+        to_replace = {'quark_masses':[]}
+        for pdg in range(1,7):
+            p = self.model.get_particle(pdg)
+            to_replace['quark_masses'].append('M(%s) = %s' % (pdg, p.get('mass')))
+        to_replace['quark_masses'] = '\n           '.join(to_replace['quark_masses'])
+        
+        writer.write(open(pjoin(MDMDIR, 'python_templates', 'direct_detection.f')).read() % to_replace)
+        
+        
 
  
  

@@ -1,0 +1,146 @@
+#            ====================================================
+#            |                    MadDM v2.0                     |
+#            ====================================================
+#
+#                #########            Basics tutorial:  susy.phsx.ku.edu/~mihailo
+#             ###\\####//#####              Launchpad:  launchpad.net/maddm
+#           ######\\##//########
+#          ########\\//###########
+#         #########//\\############
+#        #########//##\\############                   arXiv:1308.4955
+#       ########//#####\\###########                   arXiv:1505.04190
+#       ######################### ## ___________________________________________
+#       ####################### 0  #  _     _               _  _____   _     _
+#       #############   0  ###    ## | \   / |   ___    ___|| | ___ \ | \   / |
+#       ##############    #########  ||\\ //|| / __ |  / __ | ||   || ||\\ //||
+#        ##########################  ||  V  || ||__||  ||__|| ||___|| ||  V  ||
+#         ###################   ##   ||     || \_____\ \____| |_____/ ||     ||
+#          ############       ###    ___________________________________________
+#           ##########    ######
+#             ################
+#                 ########
+#
+###################################################################################
+
+# Controlling some printout of the calculation
+  %(print_out)s      = print_out         # status update
+  %(print_sigmas)s      = print_sigmas      # print out the values of the annihilation 
+                                         #cross section at x_f (s = 4m^2/(1-2/x_f))
+
+#flag to use the canonical calculation or the coupled relic density calculation
+  %(relic_canonical)s       = relic_canonical   
+#flags for calculating an array of taacs values or calculate them on the spot
+  %(calc_taacs_ann_array)s       = calc_taacs_ann_array 
+  %(calc_taacs_dm2dm_array)s       = calc_taacs_dm2dm_array
+  %(calc_taacs_scattering_array)s       = calc_taacs_dm2dm_array
+
+# precision of the ODE integrator which solves for relic density.
+  %(eps_ode)s       = eps_ode
+
+# use an approximation for the decoupling temperature in the relic density calc?
+  %(xd_approx)s       = xd_approx
+
+# if xd_approx = .false. use "step back" parameters for the ODE integrator
+# (see manual for more details). Slower, but more accurate.
+   %(x_start)s      = x_start
+   %(x_end)s    =  x_end
+   %(dx_step)s       = dx_step
+
+#
+# integration precision parameters
+#
+
+# Simpson's rule parameters
+#     For the calculation of taacs only, initial number of points in the grid (of dm velocity)
+   %(ngrid_init)s        = ngrid_init
+#     Number of points to add for one width
+#     (the code will add points which exponentially increase in distance from the pole)
+   %(nres_points)s        = nres_points
+# precision of the romberg integration for Wij
+   %(eps_wij)s      = eps_wij
+# minimum number of iterations in the romberg integration algorithm for both Wij
+   %(iter_wij)s         = iter_wij
+
+#
+# Direct Detection nucleon form factors (fPx - proton, fNx - neutron)
+#
+
+# Scalar FF
+   %(SPu)s    = SPu
+   %(SPd)s    = SPd
+   %(SPs)s    = SPs
+   %(SPg)s    = SPg              # 1.d0 - SPu - SPd - SPs
+
+   %(SNu)s     = SNu
+   %(SNd)s    = SNd
+   %(SNs)s    = SNs
+   %(SNg)s     = SNg              #1.d0 - SNu - SNd - SNs
+
+# Vector FF
+   %(VPu)s       = VPu
+   %(VPd)s       = Vpd
+
+   %(VNu)s       = VNu
+   %(VNd)s       = VNd
+
+# Axial Vector FF
+   %(AVPu)s     = AVPu
+   %(AVPd)s    = AVPd
+   %(AVPs)s    = AVPs
+
+   %(AVNu)s    = AVNu
+   %(AVNd)s     = AVNd
+   %(AVNs)s    = AVNs
+
+# Sigma(mu,nu) FF
+   %(SigPu)s      = SigPu
+   %(SigPd)s     = SigPd
+   %(SigPs)s    = SigPs
+
+   %(SigNu)s     = SigNu
+   %(SigNd)s      = SigNd
+   %(SigNs)s    = SigNs
+
+#
+# For Directional detection and direct detection rates
+#
+
+# choose the target material
+# Xenon = 1, Germanium = 2, Silicon = 3, Argon = 4, Neon = 5
+# Sodium = 6, Iodine = 7, Carbon = 8, Flourine = 9, Sulphur = 10
+# For Compounds: NaI = 11, CF4 = 12, CS2 = 13
+
+   %(material)s         = material
+
+# Setting up the DM constants
+   %(vMP)s     = vMP  ! The most probable WIMP velocity v_0 (km/s)
+   %(vescape)s     = vescape  ! The escape velocity of WIMPS in the Halo (km/s)
+   %(rhoDM)s       = rhoDM   ! The density of WIMPs in our local Universe (GeV/c^2/cm^-3)
+
+# choose the size of the detector
+   %(detector_size)s    = detector_size  ! For 1 ton = 1000 kg detector
+   %(En_threshold)s       = En_threshold     ! in keVnr
+
+# choose the energy resolution coefficient lambda (sigma_E = lambda*sqrt(E))
+   %(lambd)s       = lambd
+
+# choose the angular resolution sigma_theta
+   %(sig_theta)s       = sig_theta
+
+# choose the range for the Energy, angle and time simulations
+   %(En_min)s       = En_min          ! minimum recoil Energy
+   %(En_max)s     = En_max          ! maximum recoil energy
+
+   %(cos_min)s      = cos_min         ! Minimum cosine of recoil angle
+   %(cos_max)s       = cos_max         ! Maximum cosine of recoil angle
+
+   %(day_min)s       = day_min         ! 1st day of observation.
+   %(day_max)s     = day_max         ! 1 year later.
+
+   %(Energy_bins)s       = Energy_bins     ! Number of Energy bins
+   %(cos_theta_bins)s        = cos_theta_bins  ! Number of cosine angle bins
+   %(day_bins)s        = day_bins        ! Number of time bins
+
+# Turn on detector smearing or not (both anergy and angle)
+   %(smearing)s     = smearing
+

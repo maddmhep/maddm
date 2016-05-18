@@ -1,13 +1,18 @@
 import logging
 import os
 
+import maddm_run_interface as maddm_run_interface
+
 
 import madgraph.interface.master_interface as master_interface
+import madgraph.interface.madgraph_interface as madgraph_interface
 import madgraph.various.misc as misc
 #import darkmatter as darkmatter
 import madgraph.interface.common_run_interface as common_run
 import models.check_param_card as check_param_card
 import models.model_reader as model_reader
+
+
 import re
 pjoin = os.path.join
 
@@ -26,6 +31,9 @@ class bcolors:
 
 class DMError(Exception): pass
 
+
+
+    
 
 class MadDM_interface(master_interface.MasterCmd):
 
@@ -91,6 +99,7 @@ class MadDM_interface(master_interface.MasterCmd):
                     self.search_dm_candidate([a.replace('/', '') for a in args[1:]])
                 elif len(args)==2:
                     self._dm_candidate = self._curr_model.get_particle(args[1])
+            
             elif args[0] == 'coannihilator':
                 if not self._dm_candidate:
                     self.search_dm_candidate([])
@@ -370,6 +379,38 @@ class MadDM_interface(master_interface.MasterCmd):
         
         super(MadDM_interface, self).do_output(line)
 
+    def find_output_type(self, path):
+        
+        if os.path.exists(pjoin(path,'matrix_elements','proc_characteristics')):
+            return 'maddm'
+        else:
+            return super(MadDM_interface, self).find_output_type(self, path)
+
+    def do_launch(self, line):
+        
+        
+        args = self.split_arg(line)
+        (options, args) = madgraph_interface._launch_parser.parse_args(args)
+        self.check_launch(args, options)
+        options = options.__dict__        
+        
+        
+        if args[0] != 'maddm':
+            return super(MadDM_interface, self).do_launch(line)
+        else:
+            MDM = maddm_run_interface.MADDMRunCmd(dir_path=args[1], options=self.options) 
+            if options['interactive']:              
+                return self.define_child_cmd_interface(MDM)
+            else:
+                self.define_child_cmd_interface(MDM,  interface=False)
+                MDM.exec_cmd('launch ' + line.replace(args[1], ''))
+                return
+            
+            
+            
+            
+                    
+            
 
     def define_multiparticles(self, label, list_of_particles):
         """define a new multiparticle from a particle list (add both particle and anti-particle)"""
@@ -476,7 +517,6 @@ class MadDM_interface(master_interface.MasterCmd):
                 else:
                     proc = "DM_particle_%s fs_particles > DM_particle_%s fs_particles %s @DMSM"\
                        % (i,j, coupling)
-                misc.sprint(proc)
                 self.do_add('process %s' % proc)
-          
+
 

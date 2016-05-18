@@ -20,12 +20,7 @@ c      double precision ff_N
 c initialize the quark masses array (u,d,s,c,b,t)
 c--------------------------------------------------------------------------------
 
-      M(1) = MDL_MD
-      M(2) = MDL_MU
-      M(3) = MDL_MS
-      M(4) = MDL_MC
-      M(5) = MDL_MB
-      M(6) = MDL_MT
+      %(quark_masses)s
 
       if (proton .eq. 1) then
          MN=0.9383d0
