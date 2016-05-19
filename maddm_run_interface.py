@@ -32,6 +32,11 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
+#Conversion from GeV^-2 to pb etc.
+GeV2pb = 3.894E8
+pb2cm2  = 1.0E-36
+cm22pb  = 1.0E36
+
 #===============================================================================
 # CommonRunCmd
 #===============================================================================
@@ -199,7 +204,7 @@ class MADDMRunCmd(cmd.CmdShell):
         result = dict(zip(output_name, result))
         self.last_results = result
 
-        misc.sprint(result)
+        self.print_results()
         
         if self.param_card_iterator:
             param_card_iterator = self.param_card_iterator
@@ -216,15 +221,52 @@ class MADDMRunCmd(cmd.CmdShell):
             name = misc.get_scan_name('maddm_%s' % (nb_output), 'maddm_%s' % (nb_output+i))
             path = pjoin(self.dir_path, 'output','scan_%s.txt' % name)
             logger.info("write all results in %s" % path ,'$MG:color:BLACK')
-            param_card_iterator.write_summary(path)
+            #print results:
+            if self.mode['relic']:
+                if not self.mode['direct'] and not self.mode['directional']:
+                    order = ['wimp_mass', 'omegah2', 'x_freezeout', 'sigmav_xf']
+                else:
+                    order = ['wimp_mass', 'omegah2', 'x_freezeout', 'sigmav_xf','sigmaN_SI_proton', 'sigmaN_SI_neutron', 'sigmaN_SD_proton',
+                        'sigmaN_SD_neutron']
+            else:
+                order = ['wimp_mass', 'sigmaN_SI_proton', 'sigmaN_SI_neutron', 'sigmaN_SD_proton',
+                        'sigmaN_SD_neutron']                
+                
+            param_card_iterator.write_summary(path, order)
     
         
         return result
 
         
+    def print_results(self):
+        """ print the latest results """
+        omega_min = 0
+        omega_max = 0.1
+        
+        if omega_min < self.last_results['omegah2'] < omega_max:
+            fail_relic_msg = ''
+        else:
+            fail_relic_msg = '%s Not valid for relic density (not in [%s,%s])%s' %\
+                              (bcolors.FAIL, omega_min, omega_max,bcolors.ENDC)  
         
         
+        logger.info("*** RESULTS ***", '$MG:color:BLACK')
+        if self.mode['relic']:
+            logger.info('   relic density  : %.2e %s', self.last_results['omegah2'],fail_relic_msg)
+                        
+            logger.info('   x_f            : %.2f', self.last_results['x_freezeout'])
+            logger.info('   sigmav(xf)     : %.2e GeV^-2 = %.2e pb', self.last_results['sigmav_xf'],self.last_results['sigmav_xf']*GeV2pb)
+    
+    def is_excluded_relic(self, relic, omega_min = 0., omega_max = 0.1):
+        """  This function determines whether a model point is excluded or not
+             based on the resulting relic density, spin independent and spin
+            dependent cross sections. The user can supply min/max values for
+            relic density
+        """
         
+        
+
+
         
     
     def ask_run_configuration(self, mode=None, force=False):
@@ -233,7 +275,6 @@ class MADDMRunCmd(cmd.CmdShell):
         if not force:  
             self.mode = self.ask('', '0', mode=mode, data=self.proc_characteristics, 
                             ask_class=MadDMSelector, timeout=60)
-            misc.sprint(self.mode)
             self.maddm_card = MadDMCard(pjoin(self.dir_path, 'Cards', 'maddm_card.dat'))
             for key, value in self.mode.items():
                 if value == 'ON':
@@ -278,7 +319,7 @@ class MADDMRunCmd(cmd.CmdShell):
             raise Exception, "No computation requested. End the computation"
     
         if os.path.exists(pjoin(self.dir_path, 'src', 'maddm.x')) or os.path.exists(pjoin(self.dir_path, 'maddm.x')):
-            misc.sprint("compilation done")
+            logger.info("compilation done")
         else:
             raise Exception, 'Compilation of maddm failed'
         
