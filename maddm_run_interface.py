@@ -35,7 +35,7 @@ class bcolors:
 #===============================================================================
 # CommonRunCmd
 #===============================================================================
-class MADDMRunCmd(cmd.Cmd):
+class MADDMRunCmd(cmd.CmdShell):
     
     intro_banner=\
   "            ====================================================\n"+\
@@ -70,11 +70,12 @@ class MADDMRunCmd(cmd.Cmd):
         """common"""
   
         cmd.Cmd.__init__(self, *args, **opts)
-                # Define current MadEvent directory
+        # Define current MadEvent directory
         if dir_path is None and not MG5MODE:
             dir_path = root_path
 
         self.dir_path = dir_path
+        self.param_card_iterator = [] #an placeholder containing a generator of paramcard for scanning
         
         # Define self.proc_characteristics (set of information related to the
         # directory status
@@ -90,13 +91,87 @@ class MADDMRunCmd(cmd.Cmd):
         
         self.proc_characteristics = MGoutput.MADDMProcCharacteristic(path)
         return self.proc_characteristics
+
+    def check_param_card(self, path, run=True):
+        """
+        1) Check that no scan parameter are present
+        2) Check that all the width are define in the param_card.
+        - If a scan parameter is define. create the iterator and recall this fonction 
+          on the first element.
+        - If some width are set on 'Auto', call the computation tools."""
+        
+        pattern_scan = re.compile(r'''^(decay)?[\s\d]*scan''', re.I+re.M)  
+        pattern_width = re.compile(r'''decay\s+(\+?\-?\d+)\s+auto(@NLO|)''',re.I)
+        text = open(path).read()
+               
+        if pattern_scan.search(text):
+            if not isinstance(self, cmd.CmdShell):
+                # we are in web mode => forbid scan due to security risk
+                raise Exception, "Scan are not allowed in web mode"
+            # at least one scan parameter found. create an iterator to go trough the cards
+            main_card = param_card_mod.ParamCardIterator(text)
+            self.param_card_iterator = main_card
+            first_card = main_card.next(autostart=True)
+            first_card.write(path)
+            return self.check_param_card(path, run)
+        
+        pdg_info = pattern_width.findall(text)
+        if pdg_info:
+            if run:
+                logger.info('Computing the width set on auto in the param_card.dat')
+                has_nlo = any(nlo.lower()=="@nlo" for _,nlo in pdg_info)
+                pdg = [pdg for pdg,nlo in pdg_info]
+                if not has_nlo:
+                    self.run_mg5(['compute_widths %s --path=%s' % (' '.join(pdg), path)])
+                else:
+                    self.run_mg5(['compute_widths %s --path=%s --nlo' % (' '.join(pdg), path)])
+            else:
+                logger.info('''Some width are on Auto in the card. 
+    Those will be computed as soon as you have finish the edition of the cards.
+    If you want to force the computation right now and being able to re-edit
+    the cards afterwards, you can type \"compute_wdiths\".''')
+
+
+    def do_compute_widths(self, line):
+        
+        return self.run_mg5(['compute_widths ' + line])
     
-    
+    def help_compute_widths(self, line):
+        
+        return self.run_mg5([' help compute_widths ' + line])    
+
+
+    ############################################################################
+    def run_mg5(self, commands, model=None):
+        """ """
+        
+        if not hasattr(self, 'mg5'):
+            if self.mother:
+                self.mg5 = self.mother
+            else:
+                import madgraph.interface.master_interface as master_interface
+                self.mg5 = master_interface.MasterCmd()
+
+        if not model:
+            model = self.proc_characteristics['model']
+        if self.mg5._curr_model.get('modelpath+restriction') != model:
+            misc.sprint("load model")
+            self.mg5.do_import(model)
+            
+        for line in commands:
+            self.mg5.exec_cmd(line, errorhandling=False, printcmd=False, 
+                              precmd=False, postcmd=False, child=False)
+            
+    ############################################################################
     def do_launch(self, line):
         """run the code"""
 
         args = line.split()
-        self.ask_run_configuration(mode=[])
+        if '-f' in args or '--force' in args:
+            force = True
+        else:
+            force = False
+        self.ask_run_configuration(mode=[], force=force)
         self.compile()
         
         nb_output = 1
@@ -115,19 +190,36 @@ class MADDMRunCmd(cmd.Cmd):
         
         result = []
         for line in open(pjoin(self.dir_path, output)):
-            misc.sprint(line)
             result.append(float(line.split()[1]))
 
-        (omegah2, x_freezeout, wimp_mass, sigmav_xf , sigmaN_SI_proton \
-                        ,sigmaN_SI_neutron, sigmaN_SD_proton, sigmaN_SD_neutron, 
-                        Nevents, sm_switch) = result
-        Nevents  = int(Nevents)
-        sm_switch = int(sm_switch)
-        
+        self.last_results = result
+        output_name = ('omegah2', 'x_freezeout', 'wimp_mass', 'sigmav_xf' , 
+                       'sigmaN_SI_proton', 'sigmaN_SI_neutron', 'sigmaN_SD_proton',
+                        'sigmaN_SD_neutron')
+        result = dict(zip(output_name, result))
+        self.last_results = result
+
         misc.sprint(result)
         
-        return [omegah2, x_freezeout, wimp_mass, sigmav_xf , sigmaN_SI_proton \
-                        ,sigmaN_SI_neutron, sigmaN_SD_proton, sigmaN_SD_neutron, Nevents, sm_switch]
+        if self.param_card_iterator:
+            param_card_iterator = self.param_card_iterator
+            self.param_card_iterator = []
+
+            param_card_iterator.store_entry(nb_output, result)
+            #check if the param_card defines a scan.
+            for i,card in enumerate(param_card_iterator):
+                card.write(pjoin(self.dir_path,'Cards','param_card.dat'))
+                self.exec_cmd("launch -f", precmd=True, postcmd=True,
+                                           errorhandling=False)
+                param_card_iterator.store_entry(nb_output+i, self.last_results)
+            param_card_iterator.write(pjoin(self.dir_path,'Cards','param_card.dat'))
+            name = misc.get_scan_name('maddm_%s' % (nb_output), 'maddm_%s' % (nb_output+i))
+            path = pjoin(self.dir_path, 'output','scan_%s.txt' % name)
+            logger.info("write all results in %s" % path ,'$MG:color:BLACK')
+            param_card_iterator.write_summary(path)
+    
+        
+        return result
 
         
         
@@ -135,27 +227,43 @@ class MADDMRunCmd(cmd.Cmd):
         
         
     
-    def ask_run_configuration(self, mode=None):
+    def ask_run_configuration(self, mode=None, force=False):
         """ask the question about card edition / Run mode """
-        self.mode = self.ask('', '0', mode=mode, data=self.proc_characteristics, 
-                        ask_class=MadDMSelector, timeout=60)
-        misc.sprint(self.mode)
-        self.maddm_card = MadDMCard(pjoin(self.dir_path, 'Cards', 'maddm_card.dat'))
-        self.param_card = param_card_mod.ParamCard(pjoin(self.dir_path, 'Cards', 'param_card.dat'))
-        for key, value in self.mode.items():
-            if value == 'ON':
-                self.mode[key] = True
-
-            else:
-                self.mode[key] = False
-        self.maddm_card.set('do_relic_density', self.mode['relic'], user=False)
-        self.maddm_card.set('do_direct_detection', self.mode['direct'], user=False)
-        self.maddm_card.set('do_directional_detection', self.mode['directional'], user=False)
         
-        self.maddm_card.write_include_file(pjoin(self.dir_path, 'include', 'maddm_card.inc'))
+        if not force:  
+            self.mode = self.ask('', '0', mode=mode, data=self.proc_characteristics, 
+                            ask_class=MadDMSelector, timeout=60)
+            misc.sprint(self.mode)
+            self.maddm_card = MadDMCard(pjoin(self.dir_path, 'Cards', 'maddm_card.dat'))
+            for key, value in self.mode.items():
+                if value == 'ON':
+                    self.mode[key] = True
+    
+                else:
+                    self.mode[key] = False
+            
+            # create the inc file for maddm
+            self.maddm_card.set('do_relic_density', self.mode['relic'], user=False)
+            self.maddm_card.set('do_direct_detection', self.mode['direct'], user=False)
+            self.maddm_card.set('do_directional_detection', self.mode['directional'], user=False)
+            self.maddm_card.write_include_file(pjoin(self.dir_path, 'include', 'maddm_card.inc'))
+        else:
+            if not hasattr(self, 'mode'):
+                self.mode['relic'] = True
+                self.mode['direct'] = False
+                self.mode['directional'] = False
+            if not os.path.exists(pjoin(self.dir_path, 'include', 'maddm_card.inc')):
+                # create the inc file for maddm
+                self.maddm_card.set('do_relic_density', self.mode['relic'], user=False)
+                self.maddm_card.set('do_direct_detection', self.mode['direct'], user=False)
+                self.maddm_card.set('do_directional_detection', self.mode['directional'], user=False)
+                self.maddm_card.write_include_file(pjoin(self.dir_path, 'include', 'maddm_card.inc'))                
+            
+        self.check_param_card(pjoin(self.dir_path, 'Cards', 'param_card.dat'))
                
         logger.info("Start computing %s" % ','.join([name for name, value in self.mode.items() if value]))
         return self.mode
+
 
     def compile(self):
         """compile the code"""

@@ -45,7 +45,7 @@ class MADDMProcCharacteristic(banner_mod.ProcCharacteristic):
         self.add_param('has_directional_detection', False)
         self.add_param('dm_candidate', [0])
         self.add_param('coannihilator', [0])
-
+        self.add_param('model', '')
 
 #-------------------------------------------------------------------------#
 class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
@@ -90,6 +90,8 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         misc.sprint("Keep the normal model so far! Need to check")
         #self.opt['export_format']='standalone' #modified by antony
         #self.opt['loop_induced']=False #modified by antony
+        
+        self.proc_characteristic['model'] = model.get('modelpath+restriction')
         
         out =  super(ProcessExporterMadDM, self).convert_model(model, 
                                                wanted_lorentz, wanted_couplings)
