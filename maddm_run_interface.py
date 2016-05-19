@@ -222,14 +222,11 @@ class MADDMRunCmd(cmd.CmdShell):
             path = pjoin(self.dir_path, 'output','scan_%s.txt' % name)
             logger.info("write all results in %s" % path ,'$MG:color:BLACK')
             #print results:
+            order = ['wimp_mass']
             if self.mode['relic']:
-                if not self.mode['direct'] and not self.mode['directional']:
-                    order = ['wimp_mass', 'omegah2', 'x_freezeout', 'sigmav_xf']
-                else:
-                    order = ['wimp_mass', 'omegah2', 'x_freezeout', 'sigmav_xf','sigmaN_SI_proton', 'sigmaN_SI_neutron', 'sigmaN_SD_proton',
-                        'sigmaN_SD_neutron']
-            else:
-                order = ['wimp_mass', 'sigmaN_SI_proton', 'sigmaN_SI_neutron', 'sigmaN_SD_proton',
+                order += ['omegah2', 'x_freezeout', 'sigmav_xf']
+            if self.mode['direct'] or self.mode['directional']:
+                order += ['sigmaN_SI_proton', 'sigmaN_SI_neutron', 'sigmaN_SD_proton',
                         'sigmaN_SD_neutron']                
                 
             param_card_iterator.write_summary(path, order)
@@ -562,7 +559,6 @@ class MadDMSelector(common_run.EditParamCard):
             args.remove('=')
         args = [ a.lower() for a in args]
         
-        misc.sprint(args)
         if args[0] in ['maddm_card']:
             start = 1
             if args[1] == 'default':
