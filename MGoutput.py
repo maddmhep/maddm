@@ -68,7 +68,6 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
     DD    = 1996  # DIRECT DETECTION (EFT) DIAGRAM DM QUARK > DM QUARK
 
     def __init__(self, dir_path = "", opt=None):
-        misc.sprint(dir_path, opt)
         super(ProcessExporterMadDM, self).__init__(dir_path, opt)
         self.resonances = set() 
         self.proc_characteristic = MADDMProcCharacteristic()
@@ -88,7 +87,6 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         #---------------------------------------------------------------------"""  
 
         # here we set self.opt so that we get the right makefile in the Model directory
-        misc.sprint("Keep the normal model so far! Need to check")
         #self.opt['export_format']='standalone' #modified by antony
         #self.opt['loop_induced']=False #modified by antony
         
@@ -122,7 +120,6 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         """
         
         self.model = cmd._curr_model
-        misc.sprint(cmd._dm_candidate, cmd._coannihilation)
         self.dm_particles = cmd._dm_candidate + cmd._coannihilation
         
         # update the process python information
@@ -269,12 +266,14 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
 
         # Extract the process information to name the subroutine
         process_name = self.get_process_name(matrix_element, print_id=False) 
-        replace_dict['process_name'] = process_name
+        replace_dict['proc_prefix'] = process_name + '_'
 
-        p = pjoin(MDMDIR, 'Templates', 'matrix_elements', 'matrix_template.inc')
-        file = open(p).read()
+        #p = pjoin(MDMDIR, 'Templates', 'matrix_elements', 'matrix_template.inc')
+        file = open(replace_dict['template_file']).read()
         file = file % replace_dict
-
+        if replace_dict['nSplitOrders'] !='':
+            file = file + '\n' + open(replace_dict['template_file2'])\
+                                                            .read()%replace_dict
         # Write the file
         writer.writelines(file)
 
@@ -716,7 +715,6 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         replace_dict['smatrix_dd_eff'] = self.get_smatrix_dd(matrix_element, 'eft')
         replace_dict['smatrix_dd_tot'] = self.get_smatrix_dd(matrix_element, 'tot')
     
-        misc.sprint(replace_dict['smatrix_dd_tot'])
     
         text = open(pjoin(MDMDIR, 'python_templates','smatrix_template.f')).read()
         to_write = text % replace_dict
@@ -763,7 +761,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
             tag = p.get('id')
             ids = self.make_ids(p, flag)
             if tag == flag:
-                info = ' call smatrix_%s(p_ext,smatrix)' % p.shell_string(print_id=False)
+                info = ' call %s_smatrix(p_ext,smatrix)' % p.shell_string(print_id=False)
                 smatrix[tuple(ids)].append(info)
         
         for i,dm1 in enumerate(self.dm_particles):
@@ -785,14 +783,11 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
             p = me.get('processes')[0]
             if p.get('id') != self.DD:
                 continue
-            misc.sprint('has a valid me!!!', )
             if self.get_dd_type(p)[0] != efttype:
                 continue
-            misc.sprint("of the correct efttype")
-            info = ' call smatrix_%s(p_ext, smatrix)' % self.get_process_name(me, print_id=False)
+            info = ' call %s_smatrix(p_ext, smatrix)' % self.get_process_name(me, print_id=False)
             output.append('if (k.eq.%s) then \n %s \n' % ( len(output)+1, info)) 
         
-        misc.sprint(efttype, len(output))
         return '%s \n %s' % (' else'.join(output), ' endif' if output else '')
                 
                            

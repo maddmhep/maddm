@@ -243,7 +243,6 @@ class MadDM_interface(master_interface.MasterCmd):
         possible_answer = ['0', 'done','1', 'param']
 #        card = {0:'done', 1:'param'}
         
-        misc.sprint(self._param_card, path)
         if not answer:
             if not path:
                     dirpath = self._curr_model.get('modelpath')
@@ -251,8 +250,6 @@ class MadDM_interface(master_interface.MasterCmd):
                     if self._param_card:
                         self._param_card.write(path)
                     else:
-                        misc.sprint("use write_param_card")
-                        misc.sprint(type(self._curr_model))
                         self._curr_model.write_param_card(path)     
             out=''
             while out not in ['0', 'done']:
@@ -335,9 +332,7 @@ class MadDM_interface(master_interface.MasterCmd):
     def do_add(self, line):
         """ """
         
-        misc.sprint(line)
         args = self.split_arg(line)    
-        misc.sprint(args)
         if len(args) and args[0] == 'process':
             args.pop(0)
         if len(args) and args[0] == "relic_density":
@@ -356,10 +351,8 @@ class MadDM_interface(master_interface.MasterCmd):
                 return self.generate_direct(excluded)
         else:
             if '@' in line:
-                misc.sprint(line)
                 line = re.sub(r'''(?<=@)(%s\b)''' % '\\b|'.join(self.process_tag), 
                               lambda x: `self.process_tag[x.group(0)]`, line)
-                misc.sprint(line)
             return super(MadDM_interface, self).do_add(line)
             
 
@@ -489,8 +482,6 @@ class MadDM_interface(master_interface.MasterCmd):
                          p not in self._coannihilation]
         
         
-        misc.sprint([(p.get('name'), self._curr_model.get_mass(p)) for p in bsm_final_states])
-        
         # Set up the initial state multiparticles that contain the particle 
         #and antiparticle
         for i,dm in enumerate(self._dm_candidate + self._coannihilation):
@@ -526,7 +517,6 @@ class MadDM_interface(master_interface.MasterCmd):
                 else:
                     proc = "DM_particle_%s DM_particle_%s > dm_particles dm_particles %s @DM2DM"\
                        % (i,j, coupling)
-                misc.sprint(proc)
                 try:
                     self.do_add('process %s' % proc)
                 except (self.InvalidCmd,diagram_generation.NoDiagramException) :
@@ -630,12 +620,12 @@ class MadDM_interface(master_interface.MasterCmd):
         #loop over quarks
         has_diagram = False
         for i in quarks + antiquarks:
-            proc = ' %(DM)s %(P)s > %(DM)s %(P)s %(excluded)s %(O1)s %(O2)s QED=%(QED)s @DD' %\
+            proc = ' %(DM)s %(P)s > %(DM)s %(P)s %(excluded)s %(O1)s %(O2)s QED<=%(QED)s @DD' %\
                     {'DM': self._dm_candidate[0].get('name'),
                      'P': i,
                      'excluded': ('/ %s' % ' '.join(excluded) if excluded else ''),
-                     'O1': '%s=%s' %(SD_name, SD) if SD_name else '',
-                     'O2': '%s=%s' %(SI_name, SI) if SI_name else '',
+                     'O1': '%s<=%s' %(SD_name, SD) if SD_name else '',
+                     'O2': '%s<=%s' %(SI_name, SI) if SI_name else '',
                      'QED': QED
                      }
             
@@ -660,7 +650,6 @@ class MadDM_interface(master_interface.MasterCmd):
         eff_model_dm_names = {1:'~sdm', 2:'~fdm', 3:'~vdm'}
 
         DM = self._dm_candidate[0]
-        misc.sprint("DO NOT CHECK MASS OF THE MODEL IS IT REALLY NEEDED?")
         
         if self._dm_candidate[0]['self_antipart']: 
             EFT = 'REAL'
@@ -697,8 +686,6 @@ class MadDM_interface(master_interface.MasterCmd):
         self._curr_model.set_parameters_and_couplings(self._param_card) 
         
         
-        misc.sprint("Current model: ")
-        misc.sprint(self._curr_model.get('modelpath'))
  
 
         

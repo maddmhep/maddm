@@ -160,7 +160,6 @@ class MADDMRunCmd(cmd.CmdShell):
         if not model:
             model = self.proc_characteristics['model']
         if self.mg5._curr_model.get('modelpath+restriction') != model:
-            misc.sprint("load model")
             self.mg5.do_import(model)
             
         for line in commands:
@@ -260,7 +259,7 @@ class MADDMRunCmd(cmd.CmdShell):
             logger.info(' sigmaN_SD_p      : %.2e GeV^-2 = %.2e pb',self.last_results['sigmaN_SD_proton'],self.last_results['sigmaN_SD_proton']*GeV2pb)
             logger.info(' sigmaN_SD_n      : %.2e GeV^-2 = %.2e pb',self.last_results['sigmaN_SD_neutron'],self.last_results['sigmaN_SD_neutron']*GeV2pb)
         if self.mode['directional']:
-            logger.info(' Nevents          : %.2e', self.last_results['Nevents'])
+            logger.info(' Nevents          : %i', self.last_results['Nevents'])
             logger.info(' smearing         : %.2e', self.last_results['smearing'])
     
     def is_excluded_relic(self, relic, omega_min = 0., omega_max = 0.1):
@@ -478,7 +477,6 @@ class MadDMSelector(common_run.EditParamCard):
     def define_paths(self, **opt):
         
         super(MadDMSelector, self).define_paths(**opt)
-        misc.sprint("pass in define_paths")
         self.paths['maddm'] = pjoin(self.me_dir,'Cards','maddm_card.dat')
         self.paths['maddm_default'] = pjoin(self.me_dir,'Cards','maddm_card_default.dat')
         
@@ -598,7 +596,6 @@ class MadDMSelector(common_run.EditParamCard):
             start = 0
         else:
             return super(MadDMSelector, self).do_set(line)
-        misc.sprint(args, start)
         if args[start+1] == 'default':
             default = self.maddm_def[args[start]]
             self.setDM(args[start], default)
