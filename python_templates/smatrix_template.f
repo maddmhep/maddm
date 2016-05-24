@@ -237,6 +237,6 @@ c input parameters
 #SMATRIX_MADDM_TOT_DD --- generates series of if-then-else statements to call appropriate smatrix
       %(smatrix_dd_tot)s
 
-      smatrix = smatrix_dd_tot
+      smatrix_dd_tot = smatrix
       return
       end

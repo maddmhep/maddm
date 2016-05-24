@@ -3,7 +3,7 @@ import os
 
 import maddm_run_interface as maddm_run_interface
 
-
+import madgraph.core.diagram_generation as diagram_generation
 import madgraph.interface.master_interface as master_interface
 import madgraph.interface.madgraph_interface as madgraph_interface
 import madgraph.various.misc as misc
@@ -31,7 +31,8 @@ class bcolors:
 
 class DMError(Exception): pass
 
-
+# Root path
+MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
 
     
 
@@ -70,8 +71,11 @@ class MadDM_interface(master_interface.MasterCmd):
     # process number to distinguish the different type of matrix element
     process_tag = {'DM2SM': 1999, 
                    'DM2DM': 1998,
-                   'DMSM': 1997}
+                   'DMSM': 1997,
+                   'DD': 1996}
     
+    eff_operators_SI = {1:'SIEFFS', 2:'SIEFFF', 3:'SIEFFV'}
+    eff_operators_SD = {1:False, 2:'SDEFFF', 3:'SDEFFV'} 
     
     def __init__(self, *args, **opts):
         
@@ -193,7 +197,7 @@ class MadDM_interface(master_interface.MasterCmd):
         #-----------------------------------------------------------------------#
         particles = self._curr_model.get('particles')                
         bsm_particles = [p for p in particles 
-                         if p.get('pdg_code') > 25 and\
+                         if 25 < p.get('pdg_code') < 99000000 and\
                          (p.get('name') not in excluded_particles or p.get('antiname') not in excluded_particles) and\
                          p.get('charge') == 0]
  
@@ -225,12 +229,13 @@ class MadDM_interface(master_interface.MasterCmd):
         # Print out the DM candidate
         logger.info("Found Dark Matter candidate: %s" % dm_particles[0]['name'],  '$MG:color:BLACK')
         self._dm_candidate = dm_particles
+        self.update_model_with_EFT()
         
     def define_benchmark(self, path=None, answer=False):
      
      
         self._dm_candidate = []
-        self._coannihilation = None
+        self._coannihilation = []
         question = """Do you want to edit the benchmark (press enter to bypass editing)?\n"""
         question += """ - Press 1 or param to open an editor and edit the file\n"""
         question += """ - You can specify a path to a valid card (and potentially edit it afterwards)\n"""
@@ -238,6 +243,7 @@ class MadDM_interface(master_interface.MasterCmd):
         possible_answer = ['0', 'done','1', 'param']
 #        card = {0:'done', 1:'param'}
         
+        misc.sprint(self._param_card, path)
         if not answer:
             if not path:
                     dirpath = self._curr_model.get('modelpath')
@@ -245,6 +251,8 @@ class MadDM_interface(master_interface.MasterCmd):
                     if self._param_card:
                         self._param_card.write(path)
                     else:
+                        misc.sprint("use write_param_card")
+                        misc.sprint(type(self._curr_model))
                         self._curr_model.write_param_card(path)     
             out=''
             while out not in ['0', 'done']:
@@ -277,7 +285,7 @@ class MadDM_interface(master_interface.MasterCmd):
         
         
         bsm_particles = [p for p in self._curr_model.get('particles')                
-                         if p.get('pdg_code') > 25 and\
+                         if 25 < p.get('pdg_code') < 999000000 and\
                          (p.get('name') not in excluded or 
                           p.get('antiname') not in excluded or
                           str(p.get('pdgcode'))) not in excluded] 
@@ -327,15 +335,25 @@ class MadDM_interface(master_interface.MasterCmd):
     def do_add(self, line):
         """ """
         
+        misc.sprint(line)
         args = self.split_arg(line)    
         misc.sprint(args)
-        if len(args) >=2 and args[1] == "relic_density":
+        if len(args) and args[0] == 'process':
+            args.pop(0)
+        if len(args) and args[0] == "relic_density":
             if '/' not in line:
                 return self.generate_relic([])
             else:
                 subline = line.split('/',1)[1]
                 excluded = [ a for a in self.split_arg(subline) if not a.startswith('-')]
                 return self.generate_relic(excluded)
+        elif len(args) and args[0] == "direct_detection":
+            if '/' not in line:
+                return self.generate_direct([])
+            else:
+                subline = line.split('/',1)[1]
+                excluded = [ a for a in self.split_arg(subline) if not a.startswith('-')]
+                return self.generate_direct(excluded)
         else:
             if '@' in line:
                 misc.sprint(line)
@@ -354,7 +372,20 @@ class MadDM_interface(master_interface.MasterCmd):
             out = {"standard options": out}
         
         if len(args) == 1:
-            options = ['relic_density']
+            options = ['relic_density', 'direct_detection']
+            out['maddm options'] = self.list_completion(text, options , line)
+        return self.deal_multiple_categories(out, formatting)
+
+    def complete_add(self, text, line, begidx, endidx, formatting=True):
+        """Complete particle information + handle maddm options"""
+
+        args = self.split_arg(line[:begidx])
+        out = super(MadDM_interface, self).complete_add(text, line, begidx, endidx,formatting=False)
+        if not isinstance(out, dict):
+            out = {"standard options": out}
+        
+        if len(args) == 1:
+            options = ['relic_density', 'direct_detection']
             out['maddm options'] = self.list_completion(text, options , line)
         return self.deal_multiple_categories(out, formatting)
 
@@ -365,6 +396,8 @@ class MadDM_interface(master_interface.MasterCmd):
         
         if not self._curr_amps:
             self.do_generate('relic_density')
+            self.do_add('direct_detection')
+        
         
         args = self.split_arg(line)
         if not args or args[0] not in self._export_formats + ['maddm']:
@@ -455,14 +488,14 @@ class MadDM_interface(master_interface.MasterCmd):
                          p not in self._dm_candidate and 
                          p not in self._coannihilation]
         
+        
         misc.sprint([(p.get('name'), self._curr_model.get_mass(p)) for p in bsm_final_states])
         
         # Set up the initial state multiparticles that contain the particle 
         #and antiparticle
         for i,dm in enumerate(self._dm_candidate + self._coannihilation):
-            misc.sprint(i)
             self.define_multiparticles('dm_particle_%s' % i,  [dm])
-            self.do_display('multiparticles')
+            #self.do_display('multiparticles')
         self.define_multiparticles('dm_particles', self._dm_candidate)
         self.do_display('multiparticles')
         sm_pdgs = range(1, 7) + range(11, 17) + range(21, 26) #quarks/leptons/bosons
@@ -494,8 +527,10 @@ class MadDM_interface(master_interface.MasterCmd):
                     proc = "DM_particle_%s DM_particle_%s > dm_particles dm_particles %s @DM2DM"\
                        % (i,j, coupling)
                 misc.sprint(proc)
-                self.do_add('process %s' % proc)
-        
+                try:
+                    self.do_add('process %s' % proc)
+                except (self.InvalidCmd,diagram_generation.NoDiagramException) :
+                    continue
         # Get the matrix elements and make sure that we don't have any pure 
         #scattering processes
         for amp in self._curr_amps[:]:
@@ -517,6 +552,155 @@ class MadDM_interface(master_interface.MasterCmd):
                 else:
                     proc = "DM_particle_%s fs_particles > DM_particle_%s fs_particles %s @DMSM"\
                        % (i,j, coupling)
+                try:
+                    self.do_add('process %s' % proc)
+                except (self.InvalidCmd,diagram_generation.NoDiagramException) :
+                    continue
+
+    def generate_direct(self, excluded_particles=[]):
+        """User level function which performs direct detection functions        
+           Generates the DM - q,g scattering matrix elements for spin dependent 
+           and spin independent direct detection cross section                   
+           Currently works only with canonical mode and one dm candidate.        
+           The function also merges the dark matter model with the effective        
+           vertex model.          
+        """
+
+        if not self._dm_candidate:
+            self.search_dm_candidate(excluded_particles)
+            if not self._dm_candidate:
+                return
+
+        if len(self._dm_candidate) > 1:
+            logger.warning("More than one DM candidate. Can not run Direct Detection.")
+            return 
+  
+   
+        
+        #Now figure out the label of the effective vertex to use. The convention is:
+        #<SI or SD>EFF<F, S, or V>, i.e. SIEFFV for Spin Independent Effective vertex for Vector Current.
+        dm_spin = int(self._dm_candidate[0]['spin'])
+        eff_operators_SI = self.eff_operators_SI[dm_spin]
+        eff_operators_SD = self.eff_operators_SD[dm_spin]
+        
+        logger.info("Generating X Nucleon > X Nucleon diagrams from the full lagrangian...")
+        has_direct = self.DiagramsDD(eff_operators_SI, eff_operators_SD, 0, 0, 2)
+
+        if not has_direct:
+            logger.warning("No Direct Detection Feynman Diagram")
+            return
+        
+        logger.info("Generating X Nucleon > X Nucleon diagrams from the effective lagrangian...")
+        #ONLY EFFECTIVE LAGRANGIAN
+        self.DiagramsDD(eff_operators_SI, eff_operators_SD, 2, 0, 0)
+
+        logger.info("INFO: Generating X Nucleon > X Nucleon diagrams from the effective+full lagrangian...")
+        #EFFECTIVE + FULL
+        self.DiagramsDD(eff_operators_SI, eff_operators_SD, 2, 0, 2)
+        
+        if (eff_operators_SD != False):
+            logger.info("Doing the spin dependent part...")
+            logger.info("Generating X Nucleon > X Nucleon diagrams from the effective lagrangian...")
+
+            self.DiagramsDD(eff_operators_SI, eff_operators_SD, 0, 2, 0)
+            #EFFECTIVE + FULL
+            logger.info("Generating X Nucleon > X Nucleon diagrams from the effective + full lagrangian...")
+            self.DiagramsDD(eff_operators_SI, eff_operators_SD, 0, 2, 2)
+        
+
+        
+        
+    #-----------------------------------------------------------------------#
+    def DiagramsDD(self, SI_name, SD_name, SI, SD, QED, excluded=[]):
+        """Generates direct detection diagrams. i_dm is the index of DM part. 
+                 Whether spin dependent or spin independent diagrams should be                 
+                 calculated. XX_order parameters determine maximum order of  a
+                 coupling. For instance, if you only want effective vertices for
+                 spin independent coupling you would set SI_order = 2 and all others
+                 to zero. If you want the spin independent full lagrangian + eff.
+                 then you need to set SI_order=2 and QED_order=2...
+                 WARNING: This function is a proxy to be used inside
+                 GenerateDiagramsDirDetect() function and no place else!
+        """                                                             
+        
+        quarks = range(1,7) # ['d', 'u', 's', 'c', 'b','t']
+        antiquarks = [-1*pdg for pdg in quarks] # ['d~', 'u~', 's~', 'c~', 'b~','t~']
+         
+
+        #loop over quarks
+        has_diagram = False
+        for i in quarks + antiquarks:
+            proc = ' %(DM)s %(P)s > %(DM)s %(P)s %(excluded)s %(O1)s %(O2)s QED=%(QED)s @DD' %\
+                    {'DM': self._dm_candidate[0].get('name'),
+                     'P': i,
+                     'excluded': ('/ %s' % ' '.join(excluded) if excluded else ''),
+                     'O1': '%s=%s' %(SD_name, SD) if SD_name else '',
+                     'O2': '%s=%s' %(SI_name, SI) if SI_name else '',
+                     'QED': QED
+                     }
+            
+            try:
                 self.do_add('process %s' % proc)
+            except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
+                logger.debug(error)
+                continue # no diagram generated
+            has_diagram = True
+        return has_diagram
+ 
+  
 
 
+
+
+        
+        
+    def update_model_with_EFT(self):
+        """ """
+        eff_operators_SD = {1:False, 2:'SDEFFF', 3:'SDEFFV'}
+        eff_model_dm_names = {1:'~sdm', 2:'~fdm', 3:'~vdm'}
+
+        DM = self._dm_candidate[0]
+        misc.sprint("DO NOT CHECK MASS OF THE MODEL IS IT REALLY NEEDED?")
+        
+        if self._dm_candidate[0]['self_antipart']: 
+            EFT = 'REAL'
+        else:
+            EFT = 'COMPLEX'
+
+        eff_dm_name = eff_model_dm_names[int(DM['spin'])]
+        mg5_command = 'add model %s %s=%s --recreate' % (pjoin(MDMDIR, 'EffOperators', EFT),
+                                                     eff_dm_name,DM.get('name'))
+        
+        # We want to preserve the following variable while updating the model
+        backup_amp = self._curr_amps
+        backup_param_card = self._param_card
+        backup_dm_candidate = self._dm_candidate
+        backup_coannihilation = self._coannihilation
+        
+        self.exec_cmd(mg5_command)
+        self._curr_amps = backup_amp
+        self._param_card = backup_param_card 
+        self._dm_candidate = backup_dm_candidate
+        self._coannihilation = backup_coannihilation
+        
+        # update the param_card value
+        txt = self._curr_model.write_param_card()
+        param_card = check_param_card.ParamCard(self._curr_model.write_param_card())
+        
+        for block in self._param_card:
+            for param in self._param_card[block]:
+                param_card[block].get(param.lhacode).value =  param.value
+ 
+        self._param_card = param_card        
+        if not isinstance(self._curr_model, model_reader.ModelReader):
+            self._curr_model = model_reader.ModelReader(self._curr_model) 
+        self._curr_model.set_parameters_and_couplings(self._param_card) 
+        
+        
+        misc.sprint("Current model: ")
+        misc.sprint(self._curr_model.get('modelpath'))
+ 
+
+        
+        
+        

@@ -200,7 +200,7 @@ class MADDMRunCmd(cmd.CmdShell):
         self.last_results = result
         output_name = ('omegah2', 'x_freezeout', 'wimp_mass', 'sigmav_xf' , 
                        'sigmaN_SI_proton', 'sigmaN_SI_neutron', 'sigmaN_SD_proton',
-                        'sigmaN_SD_neutron')
+                        'sigmaN_SD_neutron','Nevents', 'smearing')
         result = dict(zip(output_name, result))
         self.last_results = result
 
@@ -225,13 +225,13 @@ class MADDMRunCmd(cmd.CmdShell):
             order = ['wimp_mass']
             if self.mode['relic']:
                 order += ['omegah2', 'x_freezeout', 'sigmav_xf']
-            if self.mode['direct'] or self.mode['directional']:
+            if self.mode['direct'] :
                 order += ['sigmaN_SI_proton', 'sigmaN_SI_neutron', 'sigmaN_SD_proton',
                         'sigmaN_SD_neutron']                
-                
+            if self.mode['directional']:
+                order += ['Nevents', 'smearing']
             param_card_iterator.write_summary(path, order)
     
-        
         return result
 
         
@@ -253,6 +253,15 @@ class MADDMRunCmd(cmd.CmdShell):
                         
             logger.info('   x_f            : %.2f', self.last_results['x_freezeout'])
             logger.info('   sigmav(xf)     : %.2e GeV^-2 = %.2e pb', self.last_results['sigmav_xf'],self.last_results['sigmav_xf']*GeV2pb)
+            
+        if self.mode['direct']:
+            logger.info(' sigmaN_SI_p      : %.2e GeV^-2 = %.2e pb',self.last_results['sigmaN_SI_proton'],self.last_results['sigmaN_SI_proton']*GeV2pb)
+            logger.info(' sigmaN_SI_n      : %.2e GeV^-2 = %.2e pb',self.last_results['sigmaN_SI_neutron'],self.last_results['sigmaN_SI_neutron']*GeV2pb)
+            logger.info(' sigmaN_SD_p      : %.2e GeV^-2 = %.2e pb',self.last_results['sigmaN_SD_proton'],self.last_results['sigmaN_SD_proton']*GeV2pb)
+            logger.info(' sigmaN_SD_n      : %.2e GeV^-2 = %.2e pb',self.last_results['sigmaN_SD_neutron'],self.last_results['sigmaN_SD_neutron']*GeV2pb)
+        if self.mode['directional']:
+            logger.info(' Nevents          : %.2e', self.last_results['Nevents'])
+            logger.info(' smearing         : %.2e', self.last_results['smearing'])
     
     def is_excluded_relic(self, relic, omega_min = 0., omega_max = 0.1):
         """  This function determines whether a model point is excluded or not
@@ -272,6 +281,11 @@ class MADDMRunCmd(cmd.CmdShell):
         if not force:  
             self.mode = self.ask('', '0', mode=mode, data=self.proc_characteristics, 
                             ask_class=MadDMSelector, timeout=60)
+            if self.mode == '':
+                self.mode = {'relic': True,
+                             'direct':False,
+                             'indirect':False}
+                
             self.maddm_card = MadDMCard(pjoin(self.dir_path, 'Cards', 'maddm_card.dat'))
             for key, value in self.mode.items():
                 if value == 'ON':
@@ -286,7 +300,10 @@ class MADDMRunCmd(cmd.CmdShell):
             self.maddm_card.set('do_directional_detection', self.mode['directional'], user=False)
             self.maddm_card.write_include_file(pjoin(self.dir_path, 'include', 'maddm_card.inc'))
         else:
+            if not hasattr(self, 'maddm_card'):
+                self.maddm_card = MadDMCard(pjoin(self.dir_path, 'Cards', 'maddm_card.dat'))
             if not hasattr(self, 'mode'):
+                self.mode = {}
                 self.mode['relic'] = True
                 self.mode['direct'] = False
                 self.mode['directional'] = False
@@ -423,7 +440,7 @@ class MadDMSelector(common_run.EditParamCard):
         for var in self.pname2block:
             if var in self.maddm_set:
                 self.conflict.append(var)  
-            
+     
         
     digitoptions = {1: 'relic', 2:'direct', 3:'directional'}  
     def create_question(self):
@@ -498,6 +515,7 @@ class MadDMSelector(common_run.EditParamCard):
                         self.run_options[tag] = 'OFF'
                     else:
                         logger.warning('%s is not a valid entry')
+                    self.check_coherence(tag)
                 self.value = 'repeat'
             elif args[0] in self.run_options:
                 if self.run_options[args[0]] == 'ON':
@@ -507,11 +525,23 @@ class MadDMSelector(common_run.EditParamCard):
                 else:
                     logger.warning('This entry can not be changed for this running directory.')
                 self.value = 'repeat'
+                self.check_coherence(args[0])
         if self.value == 'repeat':
             self.question = self.create_question()
             return line
         else:
             return super(MadDMSelector, self).default(line)
+        
+    
+    def check_coherence(self, last_modified):
+        
+        if last_modified == 'directional':
+            if self.run_options['directional'] == 'ON':
+                self.run_options['direct'] = 'ON'
+        elif last_modified == 'direct':
+            if self.run_options['direct'] == 'OFF':
+                self.run_options['directional'] = 'OFF'            
+        
         
     def open_file(self, path):
         

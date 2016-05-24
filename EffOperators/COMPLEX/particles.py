@@ -105,7 +105,7 @@ b = Particle(pdg_code = 5,
 
 b__tilde__ = b.anti()
 
-P__tilde__sdm = Particle(pdg_code = 900000000006,
+P__tilde__sdm = Particle(pdg_code = 999000006,
                          name = '~sdm',
                          antiname = 'sdm~',
                          spin = 1,
@@ -121,7 +121,7 @@ P__tilde__sdm = Particle(pdg_code = 900000000006,
 
 sdm__tilde__ = P__tilde__sdm.anti()
 
-P__tilde__fdm = Particle(pdg_code = 900000000007,
+P__tilde__fdm = Particle(pdg_code = 999000007,
                          name = '~fdm',
                          antiname = 'fdm~',
                          spin = 2,
@@ -137,7 +137,7 @@ P__tilde__fdm = Particle(pdg_code = 900000000007,
 
 fdm__tilde__ = P__tilde__fdm.anti()
 
-P__tilde__vdm = Particle(pdg_code = 900000000008,
+P__tilde__vdm = Particle(pdg_code = 999000008,
                          name = '~vdm',
                          antiname = 'vdm~',
                          spin = 3,

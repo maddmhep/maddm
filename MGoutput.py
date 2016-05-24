@@ -65,6 +65,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
     DM2SM = 1999  # DM DM > SM SM
     DM2DM = 1998  # DM DM > DM DM
     DMSM  = 1997  # DM SM > DM SM
+    DD    = 1996  # DIRECT DETECTION (EFT) DIAGRAM DM QUARK > DM QUARK
 
     def __init__(self, dir_path = "", opt=None):
         misc.sprint(dir_path, opt)
@@ -121,6 +122,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         """
         
         self.model = cmd._curr_model
+        misc.sprint(cmd._dm_candidate, cmd._coannihilation)
         self.dm_particles = cmd._dm_candidate + cmd._coannihilation
         
         # update the process python information
@@ -162,7 +164,37 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         filename = os.path.join(self.dir_path,'Source','makefile')
         self.write_source_makefile(writers.FortranWriter(filename))            
 
-
+    def get_dd_type(self, process):
+        orders = process.get('orders')
+        if 'SIEFFS' in orders and orders['SIEFFS'] > 0:
+            efttype = 'SI'
+        elif 'SDEFFS' in orders and orders['SDEFFS'] > 0:
+            efttype = 'SD'
+        else:
+            return 'bsm', None
+        
+        if 'QED' in orders and orders['QED'] == 2:
+            #Full Direct Detection case
+            return 'tot', efttype
+        else:
+            # pure EFT case
+            return 'eft', efttype
+                
+    
+    def get_process_name(self, matrix_element, print_id=True):
+        """ """
+        process = matrix_element.get('processes')[0]
+        process_type = process.get('id')
+        
+        if process_type in [self.DM2SM, self.DM2DM, self.DMSM]:
+            return process.shell_string(print_id=print_id)
+        if process_type in [self.DD]:
+            efttype, siorsd = self.get_dd_type(process)
+            if not siorsd:
+                return process.shell_string(print_id=print_id)
+            else:
+                return "%s_%s_%s" % (efttype.upper(),siorsd.upper(), process.shell_string(print_id=print_id))
+            
     def generate_subprocess_directory(self, matrix_element, helicity_model, me_number):
         """Routine to generate a subprocess directory.
            For MadDM, this is just a matrix-element in the matrix_elements directory
@@ -170,22 +202,25 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         
         
         process_type = [p.get('id') for p in matrix_element.get('processes')][0]
-        process_name = matrix_element.get('processes')[0].shell_string()
+        process_name = self.get_process_name(matrix_element) 
+
         #super(ProcessExporterFortranMaddm,self).generate_subprocess_directory(matrix_element, helicity_model, me):
         path_matrix = pjoin(self.dir_path, 'matrix_elements')        
         
-        if process_type in [1998, 1999]:
+        if process_type in [self.DM2SM, self.DM2DM, self.DD]:
             # Using the proess name we create the filename for each process and export the fortran file
             filename_matrix = os.path.join(path_matrix, 'matrix_' + process_name + '.f')
             self.write_matrix_element(writers.FortranWriter(filename_matrix),\
                             matrix_element, helicity_model)
     
             # We also need the external mass include file for each process.
-            filename_pmass = os.path.join(self.dir_path, 'include', 'pmass_' + process_name + '.inc')
-            self.write_pmass_file(writers.FortranWriter(filename_pmass), matrix_element)
+            #written in one single file in 
+            #filename_pmass = os.path.join(self.dir_path, 'include', 'pmass_' + process_name + '.inc')
+            #self.write_pmass_file(writers.FortranWriter(filename_pmass), matrix_element)
     
-
-
+        elif process_type in [self.DMSM]:
+            #HUUUUUUM
+            raise Exception
 
         return 0 # return an integer stating the number of call to helicity routine
     
@@ -220,6 +255,9 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         # track the type of matrix-element and update the process python info
         if proc_id in [self.DM2SM, self.DM2DM, self.DMSM]:
             self.proc_characteristic['has_relic_density'] = True
+        if proc_id in [self.DD]:
+            self.proc_characteristic['has_direct_detection'] = True
+            self.proc_characteristic['has_directional_detection'] = True
 
         # Set lowercase/uppercase Fortran code
         writers.FortranWriter.downcase = False
@@ -229,8 +267,8 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
                                             None, matrix_element, fortran_model)
 
 
-        # Extrace the process information to name the subroutine
-        process_name = matrix_element.get('processes')[0].shell_string(print_id=False)
+        # Extract the process information to name the subroutine
+        process_name = self.get_process_name(matrix_element, print_id=False) 
         replace_dict['process_name'] = process_name
 
         p = pjoin(MDMDIR, 'Templates', 'matrix_elements', 'matrix_template.inc')
@@ -287,12 +325,6 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         #relic density since the code needs to compile.
         self.WriteMassDirectDetection()
         
-#           # Modify the matrix element files for DD so that they return the matrix element value
-#           # and not the matrix element squared.
-#           self.Modify_dd_matrix_files(whichME = 'full') #For the full matrix elements
-#           self.Modify_dd_matrix_files(whichME = 'eff')        #For the effective vertices
-#           self.Modify_dd_matrix_files(whichME = 'total')  #For the effective + full vertices
-# 
         # Create the smatrix.f file
         self.Write_smatrix(matrix_element)
 # 
@@ -518,6 +550,8 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         dm2dm_fs = collections.defaultdict(list)       # store the pdg of the final state
         scattering = collections.defaultdict(list)     # store process name
         scattering_sm =  collections.defaultdict(list) # store the pdg of the sm particles
+        dd_names = {'bsm':[], 'eft':[],'tot':[]}       # store process name
+        dd_initial_state = {'bsm':[], 'eft':[],'tot':[]} # store the pdg of the initial state
         
         for me in matrix_element_list.get_matrix_elements():
             p = me.get('processes')[0]
@@ -539,7 +573,12 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
                 total_scattering_nprocesses +=1
                 ids = [p1.get('id'), p3.get('id')]
                 scattering[tuple(ids)].append(name)
-                scattering_sm.append(abs(p2.get('id)')))                                               
+                scattering_sm.append(abs(p2.get('id)')))
+            elif tag == self.DD:
+                ddtype, si_or_sd = self.get_dd_type(p)
+                dd_names[ddtype].append(self.get_process_name(me, print_id=False))
+                dd_initial_state[ddtype].append(p.get_initial_ids()[1])                                             
+                                                             
         
         # writting the information
         process_counter = 0
@@ -605,7 +644,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
             for j,dm2 in enumerate(self.dm_particles[i:],i):
                 ids = [dm1.get('pdg_code'), dm2.get('pdg_code')]
                 ids.sort() 
-                for k,(f1,fs2) in enumerate(dm2dm_fs[tuple(ids)]):
+                for k,(fs1,fs2) in enumerate(dm2dm_fs[tuple(ids)]):
                     fs1 = dm_pdg.index(fs1) +1 # get the index in the DM list
                     fs2 = dm_pdg.index(fs2) +1 
                     fsock.writelines(' dm2dm_fs(%s,%s,%s,1) = %s \n' %\
@@ -623,13 +662,28 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
                     dof = smpart['spin'] * smpart['color']
                     total_dof = dof if smpart['self_antipart'] else 2*dof
                     
-                    fsock.writeline(' dof_SM(%s,%s,%s) = %s\n' %\
+                    fsock.writelines(' dof_SM(%s,%s,%s) = %s\n' %\
                                     (i+1,j+1,k+1, dof))
-                    fsock.writeline(' dof_SM_total(%s,%s,%s) = %s\n' %\
+                    fsock.writelines(' dof_SM_total(%s,%s,%s) = %s\n' %\
                                     (i+1,j+1,k+1, total_dof))
 
  
-#           #Write process information for direct detection
+        #Write process information for direct detection
+
+        fsock.write_comments('Total number of Direct Detection processes')
+        fsock.writelines(' dd_num_processes = %i\n' % len(dd_names['bsm']))
+        fsock.write_comments('Processes relevant for Direct Detection')
+        for i,name in enumerate(dd_names['bsm']):
+            fsock.writelines(' dd_process_names(%i) = \'%s\'\n' % (i+1, name))
+            fsock.writelines(' dd_process_ids(%i) = %s' % (i+1,dd_initial_state['bsm'][i]))
+        fsock.write_comments('Processes relevant for Direct Detection (effective vertices)')
+        for i,name in enumerate(dd_names['eft']):
+            fsock.writelines(' dd_eff_process_names(%i) = \'%s\'\n' % (i+1, name))
+            fsock.writelines(' dd_eff_process_ids(%i) = %s' % (i+1,dd_initial_state['eft'][i]))
+        fsock.write_comments('Processes relevant for Direct Detection (effective vertices + full vertices)')
+        for i,name in enumerate(dd_names['tot']):
+            fsock.writelines(' dd_tot_process_names(%i) = \'%s\'\n' % (i+1, name))
+            fsock.writelines(' dd_tot_process_ids(%i) = %s' % (i+1,dd_initial_state['tot'][i]))
 
         fsock.close()
       
@@ -645,9 +699,9 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
                     'smatrix_ann': None,
                     'smatrix_dm2dm': None,
                     'smatrix_scattering': None,
-                    'smatrix_dd': '',
-                    'smatrix_dd_eff': '',
-                    'smatrix_dd_tot': '',
+                    'smatrix_dd': None,
+                    'smatrix_dd_eff': None,
+                    'smatrix_dd_tot': None,
                     }                
                          
         replace_dict['pmass_ann'] = self.get_pmass(matrix_element, self.DM2SM)
@@ -657,6 +711,12 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         replace_dict['smatrix_ann'] = self.get_smatrix(matrix_element, self.DM2SM)
         replace_dict['smatrix_dm2dm'] = self.get_smatrix(matrix_element, self.DM2DM)
         replace_dict['smatrix_scattering'] = self.get_smatrix(matrix_element, self.DMSM)
+    
+        replace_dict['smatrix_dd'] = self.get_smatrix_dd(matrix_element, 'bsm')
+        replace_dict['smatrix_dd_eff'] = self.get_smatrix_dd(matrix_element, 'eft')
+        replace_dict['smatrix_dd_tot'] = self.get_smatrix_dd(matrix_element, 'tot')
+    
+        misc.sprint(replace_dict['smatrix_dd_tot'])
     
         text = open(pjoin(MDMDIR, 'python_templates','smatrix_template.f')).read()
         to_write = text % replace_dict
@@ -715,6 +775,26 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
                                       % (i+1, j+1, k+1, info)) 
 
         return '%s \n %s' % (' else'.join(output), ' endif' if output else '')
+
+    def get_smatrix_dd(self, matrix_element, efttype):        
+        """ """
+
+        output =[]
+        
+        for me in matrix_element.get_matrix_elements():
+            p = me.get('processes')[0]
+            if p.get('id') != self.DD:
+                continue
+            misc.sprint('has a valid me!!!', )
+            if self.get_dd_type(p)[0] != efttype:
+                continue
+            misc.sprint("of the correct efttype")
+            info = ' call smatrix_%s(p_ext, smatrix)' % self.get_process_name(me, print_id=False)
+            output.append('if (k.eq.%s) then \n %s \n' % ( len(output)+1, info)) 
+        
+        misc.sprint(efttype, len(output))
+        return '%s \n %s' % (' else'.join(output), ' endif' if output else '')
+                
                            
     
     ## helping method
@@ -755,9 +835,10 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         makefile_template = open(pjoin(self.dir_path,'makefile_template'),'r')
         
         suffix = ''
-        if True:#self._do_relic_density and not self._do_direct_detection:
-                suffix = 'relic_density'
-        elif not self._do_relic_density and self._do_direct_detection:
+        prop = self.proc_characteristic
+        if prop['has_relic_density'] and not prop['has_direct_detection']:
+            suffix = 'relic_density'
+        elif not prop['has_relic_density'] and prop['has_direct_detection']:
                 suffix = 'direct_detection'
         
         makefile_lines = makefile_template.readlines()

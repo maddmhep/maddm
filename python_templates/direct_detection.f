@@ -116,13 +116,14 @@ c-------------------------------------------------------------------------------
       
       implicit none
       
-      integer i, j ,proton, even, SI
+      integer i, j, jeff,jtot, k ,proton, even, SI
       double precision p_ext(0:3,4)
       double precision fNt(6) 
       double precision M(6)
       double precision Minterf_q, Minterf_qb, Minterf
       complex*16 NucleonFF
-      
+      character(2) siorsd
+
       include 'maddm.inc'
       include 'coupl.inc'
       include 'process_names.inc'
@@ -212,24 +213,71 @@ c      write(*,*) 'dm info : ' , dof_dm(1)
       
 c      write(*,*) 'number of processes: ', dd_num_processes
 c--------------------------------------------------------------------------------
-c loop over the number of processes (min=1 , max=6)
+c loop over the number of processes 
 c--------------------------------------------------------------------------------
-      do j=1, (dd_num_processes/2) !divide by 2 since dd_num_processes from 1 -> 12
-      
-c HERE BE CAREFUL. THERE ARE ONLY 2 MATRIX ELEMENTS FOR FULL LAGRANGIAN
-c BUT 6 FOR EFF and EFF+FULL. THE INDEX i IS USED TO MATCH THE FULL LAGRANGIAN ME
-C WITH THE EFF+FULL AND EFF. WE WILl FIGURE OUT A BETTER WAY TO DO THIS LATER
+      do j=1,(dd_num_processes) 
+C
+C        J is the index for the matrix element in the FULL LAGRANGIAN
+C        I is the PDG code of the quark associated to that ME
+C        JEFF is the index of the matrix_element in the effective case
+C             for the SI/SD case with the same quark associated
+C        JTOT same as JEFF but for the EFF+FULL
 
       i = dd_process_ids(j)
-      
-c      write(*,*) 'process id: ', i
+C     Determine JEFF
+      if (SI.eq.1)then
+         do k=1, 2*dd_num_processes
+            siorsd = dd_eff_process_names(k)(5:6) ! return 'SI' or 'SD'
+            if (dd_eff_process_ids(k).eq.i.and.siorsd.eq.'SI')then
+               jeff = k
+               exit ! exit the loop prevent to loop over undefined part of the array
+            endif
+         enddo
+      else
+         do k=1, 2*dd_num_processes
+            siorsd = dd_eff_process_names(k)(5:6) ! return 'SI' or 'SD'
+            if (dd_eff_process_ids(k).eq.i.and.siorsd.eq.'SD')then
+               jeff = k
+               exit ! exit the loop
+            endif
+         enddo
+      endif
+C     SAME for JTOT. FIRST Shortcut test JTOT=JEFF
+      if (dd_tot_process_ids(jeff).eq.i.and.dd_tot_process_names(jeff)(5:6).eq.
+     &                                       dd_eff_process_names(jeff)(5:6)) then
+         jtot = jeff
+      else
+C     LONG Determination of  JTOT
+         if (SI.eq.1)then
+            do k=1, 2*dd_num_processes
+               siorsd = dd_tot_process_names(k)(5:6) ! return 'SI' or 'SD'
+               if (dd_tot_process_ids(k).eq.i.and.siorsd.eq.'SI')then
+                  jtot = k
+                  exit          ! exit the loop prevent to loop over undefined part of the array
+               endif
+            enddo
+         else
+            do k=1, 2*dd_num_processes
+               siorsd = dd_tot_process_names(k)(5:6) ! return 'SI' or 'SD'
+               if (dd_tot_process_ids(k).eq.i.and.siorsd.eq.'SD')then
+                  jeff = k
+                  exit          ! exit the loop
+               endif
+            enddo
+         endif
+      endif
+
+
+
+
+
 c HERE DEFINE THE FOUR MOMENTA - RIGHT NOW JUST ANY NUMBERS
       p_ext(0,1) = mdm(1)
       p_ext(1,1) = 0.d0
       p_ext(2,1) = 0.d0
       p_ext(3,1) = 0.d0
 	 
-      p_ext(0,2) = M(i)
+      p_ext(0,2) = M(ABS(i))
       p_ext(1,2) = 0.d0
       p_ext(2,2) = 0.d0
       p_ext(3,2) = 0.d0
@@ -239,11 +287,17 @@ c HERE DEFINE THE FOUR MOMENTA - RIGHT NOW JUST ANY NUMBERS
       p_ext(2,3) = 0.d0
       p_ext(3,3) = 0.d0
 
-      p_ext(0,4) = M(i)
+      p_ext(0,4) = M(ABS(i))
       p_ext(1,4) = 0.d0
       p_ext(2,4) = 0.d0
       p_ext(3,4) = 0.d0
       	
+
+      Minterf_q = smatrix_dd_tot(p_ext, 1,1,jtot) - max(0d0, smatrix_dd(p_ext,1,1,j)) 
+     &           - smatrix_dd_eff(p_ext,1,1,jeff)
+      Minterf_q = 0.5d0*Minterf_q
+      Minterf_q = Minterf_q / smatrix_dd_eff(p_ext,1,1,jeff)
+
 c compute ff_p or ff_n
 c      write(*,*) '--------------------------------'
 c      write(*,*) 'full + eff: ',smatrix_dd_tot(p_ext,1,1,i)
@@ -251,38 +305,21 @@ c      write(*,*) 'full      : ',smatrix_dd(p_ext,1,1,j)
 c      write(*,*) 'eff       : ',smatrix_dd_eff(p_ext,1,1,i)
 c      write(*,*) '--------------------------------'
       
-      if (SI .eq. 1) then
-c compute \lambda_e + \lambda_o      
-        Minterf_q = smatrix_dd_tot(p_ext, 1,1,i) - max(0d0, smatrix_dd(p_ext,1,1,j)) - smatrix_dd_eff(p_ext,1,1,i)
-        Minterf_q = 0.5d0*Minterf_q
-        Minterf_q = Minterf_q / smatrix_dd_eff(p_ext,1,1,i)
-c compute \lambda_e - \lambda_o   ! i+6 and j+6 to get anti-quark  
-        Minterf_qb=smatrix_dd_tot(p_ext,1,1,i+6)-max(0d0,smatrix_dd(p_ext,1,1,j+(dd_num_processes/2)))
-     $    -smatrix_dd_eff(p_ext,1,1,i+6)
-        Minterf_qb = 0.5d0*Minterf_qb
-        Minterf_qb = Minterf_qb / smatrix_dd_eff(p_ext,1,1,i+6)
-c solve the system to get \lambda_e or \lambda_o  
-      else
-c compute \lambda_e + \lambda_o      
-        Minterf_q = smatrix_dd_tot(p_ext, 1,1,i+12) - max(0d0, smatrix_dd(p_ext,1,1,j)) - smatrix_dd_eff(p_ext,1,1,i+12)
-        Minterf_q = 0.5d0*Minterf_q
-        Minterf_q = Minterf_q / smatrix_dd_eff(p_ext,1,1,i+12)
-c compute \lambda_e - \lambda_o   ! i+18 to get anti-quark  
-        Minterf_qb=smatrix_dd_tot(p_ext,1,1,i+18)-max(0d0,smatrix_dd(p_ext,1,1,j+(dd_num_processes/2)))
-     $    -smatrix_dd_eff(p_ext,1,1,i+18)
-        Minterf_qb = 0.5d0*Minterf_qb
-        Minterf_qb = Minterf_qb / smatrix_dd_eff(p_ext,1,1,i+18)
-c solve the system to get \lambda_e or \lambda_o  
-      endif      
       if (even .eq. 1) then 
-        Minterf=0.5d0*(Minterf_q+Minterf_qb)
+        ! symmetric so do not have to distinguish quark from anti-quark
+        Minterf=0.5d0*Minterf_q
 c        write(*,*) "Even contribution : ", Minterf
       else
-        Minterf=0.5d0*(Minterf_q-Minterf_qb)
+        ! antisymmetric so we have to distinguish quark from anti-quark
+         if (i.ge.0) then
+            Minterf=0.5d0*Minterf_q
+         else
+            Minterf=-0.5d0*Minterf_q
+         endif
 c	write(*,*) "Odd contribution : ", Minterf
       endif
 c      write(*,*) 'M_interf: ', Minterf
-      NucleonFF=NucleonFF+(fNt(dd_process_ids(j))*Minterf)
+      NucleonFF=NucleonFF+(fNt(ABS(i))*Minterf)
 c      write(*,*) 'fN: ', NucleonFF
       enddo
       
