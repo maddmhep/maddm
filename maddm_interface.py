@@ -72,7 +72,8 @@ class MadDM_interface(master_interface.MasterCmd):
     process_tag = {'DM2SM': 1999, 
                    'DM2DM': 1998,
                    'DMSM': 1997,
-                   'DD': 1996}
+                   'DD': 1996,
+                   'ID': 1995}
     
     eff_operators_SI = {1:'SIEFFS', 2:'SIEFFF', 3:'SIEFFV'}
     eff_operators_SD = {1:False, 2:'SDEFFF', 3:'SDEFFV'} 
@@ -342,13 +343,15 @@ class MadDM_interface(master_interface.MasterCmd):
                 subline = line.split('/',1)[1]
                 excluded = [ a for a in self.split_arg(subline) if not a.startswith('-')]
                 return self.generate_relic(excluded)
-        elif len(args) and args[0] == "direct_detection":
+        elif len(args) and args[0] in ["direct_detection", "direct"]:
             if '/' not in line:
                 return self.generate_direct([])
             else:
                 subline = line.split('/',1)[1]
                 excluded = [ a for a in self.split_arg(subline) if not a.startswith('-')]
                 return self.generate_direct(excluded)
+        elif len(args) and args[0] in ["indirect_detection", "indirect"]:
+            self.generate_indirect(args[1:])
         else:
             if '@' in line:
                 line = re.sub(r'''(?<=@)(%s\b)''' % '\\b|'.join(self.process_tag), 
@@ -378,7 +381,7 @@ class MadDM_interface(master_interface.MasterCmd):
             out = {"standard options": out}
         
         if len(args) == 1:
-            options = ['relic_density', 'direct_detection']
+            options = ['relic_density', 'direct_detection', 'indirect']
             out['maddm options'] = self.list_completion(text, options , line)
         return self.deal_multiple_categories(out, formatting)
 
@@ -636,14 +639,33 @@ class MadDM_interface(master_interface.MasterCmd):
                 continue # no diagram generated
             has_diagram = True
         return has_diagram
+
+    def generate_indirect(self, argument):
+        """User level function which performs direct detection functions        
+           Generates the DM - q,g scattering matrix elements for spin dependent 
+           and spin independent direct detection cross section                   
+           Currently works only with canonical mode and one dm candidate.        
+           The function also merges the dark matter model with the effective        
+           vertex model.          
+        """
+        
+        if '/' in argument:
+            ind = argument.find('/')
+            particles, excluded = argument[:ind], argument[ind+1:]
+        elif any(a.startswith('/') for a in argument):
+            particles = argument[:2]
+            excluded = [a.replace('/','') for a in argument[2:]]
+        else:
+            particles = argument
+            excluded = []
+            
+            
+            
+            
+            
+
  
-  
-
-
-
-
-        
-        
+      
     def update_model_with_EFT(self):
         """ """
         eff_operators_SD = {1:False, 2:'SDEFFF', 3:'SDEFFV'}

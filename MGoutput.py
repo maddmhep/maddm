@@ -204,19 +204,12 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         #super(ProcessExporterFortranMaddm,self).generate_subprocess_directory(matrix_element, helicity_model, me):
         path_matrix = pjoin(self.dir_path, 'matrix_elements')        
         
-        if process_type in [self.DM2SM, self.DM2DM, self.DD]:
+        if process_type in [self.DM2SM, self.DM2DM, self.DD, self.DMSM]:
             # Using the proess name we create the filename for each process and export the fortran file
             filename_matrix = os.path.join(path_matrix, 'matrix_' + process_name + '.f')
             self.write_matrix_element(writers.FortranWriter(filename_matrix),\
                             matrix_element, helicity_model)
-    
-            # We also need the external mass include file for each process.
-            #written in one single file in 
-            #filename_pmass = os.path.join(self.dir_path, 'include', 'pmass_' + process_name + '.inc')
-            #self.write_pmass_file(writers.FortranWriter(filename_pmass), matrix_element)
-    
-        elif process_type in [self.DMSM]:
-            #HUUUUUUM
+        else:
             raise Exception
 
         return 0 # return an integer stating the number of call to helicity routine
@@ -572,7 +565,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
                 total_scattering_nprocesses +=1
                 ids = [p1.get('id'), p3.get('id')]
                 scattering[tuple(ids)].append(name)
-                scattering_sm.append(abs(p2.get('id)')))
+                scattering_sm[tuple(ids)].append(abs(p2.get('id')))
             elif tag == self.DD:
                 ddtype, si_or_sd = self.get_dd_type(p)
                 dd_names[ddtype].append(self.get_process_name(me, print_id=False))

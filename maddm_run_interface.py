@@ -242,7 +242,7 @@ class MADDMRunCmd(cmd.CmdShell):
         if omega_min < self.last_results['omegah2'] < omega_max:
             fail_relic_msg = ''
         else:
-            fail_relic_msg = '%s Not valid for relic density (not in [%s,%s])%s' %\
+            fail_relic_msg = '%s Model excluded (relic not in range [%s,%s])%s' %\
                               (bcolors.FAIL, omega_min, omega_max,bcolors.ENDC)  
         
         
