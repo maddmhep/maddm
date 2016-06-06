@@ -279,7 +279,7 @@ class MADDMRunCmd(cmd.CmdShell):
         
         if not force:  
             self.mode = self.ask('', '0', mode=mode, data=self.proc_characteristics, 
-                            ask_class=MadDMSelector, timeout=60)
+                            ask_class=MadDMSelector, timeout=60, path_msg=' ')
             if self.mode == '':
                 self.mode = {'relic': True,
                              'direct':False,
@@ -389,10 +389,9 @@ class MADDMRunCmd(cmd.CmdShell):
 class MadDMSelector(common_run.EditParamCard):
     """ """
 
-    def cmdloop(self, intro=None):
-        super(MadDMSelector,self).cmdloop(intro)
+    @property
+    def answer(self):
         return self.run_options
-
     
     def __init__(self, *args, **opts):
 
@@ -524,9 +523,15 @@ class MadDMSelector(common_run.EditParamCard):
                     logger.warning('This entry can not be changed for this running directory.')
                 self.value = 'repeat'
                 self.check_coherence(args[0])
-        if self.value == 'repeat':
+        if hasattr(self, 'value') and self.value == 'repeat':
             self.question = self.create_question()
             return line
+        elif os.path.exists(line):
+            super(MadDMSelector, self).default(line)
+            self.value = 'repeat'
+            return line  
+        elif not hasattr(self, 'value'):
+            return self.run_options
         else:
             return super(MadDMSelector, self).default(line)
         
