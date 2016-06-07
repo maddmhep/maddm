@@ -170,7 +170,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         else:
             return 'bsm', None
         
-        if 'QED' in orders and orders['QED'] == 2:
+        if any(value>0 for key,value in orders.items() if key not in ['SIEFFS','SDEFFS']):
             #Full Direct Detection case
             return 'tot', efttype
         else:

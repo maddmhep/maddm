@@ -577,7 +577,7 @@ class MadDM_interface(master_interface.MasterCmd):
         eff_operators_SD = self.eff_operators_SD[dm_spin]
         
         logger.info("Generating X Nucleon > X Nucleon diagrams from the full lagrangian...")
-        has_direct = self.DiagramsDD(eff_operators_SI, eff_operators_SD, 0, 0, 2)
+        has_direct = self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'QED')
 
         if not has_direct:
             logger.warning("No Direct Detection Feynman Diagram")
@@ -585,26 +585,26 @@ class MadDM_interface(master_interface.MasterCmd):
         
         logger.info("Generating X Nucleon > X Nucleon diagrams from the effective lagrangian...")
         #ONLY EFFECTIVE LAGRANGIAN
-        self.DiagramsDD(eff_operators_SI, eff_operators_SD, 2, 0, 0)
+        self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'SI')
 
         logger.info("INFO: Generating X Nucleon > X Nucleon diagrams from the effective+full lagrangian...")
         #EFFECTIVE + FULL
-        self.DiagramsDD(eff_operators_SI, eff_operators_SD, 2, 0, 2)
+        self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'SI+QED')
         
         if (eff_operators_SD != False):
             logger.info("Doing the spin dependent part...")
             logger.info("Generating X Nucleon > X Nucleon diagrams from the effective lagrangian...")
 
-            self.DiagramsDD(eff_operators_SI, eff_operators_SD, 0, 2, 0)
+            self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'SD')
             #EFFECTIVE + FULL
             logger.info("Generating X Nucleon > X Nucleon diagrams from the effective + full lagrangian...")
-            self.DiagramsDD(eff_operators_SI, eff_operators_SD, 0, 2, 2)
+            self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'SD+QED')
         
 
         
         
     #-----------------------------------------------------------------------#
-    def DiagramsDD(self, SI_name, SD_name, SI, SD, QED, excluded=[]):
+    def DiagramsDD(self, SI_name, SD_name, type, excluded=[]):
         """Generates direct detection diagrams. i_dm is the index of DM part. 
                  Whether spin dependent or spin independent diagrams should be                 
                  calculated. XX_order parameters determine maximum order of  a
@@ -618,18 +618,26 @@ class MadDM_interface(master_interface.MasterCmd):
         
         quarks = range(1,7) # ['d', 'u', 's', 'c', 'b','t']
         antiquarks = [-1*pdg for pdg in quarks] # ['d~', 'u~', 's~', 'c~', 'b~','t~']
-         
-
+        
+        if type == 'SI':
+            orders = '%s==2' % SI_name
+        elif type == 'SD':
+            orders = '%s==2' % SD_name
+        elif type == 'QED':
+            orders = '%s=0 %s=0' % (SD_name, SI_name)
+        elif type == 'SI+QED':
+            orders = '%s=0 %s<=99' % (SD_name, SI_name)
+        elif type == 'SD+QED':
+            orders = '%s<=99 %s=0' % (SD_name, SI_name)
+            
         #loop over quarks
         has_diagram = False
         for i in quarks + antiquarks:
-            proc = ' %(DM)s %(P)s > %(DM)s %(P)s %(excluded)s %(O1)s %(O2)s QED<=%(QED)s @DD' %\
+            proc = ' %(DM)s %(P)s > %(DM)s %(P)s %(excluded)s %(orders)s @DD' %\
                     {'DM': self._dm_candidate[0].get('name'),
                      'P': i,
                      'excluded': ('/ %s' % ' '.join(excluded) if excluded else ''),
-                     'O1': '%s<=%s' %(SD_name, SD) if SD_name else '',
-                     'O2': '%s<=%s' %(SI_name, SI) if SI_name else '',
-                     'QED': QED
+                     'orders': orders
                      }
             
             try:
