@@ -679,7 +679,7 @@ class MadDM_interface(master_interface.MasterCmd):
             EFT = 'COMPLEX'
 
         eff_dm_name = eff_model_dm_names[int(DM['spin'])]
-        mg5_command = 'add model %s %s=%s --recreate' % (pjoin(MDMDIR, 'EffOperators', EFT),
+        mg5_command = 'add model %s %s=%s --recreate --keep_decay' % (pjoin(MDMDIR, 'EffOperators', EFT),
                                                      eff_dm_name,DM.get('name'))
         
         # We want to preserve the following variable while updating the model
