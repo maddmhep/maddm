@@ -460,7 +460,7 @@ class MadDMSelector(common_run.EditParamCard):
 %(start_green)s You can also edit the various input card%(stop)s:
  * Enter the name/number to open the editor
  * Enter a path to a file to replace the card
- * Enter %(start_bold)set NAME value%(stop)s to change any parameter to the requested value 
+ * Enter %(start_bold)sset NAME value%(stop)s to change any parameter to the requested value 
     4. Edit the model parameters    [%(start_underline)sparam%(stop)s]
     5. Edit the MadDM options       [%(start_underline)smaddm%(stop)s]\n""" % \
     {'start_green' : '\033[92m',

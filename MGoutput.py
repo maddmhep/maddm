@@ -163,19 +163,35 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
 
     def get_dd_type(self, process):
         orders = process.get('orders')
-        if 'SIEFFS' in orders and orders['SIEFFS'] > 0:
-            efttype = 'SI'
-        elif 'SDEFFS' in orders and orders['SDEFFS'] > 0:
-            efttype = 'SD'
-        else:
-            return 'bsm', None
         
-        if any(value>0 for key,value in orders.items() if key not in ['SIEFFS','SDEFFS']):
-            #Full Direct Detection case
-            return 'tot', efttype
-        else:
-            # pure EFT case
-            return 'eft', efttype
+        efttype = None
+        mode = 'bsm'
+        
+        for coupling, value in orders.items():
+            if coupling.startswith('SIEFF') and value > 0:
+                if not efttype:
+                    efttype = 'SI'
+                else:
+                    raise Exception
+                if value == 99:
+                    mode = 'tot'
+                elif value ==2:
+                    mode = 'eft'
+                     
+            elif coupling.startswith('SDEFF') and value > 0:
+                if not efttype:
+                    efttype = 'SD'
+                else:
+                    raise Exception  
+                if value == 99:
+                    mode = 'tot'
+                elif value ==2:
+                    mode = 'eft'       
+            elif value:
+                mode = 'tot'
+            
+        return mode, efttype
+        
                 
     
     def get_process_name(self, matrix_element, print_id=True):
@@ -207,10 +223,12 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         if process_type in [self.DM2SM, self.DM2DM, self.DD, self.DMSM]:
             # Using the proess name we create the filename for each process and export the fortran file
             filename_matrix = os.path.join(path_matrix, 'matrix_' + process_name + '.f')
-            self.write_matrix_element(writers.FortranWriter(filename_matrix),\
-                            matrix_element, helicity_model)
         else:
             raise Exception
+        
+
+        self.write_matrix_element(writers.FortranWriter(filename_matrix),\
+                            matrix_element, helicity_model)
 
         return 0 # return an integer stating the number of call to helicity routine
     
