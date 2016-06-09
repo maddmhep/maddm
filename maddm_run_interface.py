@@ -415,6 +415,8 @@ class MadDMSelector(common_run.EditParamCard):
             if self.run_options[key] in ['ON', 'OFF']:
                 allow_args.append(str(i+1))
                 allow_args.append(key)
+                allow_args.append('%s=on' % key)
+                allow_args.append('%s=off' % key)
         opts['allow_arg'] = allow_args
                 
         # 3.initialise the object         
