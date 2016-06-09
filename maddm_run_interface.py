@@ -326,7 +326,7 @@ class MADDMRunCmd(cmd.CmdShell):
             misc.compile(cwd=self.dir_path)
         elif self.mode['relic'] and not self.mode['direct']:
             misc.compile(['relic_density'],cwd=self.dir_path)
-        elif self.mode['direct'] and not self.mode['relic_density']:
+        elif self.mode['direct'] and not self.mode['relic']:
             misc.compile(['direct_detection'],cwd=self.dir_path)
         else:
             raise Exception, "No computation requested. End the computation"
