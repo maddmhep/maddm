@@ -336,7 +336,7 @@ class MadDM_interface(master_interface.MasterCmd):
         args = self.split_arg(line)    
         if len(args) and args[0] == 'process':
             args.pop(0)
-        if len(args) and args[0] == "relic_density":
+        if len(args) and args[0] in["relic_density", 'relic']:
             if '/' not in line:
                 return self.generate_relic([])
             else:
@@ -443,6 +443,7 @@ class MadDM_interface(master_interface.MasterCmd):
 
     def define_multiparticles(self, label, list_of_particles):
         """define a new multiparticle from a particle list (add both particle and anti-particle)"""
+        
         pdg_list = []
         for p in list_of_particles:
             if p.get('name') == p.get('antiname'):
@@ -655,24 +656,66 @@ class MadDM_interface(master_interface.MasterCmd):
            Currently works only with canonical mode and one dm candidate.        
            The function also merges the dark matter model with the effective        
            vertex model.          
+        related to syntax: generate indirect a g / n3  
         """
+
+        if not self._dm_candidate:
+            self.search_dm_candidate(excluded_particles)
+            if not self._dm_candidate:
+                return
         
+        # separate final state particle from excluded particles
         if '/' in argument:
             ind = argument.find('/')
             particles, excluded = argument[:ind], argument[ind+1:]
         elif any(a.startswith('/') for a in argument):
-            particles = argument[:2]
-            excluded = [a.replace('/','') for a in argument[2:]]
+            line = ' '.join(argument)
+            particles, excluded = line.split('/',1)
+            particles = particles.split()
+            excluded = excluded.replace('/','').split()
         else:
             particles = argument
             excluded = []
-            
-            
-            
-            
-            
+        
+        
+        #handling the final state to ensure model independant support
+        if 'v' in particles:
+            particles.remove('v')
+            particles += ['12', '14', '16']
+        
+        antiparticles = []
+        for i,p in enumerate(particles):
+            if p.isdigit():
+                if p not in ['22','21','12','14','16']:
+                    raise self.InvalidCmd, '%s is not a valid final state for indirect detection' % p
+                antiparticles.append(str(-1*int(p)))   
+            else:
+                if p in ['a', 'g', 've','vm','vt']:
+                    p ={'a':22, 'g':21, 've':12,'vm':14,'vt':16}[p]
+                misc.sprint(p)
+                part = self._curr_model.get_particle(p)
+                misc.sprint(part)
+                if part.get('pdg_code') not in [22,21,12,14,16]:
+                    raise self.InvalidCmd, '%s is not a valid final state for indirect detection' % p
+                particles[i] = part.get('name') 
+                antiparticles.append(part.get('antiname'))
+        
+        # First try LO matrix-element
+        done= []
+        for dm in self._dm_candidate:
+            name = dm.get('name')
+            antiname = dm.get('name')
+            if name in done:
+                continue
+            done += [name, antiname]
+            for p, antip in zip(particles,antiparticles):
+                proc = '%s %s > %s %s @ID' % (name, antiname, p,antip)
+                try:
+                    self.do_add('process %s' % proc)
+                except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
+                    proc = '%s %s > %s %s [virt=ALL] @ID' % (name, antiname, p,antip)
+                    self.do_add('process %s' % proc)        
 
- 
       
     def update_model_with_EFT(self):
         """ """
