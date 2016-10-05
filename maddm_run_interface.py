@@ -297,7 +297,7 @@ class MADDMRunCmd(cmd.CmdShell):
             self.maddm_card.set('do_relic_density', self.mode['relic'], user=False)
             self.maddm_card.set('do_direct_detection', self.mode['direct'], user=False)
             self.maddm_card.set('do_directional_detection', self.mode['directional'], user=False)
-            self.maddm_card.write_include_file(pjoin(self.dir_path, 'include', 'maddm_card.inc'))
+            self.maddm_card.write_include_file(pjoin(self.dir_path, 'include'))
         else:
             if not hasattr(self, 'maddm_card'):
                 self.maddm_card = MadDMCard(pjoin(self.dir_path, 'Cards', 'maddm_card.dat'))
@@ -628,6 +628,7 @@ class MadDMCard(banner_mod.RunCard):
     """MadDM card use the read/write of the runcard object"""
     
     filename = 'maddm_card'
+    default_include_file = 'maddm_card.inc'
     
     def __new__(cls, finput=None):
         """Bypass the standard RunCard one"""
