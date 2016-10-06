@@ -546,7 +546,22 @@ class MadDMSelector(common_run.EditParamCard):
         elif last_modified == 'direct':
             if self.run_options['direct'] == 'OFF':
                 self.run_options['directional'] = 'OFF'            
+    
+    def check_card_consistency(self):
         
+        super(MadDMSelector, self).check_card_consistency()
+        
+        # If direct detection is ON ensure that quark mass are not zero
+        if self.run_options['direct'] == 'ON':
+            to_change = []
+            for i in range(1,7):
+                if self.param_card.get_value('mass', i) == 0.:
+                    to_change.append(i)
+            if to_change:
+                logger.warning('For direct detection the quark mass need to be different of zero. Automatically adding such masses (PDG 2014).')
+                quark_masses = {1: 4.8e-3, 2: 2.3e-3,  3: 95e-3, 4: 1.275, 5: 4.18, 6: 173.21}
+                for i in to_change:
+                    self.do_set('param_card mass %s %s' % (i, quark_masses[i]))
         
     def open_file(self, path):
         
@@ -735,3 +750,7 @@ class MadDMCard(banner_mod.RunCard):
         
         if self['SNu'] + self['SNs'] + self['SNd'] - self['SNg'] -1 > 1e-3:
             raise InvalidMaddmCard, 'The sum of SM* parameter should be 1.0 get %s' % (self['SNu'] + self['SNs'] + self['SNd'] + self['SNg'])
+        
+        
+        
+        
