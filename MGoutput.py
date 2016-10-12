@@ -72,8 +72,6 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         self.resonances = set() 
         self.proc_characteristic = MADDMProcCharacteristic()
         
-
-
     def convert_model(self, model, wanted_lorentz = [], wanted_couplings = []):
         """-----------------------------------------------------------------------#  
         #                                                                       #
@@ -713,7 +711,6 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
                     'smatrix_dd_eff': None,
                     'smatrix_dd_tot': None,
                     }                
-                         
         replace_dict['pmass_ann'] = self.get_pmass(matrix_element, self.DM2SM)
         replace_dict['pmass_dm2dm'] = self.get_pmass(matrix_element, self.DM2DM)
         replace_dict['pmass_scattering'] = self.get_pmass(matrix_element, self.DMSM)
@@ -725,7 +722,6 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         replace_dict['smatrix_dd'] = self.get_smatrix_dd(matrix_element, 'bsm')
         replace_dict['smatrix_dd_eff'] = self.get_smatrix_dd(matrix_element, 'eft')
         replace_dict['smatrix_dd_tot'] = self.get_smatrix_dd(matrix_element, 'tot')
-    
     
         text = open(pjoin(MDMDIR, 'python_templates','smatrix_template.f')).read()
         to_write = text % replace_dict
@@ -757,7 +753,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
                 for k,info in enumerate(pmass[tuple(ids)]):
                     output.append('if ((i.eq.%s) .and. (j.eq.%s) .and. (k.eq.%s)) then \n %s \n'\
                                       % (i+1, j+1, k+1, info))
-                    
+        
         return '%s \n %s' % (' else'.join(output), ' endif' if output else '')
     
     
@@ -814,7 +810,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         if opt is None:
             p1,p2,p3,p4 = p.get('legs')
             if flag in [cls.DM2DM, cls.DM2SM]:
-                ids = [p1.get('id'), p2.get('id')]
+                ids = [abs(p1.get('id')), abs(p2.get('id'))]
                 ids.sort()
             else:
                 ids = [p1.get('id'), p3.get('id')]               
@@ -822,7 +818,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         else:
             # entry are DM1, DM2 , flag
             dm1, dm2, flag = p, flag, opt
-            ids =  [dm1.get('pdg_code'), dm2.get('pdg_code')]  
+            ids =  [abs(dm1.get('pdg_code')), abs(dm2.get('pdg_code'))]  
             if flag in [cls.DM2DM, cls.DM2SM]:
                 ids.sort() 
             return tuple(ids)
