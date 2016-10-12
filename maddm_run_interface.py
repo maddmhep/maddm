@@ -280,19 +280,20 @@ class MADDMRunCmd(cmd.CmdShell):
         if not force:  
             self.mode = self.ask('', '0', mode=mode, data=self.proc_characteristics, 
                             ask_class=MadDMSelector, timeout=60, path_msg=' ')
-            if self.mode == '':
-                self.mode = {'relic': True,
-                             'direct':False,
-                             'indirect':False}
+            if self.mode in ['', '0']:
+                self.mode = {'relic': 'ON',
+                             'direct': 'OFF',
+                             'directional':'OFF',
+                             'indirect':'OFF'}
                 
             self.maddm_card = MadDMCard(pjoin(self.dir_path, 'Cards', 'maddm_card.dat'))
             for key, value in self.mode.items():
-                if value == 'ON':
+                if value == 'ON' or value is True:
                     self.mode[key] = True
     
                 else:
                     self.mode[key] = False
-            
+
             # create the inc file for maddm
             self.maddm_card.set('do_relic_density', self.mode['relic'], user=False)
             self.maddm_card.set('do_direct_detection', self.mode['direct'], user=False)
@@ -571,7 +572,7 @@ class MadDMSelector(common_run.EditParamCard):
             try:
                 self.maddm = MadDMCard(path) 
             except Exception as e:
-                logger.error('Current param_card is not valid. We are going to use the default one.')
+                logger.error('Current maddm_card is not valid. We are going to use the default one.')
                 logger.error('problem detected: %s' % e)
                 logger.error('Please re-open the file and fix the problem.')
                 logger.warning('using the \'set\' command without opening the file will discard all your manual change')

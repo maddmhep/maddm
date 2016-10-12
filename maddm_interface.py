@@ -94,7 +94,6 @@ class MadDM_interface(master_interface.MasterCmd):
 ################################################################################        
     def do_define(self, line, **opts):
         """pass"""
-
         args = self.split_arg(line)
         if len(args) and args[0] in MadDM_interface._define_options:
             if args[0] == 'darkmatter':
@@ -103,7 +102,10 @@ class MadDM_interface(master_interface.MasterCmd):
                 elif args[1].startswith('/'):
                     self.search_dm_candidate([a.replace('/', '') for a in args[1:]])
                 elif len(args)==2:
-                    self._dm_candidate = self._curr_model.get_particle(args[1])
+                    self._dm_candidate = [self._curr_model.get_particle(args[1])]
+                    if not self._dm_candidate[0]:
+                        raise DMError, '%s is not a valid particle for the model.' % args[1] 
+                    self.update_model_with_EFT()
             
             elif args[0] == 'coannihilator':
                 if not self._dm_candidate:
@@ -748,10 +750,11 @@ class MadDM_interface(master_interface.MasterCmd):
         # update the param_card value
         txt = self._curr_model.write_param_card()
         param_card = check_param_card.ParamCard(self._curr_model.write_param_card())
-        
-        for block in self._param_card:
-            for param in self._param_card[block]:
-                param_card[block].get(param.lhacode).value =  param.value
+
+        if self._param_card:
+            for block in self._param_card:
+                for param in self._param_card[block]:
+                    param_card[block].get(param.lhacode).value =  param.value
  
         self._param_card = param_card        
         if not isinstance(self._curr_model, model_reader.ModelReader):
