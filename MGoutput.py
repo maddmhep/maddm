@@ -554,8 +554,10 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         total_scattering_nprocesses = 0
         
         annihilation = collections.defaultdict(list)   # store process name
+        annihilation_iden = collections.defaultdict(list) # store if initial particle are identical
         dm2dm = collections.defaultdict(list)          # store process name
         dm2dm_fs = collections.defaultdict(list)       # store the pdg of the final state
+        dm2dm_iden = collections.defaultdict(list)    # store if initial particle are identical
         scattering = collections.defaultdict(list)     # store process name
         scattering_sm =  collections.defaultdict(list) # store the pdg of the sm particles
         dd_names = {'bsm':[], 'eft':[],'tot':[]}       # store process name
@@ -566,22 +568,21 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
             tag = p.get('id')
             p1,p2,p3,p4 = p.get('legs')
             name = p.shell_string(print_id=False)
+            ids = self.make_ids(p, tag)
             if tag == self.DM2SM:
                 total_annihilation_nprocesses += 1
-                ids = [abs(p1.get('id')), abs(p2.get('id'))]
-                ids.sort()
-                annihilation[tuple(ids)].append(name)
+                annihilation[ids].append(name)
+                annihilation_iden[ids].append(p1.get('id') == p2.get('id'))
             elif tag == self.DM2DM:
                 total_dm2dmscattering_nprocesses += 1 
-                ids = [abs(p1.get('id')), abs(p2.get('id'))]
-                ids.sort()
-                dm2dm[tuple(ids)].append(name)
-                dm2dm_fs[tuple(ids)].append([abs(p3.get('id')), abs(p4.get('id'))])   
+                
+                dm2dm[ids].append(name)
+                dm2dm_fs[ids].append([abs(p3.get('id')), abs(p4.get('id'))])
+                dm2dm_iden[ids].append(p1.get('id') == p2.get('id'))   
             elif tag == self.DMSM:
                 total_scattering_nprocesses +=1
-                ids = [abs(p1.get('id')), abs(p3.get('id'))]
-                scattering[tuple(ids)].append(name)
-                scattering_sm[tuple(ids)].append(abs(p2.get('id')))
+                scattering[ids].append(name)
+                scattering_sm[ids].append(abs(p2.get('id')))
             elif tag == self.DD:
                 ddtype, si_or_sd = self.get_dd_type(p)
                 dd_names[ddtype].append(self.get_process_name(me, print_id=False))
@@ -593,17 +594,15 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         fsock.write_comments("Number of annihilation processes for each DM pair")   
         for i,dm1 in enumerate(self.dm_particles):
             for j,dm2 in enumerate(self.dm_particles[i:],i):
-                ids = [abs(dm1.get('pdg_code')), abs(dm2.get('pdg_code'))]
-                ids.sort()
-                for name in annihilation[tuple(ids)]:
+                ids = self.make_ids(dm1, dm2, self.DM2SM)
+                for name in annihilation[ids]:
                     process_counter += 1
                     fsock.writelines('process_names(%i) = \'%s\'\n' % (process_counter, name)) 
 
         for i,dm1 in enumerate(self.dm_particles):
             for j,dm2 in enumerate(self.dm_particles[i:],i):
-                ids = [abs(dm1.get('pdg_code')), abs(dm2.get('pdg_code'))]
-                ids.sort()
-                for name in dm2dm[tuple(ids)]:
+                ids = self.make_ids(dm1, dm2, self.DM2DM)
+                for name in dm2dm[ids]:
                     process_counter += 1
                     fsock.writelines('process_names(%i) = \'%s\'\n' % (process_counter, name)) 
 
@@ -611,8 +610,8 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
 
         for i,dm1 in enumerate(self.dm_particles):
             for dm2 in self.dm_particles:
-                ids = [abs(dm1.get('pdg_code')), abs(dm2.get('pdg_code'))]
-                for name in scattering[tuple(ids)]:
+                ids = self.make_ids(dm1, dm2, self.DMSM)
+                for name in scattering[ids]:
                     process_counter += 1
                     fsock.writelines('process_names(%i) = \'%s\'\n' % (process_counter, name)) 
 
@@ -627,20 +626,17 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         fsock.write_comments('Annihilation diagrams')
         for i,dm1 in enumerate(self.dm_particles):
             for j,dm2 in enumerate(self.dm_particles[i:],i):
-                ids = [abs(dm1.get('pdg_code')), abs(dm2.get('pdg_code'))]
-                ids.sort()    
-                iden = (dm1.get('pdg_code') == dm2.get('pdg_code'))            
-                for k in range(len(annihilation[tuple(ids)])):
+                ids = self.make_ids(dm1, dm2, self.DM2SM)              
+                for k,iden in enumerate(annihilation_iden[ids]):
                     fsock.writelines(' ann_process_iden_init(%s,%s,%s) = %s' % \
                                (i+1, j+1, k+1, '.true.' if iden else '.false.'))
                   
         fsock.write_comments('DM -> DM diagrams')
         for i,dm1 in enumerate(self.dm_particles):
             for j,dm2 in enumerate(self.dm_particles[i:],i):
-                ids = [abs(dm1.get('pdg_code')), abs(dm2.get('pdg_code'))]
-                ids.sort()    
-                iden = dm1.get('pdg_code') == dm2.get('pdg_code')         
-                for k in range(len(dm2dm[tuple(ids)])):
+                ids = self.make_ids(dm1, dm2,self.DM2DM) 
+                #iden = dm1.get('pdg_code') == dm2.get('pdg_code')         
+                for k, iden in enumerate(dm2dm_iden[ids]):
                     fsock.writelines(' dm2dm_process_iden_init(%s,%s,%s) = %s' % \
                                (i+1, j+1, k+1, '.true.' if iden else '.false.'))
             
@@ -650,9 +646,8 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         dm_pdg = [abs(p.get('pdg_code')) for p in self.dm_particles]
         for i,dm1 in enumerate(self.dm_particles):
             for j,dm2 in enumerate(self.dm_particles[i:],i):
-                ids = [abs(dm1.get('pdg_code')), abs(dm2.get('pdg_code'))]
-                ids.sort() 
-                for k,(fs1,fs2) in enumerate(dm2dm_fs[tuple(ids)]):
+                ids = self.make_ids(dm1, dm2, self.DM2DM)
+                for k,(fs1,fs2) in enumerate(dm2dm_fs[ids]):
                     fs1 = dm_pdg.index(fs1) +1 # get the index in the DM list
                     fs2 = dm_pdg.index(fs2) +1 
                     fsock.writelines(' dm2dm_fs(%s,%s,%s,1) = %s \n' %\
@@ -664,8 +659,8 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         fsock.write_comments('And Total initial state degrees of freedom for all the DM/SM scattering processes')
         for i,dm1 in enumerate(self.dm_particles):
             for j,dm2 in enumerate(self.dm_particles): 
-                ids = [abs(dm1.get('pdg_code')), abs(dm2.get('pdg_code'))]
-                for k, pdgsm in enumerate(scattering_sm[tuple(ids)]):
+                ids = self.make_ids(dm1, dm2, self.DMSM)
+                for k, pdgsm in enumerate(scattering_sm[ids]):
                     smpart = self.model.get_particle(pdgsm)
                     dof = smpart['spin'] * smpart['color']
                     total_dof = dof if smpart['self_antipart'] else 2*dof
@@ -744,13 +739,13 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
             if tag == flag:
                 info = MYStringIO()
                 self.write_pmass_file(info, me)                  
-                pmass[tuple(ids)].append(info.getvalue())
+                pmass[ids].append(info.getvalue())
         
         for i,dm1 in enumerate(self.dm_particles):
             start_second = (i if flag in [self.DM2DM, self.DM2SM] else 0)
             for j,dm2 in enumerate(self.dm_particles[i:], start_second):
                 ids = self.make_ids(dm1, dm2, flag)
-                for k,info in enumerate(pmass[tuple(ids)]):
+                for k,info in enumerate(pmass[ids]):
                     output.append('if ((i.eq.%s) .and. (j.eq.%s) .and. (k.eq.%s)) then \n %s \n'\
                                       % (i+1, j+1, k+1, info))
         
@@ -769,13 +764,13 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
             ids = self.make_ids(p, flag)
             if tag == flag:
                 info = ' call %s_smatrix(p_ext,smatrix)' % p.shell_string(print_id=False)
-                smatrix[tuple(ids)].append(info)
+                smatrix[ids].append(info)
         
         for i,dm1 in enumerate(self.dm_particles):
             start_second = (i if flag in [self.DM2DM, self.DM2SM] else 0)
             for j,dm2 in enumerate(self.dm_particles[i:], start_second):
                 ids = self.make_ids(dm1, dm2, flag)
-                for k,info in enumerate(smatrix[tuple(ids)]):
+                for k,info in enumerate(smatrix[ids]):
                     output.append('if ((i.eq.%s) .and. (j.eq.%s) .and. (k.eq.%s)) then \n %s \n'\
                                       % (i+1, j+1, k+1, info)) 
 
