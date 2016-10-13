@@ -504,7 +504,7 @@ class MadDM_interface(master_interface.MasterCmd):
         self.define_multiparticles('fs_particles', sm_part+bsm_final_states)
         
         
-        logger.info("DM is allowed to annihilate into the following BSM particles:\n %s", ', '.join(p['name'] for p in bsm_final_states))
+        #logger.info("DM is allowed to annihilate into the following BSM particles:\n %s", ', '.join(p['name'] for p in bsm_final_states))
 
         # generate annihilation diagram
         coupling = "QED<=4 SIEFFS=0 SIEFFF=0 SIEFFV=0 SDEFFF=0 SDEFFV=0"
@@ -536,7 +536,7 @@ class MadDM_interface(master_interface.MasterCmd):
         for amp in self._curr_amps[:]:
             if amp.get('process').get('id') != self.process_tag['DM2DM']:
                 continue
-            if (set(amp.get('process').get_initial_ids()) == (set(amp.get('process').get_final_ids()))):
+            if set(amp.get('process').get_initial_ids()) == (set(amp.get('process').get_final_ids())):
                 self._curr_amps.remove(amp)
 
 

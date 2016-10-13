@@ -402,7 +402,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
             dm_sm_scattering( %(id)s ) = %(is_scatter)s
             dm_names( %(id)s ) =\'%(name)s\'
             dm_index( %(id)s ) = %(len_name)s
-            dm_antinames( %(id)s ) = \'%(name)s\'
+            dm_antinames( %(id)s ) = \'%(antiname)s\'
             dm_antiindex( %(id)s ) = %(len_antiname)s
             """ % {'id': i+1,
                    'mass': dm_particle['mass'],
