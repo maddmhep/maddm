@@ -477,17 +477,21 @@ class MadDM_interface(master_interface.MasterCmd):
         # Tabulates all the BSM particles so they can be included in the
         # final state particles along with the SM particles.
         
-        dm_mass = abs(self._curr_model.get_mass(self._dm_candidate[0]))
-        is_lower_mass = lambda p : abs(self._curr_model.get_mass(p)) < (1-self.coannihilation_diff)*dm_mass
-                
+        #dm_mass = abs(self._curr_model.get_mass(self._dm_candidate[0]))
+        #is_lower_mass = lambda p : True #abs(self._curr_model.get_mass(p)) < (1-self.coannihilation_diff)*dm_mass
+        
+        ids_veto = [p.get('pdg_code') for p in self._dm_candidate + self._coannihilation]     
         bsm_final_states = [p for p in self._curr_model.get('particles') 
                          if abs(p.get('pdg_code')) > 25 and \
                          (p.get('name') not in excluded_particles or p.get('antiname') not in excluded_particles) and\
-                         is_lower_mass(p) and
-                         p not in self._dm_candidate and 
-                         p not in self._coannihilation]
+                         p.get('width') != 'ZERO' and
+                         abs(p.get('pdg_code')) not in ids_veto]
         
-        
+        if bsm_final_states:
+            logger.info("DM is allowed to annihilate into the following BSM particles: %s",
+                         ' '.join([p.get('name') for p in bsm_final_states]))
+            logger.info("use generate relic_density / X to fordid the decay the annihilation to X")
+
         # Set up the initial state multiparticles that contain the particle 
         #and antiparticle
         for i,dm in enumerate(self._dm_candidate + self._coannihilation):

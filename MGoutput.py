@@ -496,37 +496,32 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         for m in matrix_element_list.get_matrix_elements():
             p = m.get('processes')[0]
             tag = p.get('id')
-            p1,p2,p3,p4 = p.get('legs')
+            ids = self.make_ids(p, tag)
             if tag == self.DM2SM:
-                ids = [abs(p1.get('id')), abs(p2.get('id'))]
-                ids.sort()
-                nb_annihilation[tuple(ids)] +=1
+                nb_annihilation[ids] +=1
             elif tag == self.DM2DM:
-                ids = [abs(p1.get('id')), abs(p2.get('id'))]
-                ids.sort()
-                nb_dm2dm[tuple(ids)] +=1    
+                nb_dm2dm[ids] +=1    
             elif tag == self.DMSM:
-                ids = [abs(p1.get('id')), abs(p3.get('id'))]
-                nb_scattering[tuple(ids)] +=1                                               
+                nb_scattering[ids] +=1                                               
             
         fsock.write_comments("Number of annihilation processes for each DM pair")   
         for i,dm1 in enumerate(self.dm_particles):
             for j,dm2 in enumerate(self.dm_particles[i:],i):
-                ids = [abs(dm1.get('pdg_code')), abs(dm2.get('pdg_code'))]
-                ids.sort()
-                fsock.writelines(' ann_nprocesses(%i,%i) = %i\n' % (i+1, j+1, nb_annihilation[tuple(ids)]))
+                ids = self.make_ids(dm1, dm2, self.DM2SM)
+                fsock.writelines(' ann_nprocesses(%i,%i) = %i\n' % (i+1, j+1, nb_annihilation[ids]))
 
         for i,dm1 in enumerate(self.dm_particles):
             for j,dm2 in enumerate(self.dm_particles[i:],i):
-                fsock.writelines(' dm2dm_nprocesses(%i,%i) = %i\n'% (i+1, j+1, nb_dm2dm[tuple(ids)]))
+                ids = self.make_ids(dm1, dm2, self.DM2DM)
+                fsock.writelines(' dm2dm_nprocesses(%i,%i) = %i\n'% (i+1, j+1, nb_dm2dm[ids]))
         
         fsock.write_comments('\n Number of DM/SM scattering processes for each DM pair\n')
 
         for i,dm1 in enumerate(self.dm_particles):
             for j,dm2 in enumerate(self.dm_particles):
-                ids = [abs(dm1.get('pdg_code')), abs(dm2.get('pdg_code'))]
+                ids = self.make_ids(dm1, dm2, self.DMSM)
                 fsock.writelines(' scattering_nprocesses(%i,%i) = %i\n' %\
-                            (i+1,j+1,nb_scattering[tuple(ids)]))
+                            (i+1,j+1,nb_scattering[ids]))
    
         fsock.close()
         
@@ -597,7 +592,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
                 ids = self.make_ids(dm1, dm2, self.DM2SM)
                 for name in annihilation[ids]:
                     process_counter += 1
-                    fsock.writelines('process_names(%i) = \'%s\'\n' % (process_counter, name)) 
+                    fsock.writelines('process_names(%i) = \'%s\'' % (process_counter, name)) 
 
         for i,dm1 in enumerate(self.dm_particles):
             for j,dm2 in enumerate(self.dm_particles[i:],i):
