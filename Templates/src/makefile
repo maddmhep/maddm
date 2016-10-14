@@ -23,7 +23,7 @@ direct_detection.o: $(incdir)/maddm.inc
 directional_detection.o: $(incdir)/maddm.inc
 tests.o: $(incdir)/maddm.inc
 
-all: clean maddm
+all: maddm
 
 .f.o:
 	$(fort) -c $(flags) $*.f
