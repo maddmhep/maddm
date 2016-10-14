@@ -210,7 +210,7 @@ class MADDMRunCmd(cmd.CmdShell):
         result = dict(zip(output_name, result))
         self.last_results = result
 
-        if True:#not self.in_scan_mode:
+        if not self.in_scan_mode:
             self.print_results()
         else:
             logger.info("relic density  : %.2e ", self.last_results['omegah2'])
