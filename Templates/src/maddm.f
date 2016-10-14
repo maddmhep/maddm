@@ -122,7 +122,7 @@ c	  endif
           write(*,*) 'Nevents: ', Nint(total_events)
           write(*,*) 'smearing: ', sm_flag
 
-	  close(33)
+c	  close(33)
 
 c-------------------------------------------------------------------------c
 c  Other test functions
