@@ -3,6 +3,7 @@ import logging
 import os
 import re
 import sys
+import subprocess
 
 import MGoutput
 
@@ -74,6 +75,7 @@ class MADDMRunCmd(cmd.CmdShell):
     def __init__(self, dir_path, options, *args, **opts):
         """common"""
   
+        self.in_scan_mode = False # please modify this value only with "with" statement
         cmd.Cmd.__init__(self, *args, **opts)
         # Define current MadEvent directory
         if dir_path is None and not MG5MODE:
@@ -85,7 +87,7 @@ class MADDMRunCmd(cmd.CmdShell):
         # Define self.proc_characteristics (set of information related to the
         # directory status
         self.get_characteristics()
-        
+    
         
     def get_characteristics(self, path=None):
         """reads the proc_characteristics file and initialises the correspondant
@@ -185,7 +187,10 @@ class MADDMRunCmd(cmd.CmdShell):
         else:
             output = pjoin('output', 'maddm_%s.out') % nb_output
         
-        misc.call(['maddm.x', output], cwd =self.dir_path)
+        #misc.call(['maddm.x', output], cwd =self.dir_path)
+
+        obj = subprocess.Popen(['./maddm.x', output], cwd =self.dir_path, stdout=subprocess.PIPE)
+        obj.communicate()
 
         #Here we read out the results which the FORTRAN module dumped into a file
         #called 'omega'. The format is such that the first line is always relic density
@@ -203,7 +208,11 @@ class MADDMRunCmd(cmd.CmdShell):
         result = dict(zip(output_name, result))
         self.last_results = result
 
-        self.print_results()
+        if True:#not self.in_scan_mode:
+            self.print_results()
+        else:
+            logger.info("relic density  : %.2e ", self.last_results['omegah2'])
+        
         
         if self.param_card_iterator:
             param_card_iterator = self.param_card_iterator
@@ -211,11 +220,13 @@ class MADDMRunCmd(cmd.CmdShell):
 
             param_card_iterator.store_entry(nb_output, result)
             #check if the param_card defines a scan.
-            for i,card in enumerate(param_card_iterator):
-                card.write(pjoin(self.dir_path,'Cards','param_card.dat'))
-                self.exec_cmd("launch -f", precmd=True, postcmd=True,
-                                           errorhandling=False)
-                param_card_iterator.store_entry(nb_output+i, self.last_results)
+            with misc.TMP_variable(self, 'in_scan_mode', True):
+                with misc.MuteLogger(names=['madgraph','cmdprint'],levels=[20,50]):
+                    for i,card in enumerate(param_card_iterator):
+                        card.write(pjoin(self.dir_path,'Cards','param_card.dat'))
+                        self.exec_cmd("launch -f", precmd=True, postcmd=True,
+                                                   errorhandling=False)
+                        param_card_iterator.store_entry(nb_output+i, self.last_results)
             param_card_iterator.write(pjoin(self.dir_path,'Cards','param_card.dat'))
             name = misc.get_scan_name('maddm_%s' % (nb_output), 'maddm_%s' % (nb_output+i))
             path = pjoin(self.dir_path, 'output','scan_%s.txt' % name)
@@ -315,13 +326,17 @@ class MADDMRunCmd(cmd.CmdShell):
                 self.maddm_card.write_include_file(pjoin(self.dir_path, 'include', 'maddm_card.inc'))                
             
         self.check_param_card(pjoin(self.dir_path, 'Cards', 'param_card.dat'))
-               
-        logger.info("Start computing %s" % ','.join([name for name, value in self.mode.items() if value]))
+        
+        if not self.in_scan_mode:    
+            logger.info("Start computing %s" % ','.join([name for name, value in self.mode.items() if value]))
         return self.mode
 
 
     def compile(self):
         """compile the code"""
+        
+        if self.in_scan_mode:
+            return
 
         if self.mode['relic'] and self.mode['direct']:
             misc.compile(cwd=self.dir_path)
@@ -666,7 +681,7 @@ class MadDMCard(banner_mod.RunCard):
         self.add_param('calc_taacs_scattering_array', True)
         
         self.add_param('eps_ode', 0.01)
-        self.add_param('xd_approx', True)
+        self.add_param('xd_approx', False)
         
         self.add_param('x_start', 50.0)
         self.add_param('x_end', 1000.0)

@@ -35,8 +35,8 @@ clean:
 maddm: $(objs_all)
 	$(fort) $(flags) $(objs_all) $(libs) -o $(prog).x
 
-relic_density: clean $(objs_all)
+relic_density: $(objs_all)
 	$(fort) $(flags) $(objs_all) $(libs) -o $(prog).x
 
-direct_detection:  clean $(objs_all)
+direct_detection: $(objs_all)
 	$(fort) $(flags) $(objs_all) $(libs) -o $(prog).x
