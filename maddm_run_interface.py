@@ -125,11 +125,13 @@ class MADDMRunCmd(cmd.CmdShell):
         pdg_info = pattern_width.findall(text)
         if pdg_info:
             if run:
-                logger.info('Computing the width set on auto in the param_card.dat')
+                if not self.in_scan_mode:
+                    logger.info('Computing the width set on auto in the param_card.dat')
                 has_nlo = any(nlo.lower()=="@nlo" for _,nlo in pdg_info)
                 pdg = [pdg for pdg,nlo in pdg_info]
                 if not has_nlo:
-                    self.run_mg5(['compute_widths %s --path=%s' % (' '.join(pdg), path)])
+                    self.do_compute_widths('%s --path=%s' % (' '.join(pdg), path))
+                    #self.run_mg5(['compute_widths %s --path=%s' % (' '.join(pdg), path)])
                 else:
                     self.run_mg5(['compute_widths %s --path=%s --nlo' % (' '.join(pdg), path)])
             else:
@@ -141,7 +143,15 @@ class MADDMRunCmd(cmd.CmdShell):
 
     def do_compute_widths(self, line):
         
-        return self.run_mg5(['compute_widths ' + line])
+        if self.maddm_card['only_two_body_decays']:
+            line = ' --body_decay=2 ' + line
+        #return self.run_mg5(['compute_widths --body_decay=2 ' + line])
+        if not hasattr(self, 'mg5'):
+            return self.run_mg5(['compute_widths ' + line])
+        elif not hasattr(self.mg5, '_curr_model'):
+            return self.run_mg5(['compute_widths ' + line])
+        else:
+            self.mg5.do_compute_widths(line, model=self.mg5._curr_model)#, decaymodel=self.mg5._curr_decaymodel)
     
     def help_compute_widths(self, line):
         
@@ -163,6 +173,7 @@ class MADDMRunCmd(cmd.CmdShell):
             model = self.proc_characteristics['model']
         if self.mg5._curr_model.get('modelpath+restriction') != model:
             self.mg5.do_import(model)
+            
             
         for line in commands:
             self.mg5.exec_cmd(line, errorhandling=False, printcmd=False, 
@@ -218,7 +229,7 @@ class MADDMRunCmd(cmd.CmdShell):
             param_card_iterator.store_entry(nb_output, result)
             #check if the param_card defines a scan.
             with misc.TMP_variable(self, 'in_scan_mode', True):
-                with misc.MuteLogger(names=['cmdprint','madevent'],levels=[50,50]):
+                with misc.MuteLogger(names=['cmdprint','madevent','madgraph.interface'],levels=[50,50,50]):
                     for i,card in enumerate(param_card_iterator):
                         card.write(pjoin(self.dir_path,'Cards','param_card.dat'))
                         self.exec_cmd("launch -f", precmd=True, postcmd=True,
@@ -743,6 +754,7 @@ class MadDMCard(banner_mod.RunCard):
         self.add_param('day_bins', 10)
         
         self.add_param('smearing', False)
+        self.add_param('only_two_body_decays', True, include=False)
         
     def write(self, output_file, template=None, python_template=False):
         """Write the run_card in output_file according to template 

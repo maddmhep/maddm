@@ -34,6 +34,9 @@
   %(calc_taacs_dm2dm_array)s       = calc_taacs_dm2dm_array
   %(calc_taacs_scattering_array)s       = calc_taacs_scattering_array
 
+#flag to limit the Auto of the param_card to only consider two body decays.
+ %(only_two_body_decays)s = only_two_body_decays
+
 # precision of the ODE integrator which solves for relic density.
   %(eps_ode)s       = eps_ode
 
@@ -78,7 +81,7 @@
 
 # Vector FF
    %(VPu)s       = VPu
-   %(VPd)s       = Vpd
+   %(VPd)s       = VPd
 
    %(VNu)s       = VNu
    %(VNd)s       = VNd
