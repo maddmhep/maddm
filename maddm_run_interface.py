@@ -187,10 +187,12 @@ class MADDMRunCmd(cmd.CmdShell):
         else:
             output = pjoin('output', 'maddm_%s.out') % nb_output
         
-        #misc.call(['maddm.x', output], cwd =self.dir_path)
+        misc.call(['./maddm.x', output], cwd =self.dir_path)
 
-        obj = subprocess.Popen(['./maddm.x', output], cwd =self.dir_path, stdout=subprocess.PIPE)
-        obj.communicate()
+        #obj = subprocess.Popen(['./maddm.x', output], cwd =self.dir_path, stdout=subprocess.PIPE)
+        #stdout, stderr = obj.communicate()
+        #for line in stdout:
+        #    misc.sprint(line)
 
         #Here we read out the results which the FORTRAN module dumped into a file
         #called 'omega'. The format is such that the first line is always relic density
