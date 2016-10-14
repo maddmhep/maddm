@@ -10,6 +10,19 @@ libs = -lmatrix_elements -ldhelas -lmodel
 
 objs_all=init.o integrate.o interpolate.o maddm.o phasespace.o relic_canon.o relic_coupled.o relic_density.o direct_detection.o directional_detection.o tests.o
 
+#Dependencies
+init.o: $(incdir)/maddm.inc
+integrate.o: $(incdir)/maddm.inc
+interpolate.o: $(incdir)/maddm.inc
+maddm.x: $(incdir)/maddm.inc $(incdir)/maddm_card.inc
+phasespace.o: $(incdir)/maddm.inc
+relic_canon.o: $(incdir)/maddm.inc
+relic_coupled.o: $(incdir)/maddm.inc
+relic_density.o: $(incdir)/maddm.inc
+direct_detection.o: $(incdir)/maddm.inc
+directional_detection.o: $(incdir)/maddm.inc
+tests.o: $(incdir)/maddm.inc
+
 all: clean maddm
 
 .f.o:
