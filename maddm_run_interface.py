@@ -187,20 +187,15 @@ class MADDMRunCmd(cmd.CmdShell):
         else:
             output = pjoin('output', 'maddm_%s.out') % nb_output
         
-        misc.call(['./maddm.x', output], cwd =self.dir_path)
+        #misc.call(['./maddm.x', output], cwd =self.dir_path)
 
-        #obj = subprocess.Popen(['./maddm.x', output], cwd =self.dir_path, stdout=subprocess.PIPE)
-        #stdout, stderr = obj.communicate()
-        #for line in stdout:
-        #    misc.sprint(line)
-
+        process = subprocess.Popen(['./maddm.x'], cwd =self.dir_path, stdout=subprocess.PIPE)
         #Here we read out the results which the FORTRAN module dumped into a file
         #called 'omega'. The format is such that the first line is always relic density
         # , second line is the nucleon scattering cross section (SI) for proton, third is SI
-        # nucleon cross section for the neutron etc. If a quantity was not calculated, we output -1
-        
+        # nucleon cross section for the neutron etc. If a quantity was not calculated, we output -1        
         result = []
-        for line in open(pjoin(self.dir_path, output)):
+        for line in process.stdout:#open(pjoin(self.dir_path, output)):
             result.append(float(line.split()[1]))
 
         self.last_results = result
@@ -223,7 +218,7 @@ class MADDMRunCmd(cmd.CmdShell):
             param_card_iterator.store_entry(nb_output, result)
             #check if the param_card defines a scan.
             with misc.TMP_variable(self, 'in_scan_mode', True):
-                with misc.MuteLogger(names=['madgraph','cmdprint'],levels=[20,50]):
+                with misc.MuteLogger(names=['cmdprint','madevent'],levels=[50,50]):
                     for i,card in enumerate(param_card_iterator):
                         card.write(pjoin(self.dir_path,'Cards','param_card.dat'))
                         self.exec_cmd("launch -f", precmd=True, postcmd=True,
