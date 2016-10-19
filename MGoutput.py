@@ -826,7 +826,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         makefile = open(pjoin(self.dir_path, 'makefile'),'w')
         makefile_template = open(pjoin(self.dir_path,'makefile_template'),'r')
         
-        suffix = ''
+        suffix = 'all'
         prop = self.proc_characteristic
         if prop['has_relic_density'] and not prop['has_direct_detection']:
             suffix = 'relic_density'
@@ -836,7 +836,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         makefile_lines = makefile_template.readlines()
         for line in makefile_lines:
             if __flag in line:
-                new_line = '\tcd src/ && make '+suffix
+                new_line = '\t-cd src/ && make '+suffix
                 new_line = new_line + '\n'
                 makefile.write(new_line)
             else:

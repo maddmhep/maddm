@@ -142,7 +142,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
 
     def do_compute_widths(self, line):
-        
+                
         if self.maddm_card['only_two_body_decays']:
             line = ' --body_decay=2 ' + line
         #return self.run_mg5(['compute_widths --body_decay=2 ' + line])
@@ -347,7 +347,7 @@ class MADDMRunCmd(cmd.CmdShell):
             return
 
         if self.mode['relic'] and self.mode['direct']:
-            misc.compile(cwd=self.dir_path)
+            misc.compile(['all'],cwd=self.dir_path)
         elif self.mode['relic'] and not self.mode['direct']:
             misc.compile(['relic_density'],cwd=self.dir_path)
         elif self.mode['direct'] and not self.mode['relic']:
@@ -561,6 +561,33 @@ class MadDMSelector(common_run.EditParamCard):
         else:
             return super(MadDMSelector, self).default(line)
         
+    
+    def do_compute_widths(self, line):
+        """normal fct but ensure that self.maddm_card is up-to-date"""
+        
+        try:
+            self.mother_interface.maddm_card = self.maddm
+        except Exception,error:
+            logger.error("Invalid command: %s " % error)
+            return
+        return super(MadDMSelector, self).do_compute_widths(line)
+            
+        
+    def do_update(self, line, timer=0):
+        """syntax: update dependent: Change the mass/width of particles which are not free parameter for the model.
+                    update missing:   add to the current param_card missing blocks/parameters.
+           Bypass dependent mode but if request by the user
+        """
+         
+        if timer == 0:
+            return super(MadDMSelector, self).do_update(line)
+        else: 
+            args = self.split_arg(line)
+            if args[0] == 'dependent':
+                return
+            else:
+                return super(MadDMSelector, self).do_update(line)
+         
     
     def check_coherence(self, last_modified):
         
