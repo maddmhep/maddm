@@ -198,15 +198,16 @@ class MADDMRunCmd(cmd.CmdShell):
         else:
             output = pjoin('output', 'maddm_%s.out') % nb_output
         
-        #misc.call(['./maddm.x', output], cwd =self.dir_path)
+        misc.call(['./maddm.x', output], cwd =self.dir_path)
 
-        process = subprocess.Popen(['./maddm.x'], cwd =self.dir_path, stdout=subprocess.PIPE)
+        #process = subprocess.Popen(['./maddm.x'], cwd =self.dir_path, stdout=subprocess.PIPE)
         #Here we read out the results which the FORTRAN module dumped into a file
         #called 'omega'. The format is such that the first line is always relic density
         # , second line is the nucleon scattering cross section (SI) for proton, third is SI
         # nucleon cross section for the neutron etc. If a quantity was not calculated, we output -1        
         result = []
-        for line in process.stdout:#open(pjoin(self.dir_path, output)):
+        #for line in process.stdout:
+        for line in open(pjoin(self.dir_path, output)):
             result.append(float(line.split()[1]))
 
         self.last_results = result

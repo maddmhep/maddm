@@ -100,27 +100,27 @@ c      	   write(*,*) 'SD : ', sigma_proton_SD, sigma_neutron_SD !Antony
       endif
 
 C      Here write the output.
-c	  if (iargc() > 0) then
-c	  	call getarg(1, outfilename)
-c	    open (unit=33, file= outfilename, action="write", status="replace")
-c	  else
-c	  	open (unit=33,file="output/maddm.out",action="write",status="replace")
-c	  endif
+	  if (iargc() > 0) then
+	  	call getarg(1, outfilename)
+	    open (unit=33, file= outfilename, action="write", status="replace")
+	  else
+	  	open (unit=33,file="output/maddm.out",action="write",status="replace")
+	  endif
 
-	  write(*,*) 'Omegah^2: ', Oh2
-	  write(*,*) 'x_f: ', x_f
+	  write(33,*) 'Omegah^2: ', Oh2
+	  write(33,*) 'x_f: ', x_f
           write(*,*) 'Wimp_Mass: ', mdm(1), ' GeV'
-	  write(*,*) 'sigmav(xf): ', sigmav_xf
-	  write(*,*) 'sigmaN_SI_p: ', sigma_proton_SI, ' GeV^-2',
+	  write(33,*) 'sigmav(xf): ', sigmav_xf
+	  write(33,*) 'sigmaN_SI_p: ', sigma_proton_SI, ' GeV^-2',
      &                ':', sigma_proton_SI*gevtopb, ' pb'
-	  write(*,*) 'sigmaN_SI_n: ', sigma_neutron_SI,' GeV^-2',
+	  write(33,*) 'sigmaN_SI_n: ', sigma_neutron_SI,' GeV^-2',
      &                ':', sigma_neutron_SI*gevtopb, ' pb'
-	  write(*,*) 'sigmaN_SD_p: ', sigma_proton_SD, ' GeV^-2',
+	  write(33,*) 'sigmaN_SD_p: ', sigma_proton_SD, ' GeV^-2',
      &                ':', sigma_proton_SD*gevtopb, ' pb'
-	  write(*,*) 'sigmaN_SD_n: ', sigma_neutron_SD, ' GeV^-2',
+	  write(33,*) 'sigmaN_SD_n: ', sigma_neutron_SD, ' GeV^-2',
      &                ':', sigma_neutron_SD*gevtopb, ' pb'
-          write(*,*) 'Nevents: ', Nint(total_events)
-          write(*,*) 'smearing: ', sm_flag
+	  write(33,*) 'Nevents: ', Nint(total_events)
+	  write(33,*) 'smearing: ', sm_flag
 
 c	  close(33)
 
