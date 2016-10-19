@@ -301,8 +301,8 @@ class MADDMRunCmd(cmd.CmdShell):
                             ask_class=MadDMSelector, timeout=60, path_msg=' ')
             if self.mode in ['', '0']:
                 self.mode = {'relic': 'ON',
-                             'direct': 'OFF',
-                             'directional':'OFF',
+                             'direct': 'ON',
+                             'directional':'ON',
                              'indirect':'OFF'}
                 
             self.maddm_card = MadDMCard(pjoin(self.dir_path, 'Cards', 'maddm_card.dat'))
@@ -422,8 +422,8 @@ class MadDMSelector(common_run.EditParamCard):
         #0. some default variable
         process_data = opts.pop('data', collections.defaultdict(bool))
         self.run_options = {'relic': 'ON',
-                            'direct': 'OFF' if process_data['has_direct_detection'] else 'Not available',
-                            'directional': 'OFF' if process_data['has_directional_detection'] else 'Not available'}
+                            'direct': 'ON' if process_data['has_direct_detection'] else 'Not available',
+                            'directional': 'ON' if process_data['has_directional_detection'] else 'Not available'}
         
         #1. Define what to run and create the associated question
         mode = opts.pop('mode', None)  
