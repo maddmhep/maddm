@@ -411,11 +411,10 @@ class MadDM_interface(master_interface.MasterCmd):
         super(MadDM_interface, self).do_output(line)
 
     def find_output_type(self, path):
-        
         if os.path.exists(pjoin(path,'matrix_elements','proc_characteristics')):
             return 'maddm'
         else:
-            return super(MadDM_interface, self).find_output_type(self, path)
+            return super(MadDM_interface, self).find_output_type(path)
 
     def do_launch(self, line):
         

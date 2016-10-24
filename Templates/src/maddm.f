@@ -109,7 +109,7 @@ C      Here write the output.
 
 	  write(33,*) 'Omegah^2: ', Oh2
 	  write(33,*) 'x_f: ', x_f
-          write(*,*) 'Wimp_Mass: ', mdm(1), ' GeV'
+          write(33,*) 'Wimp_Mass: ', mdm(1), ' GeV'
 	  write(33,*) 'sigmav(xf): ', sigmav_xf
 	  write(33,*) 'sigmaN_SI_p: ', sigma_proton_SI, ' GeV^-2',
      &                ':', sigma_proton_SI*gevtopb, ' pb'

@@ -325,14 +325,14 @@ class MADDMRunCmd(cmd.CmdShell):
             if not hasattr(self, 'mode'):
                 self.mode = {}
                 self.mode['relic'] = True
-                self.mode['direct'] = False
-                self.mode['directional'] = False
+                self.mode['direct'] = True
+                self.mode['directional'] = True
             if not os.path.exists(pjoin(self.dir_path, 'include', 'maddm_card.inc')):
                 # create the inc file for maddm
                 self.maddm_card.set('do_relic_density', self.mode['relic'], user=False)
                 self.maddm_card.set('do_direct_detection', self.mode['direct'], user=False)
                 self.maddm_card.set('do_directional_detection', self.mode['directional'], user=False)
-                self.maddm_card.write_include_file(pjoin(self.dir_path, 'include', 'maddm_card.inc'))                
+                self.maddm_card.write_include_file(pjoin(self.dir_path, 'include'))                
             
         self.check_param_card(pjoin(self.dir_path, 'Cards', 'param_card.dat'))
         
