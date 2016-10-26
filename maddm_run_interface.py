@@ -196,7 +196,7 @@ class MADDMRunCmd(cmd.CmdShell):
         while os.path.exists(output % nb_output):
             nb_output +=1
         else:
-            output = pjoin('output', 'maddm_%s.out') % nb_output
+            output = pjoin('output', 'maddm.out')
         
         misc.call(['./maddm.x', output], cwd =self.dir_path)
 
@@ -219,36 +219,42 @@ class MADDMRunCmd(cmd.CmdShell):
 
         if not self.in_scan_mode:
             self.print_results()
-        else:
-            logger.info("relic density  : %.2e ", self.last_results['omegah2'])
+        #else:
+        #    logger.info("relic density  : %.2e ", self.last_results['omegah2'])
         
         
         if self.param_card_iterator:
             param_card_iterator = self.param_card_iterator
             self.param_card_iterator = []
-
             param_card_iterator.store_entry(nb_output, result)
-            #check if the param_card defines a scan.
-            with misc.TMP_variable(self, 'in_scan_mode', True):
-                with misc.MuteLogger(names=['cmdprint','madevent','madgraph.interface'],levels=[50,50,50]):
-                    for i,card in enumerate(param_card_iterator):
-                        card.write(pjoin(self.dir_path,'Cards','param_card.dat'))
-                        self.exec_cmd("launch -f", precmd=True, postcmd=True,
-                                                   errorhandling=False)
-                        param_card_iterator.store_entry(nb_output+i, self.last_results)
-            param_card_iterator.write(pjoin(self.dir_path,'Cards','param_card.dat'))
-            name = misc.get_scan_name('maddm_%s' % (nb_output), 'maddm_%s' % (nb_output+i))
-            path = pjoin(self.dir_path, 'output','scan_%s.txt' % name)
-            logger.info("write all results in %s" % path ,'$MG:color:BLACK')
             #print results:
-            order = ['wimp_mass']
+            order = []
             if self.mode['relic']:
-                order += ['omegah2', 'x_freezeout', 'sigmav_xf']
+                order += ['omegah2', 'sigmav_xf']
             if self.mode['direct'] :
                 order += ['sigmaN_SI_proton', 'sigmaN_SI_neutron', 'sigmaN_SD_proton',
                         'sigmaN_SD_neutron']                
             if self.mode['directional']:
                 order += ['Nevents', 'smearing']
+            to_print = param_card_iterator.write_summary(None, order,nbcol=10)
+            for line in to_print.split('\n'):
+                if line:
+                    logger.info(line)
+
+            #check if the param_card defines a scan.
+            with misc.TMP_variable(self, 'in_scan_mode', True):
+                with misc.MuteLogger(names=['cmdprint','madevent','madgraph','madgraph.plugin'],levels=[50,50,50,20]):
+                    for i,card in enumerate(param_card_iterator):
+                        card.write(pjoin(self.dir_path,'Cards','param_card.dat'))
+                        self.exec_cmd("launch -f", precmd=True, postcmd=True,
+                                                   errorhandling=False)
+                        param_card_iterator.store_entry(nb_output+i, self.last_results)
+                        logger.info(param_card_iterator.write_summary(None, order, lastline=True,nbcol=5)[:-1])
+            param_card_iterator.write(pjoin(self.dir_path,'Cards','param_card.dat'))
+            name = misc.get_scan_name('maddm_%s' % (nb_output), 'maddm_%s' % (nb_output+i))
+            path = pjoin(self.dir_path, 'output','scan_%s.txt' % name)
+            logger.info("write all results in %s" % path ,'$MG:color:BLACK')
+
             param_card_iterator.write_summary(path, order)
     
         return result
@@ -406,6 +412,10 @@ class MADDMRunCmd(cmd.CmdShell):
                 args[0] = os.path.join(path,'Cards', args[0])
             else:
                 raise self.InvalidCmd('No default path for this file')
+        elif os.path.isfile(os.path.join(path, '%s_card.dat' % args[0])):
+            args[0] = os.path.join(path, '%s_card.dat' % args[0])
+        elif os.path.isfile(os.path.join(path, 'Cards' ,'%s_card.dat' % args[0])):
+            args[0] = os.path.join(path, 'Cards', '%s_card.dat' % args[0])
         elif not os.path.isfile(args[0]):
             raise self.InvalidCmd('No default path for this file')
 
