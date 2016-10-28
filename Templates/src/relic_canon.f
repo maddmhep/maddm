@@ -19,6 +19,12 @@ c parameters for the odeintegrator
 
       include 'resonances.inc'
 
+      if (xd_start.le.1d0) then
+			    write(*,*) 'Freezeout occurs too early! Relic density too big to comprehend. Seeting Omegah^2 = -1.0 \n'
+			    relic_canon=-1.0
+			    return
+      endif
+
 c setting up the boundaries and set sizes for the ODE integrator
       nvar = 1    !may not necessarily be true in the future
       x_1 = xd_start
