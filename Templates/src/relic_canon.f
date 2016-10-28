@@ -1,5 +1,5 @@
 c-------------------------------------------------------------------------c
-      function relic_canon()
+      function relic_canon(xd_start)
 c-------------------------------------------------------------------------c
 c                                                                         c
 c  This is the canonical calculation of the relic abundance of DM with    c
@@ -14,31 +14,27 @@ c-------------------------------------------------------------------------c
 
 c parameters for the odeintegrator
       integer nok, nbad, nres_above_threshold, ii
-      double precision Y0, Y1, x_1, x_2, h1, hmin, min_mass, Bfact
+      double precision Y0, Y1, x_1, x_2, h1, hmin, min_mass, Bfact, x_1_approx, xd_start
       external derivative_canon, rkqs
 
       include 'resonances.inc'
 
 c setting up the boundaries and set sizes for the ODE integrator
       nvar = 1    !may not necessarily be true in the future
-      x_1 = x_start
+      x_1 = xd_start
       x_2 = x_end
       h1 = 0.1d0
       hmin = 0.0d0
       Y0 = 0.d0
       Y1 = 1.d-20
 
-c	  if (.true.) then
-c            Bfact = 0.038d0*10d0*mpl*mdm(1)*taacs_canon(3.d0*x_1)!using 10.0 for 0.145*g/sqrt(g*)
-c	  		x_1 = log((3.d0)*Bfact) - (1.5d0)*log(log((3.d0)*Bfact))+25.d0
-c	  endif
-
-c 	      We start at x_i = 30 and step back the integration until the results of two concecutive
+c 	      We start at x_i = x_start and step back the integration until the results of two concecutive
 c    	  claculations return a result that has a relative difference of epsilon.
 		  do while (dabs((Y1-Y0)/Y1).gt.eps_ode)
 
 c   	  	  Allows us to compare this iteration to the previous one
 		  	  Y0 = Y1
+
 
 c    		  Initial value of the relativistic degrees of freedom and number density per entropy density, Y
 			  g_star_S = get_gstar(mdm(1)/x_1)
@@ -70,13 +66,18 @@ C c         Also, for testing purposes we can print out the initial x_i and the 
 C           write(*,*) x_1, Y1
 
 c             steps back the start of the ODE integration until we find the correct starting point below freezeout
-			  x_1 = x_1 - dx_step
 
-			  if (x_1.le.1d0) then
-c					write(*,*) 'Freezeout occurs too early! Relic density too big to comprehend. Seeting Omegah^2 = -1.0 \n'
-					relic_canon=-1.0
-					return
-			  endif
+c           If using the freezeout approximation, don't iterate to find the x_f
+            if (xd_approx) then
+                exit
+            endif
+
+			x_1 = x_1 - dx_step
+            if (x_1.le.1d0) then
+			    write(*,*) 'Freezeout occurs too early! Relic density too big to comprehend. Seeting Omegah^2 = -1.0 \n'
+			    relic_canon=-1.0
+			    return
+			endif
 
 		  enddo
 
