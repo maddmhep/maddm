@@ -39,9 +39,9 @@ c generic momentum 4-vectors
       double precision p(0:3), q(0:3)
 
 c model parameters
-      integer nparticles, isfermion(100)
+      integer nparticles, isfermion(%(nb_part)s)
       common/modelints/ nparticles, isfermion
-      double precision masses(100), dofs(100)
+      double precision masses(%(nb_part)s), dofs(%(nb_part)s)
       common/modeldbls/ masses, dofs
 
 c relativistic degrees of freedom
@@ -61,7 +61,7 @@ c variables needed for the phase space routines
 
 c dm paraeters
       integer maxdms, max_dm2dm
-      parameter (maxdms=10, max_dm2dm=100)
+      parameter (maxdms=%(nb_dm)i, max_dm2dm=%(max_dm2dm)i)
       integer ndmparticles, nvar, dm_index(maxdms), dm_antiindex(maxdms)
       common/dmparms_int/ ndmparticles, nvar, dm_index, dm_antiindex
       integer num_xbar, xbar_index(maxdms), num_not_xbar, not_xbar_index(maxdms), rev_index(maxdms)
@@ -91,21 +91,21 @@ c number of annihilation particles and associated diagrams
       integer scattering_nprocesses(maxdms,maxdms), dm2dm_fs(maxdms,maxdms,max_dm2dm,2)
       common/process_int/ num_processes, ann_num_processes, dm2dm_num_processes,
      . scattering_num_processes, ann_nprocesses, dm2dm_nprocesses, scattering_nprocesses, dm2dm_fs
-      character(30) process_names(1000)
-      character(30) dd_process_names(1000)
-      character(30) dd_eff_process_names(1000)
-      character(30) dd_tot_process_names(1000)
+      character(30) process_names(%(nb_me)i)
+      character(30) dd_process_names(%(nb_me_dd)i)
+      character(30) dd_eff_process_names(%(nb_me_dd_eff)i)
+      character(30) dd_tot_process_names(%(nb_me_dd_tot)i)
       common/process_names/ process_names
       common/dd_process_names / dd_process_names
       common/dd_eff_process_names / dd_eff_process_names
       common/dd_tot_process_names / dd_tot_process_names
-	  integer dd_process_ids(1000)
-	  integer dd_eff_process_ids(1000)
-	  integer dd_tot_process_ids(1000)
+	  integer dd_process_ids(%(nb_me_dd)i)
+	  integer dd_eff_process_ids(%(nb_me_dd_eff)i)
+	  integer dd_tot_process_ids(%(nb_me_dd_tot)i)
 	  common/ dd_process_ids/ dd_process_ids
 	  common/ dd_eff_process_ids/ dd_eff_process_ids
 	  common/ dd_tot_process_ids/ dd_tot_process_ids
-      logical ann_process_iden_init(maxdms,maxdms,100), dm2dm_process_iden_init(maxdms,maxdms,100)
+      logical ann_process_iden_init(maxdms,maxdms, %(max_dm2sm)i), dm2dm_process_iden_init(maxdms,maxdms,%(max_dm2dm)i)
       logical relic_canonical, calc_taacs_ann_array, calc_taacs_dm2dm_array, calc_taacs_scattering_array
       logical do_relic_density, do_direct_detection, xd_approx
       common/process_logical/ ann_process_iden_init, dm2dm_process_iden_init, relic_canonical,

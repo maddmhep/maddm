@@ -129,6 +129,12 @@ class MadDM_interface(master_interface.MasterCmd):
                     self.search_coannihilator(gap=args[1])
                 else:
                     self._coannihilation = [self._curr_model.get_particle(a) for a in args[1:]]
+                #avoid duplication
+                if None in self._coannihilation:
+                    raise self.InvalidCmd('Some of the particle name are invalid. Please retry.')
+                all_name = [c.get('name') for c in self._coannihilation]
+                self._coannihilation = [c for i,c in enumerate(self._coannihilation) if c.get('name') in all_name[:i]]
+#                self._dm_candidate += self._coannihilation 
             elif args[0] == 'benchmark':
                 if len(args)==1:
                     self.define_benchmark()
@@ -496,7 +502,7 @@ class MadDM_interface(master_interface.MasterCmd):
         for i,dm in enumerate(self._dm_candidate + self._coannihilation):
             self.define_multiparticles('dm_particle_%s' % i,  [dm])
             #self.do_display('multiparticles')
-        self.define_multiparticles('dm_particles', self._dm_candidate)
+        self.define_multiparticles('dm_particles', self._dm_candidate+self._coannihilation)
         self.do_display('multiparticles')
         sm_pdgs = range(1, 7) + range(11, 17) + range(21, 26) #quarks/leptons/bosons
         sm_part = [self._curr_model.get_particle(pdg) for pdg in sm_pdgs]

@@ -316,6 +316,8 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
     def finalize(self, matrix_element, cmdhistory, MG5options, outputflag):
         """ """
         
+        
+        self.global_dict_info = {}
         # Create the dm_info.inc file that contains all the DM particles 
         #as well as spin and mass information
         self.WriteDMInfo(matrix_element)
@@ -437,6 +439,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         # Open up the template and output file
         model_info_file = open(path, 'w')
 
+        self.global_dict_info['nb_part'] = 17 + len(self.dm_particles) + len(bsm_particles)
         
         # Read all the lines from the template file and insert appropriate parts
         # which are flagged with __flag1 and __flag2
@@ -612,6 +615,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
 
         fsock.write_comments('Total number of processes for each category')
         fsock.writelines(" num_processes = %s \n" % process_counter)
+        self.global_dict_info['nb_me'] = process_counter
         fsock.writelines(" ann_num_processes = %s \n" % total_annihilation_nprocesses)
         fsock.writelines(" dm2dm_num_processes = %s \n" % total_dm2dmscattering_nprocesses)
         fsock.writelines(" scattering_num_processes = %s \n" %total_scattering_nprocesses)
@@ -670,6 +674,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
 
         fsock.write_comments('Total number of Direct Detection processes')
         fsock.writelines(' dd_num_processes = %i\n' % len(dd_names['bsm']))
+        self.global_dict_info['nb_me_dd'] = len(dd_names['bsm'])
         fsock.write_comments('Processes relevant for Direct Detection')
         for i,name in enumerate(dd_names['bsm']):
             fsock.writelines(' dd_process_names(%i) = \'%s\'\n' % (i+1, name))
@@ -679,10 +684,11 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
             fsock.writelines(' dd_eff_process_names(%i) = \'%s\'\n' % (i+1, name))
             fsock.writelines(' dd_eff_process_ids(%i) = %s' % (i+1,dd_initial_state['eft'][i]))
         fsock.write_comments('Processes relevant for Direct Detection (effective vertices + full vertices)')
+        self.global_dict_info['nb_me_dd_eff'] = len(dd_names['eft'])
         for i,name in enumerate(dd_names['tot']):
             fsock.writelines(' dd_tot_process_names(%i) = \'%s\'\n' % (i+1, name))
             fsock.writelines(' dd_tot_process_ids(%i) = %s' % (i+1,dd_initial_state['tot'][i]))
-
+        self.global_dict_info['nb_me_dd_tot'] = len(dd_names['tot'])
         fsock.close()
       
     #-----------------------------------------------------------------------#
@@ -752,7 +758,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
 
         smatrix = collections.defaultdict(list) 
         output =[]
-        
+
         for me in matrix_element.get_matrix_elements():
             p = me.get('processes')[0]
             tag = p.get('id')
@@ -760,15 +766,21 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
             if tag == flag:
                 info = ' call %s_smatrix(p_ext,smatrix)' % p.shell_string(print_id=False)
                 smatrix[ids].append(info)
-        
+
+        maxintype = 0 
         for i,dm1 in enumerate(self.dm_particles):
             start_second = (i if flag in [self.DM2DM, self.DM2SM] else 0)
             for j,dm2 in enumerate(self.dm_particles[i:], start_second):
                 ids = self.make_ids(dm1, dm2, flag)
+                maxintype = max(len(smatrix[ids]), maxintype)
                 for k,info in enumerate(smatrix[ids]):
                     output.append('if ((i.eq.%s) .and. (j.eq.%s) .and. (k.eq.%s)) then \n %s \n'\
                                       % (i+1, j+1, k+1, info)) 
 
+        if flag == self.DM2DM:
+            self.global_dict_info['max_dm2dm'] = maxintype
+        elif flag == self.DM2SM:
+            self.global_dict_info['max_dm2sm'] = maxintype
         return '%s \n %s' % (' else'.join(output), ' endif' if output else '')
 
     def get_smatrix_dd(self, matrix_element, efttype):        
@@ -851,7 +863,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
          the information about the location of s-channel resonances.
         """
         
-        incfile_template = open(pjoin(MDMDIR, 'Templates', 'include', 'maddm.inc')).read()
+        incfile_template = open(pjoin(MDMDIR, 'python_templates', 'maddm.inc')).read()
         res_dict = {}
         #             chunk_size = 5
         init_lines=[]
@@ -859,6 +871,15 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         #                 init_lines.append("resonances(%d)=%s"%(i+1,k[1]))
         res_dict['resonances_initialization'] = '\n'.join(init_lines)
         res_dict['n_resonances'] = len(self.resonances)
+        res_dict['nb_part'] = self.global_dict_info['nb_part']
+        res_dict['nb_dm'] = len(self.dm_particles)
+        res_dict['max_dm2dm'] = 1000#self.global_dict_info['max_dm2dm']
+        res_dict['max_dm2sm'] = self.global_dict_info['max_dm2sm']
+        misc.sprint(self.global_dict_info['nb_me_dd'], )
+        res_dict['nb_me'] = self.global_dict_info['nb_me']
+        res_dict['nb_me_dd'] = self.global_dict_info['nb_me_dd']
+        res_dict['nb_me_dd_eff'] = self.global_dict_info['nb_me_dd_eff']
+        res_dict['nb_me_dd_tot'] = self.global_dict_info['nb_me_dd_tot']
         
         writer = writers.FortranWriter(pjoin(self.dir_path, 'include', 'maddm.inc'))
         writer.write(incfile_template % res_dict)
