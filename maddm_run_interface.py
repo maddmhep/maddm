@@ -230,7 +230,7 @@ class MADDMRunCmd(cmd.CmdShell):
             #print results:
             order = []
             if self.mode['relic']:
-                order += ['omegah2', 'sigmav_xf']
+                order += ['omegah2', 'x_freezeout', 'sigmav_xf']
             if self.mode['direct'] :
                 order += ['sigmaN_SI_proton', 'sigmaN_SI_neutron', 'sigmaN_SD_proton',
                         'sigmaN_SD_neutron']                

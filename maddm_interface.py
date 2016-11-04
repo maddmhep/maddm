@@ -233,7 +233,7 @@ class MadDM_interface(master_interface.MasterCmd):
         if not dm_particles:
             raise DMError, "No dark matter candidates in the model!"
         if dm_mass == 0:
-            raise DMError, "No dark matter candidate since we found a DarkEnergy candidate"
+            raise DMError, "No dark matter candidate since we found a DarkEnergy candidate!"
 
         # Print out the DM candidate
         logger.info("Found Dark Matter candidate: %s" % dm_particles[0]['name'],  '$MG:color:BLACK')
@@ -495,20 +495,28 @@ class MadDM_interface(master_interface.MasterCmd):
         if bsm_final_states:
             logger.info("DM is allowed to annihilate into the following BSM particles: %s",
                          ' '.join([p.get('name') for p in bsm_final_states]))
-            logger.info("use generate relic_density / X to fordid the decay the annihilation to X")
+            logger.info("use generate relic_density / X to forbid the decay the annihilation to X")
+            logger.info("if you want to forbid DM to annihilate into BSM particles do relic_density / bsm")
 
         # Set up the initial state multiparticles that contain the particle 
         #and antiparticle
         for i,dm in enumerate(self._dm_candidate + self._coannihilation):
             self.define_multiparticles('dm_particle_%s' % i,  [dm])
             #self.do_display('multiparticles')
+
         self.define_multiparticles('dm_particles', self._dm_candidate+self._coannihilation)
+
         self.do_display('multiparticles')
         sm_pdgs = range(1, 7) + range(11, 17) + range(21, 26) #quarks/leptons/bosons
         sm_part = [self._curr_model.get_particle(pdg) for pdg in sm_pdgs]
-        self.define_multiparticles('fs_particles', sm_part+bsm_final_states)
-        
-        
+
+        if 'bsm' in excluded_particles:
+            self.define_multiparticles('fs_particles', sm_part)
+        else
+            self.define_multiparticles('fs_particles', sm_part +bsm_final_states)
+
+#        self.define_multiparticles('sm_particles', sm_part)
+
         #logger.info("DM is allowed to annihilate into the following BSM particles:\n %s", ', '.join(p['name'] for p in bsm_final_states))
 
         # generate annihilation diagram
@@ -518,7 +526,7 @@ class MadDM_interface(master_interface.MasterCmd):
                     % (' '.join(excluded_particles), coupling)
         else:
             proc = "dm_particles dm_particles > fs_particles fs_particles %s @DM2SM" \
-                   %(coupling)
+                   %(coupling)  #changed here
                    
         self.do_generate(proc)
 
@@ -547,20 +555,21 @@ class MadDM_interface(master_interface.MasterCmd):
 
         # Generate all the DM particles scattering off of the thermal background and
         # change to a different DM species (again, no pure scatterings)
-        for i in xrange(nb_dm):
-            for j in xrange(nb_dm):
-                if i == j:
-                    continue
-                if excluded_particles:
-                    proc = "DM_particle_%s fs_particles > DM_particle_%s fs_particles / %s %s @DMSM"\
-                       % (i,j,' '.join(excluded_particles), coupling)
-                else:
-                    proc = "DM_particle_%s fs_particles > DM_particle_%s fs_particles %s @DMSM"\
-                       % (i,j, coupling)
-                try:
-                    self.do_add('process %s' % proc)
-                except (self.InvalidCmd,diagram_generation.NoDiagramException) :
-                    continue
+
+        # for i in xrange(nb_dm):
+        #     for j in xrange(nb_dm):
+        #         if i == j:
+        #             continue
+        #         if excluded_particles:
+        #             proc = "DM_particle_%s sm_particles > DM_particle_%s sm_particles / %s %s @DMSM"\
+        #                % (i,j,' '.join(excluded_particles), coupling)
+        #         else:
+        #             proc = "DM_particle_%s sm_particles > DM_particle_%s sm_particles %s @DMSM"\
+        #                % (i,j, coupling)
+        #         try:
+        #             self.do_add('process %s' % proc)
+        #         except (self.InvalidCmd,diagram_generation.NoDiagramException) :
+        #             continue
 
     def generate_direct(self, excluded_particles=[]):
         """User level function which performs direct detection functions        

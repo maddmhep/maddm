@@ -372,6 +372,8 @@ c check to see if the center of mass energy is enough to produce the final state
 c two body phase space subroutine
           call decay2(p_init,pmass(3),pmass(4),pf1,pf2,wgt,ps_point,1)
 
+c          write(*,*) 'diagram: ', x1, beta
+
           do x2=0,3
             p_ext(x2,3) = pf1(x2)
             p_ext(x2,4) = pf2(x2)

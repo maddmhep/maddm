@@ -80,8 +80,8 @@ c relic density integrals
       double precision betas(1000), beta_step_min, beta_step_max
       common/beta_steps/ betas, beta_step_min,beta_step_max
       double precision Wij_ann(maxdms,maxdms,1000), Wij_dm2dm(maxdms,maxdms,max_dm2dm,1000)
-      double precision Wij_scattering(maxdms,maxdms,max_dm2dm,1000), x_taacs(100), taacs_ann(maxdms,maxdms,100)
-      double precision taacs_dm2dm(maxdms,maxdms,max_dm2dm,100), taacs_scattering(maxdms,maxdms,max_dm2dm,100)
+      double precision Wij_scattering(maxdms,maxdms,max_dm2dm,1000), x_taacs(1000), taacs_ann(maxdms,maxdms,1000)
+      double precision taacs_dm2dm(maxdms,maxdms,max_dm2dm,1000), taacs_scattering(maxdms,maxdms,max_dm2dm,1000)
       common/dmintegrals/ Wij_ann, Wij_dm2dm, Wij_scattering, x_taacs, taacs_ann, taacs_dm2dm, taacs_scattering
 
 c number of annihilation particles and associated diagrams

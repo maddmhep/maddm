@@ -69,13 +69,15 @@ C c         For testing purposes we can print out the saved steps of each iterat
 C           call odeint_check(0)
 C
 C c         Also, for testing purposes we can print out the initial x_i and the resulting Y_inf
-C           write(*,*) x_1, Y1
+c            write(*,*) x_1, Y1
 
 c             steps back the start of the ODE integration until we find the correct starting point below freezeout
 
-c           If using the freezeout approximation, don't iterate to find the x_f
+c           If using the freezeout approximation
             if (xd_approx) then
-                exit
+                if (xd_start.le.10.d0) then
+                    xd_start =  10.d0
+                endif
             endif
 
 			x_1 = x_1 - dx_step
