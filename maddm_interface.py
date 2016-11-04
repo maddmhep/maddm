@@ -505,15 +505,13 @@ class MadDM_interface(master_interface.MasterCmd):
             #self.do_display('multiparticles')
 
         self.define_multiparticles('dm_particles', self._dm_candidate+self._coannihilation)
+        self.define_multiparticles('bsm', bsm_final_states)
 
         self.do_display('multiparticles')
         sm_pdgs = range(1, 7) + range(11, 17) + range(21, 26) #quarks/leptons/bosons
         sm_part = [self._curr_model.get_particle(pdg) for pdg in sm_pdgs]
 
-        if 'bsm' in excluded_particles:
-            self.define_multiparticles('fs_particles', sm_part)
-        else
-            self.define_multiparticles('fs_particles', sm_part +bsm_final_states)
+        self.define_multiparticles('fs_particles', sm_part +bsm_final_states)
 
 #        self.define_multiparticles('sm_particles', sm_part)
 
