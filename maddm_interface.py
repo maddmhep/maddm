@@ -133,7 +133,7 @@ class MadDM_interface(master_interface.MasterCmd):
                 if None in self._coannihilation:
                     raise self.InvalidCmd('Some of the particle name are invalid. Please retry.')
                 all_name = [c.get('name') for c in self._coannihilation]
-                self._coannihilation = [c for i,c in enumerate(self._coannihilation) if c.get('name') in all_name[:i]]
+                self._coannihilation = [c for i,c in enumerate(self._coannihilation) if c.get('name') not in all_name[:i]]
 #                self._dm_candidate += self._coannihilation 
             elif args[0] == 'benchmark':
                 if len(args)==1:
@@ -284,27 +284,26 @@ class MadDM_interface(master_interface.MasterCmd):
         #  coannihilation particles are then added to the self._dm_particles
         #  list.
         """
-        
+
         self._coannihilation = []
         dm_mass = self._curr_model.get_mass(self._dm_candidate[0])
         self.coannihilation_diff = gap 
-        
+        dm_name = [dm['name'] for dm in self._dm_candidate]
         
         bsm_particles = [p for p in self._curr_model.get('particles')                
                          if 25 < p.get('pdg_code') < 999000000 and\
-                         (p.get('name') not in excluded or 
+                          (p.get('name') not in excluded or 
                           p.get('antiname') not in excluded or
-                          str(p.get('pdgcode'))) not in excluded] 
+                          str(p.get('pdgcode')) not in excluded)] 
 
         # Loop over BSM particles
         for p in bsm_particles:
-            if p in self._dm_candidate:
+            if p['name'] in dm_name:
                 continue
             
             bsm_mass = self._curr_model.get_mass(p)
             if (abs(dm_mass-bsm_mass)/dm_mass <= gap):
                 self._coannihilation.append(p)
-
             # If there are BSM particles that are too small to be included in the coannihilation they
             # are still tabulated to include in the final state particles with the SM particles.
             #elif ((self._bsm_masses[i] < (1.0-self._coann_eps)*self._dm_mass) and \
