@@ -472,12 +472,28 @@ class MadDM_interface(master_interface.MasterCmd):
         #  looped over all the different combinations of DM particles.         #
         #--------------------------------------------------------------------"""
 
+        #Here we define bsm multiparticle as a special case for exlusion only in the
+        #final state. This is different than the standard / notation which will exclude
+        #the particles from the propagators as well.
+        #Since we use the exluded_particles everywhere, we just use the presence of
+        #the bsm in the array to initialize a flag and then remove it from the excluded
+        #particles array so as not to conflict with the use in other places.
+        self.define_multiparticles('bsm',[p for p in self._curr_model.get('particles')\
+                         if abs(p.get('pdg_code')) > 25])
+        if 'bsm' in excluded_particles:
+            exclude_bsm = True
+            while 'bsm' in excluded_particles:
+                excluded_particles.remove('bsm')
+        else:
+            exclude_bsm = False
+
 
         if not self._dm_candidate:
             self.search_dm_candidate(excluded_particles)
             if not self._dm_candidate:
                 return
             self.search_coannihilator(excluded=excluded_particles)
+
 
         # Tabulates all the BSM particles so they can be included in the
         # final state particles along with the SM particles.
@@ -491,12 +507,14 @@ class MadDM_interface(master_interface.MasterCmd):
                          (p.get('name') not in excluded_particles or p.get('antiname') not in excluded_particles) and\
                          p.get('width') != 'ZERO' and
                          abs(p.get('pdg_code')) not in ids_veto]
-        
-        if bsm_final_states:
-            logger.info("DM is allowed to annihilate into the following BSM particles: %s",
+        if not exclude_bsm:
+            if bsm_final_states:
+                logger.info("DM is allowed to annihilate into the following BSM particles: %s",
                          ' '.join([p.get('name') for p in bsm_final_states]))
-            logger.info("use generate relic_density / X to forbid the decay the annihilation to X")
-            logger.info("if you want to forbid DM to annihilate into BSM particles do relic_density / bsm")
+                logger.info("use generate relic_density / X to forbid the decay the annihilation to X")
+                logger.info("if you want to forbid DM to annihilate into BSM particles do relic_density / bsm")
+        else:
+            bsm_final_states=[]
 
         # Set up the initial state multiparticles that contain the particle 
         #and antiparticle
@@ -505,17 +523,12 @@ class MadDM_interface(master_interface.MasterCmd):
             #self.do_display('multiparticles')
 
         self.define_multiparticles('dm_particles', self._dm_candidate+self._coannihilation)
-        self.define_multiparticles('bsm', bsm_final_states)
 
         self.do_display('multiparticles')
         sm_pdgs = range(1, 7) + range(11, 17) + range(21, 26) #quarks/leptons/bosons
         sm_part = [self._curr_model.get_particle(pdg) for pdg in sm_pdgs]
 
         self.define_multiparticles('fs_particles', sm_part +bsm_final_states)
-
-#        self.define_multiparticles('sm_particles', sm_part)
-
-        #logger.info("DM is allowed to annihilate into the following BSM particles:\n %s", ', '.join(p['name'] for p in bsm_final_states))
 
         # generate annihilation diagram
         coupling = "QED<=4 SIEFFS=0 SIEFFF=0 SIEFFV=0 SDEFFF=0 SDEFFV=0"
