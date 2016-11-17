@@ -29,6 +29,7 @@ logging.basicConfig(filename='maddm.log',level=logging.DEBUG, filemode='w')
 import MGoutput
 try:
         from numpy import interp
+        from numpy import polyfit
 except Exception, error:
         logging.debug(error)
         print "ERROR: Numpy is not installed on your system. Please install Numpy to proceed!"

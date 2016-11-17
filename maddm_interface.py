@@ -12,6 +12,8 @@ import madgraph.interface.common_run_interface as common_run
 import models.check_param_card as check_param_card
 import models.model_reader as model_reader
 
+#HERE I HARDCODED NUMPY
+import numpy as np
 
 import re
 pjoin = os.path.join
@@ -88,6 +90,21 @@ class MadDM_interface(master_interface.MasterCmd):
         #self.dm = darkmatter.darkmatter()
         
 
+
+    #A function to fit the low velocity part of the annihilation cross section
+    def fit_ID_crossect(self, sigma_x, sigma_y, degree=4):
+            try:
+                fit_parameters = np.polyfit(sigma_x, sigma_y, deg=degree)
+            except numpy.RankWarning:
+                logger.warning("The fitting function is not performing well! Check the quality of the fit!")
+                pass
+
+            return fit_parameters
+
+    #Indirect detection cross section as a function of velocity (at low velocity)
+    def ID_crosssect(self, vel, fit_params):
+            p = np.poly1d(fit_params)
+            return p(vel)
 
 ################################################################################        
 # DEFINE COMMAND
@@ -680,55 +697,53 @@ class MadDM_interface(master_interface.MasterCmd):
         return has_diagram
 
     def generate_indirect(self, argument):
-        """User level function which performs direct detection functions        
-           Generates the DM - q,g scattering matrix elements for spin dependent 
-           and spin independent direct detection cross section                   
-           Currently works only with canonical mode and one dm candidate.        
-           The function also merges the dark matter model with the effective        
-           vertex model.          
-        related to syntax: generate indirect a g / n3  
+        """User level function which performs indirect detection functions
+           Generates the DM DM > X where X is anything user specified.
+           Also works for loop induced processes as well as NLO-QCD.
+           Currently works only with canonical mode and one dm candidate.
+        related to syntax: generate indirect a g / n3
         """
 
         if not self._dm_candidate:
-            self.search_dm_candidate(excluded_particles)
+            self.search_dm_candidate()
             if not self._dm_candidate:
                 return
         
         # separate final state particle from excluded particles
-        if '/' in argument:
-            ind = argument.find('/')
-            particles, excluded = argument[:ind], argument[ind+1:]
-        elif any(a.startswith('/') for a in argument):
-            line = ' '.join(argument)
-            particles, excluded = line.split('/',1)
-            particles = particles.split()
-            excluded = excluded.replace('/','').split()
-        else:
-            particles = argument
-            excluded = []
+        # if '/' in argument:
+        #     ind = argument.find('/')
+        #     particles, excluded = argument[:ind], argument[ind+1:]
+        # elif any(a.startswith('/') for a in argument):
+        #     line = ' '.join(argument)
+        #     particles, excluded = line.split('/',1)
+        #     particles = particles.split()
+        #     excluded = excluded.replace('/','').split()
+        # else:
+        #     particles = argument
+        #     excluded = []
         
         
         #handling the final state to ensure model independant support
-        if 'v' in particles:
-            particles.remove('v')
-            particles += ['12', '14', '16']
-        
-        antiparticles = []
-        for i,p in enumerate(particles):
-            if p.isdigit():
-                if p not in ['22','21','12','14','16']:
-                    raise self.InvalidCmd, '%s is not a valid final state for indirect detection' % p
-                antiparticles.append(str(-1*int(p)))   
-            else:
-                if p in ['a', 'g', 've','vm','vt']:
-                    p ={'a':22, 'g':21, 've':12,'vm':14,'vt':16}[p]
-                misc.sprint(p)
-                part = self._curr_model.get_particle(p)
-                misc.sprint(part)
-                if part.get('pdg_code') not in [22,21,12,14,16]:
-                    raise self.InvalidCmd, '%s is not a valid final state for indirect detection' % p
-                particles[i] = part.get('name') 
-                antiparticles.append(part.get('antiname'))
+        # if 'v' in particles:
+        #     particles.remove('v')
+        #     particles += ['12', '14', '16']
+        #
+        # antiparticles = []
+        # for i,p in enumerate(particles):
+        #     if p.isdigit():
+        #         #if p > 25: #not in ['22','21','12','14','16']:
+        #         #    raise self.InvalidCmd, '%s is not a valid final state for indirect detection' % p
+        #         antiparticles.append(str(-1*int(p)))
+        #     else:
+        #         if p in ['a', 'g', 've','vm','vt']:
+        #             p ={'a':22, 'g':21, 've':12,'vm':14,'vt':16}[p]
+        #         misc.sprint(p)
+        #         part = self._curr_model.get_particle(p)
+        #         misc.sprint(part)
+        #         if part.get('pdg_code') not in [22,21,12,14,16]:
+        #             raise self.InvalidCmd, '%s is not a valid final state for indirect detection' % p
+        #         particles[i] = part.get('name')
+        #         antiparticles.append(part.get('antiname'))
         
         # First try LO matrix-element
         done= []
@@ -738,13 +753,13 @@ class MadDM_interface(master_interface.MasterCmd):
             if name in done:
                 continue
             done += [name, antiname]
-            for p, antip in zip(particles,antiparticles):
-                proc = '%s %s > %s %s @ID' % (name, antiname, p,antip)
-                try:
-                    self.do_add('process %s' % proc)
-                except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
-                    proc = '%s %s > %s %s [virt=ALL] @ID' % (name, antiname, p,antip)
-                    self.do_add('process %s' % proc)        
+            #for p, antip in zip(particles,antiparticles):
+            proc = '%s %s > %s  @ID' % (name, antiname, ' '.join(argument))
+            try:
+                self.do_add('process %s' % proc)
+            except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
+                proc = '%s %s > %s [virt=ALL] @ID' % (name, antiname, ' '.join(argument))
+                self.do_add('process %s' % proc)
 
       
     def update_model_with_EFT(self):
