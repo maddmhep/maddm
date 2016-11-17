@@ -3,6 +3,8 @@ import os
 
 import maddm_run_interface as maddm_run_interface
 
+import madgraph.core.base_objects as base_objects
+import madgraph.core.helas_objects as helas_objects
 import madgraph.core.diagram_generation as diagram_generation
 import madgraph.interface.master_interface as master_interface
 import madgraph.interface.madgraph_interface as madgraph_interface
@@ -87,6 +89,9 @@ class MadDM_interface(master_interface.MasterCmd):
         self._coannihilation = []
         self._param_card = None
         self.coannihilation_diff = 1
+        self._ID_procs = base_objects.ProcessDefinitionList()
+        self._ID_matrix_elements = helas_objects.HelasMultiProcess()
+        self._ID_amps = diagram_generation.AmplitudeList() 
         #self.dm = darkmatter.darkmatter()
         
 
@@ -430,7 +435,15 @@ class MadDM_interface(master_interface.MasterCmd):
         if args and args[0] == 'maddm':
             line = ' '.join(args)
         
-        super(MadDM_interface, self).do_output(line)
+        if self._curr_amps:
+            super(MadDM_interface, self).do_output(line)
+        
+        if self._ID_procs:                        
+            with misc.TMP_variable(self, 
+                ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps'], 
+                [self._ID_procs, self._ID_matrix_elements, self._ID_amps]):
+                super(MadDM_interface, self).do_output('madevent %s/Indirect' % self._done_export[0])
+        
 
     def find_output_type(self, path):
         if os.path.exists(pjoin(path,'matrix_elements','proc_characteristics')):
@@ -703,68 +716,34 @@ class MadDM_interface(master_interface.MasterCmd):
            Currently works only with canonical mode and one dm candidate.
         related to syntax: generate indirect a g / n3
         """
-
+        
         if not self._dm_candidate:
             self.search_dm_candidate()
             if not self._dm_candidate:
                 return
-        
-        # separate final state particle from excluded particles
-        # if '/' in argument:
-        #     ind = argument.find('/')
-        #     particles, excluded = argument[:ind], argument[ind+1:]
-        # elif any(a.startswith('/') for a in argument):
-        #     line = ' '.join(argument)
-        #     particles, excluded = line.split('/',1)
-        #     particles = particles.split()
-        #     excluded = excluded.replace('/','').split()
-        # else:
-        #     particles = argument
-        #     excluded = []
-        
-        
-        #handling the final state to ensure model independant support
-        # if 'v' in particles:
-        #     particles.remove('v')
-        #     particles += ['12', '14', '16']
-        #
-        # antiparticles = []
-        # for i,p in enumerate(particles):
-        #     if p.isdigit():
-        #         #if p > 25: #not in ['22','21','12','14','16']:
-        #         #    raise self.InvalidCmd, '%s is not a valid final state for indirect detection' % p
-        #         antiparticles.append(str(-1*int(p)))
-        #     else:
-        #         if p in ['a', 'g', 've','vm','vt']:
-        #             p ={'a':22, 'g':21, 've':12,'vm':14,'vt':16}[p]
-        #         misc.sprint(p)
-        #         part = self._curr_model.get_particle(p)
-        #         misc.sprint(part)
-        #         if part.get('pdg_code') not in [22,21,12,14,16]:
-        #             raise self.InvalidCmd, '%s is not a valid final state for indirect detection' % p
-        #         particles[i] = part.get('name')
-        #         antiparticles.append(part.get('antiname'))
-        
-        # First try LO matrix-element
-        coupling = "SIEFFS=0 SIEFFF=0 SIEFFV=0 SDEFFF=0 SDEFFV=0"
-        done= []
-        for dm in self._dm_candidate:
-            name = dm.get('name')
-            antiname = dm.get('name')
-            if name in done:
-                continue
-            done += [name, antiname]
-            #for p, antip in zip(particles,antiparticles):
-            #We put the coupling order restrictions after the @ID in order to
-            #apply it to the entire matrix element.
-            proc = '%s %s > %s @ID %s' % (name, antiname, ' '.join(argument), coupling)
-            try:
-                self.do_add('process %s' % proc)
-            except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
-                proc = '%s %s > %s %s [virt=ALL] @ID ' % (name, antiname, ' '.join(argument), coupling)
-                self.do_add('process %s' % proc)
 
-      
+        # flip indirect/standard process definition
+        with misc.TMP_variable(self, ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps'], 
+                                     [self._ID_procs, self._ID_matrix_elements, self._ID_amps]):
+            # First try LO matrix-element
+            misc.sprint(len(self._ID_procs), len(self._curr_proc_defs), id(self._ID_procs), id(self._curr_proc_defs))
+            coupling = "SIEFFS=0 SIEFFF=0 SIEFFV=0 SDEFFF=0 SDEFFV=0"
+            done= []
+            for dm in self._dm_candidate:
+                name = dm.get('name')
+                antiname = dm.get('name')
+                if name in done:
+                    continue
+                done += [name, antiname]
+                #We put the coupling order restrictions after the @ID in order to
+                #apply it to the entire matrix element.
+                proc = '%s %s > %s @ID %s' % (name, antiname, ' '.join(argument), coupling)
+                try:
+                    self.do_add('process %s' % proc)
+                except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
+                    proc = '%s %s > %s %s [virt=ALL] @ID ' % (name, antiname, ' '.join(argument), coupling)
+                    self.do_add('process %s' % proc)
+  
     def update_model_with_EFT(self):
         """ """
         eff_operators_SD = {1:False, 2:'SDEFFF', 3:'SDEFFV'}

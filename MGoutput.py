@@ -875,7 +875,6 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         res_dict['nb_dm'] = len(self.dm_particles)
         res_dict['max_dm2dm'] = 1000#self.global_dict_info['max_dm2dm']
         res_dict['max_dm2sm'] = self.global_dict_info['max_dm2sm']
-        misc.sprint(self.global_dict_info['nb_me_dd'], )
         res_dict['nb_me'] = self.global_dict_info['nb_me']
         res_dict['nb_me_dd'] = self.global_dict_info['nb_me_dd']
         res_dict['nb_me_dd_eff'] = self.global_dict_info['nb_me_dd_eff']
