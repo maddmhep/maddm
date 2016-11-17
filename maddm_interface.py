@@ -746,6 +746,7 @@ class MadDM_interface(master_interface.MasterCmd):
         #         antiparticles.append(part.get('antiname'))
         
         # First try LO matrix-element
+        coupling = "SIEFFS=0 SIEFFF=0 SIEFFV=0 SDEFFF=0 SDEFFV=0"
         done= []
         for dm in self._dm_candidate:
             name = dm.get('name')
@@ -754,11 +755,13 @@ class MadDM_interface(master_interface.MasterCmd):
                 continue
             done += [name, antiname]
             #for p, antip in zip(particles,antiparticles):
-            proc = '%s %s > %s  @ID' % (name, antiname, ' '.join(argument))
+            #We put the coupling order restrictions after the @ID in order to
+            #apply it to the entire matrix element.
+            proc = '%s %s > %s @ID %s' % (name, antiname, ' '.join(argument), coupling)
             try:
                 self.do_add('process %s' % proc)
             except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
-                proc = '%s %s > %s [virt=ALL] @ID' % (name, antiname, ' '.join(argument))
+                proc = '%s %s > %s %s [virt=ALL] @ID ' % (name, antiname, ' '.join(argument), coupling)
                 self.do_add('process %s' % proc)
 
       
