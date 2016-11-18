@@ -20,6 +20,9 @@ c relic_density.f
       double precision relic_density, approximate_xd
 c tests.f
       double precision crossijk, cross_check_process
+c indirect_detection.f
+      double precision halo_dm_velocity
+      common /idvars/halo_dm_velocity
 
 c direct_detection.f
 	  double precision sigma_proton_SI, sigma_neutron_SI, sigma_nucleon

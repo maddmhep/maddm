@@ -148,4 +148,4 @@
    %(smearing)s     = smearing
 
 # Average Halo DM velocity
-   %(halo_dm_velocity) = halo_dm_velocity
+   %(halo_dm_velocity)s = halo_dm_velocity

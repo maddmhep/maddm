@@ -731,7 +731,7 @@ class MadDM_interface(master_interface.MasterCmd):
             done= []
             for dm in self._dm_candidate:
                 name = dm.get('name')
-                antiname = dm.get('name')
+                antiname = dm.get('antiname')
                 if name in done:
                     continue
                 done += [name, antiname]

@@ -798,6 +798,8 @@ class MadDMCard(banner_mod.RunCard):
         
         self.add_param('smearing', False)
         self.add_param('only_two_body_decays', True, include=False)
+
+        self.add_param('halo_dm_velocity', 0.001)
         
     def write(self, output_file, template=None, python_template=False):
         """Write the run_card in output_file according to template 

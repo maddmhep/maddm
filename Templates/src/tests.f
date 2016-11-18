@@ -542,21 +542,17 @@ c header for the output to the screen
       write(*,*) '# DM1 DM2 process no.    process name    cross section (pb)'
 
 
-c loop over all the annihilation diagrams for each DM particle pair
-       do x3=1,ann_nprocesses(x1,x2)
-
 c loop over all the pairs of DM initial states
         do x1=1,ndmparticles
          do x2=x1,ndmparticles
+c loop over all the annihilation diagrams for each DM particle pair
+       do x3=1,ann_nprocesses(x1,x2)
+
 
 c gets the final state masses using the pmass(i)_(j)_(k).inc files
-      if (group.eq.1) then
-        call getfsmasses_ann(pmass,i,j,k)
-      else if (group.eq.2) then
-        call getfsmasses_dm2dm(pmass,i,j,k)
-C       else if (group.eq.3) then
-C         call getfsmasses_scattering(pmass,i,j,k)
-      endif
+
+             call getfsmasses_ann(pmass,x1,x2,x3)
+
 
             call get_process_index(x1,x2,x3,1,process_index)
 
