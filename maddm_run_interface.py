@@ -329,6 +329,7 @@ class MADDMRunCmd(cmd.CmdShell):
             self.maddm_card.set('do_relic_density', self.mode['relic'], user=False)
             self.maddm_card.set('do_direct_detection', self.mode['direct'], user=False)
             self.maddm_card.set('do_directional_detection', self.mode['directional'], user=False)
+            self.maddm_card.set('do_indirect_detection', self.mode['indirect'], user=False)
             self.maddm_card.write_include_file(pjoin(self.dir_path, 'include'))
         else:
             if not hasattr(self, 'maddm_card'):
@@ -338,11 +339,13 @@ class MADDMRunCmd(cmd.CmdShell):
                 self.mode['relic'] = True
                 self.mode['direct'] = True
                 self.mode['directional'] = True
+                self.mode['indirect'] = True
             if not os.path.exists(pjoin(self.dir_path, 'include', 'maddm_card.inc')):
                 # create the inc file for maddm
                 self.maddm_card.set('do_relic_density', self.mode['relic'], user=False)
                 self.maddm_card.set('do_direct_detection', self.mode['direct'], user=False)
                 self.maddm_card.set('do_directional_detection', self.mode['directional'], user=False)
+                self.maddm_card.set('do_indirect_detection', self.mode['indirect'], user=False)
                 self.maddm_card.write_include_file(pjoin(self.dir_path, 'include'))                
             
         self.check_param_card(pjoin(self.dir_path, 'Cards', 'param_card.dat'))
@@ -437,9 +440,10 @@ class MadDMSelector(common_run.EditParamCard):
 
         #0. some default variable
         process_data = opts.pop('data', collections.defaultdict(bool))
-        self.run_options = {'relic': 'ON',
+        self.run_options = {'relic': 'ON' if process_data['has_relic_density'] else 'Not available',
                             'direct': 'ON' if process_data['has_direct_detection'] else 'Not available',
-                            'directional': 'ON' if process_data['has_directional_detection'] else 'Not available'}
+                            'directional': 'ON' if process_data['has_directional_detection'] else 'Not available',
+                            'indirect': 'ON' if process_data['has_indirect_detection'] else 'Not available'}
         
         #1. Define what to run and create the associated question
         mode = opts.pop('mode', None)  
@@ -451,7 +455,7 @@ class MadDMSelector(common_run.EditParamCard):
                     
         #2. Define the list of allowed argument
         allow_args = [str(0), 'done', str(4), 'param', str(5), 'maddm']
-        for i,key in enumerate(['relic', 'direct', 'directional']):
+        for i,key in enumerate(['relic', 'direct', 'directional', 'indirect']):
             if self.run_options[key] in ['ON', 'OFF']:
                 allow_args.append(str(i+1))
                 allow_args.append(key)
@@ -482,7 +486,7 @@ class MadDMSelector(common_run.EditParamCard):
                 self.conflict.append(var)  
      
         
-    digitoptions = {1: 'relic', 2:'direct', 3:'directional'}  
+    digitoptions = {1: 'relic', 2:'direct', 3:'directional', 4:'indirect'}
     def create_question(self):
         """create the new question depending of the status"""
         
@@ -498,7 +502,8 @@ class MadDMSelector(common_run.EditParamCard):
  * Enter the name/number to (de-)activate the corresponding feature
     1. Compute the Relic Density     %(start_underline)srelic%(stop)s       = %(relic)s
     2. Compute Direct Detection      %(start_underline)sdirect%(stop)s      = %(direct)s
-    3. Compute Directional Detection %(start_underline)sdirectional%(stop)s = %(directional)s    
+    3. Compute Directional Detection %(start_underline)sdirectional%(stop)s = %(directional)s
+    4. Compute Indirect Detection    %(start_underline)sindirect%(stop)s    = %(indirect)s
 %(start_green)s You can also edit the various input card%(stop)s:
  * Enter the name/number to open the editor
  * Enter a path to a file to replace the card
@@ -511,7 +516,8 @@ class MadDMSelector(common_run.EditParamCard):
      'start_bold':'\033[1m', 
      'relic': get_status_str(self.run_options['relic']),
      'direct':get_status_str(self.run_options['direct']),
-     'directional':get_status_str(self.run_options['directional'])
+     'directional':get_status_str(self.run_options['directional']),
+     'indirect':get_status_str(self.run_options['indirect'])
      }
         return question
 
@@ -726,6 +732,7 @@ class MadDMCard(banner_mod.RunCard):
         self.add_param('do_relic_density', True, system=True)
         self.add_param('do_direct_detection', False, system=True)
         self.add_param('do_directional_detection', False, system=True)
+        self.add_param('do_indirect_detection', False, system=True)
         
         self.add_param('calc_taacs_ann_array', True)
         self.add_param('calc_taacs_dm2dm_array', True)

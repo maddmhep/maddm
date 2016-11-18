@@ -110,7 +110,7 @@ c number of annihilation particles and associated diagrams
 	  common/ dd_tot_process_ids/ dd_tot_process_ids
       logical ann_process_iden_init(maxdms,maxdms, %(max_dm2sm)i), dm2dm_process_iden_init(maxdms,maxdms,%(max_dm2dm)i)
       logical relic_canonical, calc_taacs_ann_array, calc_taacs_dm2dm_array, calc_taacs_scattering_array
-      logical do_relic_density, do_direct_detection, xd_approx
+      logical do_relic_density, do_direct_detection, do_indirect_detection, xd_approx
       common/process_logical/ ann_process_iden_init, dm2dm_process_iden_init, relic_canonical,
      . calc_taacs_ann_array, calc_taacs_dm2dm_array, calc_taacs_scattering_array, xd_approx
 

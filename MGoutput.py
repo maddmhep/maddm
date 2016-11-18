@@ -43,6 +43,7 @@ class MADDMProcCharacteristic(banner_mod.ProcCharacteristic):
         self.add_param('has_relic_density', False)
         self.add_param('has_direct_detection', False)
         self.add_param('has_directional_detection', False)
+        self.add_param('has_indirect_detection', False)
         self.add_param('dm_candidate', [0])
         self.add_param('coannihilator', [0])
         self.add_param('model', '')
