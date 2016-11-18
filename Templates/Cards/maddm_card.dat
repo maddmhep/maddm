@@ -2,7 +2,7 @@
 #            |                    MadDM v2.0                     |
 #            ====================================================
 #
-#                #########            Basics tutorial:  susy.phsx.ku.edu/~mihailo
+#                #########
 #             ###\\####//#####              Launchpad:  launchpad.net/maddm
 #           ######\\##//########
 #          ########\\//###########
@@ -147,3 +147,5 @@
 # Turn on detector smearing or not (both anergy and angle)
    %(smearing)s     = smearing
 
+# Average Halo DM velocity
+   %(halo_dm_velocity) = halo_dm_velocity

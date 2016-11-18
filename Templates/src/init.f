@@ -333,30 +333,7 @@ c parameters used in this subroutine only
       double precision beta, s, msq, p_init(0:3), p_ext(0:3,4), ps_point(2), wgt
       integer p_index
 
-c calculating the center of mass energy squared given the passed variable beta_pass
-      beta = beta_pass
-      s = (mdm(dmi)+mdm(dmj))**2/(1.d0-beta**2)
 
-c ps_point determines cos(theta) and phi given two random numbers from 0 to 1
-c 2 to 2 processes are azimuthally symmetric so we set phi=0
-      ps_point(1) = x
-      ps_point(2) = 0.d0
-
-c center of mass 4-momentum
-      p_init(0) = dsqrt(s)
-      p_init(1) = 0.d0
-      p_init(2) = 0.d0
-      p_init(3) = 0.d0
-
-c setting up the external particle momenta for the matrix element      
-      p_ext(0,1) = (s+mdm(dmi)**2-mdm(dmj)**2)/(2.d0*dsqrt(s))
-      p_ext(0,2) = (s+mdm(dmj)**2-mdm(dmi)**2)/(2.d0*dsqrt(s))
-      p_ext(1,1) = 0.d0
-      p_ext(1,2) = 0.d0
-      p_ext(2,1) = 0.d0
-      p_ext(2,2) = 0.d0
-      p_ext(3,1) = dsqrt(lambda(s,mdm(dmi)**2,mdm(dmj)**2))/(2.d0*dsqrt(s))
-      p_ext(3,2) = -dsqrt(lambda(s,mdm(dmi)**2,mdm(dmj)**2))/(2.d0*dsqrt(s))
 
 c initializing the Wij_integrand
       Wij_ann_integrand = 0.d0
@@ -365,6 +342,32 @@ c initializing the Wij_integrand
 
 c gets the final state masses using the pmass(i)_(j)_(k).inc files
         call getfsmasses_ann(pmass,dmi,dmj,x1)
+
+c calculating the center of mass energy squared given the passed variable beta_pass
+        beta = beta_pass
+
+        s = (pmass(1)+pmass(2))**2/(1.d0-beta**2)
+
+c ps_point determines cos(theta) and phi given two random numbers from 0 to 1
+c 2 to 2 processes are azimuthally symmetric so we set phi=0
+        ps_point(1) = x
+        ps_point(2) = 0.d0
+
+c center of mass 4-momentum
+        p_init(0) = dsqrt(s)
+        p_init(1) = 0.d0
+        p_init(2) = 0.d0
+        p_init(3) = 0.d0
+
+c setting up the external particle momenta for the matrix element
+        p_ext(0,1) = (s+pmass(1)**2-pmass(2)**2)/(2.d0*dsqrt(s))
+        p_ext(0,2) = (s+pmass(2)**2-pmass(1)**2)/(2.d0*dsqrt(s))
+        p_ext(1,1) = 0.d0
+        p_ext(1,2) = 0.d0
+        p_ext(2,1) = 0.d0
+        p_ext(2,2) = 0.d0
+        p_ext(3,1) = dsqrt(lambda(s,pmass(1)**2,pmass(2)**2))/(2.d0*dsqrt(s))
+        p_ext(3,2) = -dsqrt(lambda(s,pmass(1)**2,pmass(2)**2))/(2.d0*dsqrt(s))
 
 c check to see if the center of mass energy is enough to produce the final states
         if (s.ge.(pmass(3)+pmass(4))**2) then

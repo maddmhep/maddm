@@ -48,7 +48,7 @@ class MADDMRunCmd(cmd.CmdShell):
   "            |                  "+bcolors.OKBLUE+"  MadDM v2.0                     "+bcolors.ENDC+"|\n"\
   "            ====================================================\n"+\
   "                                                                               \n"+\
-  "                #########            Basics tutorial:  susy.phsx.ku.edu/~mihailo \n"+\
+  "                #########                                                        \n"+\
   "             ###\\\\####//#####              Launchpad:  launchpad.net/maddm      \n"+\
   "           ######\\\\##//########                                              \n"+\
   "          ########\\\\//###########                                            \n"+\
@@ -202,7 +202,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
         #process = subprocess.Popen(['./maddm.x'], cwd =self.dir_path, stdout=subprocess.PIPE)
         #Here we read out the results which the FORTRAN module dumped into a file
-        #called 'omega'. The format is such that the first line is always relic density
+        #called 'maddm.out'. The format is such that the first line is always relic density
         # , second line is the nucleon scattering cross section (SI) for proton, third is SI
         # nucleon cross section for the neutron etc. If a quantity was not calculated, we output -1        
         result = []
@@ -236,6 +236,8 @@ class MADDMRunCmd(cmd.CmdShell):
                         'sigmaN_SD_neutron']                
             if self.mode['directional']:
                 order += ['Nevents', 'smearing']
+            if self.mode['indirect']:
+                order +=[] # <-----------------------------------------------------------FiX HERE!
             to_print = param_card_iterator.write_summary(None, order,nbcol=10)
             for line in to_print.split('\n'):
                 if line:
@@ -287,6 +289,9 @@ class MADDMRunCmd(cmd.CmdShell):
         if self.mode['directional']:
             logger.info(' Nevents          : %i', self.last_results['Nevents'])
             logger.info(' smearing         : %.2e', self.last_results['smearing'])
+        if self.mode['indirect']:
+            logger.info('Indirect detection cross section at v = %2.e' % halo_dm_velocity)
+
     
     def is_excluded_relic(self, relic, omega_min = 0., omega_max = 0.1):
         """  This function determines whether a model point is excluded or not

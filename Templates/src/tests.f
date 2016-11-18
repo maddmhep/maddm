@@ -541,21 +541,35 @@ c header for the output to the screen
       endif
       write(*,*) '# DM1 DM2 process no.    process name    cross section (pb)'
 
-c loop over all the pairs of DM initial states
-      do x1=1,ndmparticles
-        do x2=x1,ndmparticles
-          if (p_or_E.eq.1) then
-            roots = dsqrt((dsqrt(mdm(x1)**2 + x1init**2) + dsqrt(mdm(x2)**2 + x2init**2))**2 - (x1init-x2init)**2)
-          else if (p_or_E.eq.0) then
-            roots = dsqrt((x1init+x2init)**2 - (dsqrt(x1init**2-mdm(x1)**2) - dsqrt(x2init**2-mdm(x2)**2))**2)
-          endif
 
 c loop over all the annihilation diagrams for each DM particle pair
-          do x3=1,ann_nprocesses(x1,x2)
+       do x3=1,ann_nprocesses(x1,x2)
+
+c loop over all the pairs of DM initial states
+        do x1=1,ndmparticles
+         do x2=x1,ndmparticles
+
+c gets the final state masses using the pmass(i)_(j)_(k).inc files
+      if (group.eq.1) then
+        call getfsmasses_ann(pmass,i,j,k)
+      else if (group.eq.2) then
+        call getfsmasses_dm2dm(pmass,i,j,k)
+C       else if (group.eq.3) then
+C         call getfsmasses_scattering(pmass,i,j,k)
+      endif
+
             call get_process_index(x1,x2,x3,1,process_index)
+
+             if (p_or_E.eq.1) then
+                  roots = dsqrt((dsqrt(pmass(1)**2 + x1init**2) + dsqrt(pmass(2)**2 + x2init**2))**2 - (x1init-x2init)**2)
+             else if (p_or_E.eq.0) then
+                  roots = dsqrt((x1init+x2init)**2 - (dsqrt(x1init**2-pmass(1)**2) - dsqrt(x2init**2-pmass(2)**2))**2)
+             endif
+
             pname = process_names(process_index)
             pname_index = index(pname,' ') - 1
             cross_section = get_cross_section(roots,x1,x2,x3,1)
+
             write(*,fmt='(I5,I4,I7,2X,A20,4X,ES16.8)') x1,x2,x3,pname(1:pname_index), cross_section
 
 c add up all the individual cross sections
@@ -567,6 +581,13 @@ c loop over all the DM -> DM diagrams for each DM particle pair
             call get_process_index(x1,x2,x3,2,process_index)
             pname = process_names(process_index)
             pname_index = index(pname,' ') - 1
+
+             if (p_or_E.eq.1) then
+                  roots = dsqrt((dsqrt(pmass(1)**2 + x1init**2) + dsqrt(pmass(2)**2 + x2init**2))**2 - (x1init-x2init)**2)
+             else if (p_or_E.eq.0) then
+                  roots = dsqrt((x1init+x2init)**2 - (dsqrt(x1init**2-pmass(1)**2) - dsqrt(x2init**2-pmass(2)**2))**2)
+             endif
+
             cross_section = get_cross_section(roots,x1,x2,x3,2)
 
             write(*,fmt='(I5,I4,I7,2X,A20,4X,ES16.8)') x1,x2,x3,pname(1:pname_index), cross_section
@@ -605,10 +626,19 @@ c input parameters
 c parameters used in this subroutine only
       double precision roots, cross_section, get_cross_section
 
+c gets the final state masses using the pmass(i)_(j)_(k).inc files
+      if (group.eq.1) then
+        call getfsmasses_ann(pmass,i,j,k)
+      else if (group.eq.2) then
+        call getfsmasses_dm2dm(pmass,i,j,k)
+C       else if (group.eq.3) then
+C         call getfsmasses_scattering(pmass,i,j,k)
+      endif
+
       if (p_or_E.eq.1) then
-        roots = dsqrt((dsqrt(mdm(i)**2 + x1init**2) + dsqrt(mdm(j)**2 + x2init**2))**2 - (x1init-x2init)**2)
+        roots = dsqrt((dsqrt(pmass(1)**2 + x1init**2) + dsqrt(pmass(2)**2 + x2init**2))**2 - (x1init-x2init)**2)
       else if (p_or_E.eq.0) then
-        roots = dsqrt((x1init+x2init)**2 - (dsqrt(x1init**2-mdm(i)**2) - dsqrt(x2init**2-mdm(j)**2))**2)
+        roots = dsqrt((x1init+x2init)**2 - (dsqrt(x1init**2-pmass(1)**2) - dsqrt(x2init**2-pmass(2)**2))**2)
       else
         write(*,*) 'Invalid value of p_or_E'
         write(*,*) 'p_or_E = 1 for initial momentum'
@@ -697,21 +727,6 @@ c two body phase space point (cos(theat),phi)
       ps_point(1) = x
       ps_point(2) = 0.d0
 
-c center of mass 4-momentum
-      p_init(0) = roots_pass
-      p_init(1) = 0.d0
-      p_init(2) = 0.d0
-      p_init(3) = 0.d0
-
-c setting up the external particle momenta for the matrix element
-      p_ext(0,1) = (roots_pass**2+mdm(i_pass)**2-mdm(j_pass)**2)/(2.d0*roots_pass)
-      p_ext(0,2) = (roots_pass**2+mdm(j_pass)**2-mdm(i_pass)**2)/(2.d0*roots_pass)
-      p_ext(1,1) = 0.d0
-      p_ext(1,2) = 0.d0
-      p_ext(2,1) = 0.d0
-      p_ext(2,2) = 0.d0
-      p_ext(3,1) = dsqrt(lambda(roots_pass**2,mdm(i_pass)**2,mdm(j_pass)**2))/(2.d0*roots_pass)
-      p_ext(3,2) = -dsqrt(lambda(roots_pass**2,mdm(i_pass)**2,mdm(j_pass)**2))/(2.d0*roots_pass)
 
 c gets the final state masses using the pmass(i)_(j)_(k).inc files
       if (group_pass.eq.1) then
@@ -721,6 +736,23 @@ c gets the final state masses using the pmass(i)_(j)_(k).inc files
 C       else if (group_pass.eq.3) then
 C         call getfsmasses_scattering(pmass,i_pass,j_pass,k_pass)
       endif
+
+c center of mass 4-momentum
+      p_init(0) = roots_pass
+      p_init(1) = 0.d0
+      p_init(2) = 0.d0
+      p_init(3) = 0.d0
+
+c setting up the external particle momenta for the matrix element
+      p_ext(0,1) = (roots_pass**2+pmass(1)**2-pmass(2)**2)/(2.d0*roots_pass)
+      p_ext(0,2) = (roots_pass**2+pmass(1)**2-pmass(2)**2)/(2.d0*roots_pass)
+      p_ext(1,1) = 0.d0
+      p_ext(1,2) = 0.d0
+      p_ext(2,1) = 0.d0
+      p_ext(2,2) = 0.d0
+      p_ext(3,1) = dsqrt(lambda(roots_pass**2,pmass(1)**2,pmass(2)**2))/(2.d0*roots_pass)
+      p_ext(3,2) = -dsqrt(lambda(roots_pass**2,pmass(1)**2,pmass(2)**2))/(2.d0*roots_pass)
+
 
 c gets the final particle 4-momenta       
       mf1 = pmass(3)
@@ -746,7 +778,7 @@ C         else if (group_pass.eq.3) then
 C           msq = smatrix_scattering(p_ext,i_pass,j_pass,k_pass)
         endif
 
-        crossijk = 1.d0/(2.d0*dsqrt(lambda(roots_pass**2,mdm(i_pass)**2,mdm(j_pass)**2)))*msq*wgt*3.894d8
+        crossijk = 1.d0/(2.d0*dsqrt(lambda(roots_pass**2,pmass(1)**2,pmass(2)**2)))*msq*wgt*3.894d8
       endif     
 
       return
@@ -816,11 +848,21 @@ c parameters for the phase space point and matrix element
       character*50 pname, output_file
       integer process_index, pname_index
 
+
+c gets the final state masses using the pmass(i)_(j)_(k).inc files
+      if (group.eq.1) then
+        call getfsmasses_ann(pmass,i,j,k)
+      else if (group.eq.2) then
+        call getfsmasses_dm2dm(pmass,i,j,k)
+C       else if (group.eq.3) then
+C         call getfsmasses_scattering(pmass,i,j,k)
+      endif
+
 c calculate the center of mass energy given the input value for p_or_E
       if (p_or_E.eq.1) then
-        roots = dsqrt((dsqrt(mdm(i)**2 + x1init**2) + dsqrt(mdm(j)**2 + x2init**2))**2 - (x1init-x2init)**2)
+        roots = dsqrt((dsqrt(pmass(1)**2 + x1init**2) + dsqrt(pmass(2)**2 + x2init**2))**2 - (x1init-x2init)**2)
       else if (p_or_E.eq.0) then
-        roots = dsqrt((x1init+x2init)**2 - (dsqrt(x1init**2-mdm(i)**2) - dsqrt(x2init**2-mdm(j)**2))**2)
+        roots = dsqrt((x1init+x2init)**2 - (dsqrt(x1init**2-pmass(1)**2) - dsqrt(x2init**2-pmass(2)**2))**2)
       else
         write(*,*) 'Invalid value of p_or_E'
         write(*,*) 'p_or_E = 1 for initial momentum'
@@ -829,7 +871,7 @@ c calculate the center of mass energy given the input value for p_or_E
       endif
 
 c check to see if the center of mass energy is valid
-      if ((p_or_E.eq.0).and.((x1init.lt.mdm(i)).or.(x2init.lt.mdm(j)))) then
+      if ((p_or_E.eq.0).and.((x1init.lt.pmass(1)).or.(x2init.lt.pmass(2)))) then
         write(*,*) 'Invalid initial state energy'
         return
       endif
@@ -851,23 +893,15 @@ c all the matrix elements are evaluated at \phi = 0
       ps_point(2) = 0.d0
 
 c setting up the external particle momenta for the matrix element
-      p_ext(0,1) = (roots**2+mdm(i)**2-mdm(j)**2)/(2.d0*roots)
-      p_ext(0,2) = (roots**2+mdm(j)**2-mdm(i)**2)/(2.d0*roots)
+      p_ext(0,1) = (roots**2+pmass(1)**2-pmass(2)**2)/(2.d0*roots)
+      p_ext(0,2) = (roots**2+pmass(2)**2-pmass(1)**2)/(2.d0*roots)
       p_ext(1,1) = 0.d0
       p_ext(1,2) = 0.d0
       p_ext(2,1) = 0.d0
       p_ext(2,2) = 0.d0
-      p_ext(3,1) = dsqrt(lambda(roots**2,mdm(i)**2,mdm(j)**2))/(2.d0*roots)
-      p_ext(3,2) = -dsqrt(lambda(roots**2,mdm(i)**2,mdm(j)**2))/(2.d0*roots)
+      p_ext(3,1) = dsqrt(lambda(roots**2,pmass(1)**2,pmass(2)**2))/(2.d0*roots)
+      p_ext(3,2) = -dsqrt(lambda(roots**2,pmass(1)**2,pmass(2)**2))/(2.d0*roots)
 
-c gets the final state masses using the pmass(i)_(j)_(k).inc files
-      if (group.eq.1) then
-        call getfsmasses_ann(pmass,i,j,k)
-      else if (group.eq.2) then
-        call getfsmasses_dm2dm(pmass,i,j,k)
-C       else if (group.eq.3) then
-C         call getfsmasses_scattering(pmass,i,j,k)
-      endif
 
 c gets the final particle 4-momenta       
       mf1 = pmass(3)
