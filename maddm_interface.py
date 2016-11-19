@@ -439,10 +439,17 @@ class MadDM_interface(master_interface.MasterCmd):
             super(MadDM_interface, self).do_output(line)
         
         if self._ID_procs:                        
+            path = self._done_export[0]
             with misc.TMP_variable(self, 
-                ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps'], 
-                [self._ID_procs, self._ID_matrix_elements, self._ID_amps]):
-                super(MadDM_interface, self).do_output('madevent %s/Indirect' % self._done_export[0])
+                ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps', '_done_export'], 
+                [self._ID_procs, self._ID_matrix_elements, self._ID_amps, None]):
+                super(MadDM_interface, self).do_output('madevent_maddm %s/Indirect' % path)
+            
+            import MGoutput
+            proc_path = pjoin(path, 'matrix_elements', 'proc_characteristics')
+            proc_charac = MGoutput.MADDMProcCharacteristic(proc_path)
+            proc_charac['has_indirect_detection'] = True
+            proc_charac.write(proc_path)
         
 
     def find_output_type(self, path):

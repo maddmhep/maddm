@@ -12,6 +12,7 @@ import madgraph.various.misc as misc
 import madgraph.interface.extended_cmd as cmd
 import madgraph.various.banner as banner_mod
 import madgraph.interface.common_run_interface as common_run
+import madgraph.interface.madevent_interface as me5_interface
 import madgraph.iolibs.files as files
 import models.check_param_card as param_card_mod
         
@@ -199,7 +200,8 @@ class MADDMRunCmd(cmd.CmdShell):
             output = pjoin('output', 'maddm.out')
         
         misc.call(['./maddm.x', output], cwd =self.dir_path)
-
+        if self.mode['indirect']:
+            self.launch_indirect(force)
         #process = subprocess.Popen(['./maddm.x'], cwd =self.dir_path, stdout=subprocess.PIPE)
         #Here we read out the results which the FORTRAN module dumped into a file
         #called 'maddm.out'. The format is such that the first line is always relic density
@@ -260,6 +262,13 @@ class MADDMRunCmd(cmd.CmdShell):
             param_card_iterator.write_summary(path, order)
     
         return result
+
+    def launch_indirect(self, force):
+        """running the indirect detection"""
+
+        logger.info('Running indirect detection')
+        me_cmd = Indirect_Cmd(pjoin(self.dir_path, 'Indirect'))
+        me_cmd.do_launch('-f')
 
         
     def print_results(self):
@@ -350,6 +359,7 @@ class MADDMRunCmd(cmd.CmdShell):
             
         self.check_param_card(pjoin(self.dir_path, 'Cards', 'param_card.dat'))
         
+        misc.sprint(self.mode)
         if not self.in_scan_mode:    
             logger.info("Start computing %s" % ','.join([name for name, value in self.mode.items() if value]))
         return self.mode
@@ -829,5 +839,7 @@ class MadDMCard(banner_mod.RunCard):
             raise InvalidMaddmCard, 'The sum of SM* parameter should be 1.0 get %s' % (self['SNu'] + self['SNs'] + self['SNd'] + self['SNg'])
         
         
-        
+class Indirect_Cmd(me5_interface.MadEventCmdShell):
+    pass        
+                
         

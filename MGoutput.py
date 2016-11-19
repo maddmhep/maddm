@@ -918,9 +918,81 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         writer.write(open(pjoin(MDMDIR, 'python_templates', 'direct_detection.f')).read() % to_replace)
         
         
-
+class ProcessExporterIndirectD(export_v4.ProcessExporterFortranMEGroup):
+    """_________________________________________________________________________#
+    #                                                                         #
+    #  This class is used to export the matrix elements generated from        #
+    #  MadGraph into a format that can be used by MadDM                       #
+    #                                                                         #
+    #  This is basically a standard MadEvent output with some special trick   #
+    #                                                                         #
+    #_______________________________________________________________________"""
  
- 
- 
-
+    
+    def copy_template(self, model):
+    #-----------------------------------------------------------------------#
+    #                                                                       #
+    #  This routine first checks to see if the user supplied project        #
+    #  directory is there and asks to overwrite if it is there.  Then it    #
+    #  copies over the template files as the basis for the Fortran code.    #
+    #                                                                       #
+    #-----------------------------------------------------------------------#
+        misc.sprint("hello", model.get('modelpath'))
+        super(ProcessExporterIndirectD, self).copy_template(model)
         
+        
+        
+        
+        
+    #===========================================================================
+    # link symbolic link
+    #===========================================================================
+    def finalize(self, matrix_elements, history, mg5options, flaglist):
+        """Finalize Standalone MG4 directory"""
+        
+        super(ProcessExporterIndirectD, self).finalize(matrix_elements, history, mg5options, flaglist)
+        
+        path = pjoin(self.dir_path, 'Cards', 'param_card.dat')
+        try:
+            os.remove(path)
+        except Exception:
+            pass
+        misc.sprint('try symbolic link for param_card',os.path.dirname(path))
+        files.ln('../../Cards/param_card.dat', starting_dir=os.path.dirname(path),
+                 cwd=os.path.dirname(path))   
+        
+        filename = os.path.join(self.dir_path, 'Cards', 'me5_configuration.txt')
+        self.cmd.do_save('options %s' % filename.replace(' ', '\ '), check=False,
+                         to_keep={'mg5_path':MG5DIR})
+        
+        
+    def pass_information_from_cmd(self, cmd):
+        """pass information from the command interface to the exporter.
+           Please do not modify any object of the interface from the exporter.
+        """
+        
+        self.cmd=cmd
+        return super(ProcessExporterIndirectD, self).pass_information_from_cmd(cmd)
+             
+    #===========================================================================
+    # create the run_card for MW
+    #=========================================================================== 
+    def create_run_card(self, matrix_elements, history):
+        """ """
+ 
+        run_card = banner_mod.RunCard()
+    
+        # pass to default for MW
+        run_card["run_tag"] = "\'DM\'"
+        run_card['dynamical_scale_choice'] = 4
+        run_card['lpp1'] = 0
+        run_card['lpp2'] = 0
+        run_card['use_syst'] = False
+        run_card.remove_all_cut()
+                  
+        run_card.write(pjoin(self.dir_path, 'Cards', 'run_card_default.dat'),
+                       template=pjoin(MG5DIR, 'Template', 'LO', 'Cards', 'run_card.dat'),
+                       python_template=True)
+        run_card.write(pjoin(self.dir_path, 'Cards', 'run_card.dat'),
+                       template=pjoin(MG5DIR, 'Template', 'LO', 'Cards', 'run_card.dat'),
+                       python_template=True)
