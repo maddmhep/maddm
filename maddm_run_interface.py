@@ -1,9 +1,12 @@
+from __future__ import division
 import collections
+import math
 import logging
 import os
 import re
 import sys
 import subprocess
+
 
 import MGoutput
 
@@ -268,6 +271,17 @@ class MADDMRunCmd(cmd.CmdShell):
 
         logger.info('Running indirect detection')
         me_cmd = Indirect_Cmd(pjoin(self.dir_path, 'Indirect'))
+        
+        runcardpath = pjoin(self.dir_path,'Indirect', 'Cards', 'run_card.dat')
+        param_path  = pjoin(self.dir_path,'Indirect', 'Cards', 'param_card.dat')
+        run_card = banner_mod.RunCard(runcardpath)
+        param_card = param_card_mod.ParamCard(param_path)
+        mdm = param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
+        v = self.maddm_card['halo_dm_velocity']
+        run_card['ebeam1'] = mdm * math.sqrt(1+v**2)
+        run_card['ebeam2'] = mdm * math.sqrt(1+v**2)
+        run_card.write(runcardpath)
+        
         me_cmd.do_launch('-f')
 
         
@@ -299,7 +313,7 @@ class MADDMRunCmd(cmd.CmdShell):
             logger.info(' Nevents          : %i', self.last_results['Nevents'])
             logger.info(' smearing         : %.2e', self.last_results['smearing'])
         if self.mode['indirect']:
-            logger.info('Indirect detection cross section at v = %2.e' % halo_dm_velocity)
+            logger.info('Indirect detection cross section at v = %2.e: %.2e', self.maddm_card['halo_dm_velocity'], 0.)
 
     
     def is_excluded_relic(self, relic, omega_min = 0., omega_max = 0.1):
@@ -321,10 +335,11 @@ class MADDMRunCmd(cmd.CmdShell):
             self.mode = self.ask('', '0', mode=mode, data=self.proc_characteristics, 
                             ask_class=MadDMSelector, timeout=60, path_msg=' ')
             if self.mode in ['', '0']:
-                self.mode = {'relic': 'ON',
-                             'direct': 'ON',
-                             'directional':'ON',
-                             'indirect':'OFF'}
+                process_data = self.proc_characteristics
+                self.mode = {'relic': 'ON' if process_data['has_relic_density'] else 'Not available',
+                            'direct': 'ON' if process_data['has_direct_detection'] else 'Not available',
+                            'directional': 'ON' if process_data['has_directional_detection'] else 'Not available',
+                            'indirect': 'ON' if process_data['has_indirect_detection'] else 'Not available'}
                 
             self.maddm_card = MadDMCard(pjoin(self.dir_path, 'Cards', 'maddm_card.dat'))
             for key, value in self.mode.items():
@@ -344,11 +359,11 @@ class MADDMRunCmd(cmd.CmdShell):
             if not hasattr(self, 'maddm_card'):
                 self.maddm_card = MadDMCard(pjoin(self.dir_path, 'Cards', 'maddm_card.dat'))
             if not hasattr(self, 'mode'):
-                self.mode = {}
-                self.mode['relic'] = True
-                self.mode['direct'] = True
-                self.mode['directional'] = True
-                self.mode['indirect'] = True
+                process_data = self.proc_characteristics
+                self.mode = {'relic': 'ON' if process_data['has_relic_density'] else 'Not available',
+                            'direct': 'ON' if process_data['has_direct_detection'] else 'Not available',
+                            'directional': 'ON' if process_data['has_directional_detection'] else 'Not available',
+                            'indirect': 'ON' if process_data['has_indirect_detection'] else 'Not available'}
             if not os.path.exists(pjoin(self.dir_path, 'include', 'maddm_card.inc')):
                 # create the inc file for maddm
                 self.maddm_card.set('do_relic_density', self.mode['relic'], user=False)
@@ -840,6 +855,17 @@ class MadDMCard(banner_mod.RunCard):
         
         
 class Indirect_Cmd(me5_interface.MadEventCmdShell):
-    pass        
-                
+    
+    def __init__(self, *args, **opts):
+        
+        super(Indirect_Cmd, self).__init__(*args, **opts)
+        self.history_header = ''
+    
+    def do_plot(self, line):
+        return
+    
+    def do_madanalysis5_parton(self, line):
+        return
+    def do_madanalysis5_hadron(self, line):
+        return    
         

@@ -929,19 +929,6 @@ class ProcessExporterIndirectD(export_v4.ProcessExporterFortranMEGroup):
     #_______________________________________________________________________"""
  
     
-    def copy_template(self, model):
-    #-----------------------------------------------------------------------#
-    #                                                                       #
-    #  This routine first checks to see if the user supplied project        #
-    #  directory is there and asks to overwrite if it is there.  Then it    #
-    #  copies over the template files as the basis for the Fortran code.    #
-    #                                                                       #
-    #-----------------------------------------------------------------------#
-        misc.sprint("hello", model.get('modelpath'))
-        super(ProcessExporterIndirectD, self).copy_template(model)
-        
-        
-        
         
         
     #===========================================================================
@@ -964,6 +951,11 @@ class ProcessExporterIndirectD(export_v4.ProcessExporterFortranMEGroup):
         filename = os.path.join(self.dir_path, 'Cards', 'me5_configuration.txt')
         self.cmd.do_save('options %s' % filename.replace(' ', '\ '), check=False,
                          to_keep={'mg5_path':MG5DIR})
+        
+        self.write_procdef_mg5( pjoin(self.dir_path, 'SubProcesses', \
+                                     'procdef_mg5.dat'),
+                                self.cmd._curr_model['name'],
+                                self.cmd._generate_info)
         
         
     def pass_information_from_cmd(self, cmd):
