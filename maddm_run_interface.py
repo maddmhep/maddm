@@ -203,8 +203,6 @@ class MADDMRunCmd(cmd.CmdShell):
             output = pjoin('output', 'maddm.out')
         
         misc.call(['./maddm.x', output], cwd =self.dir_path)
-        if self.mode['indirect']:
-            self.launch_indirect(force)
         #process = subprocess.Popen(['./maddm.x'], cwd =self.dir_path, stdout=subprocess.PIPE)
         #Here we read out the results which the FORTRAN module dumped into a file
         #called 'maddm.out'. The format is such that the first line is always relic density
@@ -221,6 +219,11 @@ class MADDMRunCmd(cmd.CmdShell):
                         'sigmaN_SD_neutron','Nevents', 'smearing')
         result = dict(zip(output_name, result))
         self.last_results = result
+
+        if self.mode['indirect']:
+            with misc.MuteLogger(names=['madevent','madgraph'],levels=[50,50]):
+                self.launch_indirect(force)
+
 
         if not self.in_scan_mode:
             self.print_results()
@@ -242,7 +245,7 @@ class MADDMRunCmd(cmd.CmdShell):
             if self.mode['directional']:
                 order += ['Nevents', 'smearing']
             if self.mode['indirect']:
-                order +=[] # <-----------------------------------------------------------FiX HERE!
+                order +=['indirect', 'indirect_error'] 
             to_print = param_card_iterator.write_summary(None, order,nbcol=10)
             for line in to_print.split('\n'):
                 if line:
@@ -269,9 +272,14 @@ class MADDMRunCmd(cmd.CmdShell):
     def launch_indirect(self, force):
         """running the indirect detection"""
 
-        logger.info('Running indirect detection')
-        me_cmd = Indirect_Cmd(pjoin(self.dir_path, 'Indirect'))
-        
+        if not self.in_scan_mode: 
+            logger.info('Running indirect detection')
+        if not hasattr(self, 'me_cmd'):
+            self.me_cmd = Indirect_Cmd(pjoin(self.dir_path, 'Indirect'))
+        elif self.me_cmd.me_dir != pjoin(self.dir_path, 'Indirect'):
+            self.me_cmd.do_quit()
+            self.me_cmd = Indirect_Cmd(pjoin(self.dir_path, 'Indirect'))
+            
         runcardpath = pjoin(self.dir_path,'Indirect', 'Cards', 'run_card.dat')
         param_path  = pjoin(self.dir_path,'Indirect', 'Cards', 'param_card.dat')
         run_card = banner_mod.RunCard(runcardpath)
@@ -282,8 +290,10 @@ class MADDMRunCmd(cmd.CmdShell):
         run_card['ebeam2'] = mdm * math.sqrt(1+v**2)
         run_card.write(runcardpath)
         
-        me_cmd.do_launch('-f')
-
+        self. me_cmd.do_launch('-f')
+        
+        self.last_results['indirect'] = self.me_cmd.results.get_detail('cross')
+        self.last_results['indirect_error'] = self.me_cmd.results.get_detail('error')
         
     def print_results(self):
         """ print the latest results """
@@ -313,7 +323,8 @@ class MADDMRunCmd(cmd.CmdShell):
             logger.info(' Nevents          : %i', self.last_results['Nevents'])
             logger.info(' smearing         : %.2e', self.last_results['smearing'])
         if self.mode['indirect']:
-            logger.info('Indirect detection cross section at v = %2.e: %.2e', self.maddm_card['halo_dm_velocity'], 0.)
+            logger.info('Indirect detection cross section at v = %2.e: %.2e+=%2.e', self.maddm_card['halo_dm_velocity'],
+                        self.last_results['indirect'],self.last_results['indirect_error'])
 
     
     def is_excluded_relic(self, relic, omega_min = 0., omega_max = 0.1):
@@ -374,7 +385,6 @@ class MADDMRunCmd(cmd.CmdShell):
             
         self.check_param_card(pjoin(self.dir_path, 'Cards', 'param_card.dat'))
         
-        misc.sprint(self.mode)
         if not self.in_scan_mode:    
             logger.info("Start computing %s" % ','.join([name for name, value in self.mode.items() if value]))
         return self.mode
