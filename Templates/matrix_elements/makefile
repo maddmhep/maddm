@@ -5,7 +5,10 @@ incdir = ../include
 
 flags = -O -fno-align-commons -ffixed-line-length-132 -I$(incdir)
 
-objs = #MAKEFILE_MADDM --- generates this line when MadDM is run
+objs = smatrix.o $(patsubst %.f,%.o,$(wildcard *.f))
+
+
+#MAKEFILE_MADDM --- generates this line when MadDM is run
 
 .f.o:
 	$(fort) -c $(flags) $*.f

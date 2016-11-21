@@ -20,7 +20,7 @@ if dm._new_proj == True:
 	# Find the DM candidate and coannihilaton particles
 	dm.FindDMCandidate()
 	if do_relic_density:
-	     dm.FindCoannParticles()
+		dm.FindCoannParticles()
 	dm.GetProjectName()
 
 

@@ -119,10 +119,10 @@ C      Here write the output.
      &                ':', sigma_proton_SD*gevtopb, ' pb'
 	  write(33,*) 'sigmaN_SD_n: ', sigma_neutron_SD, ' GeV^-2',
      &                ':', sigma_neutron_SD*gevtopb, ' pb'
-          write(33,*) 'Nevents: ', Nint(total_events)
-          write(33,*) 'smearing: ', sm_flag
+	  write(33,*) 'Nevents: ', Nint(total_events)
+	  write(33,*) 'smearing: ', sm_flag
 
-	  close(33)
+c	  close(33)
 
 c-------------------------------------------------------------------------c
 c  Other test functions

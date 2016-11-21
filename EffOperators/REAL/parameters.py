@@ -135,7 +135,7 @@ sdmm = Parameter(name = 'sdmm',
                  value = 70,
                  texname = '\\text{sdmm}',
                  lhablock = 'MASS',
-                 lhacode = [ 900000000006 ])
+                 lhacode = [ 999000006 ])
 
 MFsdm = Parameter(name = 'MFsdm',
                   nature = 'external',
@@ -143,7 +143,7 @@ MFsdm = Parameter(name = 'MFsdm',
                   value = 10000000000,
                   texname = '\\text{MFsdm}',
                   lhablock = 'MASS',
-                  lhacode = [ 900000000007 ])
+                  lhacode = [ 999000007 ])
 
 fdmm = Parameter(name = 'fdmm',
                  nature = 'external',
@@ -151,7 +151,7 @@ fdmm = Parameter(name = 'fdmm',
                  value = 70,
                  texname = '\\text{fdmm}',
                  lhablock = 'MASS',
-                 lhacode = [ 900000000008 ])
+                 lhacode = [ 999000008 ])
 
 vdmm = Parameter(name = 'vdmm',
                  nature = 'external',
@@ -159,7 +159,7 @@ vdmm = Parameter(name = 'vdmm',
                  value = 70,
                  texname = '\\text{vdmm}',
                  lhablock = 'MASS',
-                 lhacode = [ 900000000009 ])
+                 lhacode = [ 999000009 ])
 
 MFvdm = Parameter(name = 'MFvdm',
                   nature = 'external',
@@ -167,7 +167,7 @@ MFvdm = Parameter(name = 'MFvdm',
                   value = 10000000000,
                   texname = '\\text{MFvdm}',
                   lhablock = 'MASS',
-                  lhacode = [ 900000000010 ])
+                  lhacode = [ 999000010 ])
 
 WT = Parameter(name = 'WT',
                nature = 'external',
@@ -183,7 +183,7 @@ Wsdm = Parameter(name = 'Wsdm',
                  value = 0.,
                  texname = '\\text{Wsdm}',
                  lhablock = 'DECAY',
-                 lhacode = [ 900000000006 ])
+                 lhacode = [ 999000006 ])
 
 WFsdm = Parameter(name = 'WFsdm',
                   nature = 'external',
@@ -191,7 +191,7 @@ WFsdm = Parameter(name = 'WFsdm',
                   value = 0.,
                   texname = '\\text{WFsdm}',
                   lhablock = 'DECAY',
-                  lhacode = [ 900000000007 ])
+                  lhacode = [ 999000007 ])
 
 Wfdm = Parameter(name = 'Wfdm',
                  nature = 'external',
@@ -199,7 +199,7 @@ Wfdm = Parameter(name = 'Wfdm',
                  value = 0.,
                  texname = '\\text{Wfdm}',
                  lhablock = 'DECAY',
-                 lhacode = [ 900000000008 ])
+                 lhacode = [ 999000008 ])
 
 Wvdm = Parameter(name = 'Wvdm',
                  nature = 'external',
@@ -207,7 +207,7 @@ Wvdm = Parameter(name = 'Wvdm',
                  value = 0.,
                  texname = '\\text{Wvdm}',
                  lhablock = 'DECAY',
-                 lhacode = [ 900000000009 ])
+                 lhacode = [ 999000009 ])
 
 WFvdm = Parameter(name = 'WFvdm',
                   nature = 'external',
@@ -215,7 +215,7 @@ WFvdm = Parameter(name = 'WFvdm',
                   value = 0.,
                   texname = '\\text{WFvdm}',
                   lhablock = 'DECAY',
-                  lhacode = [ 900000000010 ])
+                  lhacode = [ 999000010 ])
 
 aEW = Parameter(name = 'aEW',
                 nature = 'internal',
