@@ -944,7 +944,6 @@ class ProcessExporterIndirectD(export_v4.ProcessExporterFortranMEGroup):
             os.remove(path)
         except Exception:
             pass
-        misc.sprint('try symbolic link for param_card',os.path.dirname(path))
         files.ln('../../Cards/param_card.dat', starting_dir=os.path.dirname(path),
                  cwd=os.path.dirname(path))   
         

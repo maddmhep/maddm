@@ -69,40 +69,40 @@
 #
 
 # Scalar FF
-   %(SPu)s    = SPu
-   %(SPd)s    = SPd
-   %(SPs)s    = SPs
-   %(SPg)s    = SPg              # 1.d0 - SPu - SPd - SPs
+   %(spu)s    = SPu
+   %(spd)s    = SPd
+   %(sps)s    = SPs
+   %(spg)s    = SPg              # 1.d0 - SPu - SPd - SPs
 
-   %(SNu)s     = SNu
-   %(SNd)s    = SNd
-   %(SNs)s    = SNs
-   %(SNg)s     = SNg              #1.d0 - SNu - SNd - SNs
+   %(snu)s     = SNu
+   %(snd)s    = SNd
+   %(sns)s    = SNs
+   %(sng)s     = SNg              #1.d0 - SNu - SNd - SNs
 
 # Vector FF
-   %(VPu)s       = VPu
-   %(VPd)s       = VPd
+   %(vpu)s       = VPu
+   %(vpd)s       = VPd
 
-   %(VNu)s       = VNu
-   %(VNd)s       = VNd
+   %(vnu)s       = VNu
+   %(vnd)s       = VNd
 
 # Axial Vector FF
-   %(AVPu)s     = AVPu
-   %(AVPd)s    = AVPd
-   %(AVPs)s    = AVPs
+   %(avpu)s     = AVPu
+   %(avpd)s    = AVPd
+   %(avps)s    = AVPs
 
-   %(AVNu)s    = AVNu
-   %(AVNd)s     = AVNd
-   %(AVNs)s    = AVNs
+   %(avnu)s    = AVNu
+   %(avnd)s     = AVNd
+   %(avns)s    = AVNs
 
 # Sigma(mu,nu) FF
-   %(SigPu)s      = SigPu
-   %(SigPd)s     = SigPd
-   %(SigPs)s    = SigPs
+   %(sigpu)s      = SigPu
+   %(sigpd)s     = SigPd
+   %(sigps)s    = SigPs
 
-   %(SigNu)s     = SigNu
-   %(SigNd)s      = SigNd
-   %(SigNs)s    = SigNs
+   %(signu)s     = SigNu
+   %(signd)s      = SigNd
+   %(signs)s    = SigNs
 
 #
 # For Directional detection and direct detection rates
@@ -116,13 +116,13 @@
    %(material)s         = material
 
 # Setting up the DM constants
-   %(vMP)s     = vMP  ! The most probable WIMP velocity v_0 (km/s)
+   %(vmp)s     = vMP  ! The most probable WIMP velocity v_0 (km/s)
    %(vescape)s     = vescape  ! The escape velocity of WIMPS in the Halo (km/s)
-   %(rhoDM)s       = rhoDM   ! The density of WIMPs in our local Universe (GeV/c^2/cm^-3)
+   %(rhodm)s       = rhoDM   ! The density of WIMPs in our local Universe (GeV/c^2/cm^-3)
 
 # choose the size of the detector
    %(detector_size)s    = detector_size  ! For 1 ton = 1000 kg detector
-   %(En_threshold)s       = En_threshold     ! in keVnr
+   %(en_threshold)s       = En_threshold     ! in keVnr
 
 # choose the energy resolution coefficient lambda (sigma_E = lambda*sqrt(E))
    %(lambd)s       = lambd
@@ -131,8 +131,8 @@
    %(sig_theta)s       = sig_theta
 
 # choose the range for the Energy, angle and time simulations
-   %(En_min)s       = En_min          ! minimum recoil Energy
-   %(En_max)s     = En_max          ! maximum recoil energy
+   %(en_min)s       = En_min          ! minimum recoil Energy
+   %(en_max)s     = En_max          ! maximum recoil energy
 
    %(cos_min)s      = cos_min         ! Minimum cosine of recoil angle
    %(cos_max)s       = cos_max         ! Maximum cosine of recoil angle
@@ -140,11 +140,11 @@
    %(day_min)s       = day_min         ! 1st day of observation.
    %(day_max)s     = day_max         ! 1 year later.
 
-   %(Energy_bins)s       = Energy_bins     ! Number of Energy bins
+   %(energy_bins)s       = Energy_bins     ! Number of Energy bins
    %(cos_theta_bins)s        = cos_theta_bins  ! Number of cosine angle bins
    %(day_bins)s        = day_bins        ! Number of time bins
 
-# Turn on detector smearing or not (both anergy and angle)
+# Turn on detector smearing or not (both energy and angle)
    %(smearing)s     = smearing
 
 # Average Halo DM velocity

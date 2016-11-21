@@ -245,7 +245,8 @@ class MADDMRunCmd(cmd.CmdShell):
             if self.mode['directional']:
                 order += ['Nevents', 'smearing']
             if self.mode['indirect']:
-                order +=['indirect', 'indirect_error'] 
+                for i in range(len(self.maddm_card['halo_dm_velocity'])):
+                    order +=['halo_velocity#%s' %i,'indirect#%s' %i, 'indirect_error#%s' %i] 
             to_print = param_card_iterator.write_summary(None, order,nbcol=10)
             for line in to_print.split('\n'):
                 if line:
@@ -285,15 +286,17 @@ class MADDMRunCmd(cmd.CmdShell):
         run_card = banner_mod.RunCard(runcardpath)
         param_card = param_card_mod.ParamCard(param_path)
         mdm = param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
-        v = self.maddm_card['halo_dm_velocity']
-        run_card['ebeam1'] = mdm * math.sqrt(1+v**2)
-        run_card['ebeam2'] = mdm * math.sqrt(1+v**2)
-        run_card.write(runcardpath)
         
-        self. me_cmd.do_launch('-f')
-        
-        self.last_results['indirect'] = self.me_cmd.results.get_detail('cross')
-        self.last_results['indirect_error'] = self.me_cmd.results.get_detail('error')
+        for i,v in enumerate(self.maddm_card['halo_dm_velocity']):
+            run_card['ebeam1'] = mdm * math.sqrt(1+v**2)
+            run_card['ebeam2'] = mdm * math.sqrt(1+v**2)
+            run_card.write(runcardpath)
+            
+            self. me_cmd.do_launch('-f')
+            
+            self.last_results['halo_velocity#%s' %i] = v
+            self.last_results['indirect#%s' %i] = self.me_cmd.results.get_detail('cross')
+            self.last_results['indirect_error#%s' %i] = self.me_cmd.results.get_detail('error')
         
     def print_results(self):
         """ print the latest results """
@@ -323,8 +326,9 @@ class MADDMRunCmd(cmd.CmdShell):
             logger.info(' Nevents          : %i', self.last_results['Nevents'])
             logger.info(' smearing         : %.2e', self.last_results['smearing'])
         if self.mode['indirect']:
-            logger.info('Indirect detection cross section at v = %2.e: %.2e+=%2.e', self.maddm_card['halo_dm_velocity'],
-                        self.last_results['indirect'],self.last_results['indirect_error'])
+            for i,v in enumerate(self.maddm_card['halo_dm_velocity']):
+                logger.info('Indirect detection cross section at v = %2.e: %.2e+-%2.e', v,
+                        self.last_results['indirect#%s' %i],self.last_results['indirect_error#%s' %i])
 
     
     def is_excluded_relic(self, relic, omega_min = 0., omega_max = 0.1):
@@ -518,7 +522,9 @@ class MadDMSelector(common_run.EditParamCard):
         self.maddm_set = self.maddm_def.keys() + self.maddm_def.hidden_param
         for var in self.pname2block:
             if var in self.maddm_set:
-                self.conflict.append(var)  
+                self.conflict.append(var) 
+                
+        self.has_delphes = False 
      
         
     digitoptions = {1: 'relic', 2:'direct', 3:'directional', 4:'indirect'}
@@ -685,8 +691,8 @@ class MadDMSelector(common_run.EditParamCard):
                 logger.warning('using the \'set\' command without opening the file will discard all your manual change')
     
     def complete_set(self, text, line, begidx, endidx, formatting=True):
-        """ Complete the set command"""
-
+       """ Complete the set command"""
+       try:
         possibilities = super(MadDMSelector,self).complete_set(text, line, begidx, endidx, formatting=False)
         args = self.split_arg(line[0:begidx])
         if len(args)>1 and args[1] == 'maddm_card':
@@ -704,7 +710,8 @@ class MadDMSelector(common_run.EditParamCard):
             possibilities['maddm Card'] = ['default']
             
         return self.deal_multiple_categories(possibilities, formatting)
-
+       except Exception, error:
+           misc.sprint(error)
     def do_set(self, line):
         """ edit the value of one parameter in the card"""
         
@@ -730,7 +737,13 @@ class MadDMSelector(common_run.EditParamCard):
             default = self.maddm_def[args[start]]
             self.setDM(args[start], default)
         else:
-            self.setDM(args[start], args[start+1])
+            if args[start] in self.maddm.list_parameter or \
+                   args[start] in self.maddm.dict_parameter:
+                val = ' '.join(args[start+1:])
+                val = val.split('#')[0]
+                self.setDM(args[start], val)
+            else:
+                self.setDM(args[start], args[start+1:])
         # write the new file
         self.maddm.write(self.paths['maddm'])
         
@@ -840,8 +853,7 @@ class MadDMCard(banner_mod.RunCard):
         
         self.add_param('smearing', False)
         self.add_param('only_two_body_decays', True, include=False)
-
-        self.add_param('halo_dm_velocity', 0.001)
+        self.add_param('halo_dm_velocity', [0.001], include=False)
         
     def write(self, output_file, template=None, python_template=False):
         """Write the run_card in output_file according to template 
