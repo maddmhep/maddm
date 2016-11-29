@@ -250,8 +250,16 @@ class MADDMRunCmd(cmd.CmdShell):
             if self.mode['indirect']:
                 for i in range(len(self.maddm_card['halo_dm_velocity'])):
                     order +=['halo_velocity#%s' %i,'indirect#%s' %i, 'indirect_error#%s' %i]
+                    detailled_keys = [k[5:].rsplit("#",1)[0] for k in self.last_results if k.startswith('xsec_')
+                                    and k.endswith('#%i' %i)]
+                
+                    if len(detailled_keys)>1: 
+                        for key in detailled_keys:
+                            order +=['xsec_%s#%i' % (key,i), 'xerr_%s#%i' % (key,i)]
+                
 
-            to_print = param_card_iterator.write_summary(None, order,nbcol=10)
+
+            to_print = param_card_iterator.write_summary(None, order,nbcol=10, max_col=10)
             for line in to_print.split('\n'):
                 if line:
                     logger.info(line)
@@ -264,7 +272,7 @@ class MADDMRunCmd(cmd.CmdShell):
                         self.exec_cmd("launch -f", precmd=True, postcmd=True,
                                                    errorhandling=False)
                         param_card_iterator.store_entry(nb_output+i, self.last_results)
-                        logger.info(param_card_iterator.write_summary(None, order, lastline=True,nbcol=5)[:-1])
+                        logger.info(param_card_iterator.write_summary(None, order, lastline=True,nbcol=10, max_col=10)[:-1])
             param_card_iterator.write(pjoin(self.dir_path,'Cards','param_card.dat'))
             name = misc.get_scan_name('maddm_%s' % (nb_output), 'maddm_%s' % (nb_output+i))
             path = pjoin(self.dir_path, 'output','scan_%s.txt' % name)
@@ -302,6 +310,11 @@ class MADDMRunCmd(cmd.CmdShell):
             self.last_results['halo_velocity#%s' %i] = v
             self.last_results['indirect#%s' %i] = self.me_cmd.results.get_detail('cross')
             self.last_results['indirect_error#%s' %i] = self.me_cmd.results.get_detail('error')
+            
+            for key, value in self.me_cmd.Presults.items():
+                self.last_results['%s#%i' %(key,i)] =  value
+            
+        
         
     def print_results(self):
         """ print the latest results """
@@ -335,7 +348,15 @@ class MADDMRunCmd(cmd.CmdShell):
             for i,v in enumerate(self.maddm_card['halo_dm_velocity']):
                 logger.info('Indirect detection cross section at v = %2.e: %.2e+-%2.e', v,
                         self.last_results['indirect#%s' %i],self.last_results['indirect_error#%s' %i])
-
+                detailled_keys = [k[5:].rsplit("#",1)[0] for k in self.last_results if k.startswith('xsec_')
+                                    and k.endswith('#%i' %i)]
+                if len(detailled_keys)>1: 
+                    for key in detailled_keys:
+                        logger.info('            %s : %.2e+-%2.e' % (key, 
+                                    self.last_results['xsec_%s#%i' %(key,i)],
+                                    self.last_results['xerr_%s#%i' %(key,i)]))
+                
+                
     
     def is_excluded_relic(self, relic, omega_min = 0., omega_max = 0.1):
         """  This function determines whether a model point is excluded or not
@@ -898,37 +919,16 @@ class Indirect_Cmd(me5_interface.MadEventCmdShell):
         return
 
     def make_make_all_html_results(self, folder_names = []):
-        cross, error = self.make_all_html_results_wPresults(folder_names)
-        return cross, error
-
-    def make_all_html_results_wPresults(self, folder_names = []):
-
-        """ folder_names has been added for the amcatnlo runs """
+        """keep track of the P results via an instance variable.
+           Do not do the html output
+        """
         run = self.results.current['run_name']
-        if not os.path.exists(pjoin(self.me_dir, 'HTML', run)):
-            os.mkdir(pjoin(self.me_dir, 'HTML', run))
-
-        unit = self.results.unit
-        P_text = ""
         Presults = sum_html.collect_result(self, folder_names=folder_names)
-
+        self.Presults = {}
         for i, P_comb in enumerate(Presults):
-            P_text += P_comb.get_html(run, unit, self.me_dir)
             P_comb.compute_values()
-            if self.proc_characteristics['ninitial'] == 1:
-                P_comb.write_results_dat(pjoin(self.me_dir, 'SubProcesses', P_comb.name,
-                                               '%s_results.dat' % run))
-
-            self.last_results['id_channel#%s' %i] = P_comb['name']
-            self.last_results['id_xsec#%s' %i] = P_comb['xsec']
-            self.last_results['id_xerr#%s' %i] = P_comb['xerru']
-
-        Presults.write_results_dat(pjoin(self.me_dir,'SubProcesses', 'results.dat'))
-
-        #fsock = open(pjoin(self.me_dir, 'HTML', run, 'results.html'),'w')
-        #fsock.write(results_header)
-        #fsock.write('%s <dl>' % Presults.get_html(run, unit, self.me_dir))
-        #fsock.write('%s </dl></body>' % P_text)
+            self.Presults['xsec_%s' % P_comb.name[7:]] = P_comb.xsec
+            self.Presults['xerr_%s' % P_comb.name[7:]] = P_comb.xerru
 
         return Presults.xsec, Presults.xerru
 
