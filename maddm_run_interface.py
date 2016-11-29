@@ -11,6 +11,7 @@ import subprocess
 import MGoutput
 
 MG5MODE = True
+import madgraph.madevent.sum_html as sum_html
 import madgraph.various.misc as misc
 import madgraph.interface.extended_cmd as cmd
 import madgraph.various.banner as banner_mod
@@ -203,6 +204,7 @@ class MADDMRunCmd(cmd.CmdShell):
             output = pjoin('output', 'maddm.out')
         
         misc.call(['./maddm.x', output], cwd =self.dir_path)
+
         #process = subprocess.Popen(['./maddm.x'], cwd =self.dir_path, stdout=subprocess.PIPE)
         #Here we read out the results which the FORTRAN module dumped into a file
         #called 'maddm.out'. The format is such that the first line is always relic density
@@ -236,6 +238,7 @@ class MADDMRunCmd(cmd.CmdShell):
             self.param_card_iterator = []
             param_card_iterator.store_entry(nb_output, result)
             #print results:
+
             order = []
             if self.mode['relic']:
                 order += ['omegah2', 'x_freezeout', 'sigmav_xf']
@@ -246,7 +249,8 @@ class MADDMRunCmd(cmd.CmdShell):
                 order += ['Nevents', 'smearing']
             if self.mode['indirect']:
                 for i in range(len(self.maddm_card['halo_dm_velocity'])):
-                    order +=['halo_velocity#%s' %i,'indirect#%s' %i, 'indirect_error#%s' %i] 
+                    order +=['halo_velocity#%s' %i,'indirect#%s' %i, 'indirect_error#%s' %i]
+
             to_print = param_card_iterator.write_summary(None, order,nbcol=10)
             for line in to_print.split('\n'):
                 if line:
@@ -270,6 +274,7 @@ class MADDMRunCmd(cmd.CmdShell):
     
         return result
 
+
     def launch_indirect(self, force):
         """running the indirect detection"""
 
@@ -286,7 +291,7 @@ class MADDMRunCmd(cmd.CmdShell):
         run_card = banner_mod.RunCard(runcardpath)
         param_card = param_card_mod.ParamCard(param_path)
         mdm = param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
-        
+
         for i,v in enumerate(self.maddm_card['halo_dm_velocity']):
             run_card['ebeam1'] = mdm * math.sqrt(1+v**2)
             run_card['ebeam2'] = mdm * math.sqrt(1+v**2)
@@ -301,7 +306,7 @@ class MADDMRunCmd(cmd.CmdShell):
     def print_results(self):
         """ print the latest results """
         omega_min = 0
-        omega_max = 0.1
+        omega_max = 0.12
         
         if omega_min < self.last_results['omegah2'] < omega_max:
             fail_relic_msg = ''
@@ -326,6 +331,7 @@ class MADDMRunCmd(cmd.CmdShell):
             logger.info(' Nevents          : %i', self.last_results['Nevents'])
             logger.info(' smearing         : %.2e', self.last_results['smearing'])
         if self.mode['indirect']:
+
             for i,v in enumerate(self.maddm_card['halo_dm_velocity']):
                 logger.info('Indirect detection cross section at v = %2.e: %.2e+-%2.e', v,
                         self.last_results['indirect#%s' %i],self.last_results['indirect_error#%s' %i])
@@ -875,7 +881,7 @@ class MadDMCard(banner_mod.RunCard):
         if self['SNu'] + self['SNs'] + self['SNd'] - self['SNg'] -1 > 1e-3:
             raise InvalidMaddmCard, 'The sum of SM* parameter should be 1.0 get %s' % (self['SNu'] + self['SNs'] + self['SNd'] + self['SNg'])
         
-        
+
 class Indirect_Cmd(me5_interface.MadEventCmdShell):
     
     def __init__(self, *args, **opts):
@@ -889,5 +895,41 @@ class Indirect_Cmd(me5_interface.MadEventCmdShell):
     def do_madanalysis5_parton(self, line):
         return
     def do_madanalysis5_hadron(self, line):
-        return    
+        return
+
+    def make_make_all_html_results(self, folder_names = []):
+        cross, error = self.make_all_html_results_wPresults(folder_names)
+        return cross, error
+
+    def make_all_html_results_wPresults(self, folder_names = []):
+
+        """ folder_names has been added for the amcatnlo runs """
+        run = self.results.current['run_name']
+        if not os.path.exists(pjoin(self.me_dir, 'HTML', run)):
+            os.mkdir(pjoin(self.me_dir, 'HTML', run))
+
+        unit = self.results.unit
+        P_text = ""
+        Presults = sum_html.collect_result(self, folder_names=folder_names)
+
+        for i, P_comb in enumerate(Presults):
+            P_text += P_comb.get_html(run, unit, self.me_dir)
+            P_comb.compute_values()
+            if self.proc_characteristics['ninitial'] == 1:
+                P_comb.write_results_dat(pjoin(self.me_dir, 'SubProcesses', P_comb.name,
+                                               '%s_results.dat' % run))
+
+            self.last_results['id_channel#%s' %i] = P_comb['name']
+            self.last_results['id_xsec#%s' %i] = P_comb['xsec']
+            self.last_results['id_xerr#%s' %i] = P_comb['xerru']
+
+        Presults.write_results_dat(pjoin(self.me_dir,'SubProcesses', 'results.dat'))
+
+        #fsock = open(pjoin(self.me_dir, 'HTML', run, 'results.html'),'w')
+        #fsock.write(results_header)
+        #fsock.write('%s <dl>' % Presults.get_html(run, unit, self.me_dir))
+        #fsock.write('%s </dl></body>' % P_text)
+
+        return Presults.xsec, Presults.xerru
+
         
