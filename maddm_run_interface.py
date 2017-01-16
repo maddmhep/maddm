@@ -346,7 +346,7 @@ class MADDMRunCmd(cmd.CmdShell):
         if self.mode['indirect']:
 
             for i,v in enumerate(self.maddm_card['halo_dm_velocity']):
-                logger.info('Indirect detection cross section at v = %2.e: %.2e+-%2.e', v,
+                logger.info('   sigma(DM DM>all)[v = %2.e]: %.2e+-%2.e', v,
                         self.last_results['indirect#%s' %i],self.last_results['indirect_error#%s' %i])
                 detailled_keys = [k[5:].rsplit("#",1)[0] for k in self.last_results if k.startswith('xsec_')
                                     and k.endswith('#%i' %i)]

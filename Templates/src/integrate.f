@@ -81,7 +81,7 @@ c-------------------------------------------------------------------------c
          include 'coupl.inc'
 
          double precision tolerance, a,b, func, additional_pt, exponent
-         double precision left, right, whole, end_pt, start_pt
+         double precision left, right, whole, end_pt, start_pt, width
          external func
          integer ii, jj,kk, grid_pos, grid_npts
          double precision grid(grid_npts)
