@@ -924,6 +924,7 @@ class Indirect_Cmd(me5_interface.MadEventCmdShell):
         """
         run = self.results.current['run_name']
         Presults = sum_html.collect_result(self, folder_names=folder_names)
+
         self.Presults = {}
         for i, P_comb in enumerate(Presults):
             P_comb.compute_values()

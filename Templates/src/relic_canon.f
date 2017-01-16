@@ -247,9 +247,8 @@ c need to be weighted by a momentum factor for each \chi_{i}, \chi_{j} pair
         do x2=x1, ndmparticles
           dmi = x1
           dmj = x2
-          Wij_value = get_Wij_value(beta,x1,x2,0,1)
-
           if (s.ge.(mdm(x1)+mdm(x2))**2) then
+            Wij_value = get_Wij_value(beta,x1,x2,0,1)
             Wij_sum = Wij_sum + max(0.d0,dsqrt(lambda(s,mdm(x1)**2,mdm(x2)**2)/s)*Wij_value)
           endif
         enddo
