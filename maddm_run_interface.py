@@ -93,6 +93,9 @@ class MADDMRunCmd(cmd.CmdShell):
         # directory status
         self.get_characteristics()
     
+    def preloop(self,*args,**opts):
+        super(Indirect_Cmd,self).preloop(*args,**opts)
+        self.prompt = 'Maddm:%s' % self.prompt
         
     def get_characteristics(self, path=None):
         """reads the proc_characteristics file and initialises the correspondant
@@ -909,6 +912,10 @@ class Indirect_Cmd(me5_interface.MadEventCmdShell):
         
         super(Indirect_Cmd, self).__init__(*args, **opts)
         self.history_header = ''
+    
+    def preloop(self,*args,**opts):
+        super(Indirect_Cmd,self).preloop(*args,**opts)
+        self.prompt = 'Indirect:%s' % self.prompt
     
     def do_plot(self, line):
         return

@@ -71,7 +71,6 @@ class MadDM_interface(master_interface.MasterCmd):
   "%s" 
     
     _define_options = ['darkmatter', 'coannihilator', 'benchmark']
-    
     # process number to distinguish the different type of matrix element
     process_tag = {'DM2SM': 1999, 
                    'DM2DM': 1998,
@@ -81,6 +80,15 @@ class MadDM_interface(master_interface.MasterCmd):
     
     eff_operators_SI = {1:'SIEFFS', 2:'SIEFFF', 3:'SIEFFV'}
     eff_operators_SD = {1:False, 2:'SDEFFF', 3:'SDEFFV'} 
+    
+    def preloop(self, *args, **opts):
+        super(MadDM_interface, self).preloop(*args, **opts)
+        self.prompt = 'MadDM>'
+    
+    def change_principal_cmd(self, name):
+        out = super(MadDM_interface, self).change_principal_cmd(name)
+        self.prompt = 'MadDM>'
+        return out
     
     def __init__(self, *args, **opts):
         
@@ -475,7 +483,13 @@ class MadDM_interface(master_interface.MasterCmd):
                 return self.define_child_cmd_interface(MDM)
             else:
                 self.define_child_cmd_interface(MDM,  interface=False)
-                MDM.exec_cmd('launch ' + line.replace(args[1], ''))
+                try:
+                    MDM.exec_cmd('launch ' + line.replace(args[1], ''))
+                except:
+                    MDM.exec_cmd('quit')
+                    raise
+                else:
+                    MDM.exec_cmd('quit')
                 return
             
             
