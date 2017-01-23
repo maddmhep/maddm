@@ -92,6 +92,8 @@ class MADDMRunCmd(cmd.CmdShell):
         # Define self.proc_characteristics (set of information related to the
         # directory status
         self.get_characteristics()
+
+        self._two2twoLO = False
     
     def preloop(self,*args,**opts):
         super(Indirect_Cmd,self).preloop(*args,**opts)
@@ -215,17 +217,23 @@ class MADDMRunCmd(cmd.CmdShell):
         # nucleon cross section for the neutron etc. If a quantity was not calculated, we output -1        
         result = []
         #for line in process.stdout:
+
+        output_name = ['omegah2', 'x_freezeout', 'wimp_mass', 'sigmav_xf' ,
+                       'sigmaN_SI_proton', 'sigmaN_SI_neutron', 'sigmaN_SD_proton',
+                        'sigmaN_SD_neutron','Nevents', 'smearing']
         for line in open(pjoin(self.dir_path, output)):
             result.append(float(line.split()[1]))
+            if 'sigma*v' in line:
+                splitline = line.split()
+                result.append(float(splitline[1]))
+                oname =splitline.split(':',1)
+                output_name.append(oname)
 
-        self.last_results = result
-        output_name = ('omegah2', 'x_freezeout', 'wimp_mass', 'sigmav_xf' , 
-                       'sigmaN_SI_proton', 'sigmaN_SI_neutron', 'sigmaN_SD_proton',
-                        'sigmaN_SD_neutron','Nevents', 'smearing')
         result = dict(zip(output_name, result))
+
         self.last_results = result
 
-        if self.mode['indirect']:
+        if self.mode['indirect'] and not self._two2twoLO:
             with misc.MuteLogger(names=['madevent','madgraph'],levels=[50,50]):
                 self.launch_indirect(force)
 
@@ -250,7 +258,7 @@ class MADDMRunCmd(cmd.CmdShell):
                         'sigmaN_SD_neutron']                
             if self.mode['directional']:
                 order += ['Nevents', 'smearing']
-            if self.mode['indirect']:
+            if self.mode['indirect'] and not self._two2twoLO:
                 for i in range(len(self.maddm_card['halo_dm_velocity'])):
                     order +=['halo_velocity#%s' %i,'indirect#%s' %i, 'indirect_error#%s' %i]
                     detailled_keys = [k[5:].rsplit("#",1)[0] for k in self.last_results if k.startswith('xsec_')
@@ -259,7 +267,6 @@ class MADDMRunCmd(cmd.CmdShell):
                     if len(detailled_keys)>1: 
                         for key in detailled_keys:
                             order +=['xsec_%s#%i' % (key,i), 'xerr_%s#%i' % (key,i)]
-                
 
 
             to_print = param_card_iterator.write_summary(None, order,nbcol=10, max_col=10)
@@ -288,6 +295,12 @@ class MADDMRunCmd(cmd.CmdShell):
 
     def launch_indirect(self, force):
         """running the indirect detection"""
+
+        #If the Indirect subfolder is not created, that means that the code is
+        #using the 2to2 at LO which is handled by maddm.f. Then just skip this part
+        if not os.path.exists(pjoin(self.dir_path, 'Indirect')):
+            self._two2twoLO = True
+            return
 
         if not self.in_scan_mode: 
             logger.info('Running indirect detection')
@@ -348,16 +361,22 @@ class MADDMRunCmd(cmd.CmdShell):
             logger.info(' smearing         : %.2e', self.last_results['smearing'])
         if self.mode['indirect']:
 
-            for i,v in enumerate(self.maddm_card['halo_dm_velocity']):
-                logger.info('   sigma(DM DM>all)[v = %2.e]: %.2e+-%2.e pb', v,
-                        self.last_results['indirect#%s' %i],self.last_results['indirect_error#%s' %i])
-                detailled_keys = [k[5:].rsplit("#",1)[0] for k in self.last_results if k.startswith('xsec_')
-                                    and k.endswith('#%i' %i)]
-                if len(detailled_keys)>1: 
-                    for key in detailled_keys:
-                        logger.info('            %s : %.2e+-%2.e pb' % (key,
-                                    self.last_results['xsec_%s#%i' %(key,i)],
-                                    self.last_results['xerr_%s#%i' %(key,i)]))
+            if not self._two2twoLO:
+
+                for i,v in enumerate(self.maddm_card['halo_dm_velocity']):
+                    logger.info('   sigma(DM DM>all)[v = %2.e]: %.2e+-%2.e pb', v,
+                            self.last_results['indirect#%s' %i],self.last_results['indirect_error#%s' %i])
+                    detailled_keys = [k[5:].rsplit("#",1)[0] for k in self.last_results if k.startswith('xsec_')
+                                        and k.endswith('#%i' %i)]
+                    if len(detailled_keys)>1:
+                        for key in detailled_keys:
+                            logger.info('            %s : %.2e+-%2.e pb' % (key,
+                                        self.last_results['xsec_%s#%i' %(key,i)],
+                                        self.last_results['xerr_%s#%i' %(key,i)]))
+            else:
+                for key, value in last_results.items():
+                    logger.info()
+
                 
                 
     

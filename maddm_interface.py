@@ -448,14 +448,17 @@ class MadDM_interface(master_interface.MasterCmd):
             super(MadDM_interface, self).do_output(line)
         
         if self._ID_procs:
-            import aloha.aloha_lib as aloha_lib
-            aloha_lib.KERNEL = aloha_lib.Computation()                        
+
             path = self._done_export[0]
-            with misc.TMP_variable(self, 
-                ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps', '_done_export'], 
-                [self._ID_procs, self._ID_matrix_elements, self._ID_amps, None]):
-                super(MadDM_interface, self).do_output('madevent_maddm %s/Indirect' % path)
-            
+            if self._ID_procs!='2to2lo':
+                import aloha.aloha_lib as aloha_lib
+                aloha_lib.KERNEL = aloha_lib.Computation()
+
+                with misc.TMP_variable(self,
+                    ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps', '_done_export'],
+                    [self._ID_procs, self._ID_matrix_elements, self._ID_amps, None]):
+                    super(MadDM_interface, self).do_output('madevent_maddm %s/Indirect' % path)
+
             import MGoutput
             proc_path = pjoin(path, 'matrix_elements', 'proc_characteristics')
             proc_charac = MGoutput.MADDMProcCharacteristic(proc_path)
@@ -740,6 +743,10 @@ class MadDM_interface(master_interface.MasterCmd):
            Currently works only with canonical mode and one dm candidate.
         related to syntax: generate indirect a g / n3
         """
+
+        if '2to2lo' in argument:
+            self._ID_procs ='2to2lo'
+            return
 
         #Check if the argument contains only two particles in the final state
         #if not, force the code to use madevent

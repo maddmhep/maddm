@@ -124,11 +124,10 @@ C      Here write the output.
 
 c	  close(33)
 
-      write(*,*) 'do_indirect_detection = ', do_indirect_detection
       if (do_indirect_detection) then
         do k=1, ANN_NUM_PROCESSES
             sigv =  sigmav_ID(k)
-            write(*,fmt='(A8,A12,A4,ES14.7,A7)') 'sigma*v(',PROCESS_NAMES(k),') : ' ,sigv, ' GeV^-2'
+            write(33,fmt='(A8,A12,A4,ES14.7,A7)') 'sigma*v:',PROCESS_NAMES(k),' ',sigv, ' GeV^-2'
         enddo
       endif
 
