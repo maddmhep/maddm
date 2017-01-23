@@ -1,6 +1,6 @@
 c function names
 c integrate.f
-      double precision simpson, simpson_adaptive
+      double precision simpson, simpson_adaptive, simpson_taacs
 c init.f
       double precision get_Y_eq, get_gstar, get_Wij_ann, Wij_ann_integrand
 c interpolate.f
