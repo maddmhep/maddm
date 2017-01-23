@@ -221,16 +221,26 @@ class MADDMRunCmd(cmd.CmdShell):
         output_name = ['omegah2', 'x_freezeout', 'wimp_mass', 'sigmav_xf' ,
                        'sigmaN_SI_proton', 'sigmaN_SI_neutron', 'sigmaN_SD_proton',
                         'sigmaN_SD_neutron','Nevents', 'smearing']
+        
+        sigv_indirect, sigv_indirect_error = 0.,0.
         for line in open(pjoin(self.dir_path, output)):
-            result.append(float(line.split()[1]))
+            splitline = line.split()
+            result.append(float(splitline[1]))
             if 'sigma*v' in line:
-                splitline = line.split()
-                result.append(float(splitline[1]))
-                oname =splitline.split(':',1)
-                output_name.append(oname)
-
+                result[-1]*=GeV2pb
+                oname =splitline[0].split(':',1)[1]
+                output_name.append('xsec_%s' % oname)
+                sigv_indirect += result[-1]
+                output_name.append('xerr_%s' % oname)
+                result.append(0.)
+                
         result = dict(zip(output_name, result))
-
+        
+        if sigv_indirect:
+            result['indirect'] = sigv_indirect
+            result['indirect_error'] = math.sqrt(sigv_indirect_error)
+        
+        
         self.last_results = result
 
         if self.mode['indirect'] and not self._two2twoLO:
@@ -258,15 +268,14 @@ class MADDMRunCmd(cmd.CmdShell):
                         'sigmaN_SD_neutron']                
             if self.mode['directional']:
                 order += ['Nevents', 'smearing']
-            if self.mode['indirect'] and not self._two2twoLO:
-                for i in range(len(self.maddm_card['halo_dm_velocity'])):
-                    order +=['halo_velocity#%s' %i,'indirect#%s' %i, 'indirect_error#%s' %i]
-                    detailled_keys = [k[5:].rsplit("#",1)[0] for k in self.last_results if k.startswith('xsec_')
-                                    and k.endswith('#%i' %i)]
                 
-                    if len(detailled_keys)>1: 
-                        for key in detailled_keys:
-                            order +=['xsec_%s#%i' % (key,i), 'xerr_%s#%i' % (key,i)]
+            if self.mode['indirect'] and not self._two2twoLO:
+                order +=['halo_velocity','indirect', 'indirect_error']
+                detailled_keys = [k[5:] for k in self.last_results 
+                                  if k.startswith('xsec_') and '#' not in k]
+                if len(detailled_keys)>1: 
+                    for key in detailled_keys:
+                        order +=['xsec_%s' % (key), 'xerr_%s' % (key)]
 
 
             to_print = param_card_iterator.write_summary(None, order,nbcol=10, max_col=10)
@@ -315,8 +324,10 @@ class MADDMRunCmd(cmd.CmdShell):
         run_card = banner_mod.RunCard(runcardpath)
         param_card = param_card_mod.ParamCard(param_path)
         mdm = param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
-
-        for i,v in enumerate(self.maddm_card['halo_dm_velocity']):
+        
+        scan_v = [self.maddm_card['vMP']/299794.458]
+        # ensure that VPM is the central one for the printout (so far)
+        for i,v in enumerate(scan_v):
             run_card['ebeam1'] = mdm * math.sqrt(1+v**2)
             run_card['ebeam2'] = mdm * math.sqrt(1+v**2)
             run_card.write(runcardpath)
@@ -329,7 +340,12 @@ class MADDMRunCmd(cmd.CmdShell):
             
             for key, value in self.me_cmd.Presults.items():
                 self.last_results['%s#%i' %(key,i)] =  value
+            if i==0:
+                self.last_results['indirect'] = self.me_cmd.results.get_detail('cross')
+                self.last_results['indirect_error'] = self.me_cmd.results.get_detail('error')
             
+                for key, value in self.me_cmd.Presults.items():
+                    self.last_results[key] =  value           
         
         
     def print_results(self):
@@ -360,24 +376,15 @@ class MADDMRunCmd(cmd.CmdShell):
             logger.info(' Nevents          : %i', self.last_results['Nevents'])
             logger.info(' smearing         : %.2e', self.last_results['smearing'])
         if self.mode['indirect']:
-
-            if not self._two2twoLO:
-
-                for i,v in enumerate(self.maddm_card['halo_dm_velocity']):
-                    logger.info('   sigma(DM DM>all)[v = %2.e]: %.2e+-%2.e pb', v,
-                            self.last_results['indirect#%s' %i],self.last_results['indirect_error#%s' %i])
-                    detailled_keys = [k[5:].rsplit("#",1)[0] for k in self.last_results if k.startswith('xsec_')
-                                        and k.endswith('#%i' %i)]
-                    if len(detailled_keys)>1:
-                        for key in detailled_keys:
-                            logger.info('            %s : %.2e+-%2.e pb' % (key,
-                                        self.last_results['xsec_%s#%i' %(key,i)],
-                                        self.last_results['xerr_%s#%i' %(key,i)]))
-            else:
-                for key, value in last_results.items():
-                    logger.info()
-
-                
+            v = self.maddm_card['vMP']
+            logger.info('   sigma(DM DM>all)[v = %2.e]: %.2e+-%2.e pb', v,
+                            self.last_results['indirect'],self.last_results['indirect_error'])
+            detailled_keys = [k[5:].rsplit("#",1)[0] for k in self.last_results if k.startswith('xsec_')]
+            if len(detailled_keys)>1:
+                for key in detailled_keys:
+                    logger.info('            %s : %.2e+-%2.e pb' % (key,
+                                    self.last_results['xsec_%s' %(key)],
+                                    self.last_results['xerr_%s' %(key)]))                
                 
     
     def is_excluded_relic(self, relic, omega_min = 0., omega_max = 0.1):
@@ -902,7 +909,6 @@ class MadDMCard(banner_mod.RunCard):
         
         self.add_param('smearing', False)
         self.add_param('only_two_body_decays', True, include=False)
-        self.add_param('halo_dm_velocity', [0.001], include=False)
         
     def write(self, output_file, template=None, python_template=False):
         """Write the run_card in output_file according to template 

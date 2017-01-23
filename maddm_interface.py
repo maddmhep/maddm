@@ -750,7 +750,7 @@ class MadDM_interface(master_interface.MasterCmd):
 
         #Check if the argument contains only two particles in the final state
         #if not, force the code to use madevent
-        if (len(argument.split('/')[0].split())!=2):
+        if (len(' '.join(argument).split('/')[0].split())!=2):
             self._force_madevent_for_ID = True
 
         if not self._dm_candidate:

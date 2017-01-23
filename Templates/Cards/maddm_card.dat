@@ -147,5 +147,3 @@
 # Turn on detector smearing or not (both energy and angle)
    %(smearing)s     = smearing
 
-# Average Halo DM velocity
-   %(halo_dm_velocity)s = halo_dm_velocity
