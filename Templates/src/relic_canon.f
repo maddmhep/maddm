@@ -189,7 +189,7 @@ c This is used if we are doing a 1-d integration of taacs
 c      call romberg(taacs_integrand_canon, 0.d0, 1.d0, taacs_canon, eps_taacs, iter_taacs)
 
 c call simpson's rule
-        testvar =simpson_taacs(taacs_integrand_canon, 0.d0, 1.d0, eps_taacs, 10000)
+        testvar =simpson(taacs_integrand_canon, 0.d0, 1.d0, eps_taacs, 10000)
 c       write(*,*) 'test: ', testvar
 
 C c Return a constant value for taacs (for testing purposes ONLY)
