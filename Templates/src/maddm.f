@@ -12,8 +12,8 @@ c-------------------------------------------------------------------------c
       include 'coupl.inc'
 
 c parameters used in this routine only
-      Integer sm_flag, prnt_tag
-      double precision Oh2
+      Integer sm_flag, prnt_tag, k
+      double precision Oh2, sigv
       double precision total_events, sigmawnSI, sigmawpSI, gevtopb
       double precision sigmawnSD, sigmawpSD
       character(len=32) outfilename
@@ -96,7 +96,7 @@ c      	   write(*,*) 'SD : ', sigma_proton_SD, sigma_neutron_SD !Antony
 
       if (print_sigmas) then
          write(*,*) 'Contributions to the annihilation cross section at E = mdm(1) / x_f'
-	 call cross_check_all_process(mdm(1)/x_f,mdm(1)/x_f,1)
+	     call cross_check_all_process(mdm(1)/x_f,mdm(1)/x_f,1)
       endif
 
 C      Here write the output.
@@ -123,6 +123,14 @@ C      Here write the output.
 	  write(33,*) 'smearing: ', sm_flag
 
 c	  close(33)
+
+      write(*,*) 'do_indirect_detection = ', do_indirect_detection
+      if (do_indirect_detection) then
+        do k=1, ANN_NUM_PROCESSES
+            sigv =  sigmav_ID(k)
+            write(*,fmt='(A8,A12,A4,ES14.7,A7)') 'sigma*v(',PROCESS_NAMES(k),') : ' ,sigv, ' GeV^-2'
+        enddo
+      endif
 
 c-------------------------------------------------------------------------c
 c  Other test functions

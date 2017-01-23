@@ -8,7 +8,7 @@ flags = -O -fno-align-commons -ffixed-line-length-132 -L$(libdir) -I$(incdir)
 
 libs = -lmatrix_elements -ldhelas -lmodel
 
-objs_all=init.o integrate.o interpolate.o maddm.o phasespace.o relic_canon.o relic_coupled.o relic_density.o direct_detection.o directional_detection.o tests.o
+objs_all=init.o integrate.o interpolate.o maddm.o phasespace.o relic_canon.o relic_coupled.o relic_density.o direct_detection.o directional_detection.o indirect_detect_2to2.o tests.o
 
 #Dependencies
 init.o: $(incdir)/maddm.inc
@@ -21,6 +21,7 @@ relic_coupled.o: $(incdir)/maddm.inc
 relic_density.o: $(incdir)/maddm.inc
 direct_detection.o: $(incdir)/maddm.inc
 directional_detection.o: $(incdir)/maddm.inc
+indirect_detect_2to2.o: $(incdir)/maddm.inc
 tests.o: $(incdir)/maddm.inc
 
 all: maddm

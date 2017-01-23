@@ -497,8 +497,6 @@ C           call getfsmasses_scattering(pmass,i,j,k)
       return
       end
 
-
-
 c-------------------------------------------------------------------------c
       subroutine cross_check_all_process(x1init, x2init, p_or_E)
 c-------------------------------------------------------------------------c

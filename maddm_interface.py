@@ -101,6 +101,7 @@ class MadDM_interface(master_interface.MasterCmd):
         self._ID_matrix_elements = helas_objects.HelasMultiProcess()
         self._ID_amps = diagram_generation.AmplitudeList() 
         #self.dm = darkmatter.darkmatter()
+        self._force_madevent_for_ID = False
         
 
 
@@ -739,7 +740,12 @@ class MadDM_interface(master_interface.MasterCmd):
            Currently works only with canonical mode and one dm candidate.
         related to syntax: generate indirect a g / n3
         """
-        
+
+        #Check if the argument contains only two particles in the final state
+        #if not, force the code to use madevent
+        if (len(argument.split('/')[0].split())!=2):
+            self._force_madevent_for_ID = True
+
         if not self._dm_candidate:
             self.search_dm_candidate()
             if not self._dm_candidate:

@@ -349,13 +349,13 @@ class MADDMRunCmd(cmd.CmdShell):
         if self.mode['indirect']:
 
             for i,v in enumerate(self.maddm_card['halo_dm_velocity']):
-                logger.info('   sigma(DM DM>all)[v = %2.e]: %.2e+-%2.e', v,
+                logger.info('   sigma(DM DM>all)[v = %2.e]: %.2e+-%2.e pb', v,
                         self.last_results['indirect#%s' %i],self.last_results['indirect_error#%s' %i])
                 detailled_keys = [k[5:].rsplit("#",1)[0] for k in self.last_results if k.startswith('xsec_')
                                     and k.endswith('#%i' %i)]
                 if len(detailled_keys)>1: 
                     for key in detailled_keys:
-                        logger.info('            %s : %.2e+-%2.e' % (key, 
+                        logger.info('            %s : %.2e+-%2.e pb' % (key,
                                     self.last_results['xsec_%s#%i' %(key,i)],
                                     self.last_results['xerr_%s#%i' %(key,i)]))
                 
