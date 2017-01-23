@@ -249,7 +249,7 @@ class MadDM_interface(master_interface.MasterCmd):
         # Looping over all the BSM particles we check the criteria described above
         for p in bsm_particles:
             curr_mass = abs(self._curr_model.get_mass(p['pdg_code']))
-            if p['width'] == 'ZERO' or  get_width(p) == 0:
+            if (p['width'] == 'ZERO' or  get_width(p) == 0) and curr_mass>0:
                 # If nothing has been found so far then set the first DM candidate
                 if not dm_particles:
                     dm_particles.append(p)
@@ -263,7 +263,7 @@ class MadDM_interface(master_interface.MasterCmd):
         if not dm_particles:
             raise DMError, "No dark matter candidates in the model!"
         if dm_mass == 0:
-            raise DMError, "No dark matter candidate since we found a DarkEnergy candidate!"
+            raise DMError, "No dark matter candidate since we found a DarkEnergy candidate: %s" % dm_particles[0]['name']
 
         # Print out the DM candidate
         logger.info("Found Dark Matter candidate: %s" % dm_particles[0]['name'],  '$MG:color:BLACK')
@@ -446,7 +446,9 @@ class MadDM_interface(master_interface.MasterCmd):
         if self._curr_amps:
             super(MadDM_interface, self).do_output(line)
         
-        if self._ID_procs:                        
+        if self._ID_procs:
+            import aloha.aloha_lib as aloha_lib
+            aloha_lib.KERNEL = aloha_lib.Computation()                        
             path = self._done_export[0]
             with misc.TMP_variable(self, 
                 ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps', '_done_export'], 
@@ -742,12 +744,14 @@ class MadDM_interface(master_interface.MasterCmd):
             self.search_dm_candidate()
             if not self._dm_candidate:
                 return
+            
+        if len(self._curr_proc_defs) == 0:
+            self.generate_relic([])
 
         # flip indirect/standard process definition
         with misc.TMP_variable(self, ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps'], 
                                      [self._ID_procs, self._ID_matrix_elements, self._ID_amps]):
             # First try LO matrix-element
-            misc.sprint(len(self._ID_procs), len(self._curr_proc_defs), id(self._ID_procs), id(self._curr_proc_defs))
             coupling = "SIEFFS=0 SIEFFF=0 SIEFFV=0 SDEFFF=0 SDEFFV=0"
             done= []
             for dm in self._dm_candidate:
@@ -762,7 +766,7 @@ class MadDM_interface(master_interface.MasterCmd):
                 try:
                     self.do_add('process %s' % proc)
                 except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
-                    proc = '%s %s > %s %s [virt=ALL] @ID ' % (name, antiname, ' '.join(argument), coupling)
+                    proc = '%s %s > %s %s [noborn=QCD] @ID ' % (name, antiname, ' '.join(argument), coupling)
                     self.do_add('process %s' % proc)
   
     def update_model_with_EFT(self):

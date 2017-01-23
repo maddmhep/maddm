@@ -18,6 +18,7 @@ import aloha
 import aloha.create_aloha as create_aloha
 from madgraph import MG5DIR
 from madgraph.iolibs.files import cp
+from madgraph.loop import loop_exporters
 
 
 class MYStringIO(StringIO):
@@ -917,8 +918,9 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         
         writer.write(open(pjoin(MDMDIR, 'python_templates', 'direct_detection.f')).read() % to_replace)
         
-        
-class ProcessExporterIndirectD(export_v4.ProcessExporterFortranMEGroup):
+
+
+class ProcessExporterIndirectD(object):
     """_________________________________________________________________________#
     #                                                                         #
     #  This class is used to export the matrix elements generated from        #
@@ -928,8 +930,17 @@ class ProcessExporterIndirectD(export_v4.ProcessExporterFortranMEGroup):
     #                                                                         #
     #_______________________________________________________________________"""
  
-    
-        
+    check = True
+    exporter = 'v4'
+    output = 'Template'
+    sa_symmetry = False
+     
+    def __new__(cls, path, options):
+        if cls is ProcessExporterIndirectD:
+            if 'compute_color_flows' in options:
+                return loop_exporters.LoopInducedExporterMEGroup.__new__(ProcessExporterIndirectDLI, path, options) 
+            else:
+                return export_v4.ProcessExporterFortranMEGroup.__new__(ProcessExporterIndirectDLO, path, options)
         
     #===========================================================================
     # link symbolic link
@@ -987,3 +998,11 @@ class ProcessExporterIndirectD(export_v4.ProcessExporterFortranMEGroup):
         run_card.write(pjoin(self.dir_path, 'Cards', 'run_card.dat'),
                        template=pjoin(MG5DIR, 'Template', 'LO', 'Cards', 'run_card.dat'),
                        python_template=True)
+        
+        
+class ProcessExporterIndirectDLO(ProcessExporterIndirectD,export_v4.ProcessExporterFortranMEGroup):
+    pass
+
+class ProcessExporterIndirectDLI(ProcessExporterIndirectD,loop_exporters.LoopInducedExporterMEGroup):
+    pass
+                
