@@ -1,6 +1,8 @@
 c function names
 c integrate.f
-      double precision simpson, simpson_adaptive, simpson_taacs
+      double precision simpson, simpson_adaptive, simpson_taacs, grid_ID(10000)
+      integer grid_npts_ID
+      common/idgrids/grid_ID, grid_npts_ID
 c init.f
       double precision get_Y_eq, get_gstar, get_Wij_ann, Wij_ann_integrand
 c interpolate.f
@@ -21,7 +23,9 @@ c relic_density.f
 c tests.f
       double precision crossijk, cross_check_process
 c indirect_detection.f
-      double precision sigmav_ID
+      double precision sigmav_ID, dm_vel_dist_ID, integrand, taacs_ID, vave_glob
+      integer channel_glob
+      common/idstuff/ vave_glob, channel_glob
 
 c direct_detection.f
 	  double precision sigma_proton_SI, sigma_neutron_SI, sigma_nucleon
@@ -109,7 +113,7 @@ c number of annihilation particles and associated diagrams
 	  common/ dd_tot_process_ids/ dd_tot_process_ids
       logical ann_process_iden_init(maxdms,maxdms, %(max_dm2sm)i), dm2dm_process_iden_init(maxdms,maxdms,%(max_dm2dm)i)
       logical relic_canonical, calc_taacs_ann_array, calc_taacs_dm2dm_array, calc_taacs_scattering_array
-      logical do_relic_density, do_direct_detection, do_indirect_detection, xd_approx
+      logical do_relic_density, do_direct_detection, do_indirect_detection, xd_approx, only2to2lo
       common/process_logical/ ann_process_iden_init, dm2dm_process_iden_init, relic_canonical,
      . calc_taacs_ann_array, calc_taacs_dm2dm_array, calc_taacs_scattering_array, xd_approx
 

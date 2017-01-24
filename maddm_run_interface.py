@@ -193,6 +193,12 @@ class MADDMRunCmd(cmd.CmdShell):
     def do_launch(self, line):
         """run the code"""
 
+        #If the Indirect subfolder is not created, that means that the code is
+        #using the 2to2 at LO which is handled by maddm.f.
+        if not os.path.exists(pjoin(self.dir_path, 'Indirect')):
+            self._two2twoLO = True
+
+
         args = line.split()
         if '-f' in args or '--force' in args:
             force = True
@@ -221,7 +227,7 @@ class MADDMRunCmd(cmd.CmdShell):
         output_name = ['omegah2', 'x_freezeout', 'wimp_mass', 'sigmav_xf' ,
                        'sigmaN_SI_proton', 'sigmaN_SI_neutron', 'sigmaN_SD_proton',
                         'sigmaN_SD_neutron','Nevents', 'smearing']
-        
+
         sigv_indirect, sigv_indirect_error = 0.,0.
         for line in open(pjoin(self.dir_path, output)):
             splitline = line.split()
@@ -239,8 +245,8 @@ class MADDMRunCmd(cmd.CmdShell):
         if sigv_indirect:
             result['indirect'] = sigv_indirect
             result['indirect_error'] = math.sqrt(sigv_indirect_error)
-        
-        
+
+
         self.last_results = result
 
         if self.mode['indirect'] and not self._two2twoLO:
@@ -333,7 +339,7 @@ class MADDMRunCmd(cmd.CmdShell):
             run_card.write(runcardpath)
             
             self. me_cmd.do_launch('-f')
-            
+
             self.last_results['halo_velocity#%s' %i] = v
             self.last_results['indirect#%s' %i] = self.me_cmd.results.get_detail('cross')
             self.last_results['indirect_error#%s' %i] = self.me_cmd.results.get_detail('error')
@@ -376,16 +382,16 @@ class MADDMRunCmd(cmd.CmdShell):
             logger.info(' Nevents          : %i', self.last_results['Nevents'])
             logger.info(' smearing         : %.2e', self.last_results['smearing'])
         if self.mode['indirect']:
+
             v = self.maddm_card['vMP']
-            logger.info('   sigma(DM DM>all)[v = %2.e]: %.2e+-%2.e pb', v,
+            logger.info('   sigma(DM DM>all)[v = %2.e]: %.2e+-%2.e pb', v/299792.0,
                             self.last_results['indirect'],self.last_results['indirect_error'])
             detailled_keys = [k[5:].rsplit("#",1)[0] for k in self.last_results if k.startswith('xsec_')]
             if len(detailled_keys)>1:
                 for key in detailled_keys:
                     logger.info('            %s : %.2e+-%2.e pb' % (key,
                                     self.last_results['xsec_%s' %(key)],
-                                    self.last_results['xerr_%s' %(key)]))                
-                
+                                    self.last_results['xerr_%s' %(key)]))
     
     def is_excluded_relic(self, relic, omega_min = 0., omega_max = 0.1):
         """  This function determines whether a model point is excluded or not
@@ -425,6 +431,7 @@ class MADDMRunCmd(cmd.CmdShell):
             self.maddm_card.set('do_direct_detection', self.mode['direct'], user=False)
             self.maddm_card.set('do_directional_detection', self.mode['directional'], user=False)
             self.maddm_card.set('do_indirect_detection', self.mode['indirect'], user=False)
+            self.maddm_card.set('only2to2lo', self._two2twoLO, user=False)
             self.maddm_card.write_include_file(pjoin(self.dir_path, 'include'))
         else:
             if not hasattr(self, 'maddm_card'):
@@ -441,7 +448,9 @@ class MADDMRunCmd(cmd.CmdShell):
                 self.maddm_card.set('do_direct_detection', self.mode['direct'], user=False)
                 self.maddm_card.set('do_directional_detection', self.mode['directional'], user=False)
                 self.maddm_card.set('do_indirect_detection', self.mode['indirect'], user=False)
-                self.maddm_card.write_include_file(pjoin(self.dir_path, 'include'))                
+                self.maddm_card.set('only2to2lo', self._two2twoLO, user=False)
+                self.maddm_card.write_include_file(pjoin(self.dir_path, 'include'))
+
             
         self.check_param_card(pjoin(self.dir_path, 'Cards', 'param_card.dat'))
         
@@ -837,6 +846,7 @@ class MadDMCard(banner_mod.RunCard):
         self.add_param('do_direct_detection', False, system=True)
         self.add_param('do_directional_detection', False, system=True)
         self.add_param('do_indirect_detection', False, system=True)
+        self.add_param('only2to2lo', False, system=True)
         
         self.add_param('calc_taacs_ann_array', True)
         self.add_param('calc_taacs_dm2dm_array', True)
@@ -909,6 +919,7 @@ class MadDMCard(banner_mod.RunCard):
         
         self.add_param('smearing', False)
         self.add_param('only_two_body_decays', True, include=False)
+
         
     def write(self, output_file, template=None, python_template=False):
         """Write the run_card in output_file according to template 

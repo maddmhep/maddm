@@ -16,6 +16,7 @@ c parameters used in this routine only
       double precision Oh2, sigv
       double precision total_events, sigmawnSI, sigmawpSI, gevtopb
       double precision sigmawnSD, sigmawpSD
+      double precision vID_natural
       character(len=32) outfilename
 
 c include files generated my the python side that contains necessary information
@@ -124,9 +125,15 @@ C      Here write the output.
 
 c	  close(33)
 
-      if (do_indirect_detection) then
+      if (do_indirect_detection.and.only2to2lo) then
+        vID_natural = vMP/299792.d0
+
+c           Here construct the integration grid in the same way as with relic density
+c           use the grid initialized by the relic density calculation (grid_ID) but add the
+c           peak of the velocity distribution
+        call set_up_grid_ID(vID_natural)
         do k=1, ANN_NUM_PROCESSES
-            sigv =  sigmav_ID(k)
+            sigv =  taacs_ID(k,vID_natural, 10000) ! the last thing is the size of the integration grid. Leave at 10000.
             write(33,fmt='(A8,A12,A4,ES14.7,A7)') 'sigma*v:',PROCESS_NAMES(k),' ',sigv, ' GeV^-2'
         enddo
       endif

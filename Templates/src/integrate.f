@@ -6,11 +6,11 @@ c Duplicates (sets the array element to 10 for now)
          i = 1
          do while (alist(i).le.1.d0)
            j = i+1
-           do while (j.le.1.d0)
+           do while (j.le.length)
                 if (alist(i).eq.alist(j)) then
                  alist(j) = 10.d0
-                 j = j+1
                 endif
+                j = j+1
            enddo
            i = i+1
           enddo
@@ -74,7 +74,7 @@ c      end
 c-------------------------------------------------------------------------c
 c 1-D function integration using the Simpson's method
 c-------------------------------------------------------------------------c
-      function simpson(func, a,b, tolerance, grid_npts)
+      function simpson_taacs(func, a,b, tolerance, grid_npts)
 
          implicit none
          include 'maddm.inc'
@@ -117,7 +117,7 @@ c add the resonance positions first
 c then add more points around the resonance
        do ii=1, nres
           if (beta_res(ii).ge.a.and.beta_res(ii).lt.b.and.beta_res(ii).ge.0.d0) then
-              do jj=0, nres_points
+              do jj=1, nres_points
 c                pts_to_add_adaptive = ceiling(real(pts_to_add_adaptive / 2))
 c                do kk = 1, pts_to_add_adaptive
                     additional_pt = beta_res(ii) + (exp(real(beta_res_width(ii))/10.d0*exp(real(jj)))-1.d0)
@@ -130,7 +130,7 @@ c                do kk = 1, pts_to_add_adaptive
                         endif
                     endif
 
-                    additional_pt = beta_res(ii) - (exp(real(beta_res_width(ii))/10.d0*exp(real(jj)))-1.d0)
+                    additional_pt = width - (exp(real(beta_res_width(ii))/10.d0*exp(real(jj)))-1.d0)
                     if (additional_pt.gt.a) then
                         grid(grid_pos) = additional_pt
                         grid_pos=grid_pos+1
@@ -143,6 +143,10 @@ c                enddo
               enddo
            endif
        enddo
+
+c PUT THE GRID INTO A GLOBAL VARIABLE SO IT CAN BE USED FOR ID
+        grid_ID = grid
+        grid_npts_ID = grid_npts
 
 c then add the peak of the velocity distribution (for indirect detection's sake)
        width = dsqrt(2.d0)/dsqrt(x_pass) ! width of the maxwellian = most probable vel.
@@ -192,14 +196,35 @@ c           endif
 c           ii=ii+1
 c      enddo
 
+       simpson_taacs = simpson(func,0.d0, 1.d0, grid, grid_npts)
+       return
 
-c now integrate over the grid using simpson's rule
+       end function simpson_taacs
+
+c-------------------------------------------------------------------------c
+c 1-D function integration - SIMPSON'S RULE, integrates from 0 to 1
+c-------------------------------------------------------------------------c
+      function simpson(func,  a, b, grid, grid_npts)
+
+      implicit none
+      include 'maddm.inc'
+      include 'coupl.inc'
+
+      double precision func, exponent
+      double precision  whole, end_pt, start_pt,a, b
+      external func
+      integer grid_npts, ii
+      double precision grid(grid_npts)
+
       simpson = 0.d0
       ii = 1
-c      write (*,*) 'grid(ii)', grid(ii)
-c      open(101,file='./test.out',status='unknown')
-      do while (grid(ii+1).le.1.d0)
+
+      do while (grid(ii+1).le.b)
            start_pt = grid(ii)
+           if (start_pt.lt.a) then
+               ii= ii+1
+               continue
+           endif
            end_pt =  grid(ii+1)
 c            write(101,*) start_pt, func(start_pt)
 c           write(*,*) 'start, end', start_pt, end_pt
@@ -210,10 +235,11 @@ c            simpson = simpson+ (end_pt - start_pt)/8.d0*(max(0.d0, func(start_p
 c     .             + 3.d0*max(0.d0,func(0.33d0*(2.d0*start_pt+end_pt)))
 c     .             + 3.d0*max(0.d0,func(0.33d0*(start_pt+2.d0*end_pt)))  + max(0.d0,func(end_pt)))
            ii = ii+1
+
       enddo
-c      close(101)
-c      write(*,*) 'simpson: ', simpson
-       end function simpson
+      return
+
+      end function simpson
 
 c-------------------------------------------------------------------------c
 c 1-D function integration
