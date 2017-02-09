@@ -43,7 +43,7 @@ c-----------------------------------------------------------------------
             grid_ID(grid_pos)=width
             grid_pos=grid_pos-1
             do jj=1, nres_points
-                    additional_pt = width +3.d0*width/nres_points*jj
+                    additional_pt = width +5.d0*width/nres_points*jj
                     if (additional_pt.lt.1.d0) then
                         grid_ID(grid_pos) = additional_pt
                         grid_pos=grid_pos-1
@@ -53,7 +53,7 @@ c-----------------------------------------------------------------------
                         endif
                     endif
 
-                    additional_pt = width - 3.d0*width/nres_points*jj
+                    additional_pt = width - 5.d0*width/nres_points*jj
                     if (additional_pt.gt.0.d0) then
                         grid_ID(grid_pos) = additional_pt
                         grid_pos=grid_pos-1

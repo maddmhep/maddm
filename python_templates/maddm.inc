@@ -23,9 +23,9 @@ c relic_density.f
 c tests.f
       double precision crossijk, cross_check_process
 c indirect_detection.f
-      double precision sigmav_ID, dm_vel_dist_ID, integrand, taacs_ID, vave_glob
+      double precision sigmav_ID, dm_vel_dist_ID, integrand, taacs_ID, vave_glob,vave_indirect
       integer channel_glob
-      common/idstuff/ vave_glob, channel_glob
+      common/idstuff/ vave_glob, channel_glob, vave_indirect
 
 c direct_detection.f
 	  double precision sigma_proton_SI, sigma_neutron_SI, sigma_nucleon

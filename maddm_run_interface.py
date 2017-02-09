@@ -22,6 +22,8 @@ import models.check_param_card as param_card_mod
         
 #import darkmatter as darkmatter
 
+import numpy as np
+
 pjoin = os.path.join
 logger = logging.getLogger('madgraph.plugin.maddm')
 
@@ -94,6 +96,7 @@ class MADDMRunCmd(cmd.CmdShell):
         self.get_characteristics()
 
         self._two2twoLO = False
+        self._fit_parameters= []
     
     def preloop(self,*args,**opts):
         super(Indirect_Cmd,self).preloop(*args,**opts)
@@ -198,6 +201,7 @@ class MADDMRunCmd(cmd.CmdShell):
         if not os.path.exists(pjoin(self.dir_path, 'Indirect')):
             self._two2twoLO = True
 
+        logger.info('2to2: %s' % self._two2twoLO)
 
         args = line.split()
         if '-f' in args or '--force' in args:
@@ -233,18 +237,19 @@ class MADDMRunCmd(cmd.CmdShell):
             splitline = line.split()
             result.append(float(splitline[1]))
             if 'sigma*v' in line:
-                result[-1]*=GeV2pb
+                sigv_temp = float(result[-1])*GeV2pb
                 oname =splitline[0].split(':',1)[1]
-                output_name.append('xsec_%s' % oname)
-                sigv_indirect += result[-1]
-                output_name.append('xerr_%s' % oname)
+                output_name.append('taacsID#%s' % oname)
+                sigv_indirect += sigv_temp
+                output_name.append('err_taacsID#%s' % oname)
                 result.append(0.)
+
                 
         result = dict(zip(output_name, result))
         
         if sigv_indirect:
-            result['indirect'] = sigv_indirect
-            result['indirect_error'] = math.sqrt(sigv_indirect_error)
+            result['taacsID'] = sigv_indirect
+            result['err_taacsID'] = math.sqrt(sigv_indirect_error)
 
 
         self.last_results = result
@@ -275,13 +280,14 @@ class MADDMRunCmd(cmd.CmdShell):
             if self.mode['directional']:
                 order += ['Nevents', 'smearing']
                 
-            if self.mode['indirect'] and not self._two2twoLO:
-                order +=['halo_velocity','indirect', 'indirect_error']
-                detailled_keys = [k[5:] for k in self.last_results 
+            if self.mode['indirect']:
+                if not  self._two2twoLO:
+                    order +=['halo_velocity','indirect', 'indirect_error']
+                    detailled_keys = [k[5:] for k in self.last_results
                                   if k.startswith('xsec_') and '#' not in k]
-                if len(detailled_keys)>1: 
-                    for key in detailled_keys:
-                        order +=['xsec_%s' % (key), 'xerr_%s' % (key)]
+                    if len(detailled_keys)>1:
+                        for key in detailled_keys:
+                            order +=['taacs_ID#%s' % (key), 'err_taacsID#%s' % (key)]
 
 
             to_print = param_card_iterator.write_summary(None, order,nbcol=10, max_col=10)
@@ -304,8 +310,9 @@ class MADDMRunCmd(cmd.CmdShell):
             logger.info("write all results in %s" % path ,'$MG:color:BLACK')
 
             param_card_iterator.write_summary(path, order)
-    
-        return result
+
+
+
 
 
     def launch_indirect(self, force):
@@ -330,10 +337,17 @@ class MADDMRunCmd(cmd.CmdShell):
         run_card = banner_mod.RunCard(runcardpath)
         param_card = param_card_mod.ParamCard(param_path)
         mdm = param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
-        
-        scan_v = [self.maddm_card['vMP']/299794.458]
+
+        vave_temp = self.maddm_card['vave_indirect']
+        scan_v = [np.power(10., -1*ii) for ii in range(2, 6)]
+        scan_v = scan_v+[vave_temp]#/299794.458]
+        scan_v = np.unique([round(x, 6) for x in scan_v])
+
+        print self.last_results
+
         # ensure that VPM is the central one for the printout (so far)
         for i,v in enumerate(scan_v):
+
             run_card['ebeam1'] = mdm * math.sqrt(1+v**2)
             run_card['ebeam2'] = mdm * math.sqrt(1+v**2)
             run_card.write(runcardpath)
@@ -351,8 +365,100 @@ class MADDMRunCmd(cmd.CmdShell):
                 self.last_results['indirect_error'] = self.me_cmd.results.get_detail('error')
             
                 for key, value in self.me_cmd.Presults.items():
-                    self.last_results[key] =  value           
-        
+                    self.last_results[key] =  value
+
+        print self.me_cmd.Presults.items()
+
+        #calculate taacs
+        taacs = self.calculate_taacs(scan_v)
+        self.last_results['taacsID#%s' %i] = taacs
+        self.last_results['taacsID'] = taacs # !!!!!!!!!!!!!!!!!!! FIX THIS, should be sum of taacs!!!!!!!!
+
+
+#-------------------------------------------------------------------------------------
+    #THIS PART IS FOR INDIRECT DETECTION
+#-------------------------------------------------------------------------------------
+#integrand of sigma*v(v, vave) for the calculation of taacs
+    def integrand(self, v):
+        return v*self.velocity_distribution(self.maddm_card['vave_indirect'], v)*self.ID_sigmav(v)
+
+
+    #A function to fit the low velocity part of the annihilation cross section
+    def fit_ID_crossect(self, sigma_x, sigma_y, degree=3):
+            try:
+                fit_parameters = np.polyfit(sigma_x, sigma_y, deg=degree)
+            except np.RankWarning:
+                logger.warning("The fitting function is not performing well! Check the quality of the fit!")
+                pass
+
+            return np.array(fit_parameters)
+
+    #Indirect detection cross section as a function of velocity (at low velocity)
+    def ID_sigmav(self, vel):
+            p = np.poly1d(self._fit_parameters)
+            return p(vel)
+
+# Halo velocity distribution. Use the non-rel. Maxwell Boltzmann distribution as an approximation
+    def velocity_distribution(self, vave, v):
+        return np.sqrt(2.0/np.pi)*np.power(1.0/(vave*vave),1.5)*v*v*np.exp(-v*v/(2.0*vave*vave))
+
+# integration routine, simpson's rule. integrates a function over a pre-set 1-D grid.
+    def integrate(self, x_grid, a, b):
+        simpson = 0.0
+        ii = 0
+        for ii in range(0, len(x_grid)-1):
+           start_pt = x_grid[ii]
+           if (start_pt< a):
+               continue
+           end_pt =  x_grid[ii+1]
+           simpson = simpson+ (end_pt - start_pt)/6.0*(self.integrand(start_pt) + 4.0*self.integrand(0.5*\
+                                       (start_pt+end_pt)) + self.integrand(end_pt))
+           ii = ii+1
+
+        return simpson
+
+# Function which perform the thermal averaging of the cross section for the purpose
+# of indirect detection
+    def calculate_taacs(self, scan_v, channel=0):
+
+        sigmav=[]
+        velocities=[]
+
+        for i, v in enumerate(scan_v):
+            sigmav.append(v*self.last_results['indirect#%s' %i]/GeV2pb)   #sigma*v array in GeV^(-2)
+            velocities.append(v)
+
+        #then add the peak of the velocity distribution and points around it for better precision
+        velocity_grid = velocities[:]
+        vave_temp = self.maddm_card['vave_indirect']
+        velocity_grid.append(vave_temp)
+        for kk in range(1, self.maddm_card['nres_points']):
+            pt1 = vave_temp + 5.0*vave_temp/kk
+            if pt1 < 0.0:
+                velocity_grid.append(pt1)
+            pt2 = vave_temp - 5.0*vave_temp/kk
+            if pt2 > 1.0:
+                velocity_grid.append(pt2)
+        velocity_grid = np.sort(velocity_grid)
+
+        self._fit_parameters = self.fit_ID_crossect(velocities, sigmav)
+        taacs = self.integrate(velocity_grid, 0.0, 1.0)
+
+        #print self._fit_parameters
+        #print velocities
+        #print sigmav
+
+        logger.info('sigma*v fit parameters: ', self._fit_parameters)
+
+        logger.info('v: ', velocities)
+        logger.info('sigma*v', sigmav)
+
+
+        return taacs
+
+
+#-------------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------------
         
     def print_results(self):
         """ print the latest results """
@@ -368,7 +474,7 @@ class MADDMRunCmd(cmd.CmdShell):
         
         logger.info("*** RESULTS ***", '$MG:color:BLACK')
         if self.mode['relic']:
-            logger.info('   relic density  : %.2e %s', self.last_results['omegah2'],fail_relic_msg)
+            logger.info('  relic density  : %.2e %s', self.last_results['omegah2'],fail_relic_msg)
                         
             logger.info('   x_f            : %.2f', self.last_results['x_freezeout'])
             logger.info('   sigmav(xf)     : %.2e GeV^-2 = %.2e pb', self.last_results['sigmav_xf'],self.last_results['sigmav_xf']*GeV2pb)
@@ -383,15 +489,22 @@ class MADDMRunCmd(cmd.CmdShell):
             logger.info(' smearing         : %.2e', self.last_results['smearing'])
         if self.mode['indirect']:
 
-            v = self.maddm_card['vMP']
-            logger.info('   sigma(DM DM>all)[v = %2.e]: %.2e+-%2.e pb', v/299792.0,
-                            self.last_results['indirect'],self.last_results['indirect_error'])
-            detailled_keys = [k[5:].rsplit("#",1)[0] for k in self.last_results if k.startswith('xsec_')]
+            v = self.maddm_card['vave_indirect']
+            #logger.info('   sigma(DM DM>all) [v = %2.e]: %.2e+-%2.e pb', v,
+            #                self.last_results['indirect'],self.last_results['indirect_error'])
+
+            detailled_keys = [k.split("#")[1] for k in self.last_results.keys() if k.startswith('taacsID#')]
+
             if len(detailled_keys)>1:
+                logger.info('    indirect detection: ')
+                #Print out taacs for each annihilation channel
                 for key in detailled_keys:
-                    logger.info('            %s : %.2e+-%2.e pb' % (key,
-                                    self.last_results['xsec_%s' %(key)],
-                                    self.last_results['xerr_%s' %(key)]))
+                    logger.info('    sigmav    %s : %.2e pb' % (key,\
+                                    self.last_results['taacsID#%s' %(key)]*GeV2pb))
+
+            #Print out the total taacs.
+            logger.info('    sigmav    DM DM > all [vave = %2.e] : %.2e pb' % (v,\
+                                    self.last_results['taacsID']))
     
     def is_excluded_relic(self, relic, omega_min = 0., omega_max = 0.1):
         """  This function determines whether a model point is excluded or not
@@ -916,7 +1029,10 @@ class MadDMCard(banner_mod.RunCard):
         self.add_param('Energy_bins', 100)
         self.add_param('cos_theta_bins', 20)
         self.add_param('day_bins', 10)
-        
+
+        #The aerage velocity for indirect detection
+        self.add_param('vave_indirect', 0.001)
+
         self.add_param('smearing', False)
         self.add_param('only_two_body_decays', True, include=False)
 

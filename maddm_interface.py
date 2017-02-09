@@ -22,6 +22,8 @@ pjoin = os.path.join
 
 logger = logging.getLogger('madgraph.plugin.maddm')
 
+GeV2pb = 3.894E8
+
 class bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -102,23 +104,7 @@ class MadDM_interface(master_interface.MasterCmd):
         self._ID_amps = diagram_generation.AmplitudeList() 
         #self.dm = darkmatter.darkmatter()
         self._force_madevent_for_ID = False
-        
 
-
-    #A function to fit the low velocity part of the annihilation cross section
-    def fit_ID_crossect(self, sigma_x, sigma_y, degree=4):
-            try:
-                fit_parameters = np.polyfit(sigma_x, sigma_y, deg=degree)
-            except numpy.RankWarning:
-                logger.warning("The fitting function is not performing well! Check the quality of the fit!")
-                pass
-
-            return fit_parameters
-
-    #Indirect detection cross section as a function of velocity (at low velocity)
-    def ID_crosssect(self, vel, fit_params):
-            p = np.poly1d(fit_params)
-            return p(vel)
 
 ################################################################################        
 # DEFINE COMMAND

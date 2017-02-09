@@ -149,32 +149,32 @@ c PUT THE GRID INTO A GLOBAL VARIABLE SO IT CAN BE USED FOR ID
         grid_npts_ID = grid_npts
 
 c then add the peak of the velocity distribution (for indirect detection's sake)
-       width = dsqrt(2.d0)/dsqrt(x_pass) ! width of the maxwellian = most probable vel.
-       grid(grid_pos)=width
-       grid_pos=grid_pos+1
-       do jj=0, nres_points
+c       width = dsqrt(2.d0)/dsqrt(x_pass) ! width of the maxwellian = most probable vel.
+c       grid(grid_pos)=width
+c       grid_pos=grid_pos+1
+c       do jj=0, nres_points
 c                pts_to_add_adaptive = ceiling(real(pts_to_add_adaptive / 2))
 c                do kk = 1, pts_to_add_adaptive
-                    additional_pt = width +3.d0*width/nres_points*jj
-                    if (additional_pt.lt.b) then
-                        grid(grid_pos) = additional_pt
-                        grid_pos=grid_pos+1
-                        if (grid_npts.lt.grid_pos) then
-                            write(*,*) 'Error: grid array not large enough!'
-                            call exit(1)
-                        endif
-                    endif
+c                    additional_pt = width +3.d0*width/nres_points*jj
+c                    if (additional_pt.lt.b) then
+c                        grid(grid_pos) = additional_pt
+c                        grid_pos=grid_pos+1
+c                        if (grid_npts.lt.grid_pos) then
+c                            write(*,*) 'Error: grid array not large enough!'
+c                            call exit(1)
+c                        endif
+c                    endif
 
-                    additional_pt = beta_res(ii) - 3.d0*width/nres_points*jj
-                    if (additional_pt.gt.a) then
-                        grid(grid_pos) = additional_pt
-                        grid_pos=grid_pos+1
-                        if (grid_npts.lt.grid_pos) then
-                            write(*,*) 'Error: grid array not large enough!'
-                            call exit(1)
-                        endif
-                    endif
-                enddo
+c                    additional_pt = beta_res(ii) - 3.d0*width/nres_points*jj
+c                    if (additional_pt.gt.a) then
+c                        grid(grid_pos) = additional_pt
+c                        grid_pos=grid_pos+1
+c                        if (grid_npts.lt.grid_pos) then
+c                            write(*,*) 'Error: grid array not large enough!'
+c                            call exit(1)
+c                        endif
+c                    endif
+c                enddo
 
 c remove duplicates
 c sort the grid

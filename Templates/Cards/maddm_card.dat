@@ -147,3 +147,7 @@
 # Turn on detector smearing or not (both energy and angle)
    %(smearing)s     = smearing
 
+#
+# For indirect detection
+#
+   %(vave_indirect)s   = vave_indirect  ! average velocity of DM halo in natural units (e.g. 10E-3 for our galaxy)

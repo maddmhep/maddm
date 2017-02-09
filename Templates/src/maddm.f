@@ -126,7 +126,8 @@ C      Here write the output.
 c	  close(33)
 
       if (do_indirect_detection.and.only2to2lo) then
-        vID_natural = vMP/299792.d0
+c      here natural just signals that it's in natural units.
+        vID_natural = vave_indirect !/299792.d0
 
 c           Here construct the integration grid in the same way as with relic density
 c           use the grid initialized by the relic density calculation (grid_ID) but add the
