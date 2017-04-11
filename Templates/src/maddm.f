@@ -134,8 +134,9 @@ c           use the grid initialized by the relic density calculation (grid_ID) 
 c           peak of the velocity distribution
         call set_up_grid_ID(vID_natural)
         do k=1, ANN_NUM_PROCESSES
-            sigv =  taacs_ID(k,vID_natural, 10000) ! the last thing is the size of the integration grid. Leave at 10000.
-            write(33,fmt='(A8,A12,A4,ES14.7,A7)') 'sigma*v:',PROCESS_NAMES(k),' ',sigv, ' GeV^-2'
+c   here sigv is in units of 'pb' so convert it to cm^3/s
+            sigv =  taacs_ID(k,vID_natural, 10000)/3.34d25 ! the last thing is the size of the integration grid. Leave at 10000.
+            write(33,fmt='(A8,A12,A4,ES14.7,A7)') 'sigma*v:',PROCESS_NAMES(k),' ',sigv, ' cm^3/s'
         enddo
       endif
 

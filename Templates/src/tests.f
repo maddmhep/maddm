@@ -325,7 +325,7 @@ c loop over x=1 to 100
 
 c for each point we need to calculate Y_eq
             g_star_S = get_gstar(mdm(1)/dble(x2))
-            Y_eq = get_Y_eq(x1,dble(x2),g_star_S)
+            Y_eq = get_Y_eq(mdm(x1),mdm(1)/x2,dof_total(x1),g_star_S)
 
 c write the results to the output file          
             write(42,fmt='(2(ES16.8))') dble(x2), Y_eq
@@ -359,7 +359,7 @@ c for each point we need to calculate the sum of Y_eq for all particles
           g_star_S = get_gstar(mdm(1)/dble(x1))
           Y_eq = 0.d0
           do x2=1,nvar 
-            Y_eq = Y_eq + get_Y_eq(x2,dble(x1),g_star_S)
+            Y_eq = Y_eq + get_Y_eq(mdm(x2),mdm(1)/x1,dof_total(x2),g_star_S)
           enddo
 
 c write the results to the output file          

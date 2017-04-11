@@ -1,12 +1,12 @@
 c-------------------------------------------------
-c the functioneprovides a sigma*v at velocity v
+c the functioneprovides a sigma*v at velocity v (not thermally averaged!!!)
 c-------------------------------------------------
        function sigmav_ID(channel, v)
 
             implicit none
             include 'maddm.inc'
 
-            double precision p1, p2, sigma_ID, v
+            double precision e1, e2, sigma_ID, v
             integer i, j,channel
 
             if (v.le.0.d0) then
@@ -21,9 +21,9 @@ c    HERE AT SOME POINT CHECK THAT i =1, n and j=1,n are not double counting 1 <
 c                        write(*,*) i, j, channel
                         call getfsmasses_ann(pmass,i,j,channel)
 c                       write(*,*) pmass(1)
-                        p1 = pmass(1)*v
-                        p2 = pmass(2)*v
-                        sigma_ID = sigma_ID + cross_check_process(i, j, channel, 1, p1,p2, 1)
+                        e1 = dsqrt(pmass(1)*pmass(1)/(1.d0-v*v))
+                        e2 = e1
+                        sigma_ID = sigma_ID + cross_check_process(i, j, channel, 1, e1,e2, 0)
                     enddo
             enddo
             sigmav_ID = sigma_ID*v
@@ -84,8 +84,8 @@ c---------------------------------------------------------------------
 c           Here set the global variables used by integrand bexfore you integrate it
             vave_glob = vave
             channel_glob=channel
-
-            taacs_ID = simpson(integrand, 0.d0, 5.d0*vave_glob, grid_ID, grid_npts_ID)
+c------------------------------------>>>>>>>>
+            taacs_ID = simpson(integrand, 0.d0, min(10.d0*vave_glob,1.d0), grid_ID, grid_npts_ID)
 
             return
        end function taacs_ID
@@ -114,7 +114,7 @@ c----------------------------------------------------------------------
             include 'maddm.inc'
             double precision v
 
-            integrand = v*dm_vel_dist_ID(v, vave_glob)*sigmav_ID(channel_glob, v)
-            if (integrand.lt.1d-30) integrand=0.d0
+            integrand = sigmav_ID(channel_glob, v/2.d0) *dm_vel_dist_ID(v, vave_glob)
+            if (integrand.lt.1d-50) integrand=0.d0
             return
        end function integrand

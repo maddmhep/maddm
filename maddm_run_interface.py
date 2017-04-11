@@ -232,17 +232,18 @@ class MADDMRunCmd(cmd.CmdShell):
                        'sigmaN_SI_proton', 'sigmaN_SI_neutron', 'sigmaN_SD_proton',
                         'sigmaN_SD_neutron','Nevents', 'smearing']
 
-        sigv_indirect, sigv_indirect_error = 0.,0.
-        for line in open(pjoin(self.dir_path, output)):
-            splitline = line.split()
-            result.append(float(splitline[1]))
-            if 'sigma*v' in line:
-                sigv_temp = float(result[-1])*GeV2pb
-                oname =splitline[0].split(':',1)[1]
-                output_name.append('taacsID#%s' % oname)
-                sigv_indirect += sigv_temp
-                output_name.append('err_taacsID#%s' % oname)
-                result.append(0.)
+        if self._two2twoLO:
+            sigv_indirect, sigv_indirect_error = 0.,0.
+            for line in open(pjoin(self.dir_path, output)):
+                splitline = line.split()
+                result.append(float(splitline[1]))
+                if 'sigma*v' in line:
+                    sigv_temp = float(result[-1])
+                    oname =splitline[0].split(':',1)[1]
+                    output_name.append('taacsID#%s' % oname)
+                    sigv_indirect += sigv_temp
+                    output_name.append('err_taacsID#%s' % oname)
+                    result.append(0.)
 
                 
         result = dict(zip(output_name, result))
@@ -499,11 +500,11 @@ class MADDMRunCmd(cmd.CmdShell):
                 logger.info('    indirect detection: ')
                 #Print out taacs for each annihilation channel
                 for key in detailled_keys:
-                    logger.info('    sigmav    %s : %.2e pb' % (key,\
-                                    self.last_results['taacsID#%s' %(key)]*GeV2pb))
+                    logger.info('    sigmav    %s : %.2e cm^3/s' % (key,\
+                                    self.last_results['taacsID#%s' %(key)]))
 
             #Print out the total taacs.
-            logger.info('    sigmav    DM DM > all [vave = %2.e] : %.2e pb' % (v,\
+            logger.info('    sigmav    DM DM > all [vave = %2.e] : %.2e cm^3/s' % (v,\
                                     self.last_results['taacsID']))
     
     def is_excluded_relic(self, relic, omega_min = 0., omega_max = 0.1):
