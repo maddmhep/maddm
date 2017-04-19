@@ -110,7 +110,7 @@ C      Here write the output.
 
 	  write(33,*) 'Omegah^2: ', Oh2
 	  write(33,*) 'x_f: ', x_f
-          write(33,*) 'Wimp_Mass: ', mdm(1), ' GeV'
+      write(33,*) 'Wimp_Mass: ', mdm(1), ' GeV'
 	  write(33,*) 'sigmav(xf): ', sigmav_xf
 	  write(33,*) 'sigmaN_SI_p: ', sigma_proton_SI, ' GeV^-2',
      &                ':', sigma_proton_SI*gevtopb, ' pb'
@@ -124,6 +124,15 @@ C      Here write the output.
 	  write(33,*) 'smearing: ', sm_flag
 
 c	  close(33)
+
+
+      if (do_sun_capture) then
+         write(33, *) 'solar_capture_rate: ', sun_cap_rate, '1/s'
+      endif
+
+      if (do_earth_capture) then
+         write(33, *) 'earth_capture_rate: ', earth_cap_rate, '1/s'
+      endif
 
       if (do_indirect_detection.and.only2to2lo) then
 c      here natural just signals that it's in natural units.

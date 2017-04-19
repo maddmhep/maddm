@@ -230,7 +230,8 @@ class MADDMRunCmd(cmd.CmdShell):
 
         output_name = ['omegah2', 'x_freezeout', 'wimp_mass', 'sigmav_xf' ,
                        'sigmaN_SI_proton', 'sigmaN_SI_neutron', 'sigmaN_SD_proton',
-                        'sigmaN_SD_neutron','Nevents', 'smearing']
+                        'sigmaN_SD_neutron','Nevents', 'smearing', 'solar_capture_rate',
+                        'earth_capture_rate']
 
         if self._two2twoLO:
             sigv_indirect, sigv_indirect_error = 0.,0.
@@ -280,6 +281,10 @@ class MADDMRunCmd(cmd.CmdShell):
                         'sigmaN_SD_neutron']                
             if self.mode['directional']:
                 order += ['Nevents', 'smearing']
+            if self.mode['sun_capture']:
+                order += ['solar_capture_rate']
+            if self.mode['earth_capture']:
+                order += ['earth_capture_rate']
                 
             if self.mode['indirect']:
                 if not  self._two2twoLO:
@@ -488,6 +493,11 @@ class MADDMRunCmd(cmd.CmdShell):
         if self.mode['directional']:
             logger.info(' Nevents          : %i', self.last_results['Nevents'])
             logger.info(' smearing         : %.2e', self.last_results['smearing'])
+        if self.mode['sun_capture']:
+            logger.info(' Solar capt. rate    : %.2e 1/s', self.last_results['solar_capture_rate'])
+        if self.mode['earth_capture']:
+            logger.info(' Earth capt. rate    : %.2e 1/s', self.last_results['earth_capture_rate'])
+
         if self.mode['indirect']:
 
             v = self.maddm_card['vave_indirect']
@@ -526,12 +536,14 @@ class MADDMRunCmd(cmd.CmdShell):
             self.mode = self.ask('', '0', mode=mode, data=self.proc_characteristics, 
                             ask_class=MadDMSelector, timeout=60, path_msg=' ')
             if self.mode in ['', '0']:
-                process_data = self.proc_characteristics
                 self.mode = {'relic': 'ON' if process_data['has_relic_density'] else 'Not available',
                             'direct': 'ON' if process_data['has_direct_detection'] else 'Not available',
                             'directional': 'ON' if process_data['has_directional_detection'] else 'Not available',
+                            'sun_capture': 'ON' if process_data['has_sun_capture'] else 'Not available',
+                            'earth_capture': 'ON' if process_data['has_earth_capture'] else 'Not available',
                             'indirect': 'ON' if process_data['has_indirect_detection'] else 'Not available'}
-                
+                process_data = self.proc_characteristics
+
             self.maddm_card = MadDMCard(pjoin(self.dir_path, 'Cards', 'maddm_card.dat'))
             for key, value in self.mode.items():
                 if value == 'ON' or value is True:
@@ -544,6 +556,8 @@ class MADDMRunCmd(cmd.CmdShell):
             self.maddm_card.set('do_relic_density', self.mode['relic'], user=False)
             self.maddm_card.set('do_direct_detection', self.mode['direct'], user=False)
             self.maddm_card.set('do_directional_detection', self.mode['directional'], user=False)
+            self.maddm_card.set('do_sun_capture', self.mode['sun_capture'], user=False)
+            self.maddm_card.set('do_earth_capture', self.mode['earth_capture'], user=False)
             self.maddm_card.set('do_indirect_detection', self.mode['indirect'], user=False)
             self.maddm_card.set('only2to2lo', self._two2twoLO, user=False)
             self.maddm_card.write_include_file(pjoin(self.dir_path, 'include'))
@@ -555,12 +569,16 @@ class MADDMRunCmd(cmd.CmdShell):
                 self.mode = {'relic': 'ON' if process_data['has_relic_density'] else 'Not available',
                             'direct': 'ON' if process_data['has_direct_detection'] else 'Not available',
                             'directional': 'ON' if process_data['has_directional_detection'] else 'Not available',
+                            'sun_capture': 'ON' if process_data['has_sun_capture'] else 'Not available',
+                            'earth_capture': 'ON' if process_data['has_earth_capture'] else 'Not available',
                             'indirect': 'ON' if process_data['has_indirect_detection'] else 'Not available'}
             if not os.path.exists(pjoin(self.dir_path, 'include', 'maddm_card.inc')):
                 # create the inc file for maddm
                 self.maddm_card.set('do_relic_density', self.mode['relic'], user=False)
                 self.maddm_card.set('do_direct_detection', self.mode['direct'], user=False)
                 self.maddm_card.set('do_directional_detection', self.mode['directional'], user=False)
+                self.maddm_card.set('do_sun_capture', self.mode['sun_capture'], user=False)
+                self.maddm_card.set('do_earth_capture', self.mode['earth_capture'], user=False)
                 self.maddm_card.set('do_indirect_detection', self.mode['indirect'], user=False)
                 self.maddm_card.set('only2to2lo', self._two2twoLO, user=False)
                 self.maddm_card.write_include_file(pjoin(self.dir_path, 'include'))
@@ -661,6 +679,8 @@ class MadDMSelector(common_run.EditParamCard):
         self.run_options = {'relic': 'ON' if process_data['has_relic_density'] else 'Not available',
                             'direct': 'ON' if process_data['has_direct_detection'] else 'Not available',
                             'directional': 'ON' if process_data['has_directional_detection'] else 'Not available',
+                            'sun_capture': 'ON' if process_data['has_sun_capture'] else 'Not available',
+                            'earth_capture': 'ON' if process_data['has_earth_capture'] else 'Not available',
                             'indirect': 'ON' if process_data['has_indirect_detection'] else 'Not available'}
         
         #1. Define what to run and create the associated question
@@ -673,7 +693,7 @@ class MadDMSelector(common_run.EditParamCard):
                     
         #2. Define the list of allowed argument
         allow_args = [str(0), 'done', str(4), 'param', str(5), 'maddm']
-        for i,key in enumerate(['relic', 'direct', 'directional', 'indirect']):
+        for i,key in enumerate(['relic', 'direct', 'directional','sun_capture', 'earth_capture', 'indirect']):
             if self.run_options[key] in ['ON', 'OFF']:
                 allow_args.append(str(i+1))
                 allow_args.append(key)
@@ -706,7 +726,7 @@ class MadDMSelector(common_run.EditParamCard):
         self.has_delphes = False 
      
         
-    digitoptions = {1: 'relic', 2:'direct', 3:'directional', 4:'indirect'}
+    digitoptions = {1: 'relic', 2:'direct', 3:'directional', 4:'indirect', 5:'sun_capture', 6:'earth_capture'}
     def create_question(self):
         """create the new question depending of the status"""
         
@@ -724,6 +744,8 @@ class MadDMSelector(common_run.EditParamCard):
     2. Compute Direct Detection      %(start_underline)sdirect%(stop)s      = %(direct)s
     3. Compute Directional Detection %(start_underline)sdirectional%(stop)s = %(directional)s
     4. Compute Indirect Detection    %(start_underline)sindirect%(stop)s    = %(indirect)s
+    5. Compute Solar Capture rate    %(start_underline)ssun_capture%(stop)s    = %(sun_capture)s
+    6. Compute Earth Capture rate    %(start_underline)searth_capture%(stop)s    = %(earth_capture)s
 %(start_green)s You can also edit the various input card%(stop)s:
  * Enter the name/number to open the editor
  * Enter a path to a file to replace the card
@@ -737,7 +759,9 @@ class MadDMSelector(common_run.EditParamCard):
      'relic': get_status_str(self.run_options['relic']),
      'direct':get_status_str(self.run_options['direct']),
      'directional':get_status_str(self.run_options['directional']),
-     'indirect':get_status_str(self.run_options['indirect'])
+     'indirect':get_status_str(self.run_options['indirect']),
+     'sun_capture':get_status_str(self.run_options['sun_capture']),
+     'earth_capture':get_status_str(self.run_options['earth_capture']),
      }
         return question
 
@@ -838,7 +862,11 @@ class MadDMSelector(common_run.EditParamCard):
                 self.run_options['direct'] = 'ON'
         elif last_modified == 'direct':
             if self.run_options['direct'] == 'OFF':
-                self.run_options['directional'] = 'OFF'            
+                self.run_options['directional'] = 'OFF'
+        elif last_modified =='sun_capture' or last_modified=='earth_capture':
+            if self.run_options['direct'] == 'OFF':
+                self.run_options['sun_capture'] == 'OFF'
+                self.run_options['earth_capture'] == 'OFF'
     
     def check_card_consistency(self):
         
@@ -959,8 +987,11 @@ class MadDMCard(banner_mod.RunCard):
         self.add_param('do_relic_density', True, system=True)
         self.add_param('do_direct_detection', False, system=True)
         self.add_param('do_directional_detection', False, system=True)
+        self.add_param('do_sun_capture', False, system=True)
+        self.add_param('do_earth_capture', False, system=True)
         self.add_param('do_indirect_detection', False, system=True)
         self.add_param('only2to2lo', False, system=True)
+
         
         self.add_param('calc_taacs_ann_array', True)
         self.add_param('calc_taacs_dm2dm_array', True)
@@ -1031,7 +1062,9 @@ class MadDMCard(banner_mod.RunCard):
         self.add_param('cos_theta_bins', 20)
         self.add_param('day_bins', 10)
 
-        #The aerage velocity for indirect detection
+        #For the solar/earth capture rate
+
+        #The average velocity for indirect detection
         self.add_param('vave_indirect', 0.001)
 
         self.add_param('smearing', False)

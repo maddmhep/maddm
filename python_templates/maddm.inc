@@ -173,6 +173,11 @@ c  Directional detection switch
       double precision En_min,En_max,cos_min,cos_max,day_min,day_max
       common/simu/Energy_bins,cos_theta_bins,day_bins,En_min,En_max,cos_min,cos_max,day_min,day_max
 
+c------------------------Capture rate---------------------------------
+      logical do_sun_capture, do_earth_capture
+      double precision sun_cap_rate, earth_cap_rate
+      common/capture/do_sun_capture, do_earth_capture, sun_cap_rate, earth_cap_rate
+
 c------------------------ Resonance information --------------------------
 ! s-channel Resonance locations
       Integer nres, ngrid_init, nres_points

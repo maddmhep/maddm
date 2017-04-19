@@ -376,6 +376,11 @@ class MadDM_interface(master_interface.MasterCmd):
                 return self.generate_direct(excluded)
         elif len(args) and args[0] in ["indirect_detection", "indirect"]:
             self.generate_indirect(args[1:])
+        elif len(args) and args[0] in ["earth_capture", "earth"]:
+            self.generate_EarthCapture()
+        elif len(args) and args[0] in ["sun_capture", "sun"]:
+            self.generate_SolarCapture()
+
         else:
             if '@' in line:
                 line = re.sub(r'''(?<=@)(%s\b)''' % '\\b|'.join(self.process_tag), 
@@ -392,7 +397,7 @@ class MadDM_interface(master_interface.MasterCmd):
             out = {"standard options": out}
         
         if len(args) == 1:
-            options = ['relic_density', 'direct_detection', 'indirect_detection']
+            options = ['relic_density', 'direct_detection', 'indirect_detection', 'sun_capture', 'earth_capture']
             out['maddm options'] = self.list_completion(text, options , line)
         return self.deal_multiple_categories(out, formatting)
 
@@ -405,7 +410,7 @@ class MadDM_interface(master_interface.MasterCmd):
             out = {"standard options": out}
         
         if len(args) == 1:
-            options = ['relic_density', 'direct_detection', 'indirect_detection']
+            options = ['relic_density', 'direct_detection', 'indirect_detection', 'sun_capture', 'earth_capture']
             out['maddm options'] = self.list_completion(text, options , line)
         return self.deal_multiple_categories(out, formatting)
 
@@ -673,10 +678,7 @@ class MadDM_interface(master_interface.MasterCmd):
             #EFFECTIVE + FULL
             logger.info("Generating X Nucleon > X Nucleon diagrams from the effective + full lagrangian...")
             self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'SD+QED')
-        
 
-        
-        
     #-----------------------------------------------------------------------#
     def DiagramsDD(self, SI_name, SD_name, type, excluded=[]):
         """Generates direct detection diagrams. i_dm is the index of DM part. 
