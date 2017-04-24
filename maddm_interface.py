@@ -40,7 +40,6 @@ class DMError(Exception): pass
 # Root path
 MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
 
-    
 
 class MadDM_interface(master_interface.MasterCmd):
 
@@ -49,7 +48,7 @@ class MadDM_interface(master_interface.MasterCmd):
   "            |                  "+bcolors.OKBLUE+"  MadDM v2.0                     "+bcolors.ENDC+"|\n"\
   "            ====================================================\n"+\
   "                                                                               \n"+\
-  "                #########            Basics tutorial:  susy.phsx.ku.edu/~mihailo \n"+\
+  "                #########                                                        \n"+\
   "             ###\\\\####//#####              Launchpad:  launchpad.net/maddm      \n"+\
   "           ######\\\\##//########                                              \n"+\
   "          ########\\\\//###########                                            \n"+\

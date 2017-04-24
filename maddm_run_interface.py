@@ -201,7 +201,7 @@ class MADDMRunCmd(cmd.CmdShell):
         if not os.path.exists(pjoin(self.dir_path, 'Indirect')):
             self._two2twoLO = True
 
-        logger.info('2to2: %s' % self._two2twoLO)
+        logger.debug('2to2: %s' % self._two2twoLO)
 
         args = line.split()
         if '-f' in args or '--force' in args:
@@ -295,8 +295,8 @@ class MADDMRunCmd(cmd.CmdShell):
                         for key in detailled_keys:
                             order +=['taacs_ID#%s' % (key), 'err_taacsID#%s' % (key)]
 
-
-            to_print = param_card_iterator.write_summary(None, order,nbcol=10, max_col=10)
+            #<=-------------- Mihailo commented out max_col = 10
+            to_print = param_card_iterator.write_summary(None, order,nbcol=10)#, max_col=10)
             for line in to_print.split('\n'):
                 if line:
                     logger.info(line)
@@ -309,7 +309,8 @@ class MADDMRunCmd(cmd.CmdShell):
                         self.exec_cmd("launch -f", precmd=True, postcmd=True,
                                                    errorhandling=False)
                         param_card_iterator.store_entry(nb_output+i, self.last_results)
-                        logger.info(param_card_iterator.write_summary(None, order, lastline=True,nbcol=10, max_col=10)[:-1])
+                        #<=-------------- Mihailo commented out max_col = 10
+                        logger.info(param_card_iterator.write_summary(None, order, lastline=True,nbcol=10)[:-1])#, max_col=10)[:-1])
             param_card_iterator.write(pjoin(self.dir_path,'Cards','param_card.dat'))
             name = misc.get_scan_name('maddm_%s' % (nb_output), 'maddm_%s' % (nb_output+i))
             path = pjoin(self.dir_path, 'output','scan_%s.txt' % name)
@@ -470,6 +471,9 @@ class MADDMRunCmd(cmd.CmdShell):
         """ print the latest results """
         omega_min = 0
         omega_max = 0.12
+
+        print '.....'
+        print self.mode['sun_capture']
         
         if omega_min < self.last_results['omegah2'] < omega_max:
             fail_relic_msg = ''
@@ -957,11 +961,6 @@ class MadDMSelector(common_run.EditParamCard):
     def setDM(self, name, value):
         logger.info('modify parameter %s of the maddm_card.dat to %s' % (name, value))
         self.maddm.set(name, value, user=True)
-        
-        
-            
-        
-
 
 
 class InvalidMaddmCard(banner_mod.InvalidRunCard):
