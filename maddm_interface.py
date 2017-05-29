@@ -474,18 +474,18 @@ class MadDM_interface(master_interface.MasterCmd):
         if args[0] != 'maddm':
             return super(MadDM_interface, self).do_launch(line)
         else:
-            MDM = maddm_run_interface.MADDMRunCmd(dir_path=args[1], options=self.options) 
+            self._MDM = maddm_run_interface.MADDMRunCmd(dir_path=args[1], options=self.options)
             if options['interactive']:              
-                return self.define_child_cmd_interface(MDM)
+                return self.define_child_cmd_interface(self._MDM)
             else:
-                self.define_child_cmd_interface(MDM,  interface=False)
+                self.define_child_cmd_interface(self._MDM,  interface=False)
                 try:
-                    MDM.exec_cmd('launch ' + line.replace(args[1], ''))
+                    self._MDM.exec_cmd('launch ' + line.replace(args[1], ''))
                 except:
-                    MDM.exec_cmd('quit')
+                    self._MDM.exec_cmd('quit')
                     raise
                 else:
-                    MDM.exec_cmd('quit')
+                    self._MDM.exec_cmd('quit')
                 return
             
             
@@ -796,7 +796,7 @@ class MadDM_interface(master_interface.MasterCmd):
         self._param_card = backup_param_card 
         self._dm_candidate = backup_dm_candidate
         self._coannihilation = backup_coannihilation
-        
+
         # update the param_card value
         txt = self._curr_model.write_param_card()
         param_card = check_param_card.ParamCard(self._curr_model.write_param_card())

@@ -115,7 +115,7 @@ c number of annihilation particles and associated diagrams
       logical relic_canonical, calc_taacs_ann_array, calc_taacs_dm2dm_array, calc_taacs_scattering_array
       logical do_relic_density, do_direct_detection, do_indirect_detection, xd_approx, only2to2lo
       common/process_logical/ ann_process_iden_init, dm2dm_process_iden_init, relic_canonical,
-     . calc_taacs_ann_array, calc_taacs_dm2dm_array, calc_taacs_scattering_array, xd_approx
+     . calc_taacs_ann_array, calc_taacs_dm2dm_array, calc_taacs_scattering_array, xd_approx, only2to2lo
 
 c flags for the test subroutines to see if certain quantities have already been calculated
       logical Wij_ann_calc, Wij_dm2dm_calc, Wij_scattering_calc

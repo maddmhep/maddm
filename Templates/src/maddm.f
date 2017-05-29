@@ -123,8 +123,6 @@ C      Here write the output.
 	  write(33,*) 'Nevents: ', Nint(total_events)
 	  write(33,*) 'smearing: ', sm_flag
 
-c	  close(33)
-
 
       if (do_sun_capture) then
          write(33, *) 'solar_capture_rate: ', sun_cap_rate, '1/s'
@@ -149,6 +147,7 @@ c   here sigv is in units of 'pb' so convert it to cm^3/s
         enddo
       endif
 
+      close(33)
 c-------------------------------------------------------------------------c
 c  Other test functions
 c-------------------------------------------------------------------------c
