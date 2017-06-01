@@ -11,6 +11,7 @@ import subprocess
 import MGoutput
 
 MG5MODE = True
+import madgraph
 import madgraph.madevent.sum_html as sum_html
 import madgraph.various.misc as misc
 import madgraph.interface.extended_cmd as cmd
@@ -1052,31 +1053,52 @@ class MadDMCard(banner_mod.RunCard):
     
     filename = 'maddm_card'
     default_include_file = 'maddm_card.inc'
+    initial_jfactors = {}
     
     def __new__(cls, finput=None):
         """Bypass the standard RunCard one"""
         return super(banner_mod.RunCard, cls).__new__(cls, finput)
 
     def fill_jfactors(self, filename=pjoin(MDMDIR,'Jfactors','jfactors.dat')):
+        if MadDMCard.initial_jfactors:
+            self['jfactors'] = dict(MadDMCard.initial_jfactors)
+            return
         try:
+            misc.sprint('read jfactors')
             infile = open(filename,'r')
             lines = infile.readlines()
             infile.close()
             temp = dict()
             for line in lines:
                 spline = line.split()
-                logger.debug('split line:')
-                logger.debug(spline)
                 jfact = spline[0]
-                val = float(spline[1].rstrip())
-
+                val = spline[1].rstrip()
                 temp[jfact] = val
             self['jfactors'] = temp
-
+            MadDMCard.initial_jfactors = dict(self['jfactors'])
+            
         except OSError:
             logger.error('could not open file %s ' % filename)
             return False
 
+    def write_jfactors(self):
+
+        if self['jfactors'] == MadDMCard.initial_jfactors:
+            return
+        if not madgraph.ReadWrite:
+            return
+        MadDMCard.initial_jfactors = dict(self['jfactors'])
+        fsock = open(pjoin(MDMDIR,'Jfactors','jfactors.dat'),'w')
+        for data, value in self['jfactors'].items():
+            if data == '__type__':
+                continue
+            fsock.write('%s %s\n' % (data, value))
+        fsock.close()
+        
+        
+        
+         
+            
 
     def default_setup(self):
         """define the default value"""
@@ -1179,6 +1201,9 @@ class MadDMCard(banner_mod.RunCard):
     def write(self, output_file, template=None, python_template=False):
         """Write the run_card in output_file according to template 
            (a path to a valid run_card)"""
+
+        self.write_jfactors() 
+        
 
         if not template:
             template = pjoin(MDMDIR, 'Templates', 'Cards', 'maddm_card.dat')
