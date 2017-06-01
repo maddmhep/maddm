@@ -475,7 +475,7 @@ class MadDM_interface(master_interface.MasterCmd):
             return super(MadDM_interface, self).do_launch(line)
         else:
             self._MDM = maddm_run_interface.MADDMRunCmd(dir_path=args[1], options=self.options)
-            if options['interactive']:              
+            if options['interactive']:
                 return self.define_child_cmd_interface(self._MDM)
             else:
                 self.define_child_cmd_interface(self._MDM,  interface=False)
@@ -487,12 +487,12 @@ class MadDM_interface(master_interface.MasterCmd):
                 else:
                     self._MDM.exec_cmd('quit')
                 return
-            
-            
-            
-            
-                    
-            
+
+
+
+
+
+
 
     def define_multiparticles(self, label, list_of_particles):
         """define a new multiparticle from a particle list (add both particle and anti-particle)"""
@@ -730,8 +730,16 @@ class MadDM_interface(master_interface.MasterCmd):
            Currently works only with canonical mode and one dm candidate.
         related to syntax: generate indirect a g / n3
         """
+        if not self._dm_candidate:
+            self.search_dm_candidate()
+            if not self._dm_candidate:
+                return
+
+        if len(self._curr_proc_defs) == 0:
+            self.generate_relic([])
 
         if '2to2lo' in argument:
+
             self._ID_procs ='2to2lo'
             return
 
@@ -739,14 +747,6 @@ class MadDM_interface(master_interface.MasterCmd):
         #if not, force the code to use madevent
         if (len(' '.join(argument).split('/')[0].split())!=2):
             self._force_madevent_for_ID = True
-
-        if not self._dm_candidate:
-            self.search_dm_candidate()
-            if not self._dm_candidate:
-                return
-            
-        if len(self._curr_proc_defs) == 0:
-            self.generate_relic([])
 
         # flip indirect/standard process definition
         with misc.TMP_variable(self, ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps'], 

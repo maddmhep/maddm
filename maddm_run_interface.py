@@ -45,6 +45,47 @@ GeV2pb = 3.894E8
 pb2cm2  = 1.0E-36
 cm22pb  = 1.0E36
 
+
+# class Jfactors:
+#
+#     def __init__(self, filename=pjoin(MDMDIR,'Jfactors','jfactors.dat')):
+#         self._JF = self.read_jfactors(filename)
+#
+#     def read_jfactors(self, filename):
+#         try:
+#             infile = open(filename,'r')
+#             lines = infile.readlines()
+#             infile.close()
+#             temp = dict()
+#             for line in lines:
+#                 spline = line.split()
+#                 logger.debug('split line:')
+#                 logger.debug(spline)
+#                 jfact = spline[0]
+#                 val = float(spline[1].rstrip())
+#
+#                 temp[jfact] = val
+#             return temp
+#
+#         except OSError:
+#             logger.error('could not open file %s ' % filename)
+#             return False
+#
+#
+#     def write_jfactors(self, filename=pjoin(MDMDIR,'Jfactors','jfactors.dat')):
+#         try:
+#             outfile = open(filename, 'r')
+#             for jfact, val in self._JF.iteritems():
+#                 outfile.write('%s   %s' % (jfact, str(val) ))
+#             outfile.close()
+#             return True
+#         except OSError:
+#             logger.error('could not open file %s ' % filename)
+#             return False
+
+
+
+
 #===============================================================================
 # CommonRunCmd
 #===============================================================================
@@ -198,6 +239,15 @@ class MADDMRunCmd(cmd.CmdShell):
     def do_launch(self, line):
         """run the code"""
 
+        # if self.proc_characteristics['has_indirect_detection']:
+        #     self._halo_profile = 'nfw'
+        #     #set up the j-factors if they aren't set up already
+        #     if not 'self._myjfactors' in locals():
+        #         self._myjfactors = Jfactors()
+        #         logger.info('Using jfactors:')
+        #         logger.info(self._myjfactors._JF)
+        #         logger.info('Current halo choice %s' % self._halo_profile)
+
         #If the Indirect subfolder is not created, that means that the code is
         #using the 2to2 at LO which is handled by maddm.f.
         if not os.path.exists(pjoin(self.dir_path, 'Indirect')):
@@ -293,6 +343,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 order += ['earth_capture_rate']
                 
             if self.mode['indirect']:
+
                 if not  self._two2twoLO:
                     order +=['halo_velocity','indirect', 'indirect_error']
                     detailled_keys = [k[5:] for k in self.last_results
@@ -392,33 +443,6 @@ class MADDMRunCmd(cmd.CmdShell):
             self.last_results['taacsID'] += taacs # !!!!!!!!!!!!!!!!!!! FIX THIS, should be sum of taacs!!!!!!!!
 
 
-#-------------------------------------------------------------------------------------
-    #THIS PART IS FOR INDIRECT DETECTION
-#-------------------------------------------------------------------------------------
-#integrand of sigma*v(v, vave) for the calculation of taacs
-    def integrand(self, v):
-        return v*self.velocity_distribution(self.maddm_card['vave_indirect'], v)*self.ID_sigmav(v)
-
-
-    #A function to fit the low velocity part of the annihilation cross section
-    def fit_ID_crossect(self, sigma_x, sigma_y, degree=3):
-            try:
-                fit_parameters = np.polyfit(sigma_x, sigma_y, deg=degree)
-            except np.RankWarning:
-                logger.warning("The fitting function is not performing well! Check the quality of the fit!")
-                pass
-
-            return np.array(fit_parameters)
-
-    #Indirect detection cross section as a function of velocity (at low velocity)
-    def ID_sigmav(self, vel):
-            p = np.poly1d(self._fit_parameters)
-            return p(vel)
-
-# Halo velocity distribution. Use the non-rel. Maxwell Boltzmann distribution as an approximation
-    def velocity_distribution(self, vave, v):
-        return np.sqrt(2.0/np.pi)*np.power(1.0/(vave*vave),1.5)*v*v*np.exp(-v*v/(2.0*vave*vave))
-
 # integration routine, simpson's rule. integrates a function over a pre-set 1-D grid.
     def integrate(self, x_grid, a, b):
         simpson = 0.0
@@ -434,44 +458,77 @@ class MADDMRunCmd(cmd.CmdShell):
 
         return simpson
 
+    def dNdE(self, channel):
+        return
+
+
+    def dPhidE(self, channel):
+        return
+
+#-------------------------------------------------------------------------------------
+# (OLD STUFF, KEEP COMMENTED OUT, MAYBE SOME PIECES WILL BE USEFUL IN THE FUTURE)
+#-------------------------------------------------------------------------------------
+#integrand of sigma*v(v, vave) for the calculation of taacs
+#     def integrand(self, v):
+#         return v*self.velocity_distribution(self.maddm_card['vave_indirect'], v)*self.ID_sigmav(v)
+#
+#
+#     #A function to fit the low velocity part of the annihilation cross section
+#     def fit_ID_crossect(self, sigma_x, sigma_y, degree=3):
+#             try:
+#                 fit_parameters = np.polyfit(sigma_x, sigma_y, deg=degree)
+#             except np.RankWarning:
+#                 logger.warning("The fitting function is not performing well! Check the quality of the fit!")
+#                 pass
+#
+#             return np.array(fit_parameters)
+#
+#     #Indirect detection cross section as a function of velocity (at low velocity)
+#     def ID_sigmav(self, vel):
+#             p = np.poly1d(self._fit_parameters)
+#             return p(vel)
+#
+# # Halo velocity distribution. Use the non-rel. Maxwell Boltzmann distribution as an approximation
+#     def velocity_distribution(self, vave, v):
+#         return np.sqrt(2.0/np.pi)*np.power(1.0/(vave*vave),1.5)*v*v*np.exp(-v*v/(2.0*vave*vave))
 # Function which perform the thermal averaging of the cross section for the purpose
 # of indirect detection
-    def calculate_taacs(self, scan_v, channel=0):
-
-        sigmav=[]
-        velocities=[]
-
-        for i, v in enumerate(scan_v):
-            sigmav.append(v*self.last_results['indirect#%s' %i]/GeV2pb)   #sigma*v array in GeV^(-2)
-            velocities.append(v)
-
-        #then add the peak of the velocity distribution and points around it for better precision
-        velocity_grid = velocities[:]
-        vave_temp = self.maddm_card['vave_indirect']
-        velocity_grid.append(vave_temp)
-        for kk in range(1, self.maddm_card['nres_points']):
-            pt1 = vave_temp + 5.0*vave_temp/kk
-            if pt1 < 0.0:
-                velocity_grid.append(pt1)
-            pt2 = vave_temp - 5.0*vave_temp/kk
-            if pt2 > 1.0:
-                velocity_grid.append(pt2)
-        velocity_grid = np.sort(velocity_grid)
-
-        self._fit_parameters = self.fit_ID_crossect(velocities, sigmav)
-        taacs = self.integrate(velocity_grid, 0.0, 1.0)
-
-        #print self._fit_parameters
-        #print velocities
-        #print sigmav
-
-        logger.info('sigma*v fit parameters: ', self._fit_parameters)
-
-        logger.info('v: ', velocities)
-        logger.info('sigma*v', sigmav)
-
-
-        return taacs
+# #     def calculate_taacs(self, scan_v, channel=0):
+# #
+# #         sigmav=[]
+# #         velocities=[]
+# #
+# #         for i, v in enumerate(scan_v):
+# #             sigmav.append(v*self.last_results['indirect#%s' %i]/GeV2pb)   #sigma*v array in GeV^(-2)
+# #             velocities.append(v)
+# #
+# #         #then add the peak of the velocity distribution and points around it for better precision
+# #         velocity_grid = velocities[:]
+# #         vave_temp = self.maddm_card['vave_indirect']
+# #         velocity_grid.append(vave_temp)
+# #         for kk in range(1, self.maddm_card['nres_points']):
+# #             pt1 = vave_temp + 5.0*vave_temp/kk
+# #             if pt1 < 0.0:
+# #                 velocity_grid.append(pt1)
+# #             pt2 = vave_temp - 5.0*vave_temp/kk
+# #             if pt2 > 1.0:
+# #                 velocity_grid.append(pt2)
+# #         velocity_grid = np.sort(velocity_grid)
+# #
+# #         self._fit_parameters = self.fit_ID_crossect(velocities, sigmav)
+# #         taacs = self.integrate(velocity_grid, 0.0, 1.0)
+# #
+# #         #print self._fit_parameters
+# #         #print velocities
+# #         #print sigmav
+#
+#         logger.info('sigma*v fit parameters: ', self._fit_parameters)
+#
+#         logger.info('v: ', velocities)
+#         logger.info('sigma*v', sigmav)
+#
+#
+#         return taacs
 
 
 #-------------------------------------------------------------------------------------
@@ -549,7 +606,8 @@ class MADDMRunCmd(cmd.CmdShell):
     def ask_run_configuration(self, mode=None, force=False):
         """ask the question about card edition / Run mode """
         
-        if not force:  
+        if not force:
+            process_data = self.proc_characteristics
             self.mode = self.ask('', '0', mode=mode, data=self.proc_characteristics, 
                             ask_class=MadDMSelector, timeout=60, path_msg=' ')
             if self.mode in ['', '0']:
@@ -965,14 +1023,6 @@ class MadDMSelector(common_run.EditParamCard):
         elif args[0] in self.maddm_set and args[0] not in self.conflict:
             start = 0
 
-        #This part is to interface runDM
-        elif args[0] == 'running_coupling':
-            if len(args)<5:
-                logger.error('Specify the following: <coupling name> <coupling type> <high scale> <low scale>')
-            else:
-                self._run_couplings = True
-
-
         else:
             return super(MadDMSelector, self).do_set(line)
         if args[start+1] == 'default':
@@ -1006,7 +1056,28 @@ class MadDMCard(banner_mod.RunCard):
     def __new__(cls, finput=None):
         """Bypass the standard RunCard one"""
         return super(banner_mod.RunCard, cls).__new__(cls, finput)
-    
+
+    def fill_jfactors(self, filename=pjoin(MDMDIR,'Jfactors','jfactors.dat')):
+        try:
+            infile = open(filename,'r')
+            lines = infile.readlines()
+            infile.close()
+            temp = dict()
+            for line in lines:
+                spline = line.split()
+                logger.debug('split line:')
+                logger.debug(spline)
+                jfact = spline[0]
+                val = float(spline[1].rstrip())
+
+                temp[jfact] = val
+            self['jfactors'] = temp
+
+        except OSError:
+            logger.error('could not open file %s ' % filename)
+            return False
+
+
     def default_setup(self):
         """define the default value"""
         
@@ -1091,13 +1162,17 @@ class MadDMCard(banner_mod.RunCard):
         self.add_param('Energy_bins', 100)
         self.add_param('cos_theta_bins', 20)
         self.add_param('day_bins', 10)
+        self.add_param('smearing', False)
 
         #For the solar/earth capture rate
 
-        #The average velocity for indirect detection
+        #indirect detection
         self.add_param('vave_indirect', 0.001)
+        self.add_param('halo_profile', 'nfw', include=False)
 
-        self.add_param('smearing', False)
+        self.add_param('jfactors', {'__type__':1.0}, include=False)
+        self.fill_jfactors()
+
         self.add_param('only_two_body_decays', True, include=False)
 
         
