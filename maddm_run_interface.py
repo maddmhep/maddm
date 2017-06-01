@@ -1035,7 +1035,7 @@ class MadDMSelector(common_run.EditParamCard):
                 val = val.split('#')[0]
                 self.setDM(args[start], val)
             else:
-                self.setDM(args[start], args[start+1:])
+                self.setDM(args[start], args[start+1:][0])
         # write the new file
         self.maddm.write(self.paths['maddm'])
         
