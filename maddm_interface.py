@@ -739,7 +739,6 @@ class MadDM_interface(master_interface.MasterCmd):
             self.generate_relic([])
 
         if '2to2lo' in argument:
-
             self._ID_procs ='2to2lo'
             return
 

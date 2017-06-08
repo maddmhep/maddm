@@ -43,9 +43,9 @@ class bcolors:
 
 #Conversion from GeV^-2 to pb etc.
 GeV2pb = 3.894E8
-pb2cm2  = 1.0E-36
-cm22pb  = 1.0E36
-
+pb2cm2  = 1.00E-36
+cm22pb  = 1.00E36
+pb2cm3 = 2.99E-26
 
 # class Jfactors:
 #
@@ -138,6 +138,7 @@ class MADDMRunCmd(cmd.CmdShell):
         self.get_characteristics()
 
         self._two2twoLO = False
+        self._dNdE_setup = False #If true, this flag allows the code to skip loading and caldulating dNdE
         #self._fit_parameters= []
 
         self._run_couplings = False
@@ -287,7 +288,7 @@ class MADDMRunCmd(cmd.CmdShell):
                         'sigmaN_SD_neutron','Nevents', 'smearing', 'solar_capture_rate',
                         'earth_capture_rate', 'taacsID']
 
-        sigv_indirect = 0.
+        #sigv_indirect = 0.
         if self._two2twoLO:
             sigv_indirect_error = 0.
             for line in open(pjoin(self.dir_path, output)):
@@ -299,12 +300,13 @@ class MADDMRunCmd(cmd.CmdShell):
                     oname2 = oname.split('_')
                     oname = oname2[0]+'_'+oname2[1] #To eliminate the annoying suffix coming from the '/' notation
                     output_name.append('taacsID#%s' % oname)
-                    sigv_indirect += sigv_temp
+                    #sigv_indirect += sigv_temp
                     output_name.append('err_taacsID#%s' % oname)
                     result.append(sigv_temp)
 
-                
+
         result = dict(zip(output_name, result))
+        #result['taacsID'] = sigv_indirect
         
         #if sigv_indirect:
         #    result['taacsID'] = sigv_indirect
@@ -400,7 +402,9 @@ class MADDMRunCmd(cmd.CmdShell):
         elif self.me_cmd.me_dir != pjoin(self.dir_path, 'Indirect'):
             self.me_cmd.do_quit()
             self.me_cmd = Indirect_Cmd(pjoin(self.dir_path, 'Indirect'))
-            
+
+        #<------ HERE HOW ARE WE MAKING SURE THAT THE SAME CARD IS BEING  USED FOR INDIRECT
+        # AND THE REST???
         runcardpath = pjoin(self.dir_path,'Indirect', 'Cards', 'run_card.dat')
         param_path  = pjoin(self.dir_path,'Indirect', 'Cards', 'param_card.dat')
         run_card = banner_mod.RunCard(runcardpath)
@@ -415,6 +419,7 @@ class MADDMRunCmd(cmd.CmdShell):
         #print self.last_results
 
         # ensure that VPM is the central one for the printout (so far)
+        self.last_results['taacsID'] = 0.0
         for i,v in enumerate(scan_v):
 
             run_card['ebeam1'] = mdm * math.sqrt(1+v**2)
@@ -439,7 +444,7 @@ class MADDMRunCmd(cmd.CmdShell):
             logger.debug(self.me_cmd.Presults.items())
 
             #write in taacs
-            taacs = v*self.last_results['indirect#%s' %i]/GeV2pb #self.calculate_taacs(scan_v)
+            taacs = v*self.last_results['indirect#%s' %i]* pb2cm3
             self.last_results['taacsID#%s' %i] = taacs
             self.last_results['taacsID'] += taacs # !!!!!!!!!!!!!!!!!!! FIX THIS, should be sum of taacs!!!!!!!!
 
@@ -459,12 +464,54 @@ class MADDMRunCmd(cmd.CmdShell):
 
         return simpson
 
-    def dNdE(self, channel):
-        return
 
+    def dNdE(self, channel, energy):
+        if not self._dNdE_setup:
+            filename = channel+'.dat'
+            if os.exists(pjoin(self.dir_path, 'output', filename)):
+                ans = ''
+                while ans not in ['y', 'Y', 'n','N']:
+                    ans = input('File '+filename+' exists. Use the current file? [y/n]: [y]')
+                    if ans == 'y' or ans == 'Y':
+                        dNdE_x, dNdE_y = self.load_dNdE(filename)
+                        self._dNdE_setup = True
+                    else:
+                        #run pythia.
+                        self._dNdE_setup = True
+                        break
 
-    def dPhidE(self, channel):
-        return
+    def load_dNdE(self, filename):
+        try:
+            f = open(filename, 'r')
+            lines = f.readlines()
+            f.close()
+        except OSError:
+            logger.error('Can not open file named '+filename)
+            return
+
+        x = []
+        y = []
+        for line in lines:
+            if not line.startswith('#'):
+                spline = line.split()
+                x.append(float(spline[0]))
+                y.append(float(spline[1]))
+
+        return x, y
+
+    #channel can be photons, electrons, positrons, protons, antiprotons, neutrinos
+    def dPhidE(self, channel, energy):
+         if not self._last_results:
+             logger.error('You can not calculate the flux before calculating <sigmav>!')
+             return -1.0
+         else:
+             #is it efficient to load the param card like this?!
+             param_card = param_card_mod.ParamCard(self.dir_path, 'Cards', 'param_card.dat')
+             mdm = param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
+             sigv = self._last_results['taacsID']
+
+             phi = 1.0*self.rho*self.rho/(mdm*mdm)*sigv*self.dNdE(channel, energy)
+
 
 #-------------------------------------------------------------------------------------
 # (OLD STUFF, KEEP COMMENTED OUT, MAYBE SOME PIECES WILL BE USEFUL IN THE FUTURE)
@@ -952,10 +999,15 @@ class MadDMSelector(common_run.EditParamCard):
                 self.run_options['direct'] = 'ON'
 
 
+
     def check_card_consistency(self):
         
         super(MadDMSelector, self).check_card_consistency()
-        
+
+        #if there are any new jfactors, make sure to write them in
+        #logger.debug('Updating the Jfactor file')
+        #self.write_jfactors()
+
         # If direct detection is ON ensure that quark mass are not zero
         if self.run_options['direct'] == 'ON':
             to_change = []
@@ -1054,6 +1106,7 @@ class MadDMCard(banner_mod.RunCard):
     filename = 'maddm_card'
     default_include_file = 'maddm_card.inc'
     initial_jfactors = {}
+    initial_distances = {}
     
     def __new__(cls, finput=None):
         """Bypass the standard RunCard one"""
@@ -1062,24 +1115,38 @@ class MadDMCard(banner_mod.RunCard):
     def fill_jfactors(self, filename=pjoin(MDMDIR,'Jfactors','jfactors.dat')):
         if MadDMCard.initial_jfactors:
             self['jfactors'] = dict(MadDMCard.initial_jfactors)
+            self['distances'] = dict(MadDMCard.initial_distances)
             return
         try:
-            misc.sprint('read jfactors')
+            misc.sprint('Reading jfactors')
             infile = open(filename,'r')
             lines = infile.readlines()
             infile.close()
             temp = dict()
+            temp2=dict()
             for line in lines:
+                if line.startswith('#'):
+                    continue
                 spline = line.split()
                 jfact = spline[0]
-                val = spline[1].rstrip()
+                dist = float(spline[1])
+                val = float(spline[2].rstrip())
                 temp[jfact] = val
+                temp2[jfact]= dist
             self['jfactors'] = temp
+            self['distances'] = temp2
             MadDMCard.initial_jfactors = dict(self['jfactors'])
+            MadDMCard.initial_distances = dict(self['distances'])
             
         except OSError:
-            logger.error('could not open file %s ' % filename)
+            logger.error('could not open Jfactor file %s ' % filename)
             return False
+
+        logger.debug('Loaded the following Jfactors:')
+        logger.debug('            Object       Distance            Jfactor')
+        for jf, val in MadDMCard.initial_jfactors.iteritems():
+            dist = self['distances'][jf]
+            logger.info('%20s     %.2e           %.2e' %(jf, dist, val))
 
     def write_jfactors(self):
 
@@ -1088,16 +1155,14 @@ class MadDMCard(banner_mod.RunCard):
         if not madgraph.ReadWrite:
             return
         MadDMCard.initial_jfactors = dict(self['jfactors'])
+        MadDMCard.initial_distances = dict(self['distances'])
         fsock = open(pjoin(MDMDIR,'Jfactors','jfactors.dat'),'w')
         for data, value in self['jfactors'].items():
             if data == '__type__':
                 continue
-            fsock.write('%s %s\n' % (data, value))
+            dist = self['distances'][data]
+            fsock.write('%s %s %s\n' % (data, dist, value))
         fsock.close()
-        
-        
-        
-         
             
 
     def default_setup(self):
@@ -1190,9 +1255,11 @@ class MadDMCard(banner_mod.RunCard):
 
         #indirect detection
         self.add_param('vave_indirect', 0.001)
-        self.add_param('halo_profile', 'nfw', include=False)
+        self.add_param('halo_profile', 'NFW_R3', include=False)
 
         self.add_param('jfactors', {'__type__':1.0}, include=False)
+        self.add_param('distances', {'__type__':1.0}, include=False)
+
         self.fill_jfactors()
 
         self.add_param('only_two_body_decays', True, include=False)

@@ -14,7 +14,7 @@ c-------------------------------------------------------------------------c
 c parameters used in this routine only
       Integer sm_flag, prnt_tag, k
       double precision Oh2, sigv
-      double precision total_events, sigmawnSI, sigmawpSI, gevtopb
+      double precision total_events, sigmawnSI, sigmawpSI, gevtopb,cm3topb
       double precision sigmawnSD, sigmawpSD
       double precision vID_natural
       character(len=32) outfilename
@@ -132,6 +132,8 @@ C      Here write the output.
          write(33, *) 'earth_capture_rate: ', earth_cap_rate, '1/s'
       endif
 
+      cm3topb = 3.34d+25
+
       if (do_indirect_detection.and.only2to2lo) then
 c      here natural just signals that it's in natural units.
         vID_natural = vave_indirect !/299792.d0
@@ -142,7 +144,7 @@ c           peak of the velocity distribution
         call set_up_grid_ID(vID_natural)
         do k=1, ANN_NUM_PROCESSES
 c   here sigv is in units of 'pb' so convert it to cm^3/s
-            sigv =  taacs_ID(k,vID_natural, 10000)/3.34d25 ! the last thing is the size of the integration grid. Leave at 10000.
+            sigv =  taacs_ID(k,vID_natural, 10000)/cm3topb ! the last thing is the size of the integration grid. Leave at 10000.
             write(33,fmt='(A8,A12,A4,ES14.7,A7)') 'sigma*v:',PROCESS_NAMES(k),' ',sigv, ' cm^3/s'
         enddo
       endif

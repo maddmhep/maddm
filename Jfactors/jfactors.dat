@@ -1,4 +1,32 @@
-nfw         1.0
-einasto     1.0
-isothermal  1.0
-user        1.0
+Reticulum_II 32.0 6.3e+17
+Carina 105.0 1.3e+18
+Leo_II 233.0 4e+17
+NFW_R41 8.0 8.5e+22
+Triangulum_II 30.0 1.8e+20
+DES_J03443_4331 330.0 2e+17
+Ursa_Major_I 97.0 2e+18
+NFW_R3 8.0 1.39e+23
+Leo_IV 154.0 7.9e+17
+Leo_I 254.0 5e+17
+Fornax 147.0 1.6e+18
+DES_J23399_5424 95.0 2e+18
+Canes_Venatici_I 218.0 5e+17
+Bootes_I 66.0 6.3e+18
+Einasto_R16 8.0 8.5e+22
+Sculptor 86.0 4e+18
+DES_J04438_5017 126.0 1.3e+18
+Segue_1 23.0 3.2e+19
+Sextans 86.0 2.5e+18
+DES_J03356_5403 32.0 2e+19
+DES_J02554_5406 87.0 2.5e+18
+DES_J02227_5217 95.0 2e+18
+Coma_Berenices 44.0 1e+19
+Ursa_Major_II 32.0 2e+19
+DES_J22512_5836 58.0 6.3e+18
+Canes_Venatici_II 160.0 7.9e+17
+Hercules 132.0 1.3e+18
+Ursa_Minor 76.0 6.3e+18
+Isothermal 8.0 6.9e+22
+DES_J21088_5109 69.0 4e+18
+Draco 76.0 6.3e+18
+Willman_1 38.0 1.3e+19
