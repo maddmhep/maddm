@@ -510,8 +510,10 @@ class MADDMRunCmd(cmd.CmdShell):
              mdm = param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
              sigv = self._last_results['taacsID']
 
-             phi = 1.0*self.rho*self.rho/(mdm*mdm)*sigv*self.dNdE(channel, energy)
+            #CHECK THIS EQUATION!!!!
+             phi = 1.0/(8.0*3.14*mdm*mdm)*sigv*self.dNdE(channel, energy)
 
+             return phi
 
 #-------------------------------------------------------------------------------------
 # (OLD STUFF, KEEP COMMENTED OUT, MAYBE SOME PIECES WILL BE USEFUL IN THE FUTURE)
