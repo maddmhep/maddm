@@ -6,6 +6,7 @@ import os
 import re
 import sys
 import subprocess
+import auxiliary as aux
 
 
 import MGoutput
@@ -83,9 +84,6 @@ pb2cm3 = 2.99E-26
 #         except OSError:
 #             logger.error('could not open file %s ' % filename)
 #             return False
-
-
-
 
 #===============================================================================
 # CommonRunCmd
@@ -289,20 +287,25 @@ class MADDMRunCmd(cmd.CmdShell):
                         'earth_capture_rate', 'taacsID']
 
         #sigv_indirect = 0.
-        if self._two2twoLO:
-            sigv_indirect_error = 0.
-            for line in open(pjoin(self.dir_path, output)):
+        for line in open(pjoin(self.dir_path, output)):
                 splitline = line.split()
                 result.append(float(splitline[1]))
-                if 'sigma*v' in line:
-                    sigv_temp = float(result[-1])
-                    oname =splitline[0].split(':',1)[1]
-                    oname2 = oname.split('_')
-                    oname = oname2[0]+'_'+oname2[1] #To eliminate the annoying suffix coming from the '/' notation
-                    output_name.append('taacsID#%s' % oname)
-                    #sigv_indirect += sigv_temp
-                    output_name.append('err_taacsID#%s' % oname)
-                    result.append(sigv_temp)
+                if self._two2twoLO:
+                    sigv_indirect_error = 0.
+                    if 'sigma*v' in line:
+                        sigv_temp = float(result[-1])
+                        oname =splitline[0].split(':',1)[1]
+                        oname2 = oname.split('_')
+                        oname = oname2[0]+'_'+oname2[1] #To eliminate the annoying suffix coming from the '/' notation
+                        output_name.append('taacsID#%s' % oname)
+                        #sigv_indirect += sigv_temp
+                        output_name.append('err_taacsID#%s' % oname)
+                        result.append(sigv_temp)
+
+        #if self.mode['CR_flux']:
+        #    cr_names = ['gamma', 'p', 'pbar', 'e+', 'e-', 'neu']
+        #    for channel in cr_names:
+        #        output_name.append[channel]
 
 
         result = dict(zip(output_name, result))
@@ -314,10 +317,12 @@ class MADDMRunCmd(cmd.CmdShell):
 
 
         self.last_results = result
+        logger.debug(self.last_results)
 
         if self.mode['indirect'] and not self._two2twoLO:
             with misc.MuteLogger(names=['madevent','madgraph'],levels=[50,50]):
                 self.launch_indirect(force)
+
 
 
         logger.debug('scan mode: %s' % str(self.in_scan_mode))
@@ -333,6 +338,7 @@ class MADDMRunCmd(cmd.CmdShell):
             #print results:
 
             order = []
+
             if self.mode['relic']:
                 order += ['omegah2', 'x_freezeout', 'sigmav_xf']
             if self.mode['direct'] :
@@ -347,8 +353,8 @@ class MADDMRunCmd(cmd.CmdShell):
                 
             if self.mode['indirect']:
 
-                if not  self._two2twoLO:
-                    order +=['halo_velocity','indirect', 'indirect_error']
+                if not self._two2twoLO:
+                    order +=['halo_velocity']#,'indirect', 'indirect_error']
                     detailled_keys = [k[5:] for k in self.last_results
                                   if k.startswith('xsec_') and '#' not in k]
                     if len(detailled_keys)>1:
@@ -356,8 +362,8 @@ class MADDMRunCmd(cmd.CmdShell):
                             #reformat the key so that it only takes the initial and final states
                             #Useful is there is "/" syntax, because "no" suffix is added.
                             clean_key_list = key.split("_")
-                            clean_key = clean_key_list[0]+"_"+clean_key_list[1]
-                            order +=['taacs_ID#%s' % (key), 'err_taacsID#%s' % (clean_key)]
+                            clean_key = clean_key_list[1]+"_"+clean_key_list[2]
+                            order +=['taacsID#%s' % (clean_key), 'err_taacsID#%s' % (clean_key)]
 
             #<=-------------- Mihailo commented out max_col = 10
             to_print = param_card_iterator.write_summary(None, order,nbcol=10)#, max_col=10)
@@ -412,75 +418,53 @@ class MADDMRunCmd(cmd.CmdShell):
         mdm = param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
 
         vave_temp = self.maddm_card['vave_indirect']
-        scan_v = [np.power(10., -1*ii) for ii in range(2, 6)]
-        scan_v = scan_v+[vave_temp]#/299794.458]
-        scan_v = np.unique([round(x, 6) for x in scan_v])
+        #scan_v = [np.power(10., -1*ii) for ii in range(2, 6)]
+        #scan_v = scan_v+[vave_temp]#/299794.458]
+        #scan_v = np.unique([round(x, 6) for x in scan_v])
 
-        #print self.last_results
+        logger.debug(self.last_results)
 
         # ensure that VPM is the central one for the printout (so far)
         self.last_results['taacsID'] = 0.0
-        for i,v in enumerate(scan_v):
+        #for i,v in enumerate(scan_v):
 
-            run_card['ebeam1'] = mdm * math.sqrt(1+v**2)
-            run_card['ebeam2'] = mdm * math.sqrt(1+v**2)
-            run_card.write(runcardpath)
+        run_card['ebeam1'] = mdm * math.sqrt(1+vave_temp**2)
+        run_card['ebeam2'] = mdm * math.sqrt(1+vave_temp**2)
+        run_card.write(runcardpath)
             
-            self. me_cmd.do_launch('-f')
+        self.me_cmd.do_launch('-f')
 
-            self.last_results['halo_velocity#%s' %i] = v
-            self.last_results['indirect#%s' %i] = self.me_cmd.results.get_detail('cross')
-            self.last_results['indirect_error#%s' %i] = self.me_cmd.results.get_detail('error')
-            
-            for key, value in self.me_cmd.Presults.items():
-                self.last_results['%s#%i' %(key,i)] =  value
-            if i==0:
-                self.last_results['indirect'] = self.me_cmd.results.get_detail('cross')
-                self.last_results['indirect_error'] = self.me_cmd.results.get_detail('error')
-            
-                for key, value in self.me_cmd.Presults.items():
-                    self.last_results[key] =  value
+        #self.last_results['halo_velocity#%s' %i] = vave_temp
+        #self.last_results['indirect#%s' %i] = self.me_cmd.results.get_detail('cross')
+        #self.last_results['indirect_error#%s' %i] = self.me_cmd.results.get_detail('error')
 
-            logger.debug(self.me_cmd.Presults.items())
+        for key, value in self.me_cmd.Presults.items():
 
-            #write in taacs
-            taacs = v*self.last_results['indirect#%s' %i]* pb2cm3
-            self.last_results['taacsID#%s' %i] = taacs
-            self.last_results['taacsID'] += taacs # !!!!!!!!!!!!!!!!!!! FIX THIS, should be sum of taacs!!!!!!!!
+            clean_key_list = key.split("_")
+            clean_key = clean_key_list[1]+"_"+clean_key_list[2]
+            if key.startswith('xsec'):
+                #<------- FIX THIS. GET RID OF VAVE_TEMP. THIS WILL JUST GET INTEGRATED BY MADEVENT
+                self.last_results['taacsID#%s' %(clean_key)] = vave_temp*self.me_cmd.results.get_detail('cross')* pb2cm3
+                self.last_results['taacsID'] += vave_temp*self.me_cmd.results.get_detail('cross')* pb2cm3
+            elif key.startswith('xerr'):
+                self.last_results['err_taacsID#%s' %(clean_key)] = vave_temp*self.me_cmd.results.get_detail('error') * pb2cm3
 
 
-# integration routine, simpson's rule. integrates a function over a pre-set 1-D grid.
-    def integrate(self, x_grid, a, b):
-        simpson = 0.0
-        ii = 0
-        for ii in range(0, len(x_grid)-1):
-           start_pt = x_grid[ii]
-           if (start_pt< a):
-               continue
-           end_pt =  x_grid[ii+1]
-           simpson = simpson+ (end_pt - start_pt)/6.0*(self.integrand(start_pt) + 4.0*self.integrand(0.5*\
-                                       (start_pt+end_pt)) + self.integrand(end_pt))
-           ii = ii+1
-
-        return simpson
-
-
-    def dNdE(self, channel, energy):
+    def dNdx(self, energy, channel=''):
         if not self._dNdE_setup:
             filename = channel+'.dat'
-            if os.exists(pjoin(self.dir_path, 'output', filename)):
-                ans = ''
-                while ans not in ['y', 'Y', 'n','N']:
-                    ans = input('File '+filename+' exists. Use the current file? [y/n]: [y]')
-                    if ans == 'y' or ans == 'Y':
-                        dNdE_x, dNdE_y = self.load_dNdE(filename)
-                        self._dNdE_setup = True
-                    else:
-                        #run pythia.
-                        self._dNdE_setup = True
-                        break
+            if os.path.exists(pjoin(self.dir_path, 'output', filename)):
+                logger.info('Found file '+ self.dir_path, 'output', filename+' for the '+channel+' spectrum.')
+                dNdE_x, dNdE_y = self.load_dNdE(filename)
+                self._dNdE_setup = True
+            else:
+                #run pythia.
+                self._dNdE_setup = True
 
-    def load_dNdE(self, filename):
+        return np.interp(energy, dNdE_x, dNdE_y)
+
+
+    def load_dNdx(self, filename):
         try:
             f = open(filename, 'r')
             lines = f.readlines()
@@ -500,7 +484,7 @@ class MADDMRunCmd(cmd.CmdShell):
         return x, y
 
     #channel can be photons, electrons, positrons, protons, antiprotons, neutrinos
-    def dPhidE(self, channel, energy):
+    def dPhidE(self,  energy, channel=''):
          if not self._last_results:
              logger.error('You can not calculate the flux before calculating <sigmav>!')
              return -1.0
@@ -509,11 +493,37 @@ class MADDMRunCmd(cmd.CmdShell):
              param_card = param_card_mod.ParamCard(self.dir_path, 'Cards', 'param_card.dat')
              mdm = param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
              sigv = self._last_results['taacsID']
+             halo_profile = param_card['halo_profile']
+             jfact = param_card['jfactors'][halo_profile]
 
             #CHECK THIS EQUATION!!!!
-             phi = 1.0/(8.0*3.14*mdm*mdm)*sigv*self.dNdE(channel, energy)
+             phi = 1.0/(8.0*math.pi*mdm*mdm)*sigv*self.dNdx(channel, energy)*jfact*1/mdm
 
              return phi
+
+    def Phi(self, chan=''):
+          if not self._last_results:
+             logger.error('You can not calculate the flux before calculating <sigmav>!')
+             return -1.0
+          else:
+             param_card = param_card_mod.ParamCard(self.dir_path, 'Cards', 'param_card.dat')
+             mdm = param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
+             sigv = self._last_results['taacsID']
+             halo_profile = param_card['halo_profile']
+             jfact = param_card['jfactors'][halo_profile]
+
+             npts = 200
+             grid = [de*2*mdm/npts for de in range(0, npts+1)]
+
+             #CHECK HERE THAT THE JACOBIAN FROM X TO E IS CORRECT
+             integrate_dNdE = 1.0/mdm*aux.integrate(self.dNdx, grid, channel=chan)
+
+             phi = 1.0/(8.0*math.pi*mdm*mdm)*sigv*jfact*integrate_dNdE
+
+             return phi
+
+
+
 
 #-------------------------------------------------------------------------------------
 # (OLD STUFF, KEEP COMMENTED OUT, MAYBE SOME PIECES WILL BE USEFUL IN THE FUTURE)
@@ -589,6 +599,7 @@ class MADDMRunCmd(cmd.CmdShell):
         omega_min = 0
         omega_max = 0.12
 
+        logger.debug(self.last_results)
         
         if omega_min < self.last_results['omegah2'] < omega_max:
             fail_relic_msg = ''
@@ -666,7 +677,8 @@ class MADDMRunCmd(cmd.CmdShell):
                             'directional': 'ON' if process_data['has_directional_detection'] else 'Not available',
                             'sun_capture': 'ON' if process_data['has_sun_capture'] else 'Not available',
                             'earth_capture': 'ON' if process_data['has_earth_capture'] else 'Not available',
-                            'indirect': 'ON' if process_data['has_indirect_detection'] else 'Not available'}
+                            'indirect': 'ON' if process_data['has_indirect_detection'] else 'Not available',
+                             'CR_flux': 'ON' if process_data['has_indirect_detection'] else 'Not available'}
                 process_data = self.proc_characteristics
 
             self.maddm_card = MadDMCard(pjoin(self.dir_path, 'Cards', 'maddm_card.dat'))
@@ -698,7 +710,8 @@ class MADDMRunCmd(cmd.CmdShell):
                             'directional': 'ON' if process_data['has_directional_detection'] else 'Not available',
                             'sun_capture': 'ON' if process_data['has_sun_capture'] else 'Not available',
                             'earth_capture': 'ON' if process_data['has_earth_capture'] else 'Not available',
-                            'indirect': 'ON' if process_data['has_indirect_detection'] else 'Not available'}
+                            'indirect': 'ON' if process_data['has_indirect_detection'] else 'Not available',
+                             'CR_flux': 'ON' if process_data['has_indirect_detection'] else 'Not available'}
             if not os.path.exists(pjoin(self.dir_path, 'include', 'maddm_card.inc')):
                 # create the inc file for maddm
                 self.maddm_card.set('do_relic_density', self.mode['relic'], user=False)
@@ -810,7 +823,8 @@ class MadDMSelector(common_run.EditParamCard):
                                                    process_data['has_indirect_detection'] else 'Not available',
                             'earth_capture': 'ON' if process_data['has_earth_capture'] and \
                                                    process_data['has_indirect_detection'] else 'Not available',
-                            'indirect': 'ON' if process_data['has_indirect_detection'] else 'Not available'}
+                            'indirect': 'ON' if process_data['has_indirect_detection'] else 'Not available',
+                            'CR_flux':'ON' if process_data['has_indirect_detection'] else 'Not available'}
         
         #1. Define what to run and create the associated question
         mode = opts.pop('mode', None)  
@@ -822,7 +836,7 @@ class MadDMSelector(common_run.EditParamCard):
                     
         #2. Define the list of allowed argument
         allow_args = [str(0), 'done', str(7), 'param', str(8), 'maddm']
-        for i,key in enumerate(['relic', 'direct', 'directional', 'indirect','sun_capture', 'earth_capture']):
+        for i,key in enumerate(['relic', 'direct', 'directional', 'indirect', 'CR_flux','sun_capture', 'earth_capture']):
             if self.run_options[key] in ['ON', 'OFF']:
                 allow_args.append(str(i+1))
                 allow_args.append(key)
@@ -875,14 +889,15 @@ class MadDMSelector(common_run.EditParamCard):
     2. Compute Direct Detection      %(start_underline)sdirect%(stop)s      = %(direct)s
     3. Compute Directional Detection %(start_underline)sdirectional%(stop)s = %(directional)s
     4. Compute Indirect Detection    %(start_underline)sindirect%(stop)s    = %(indirect)s
-    5. Compute Solar Capture rate    %(start_underline)ssun_capture%(stop)s    = %(sun_capture)s
-    6. Compute Earth Capture rate    %(start_underline)searth_capture%(stop)s    = %(earth_capture)s
+    5. Compute Cosmic Ray Flux       %(start_underline)sindirect%(stop)s    = %(indirect)s
+    6. Compute Solar Capture rate    %(start_underline)ssun_capture%(stop)s    = %(sun_capture)s
+    7. Compute Earth Capture rate    %(start_underline)searth_capture%(stop)s    = %(earth_capture)s
 %(start_green)s You can also edit the various input card%(stop)s:
  * Enter the name/number to open the editor
  * Enter a path to a file to replace the card
  * Enter %(start_bold)sset NAME value%(stop)s to change any parameter to the requested value 
-    7. Edit the model parameters    [%(start_underline)sparam%(stop)s]
-    8. Edit the MadDM options       [%(start_underline)smaddm%(stop)s]\n""" % \
+    8. Edit the model parameters    [%(start_underline)sparam%(stop)s]
+    9. Edit the MadDM options       [%(start_underline)smaddm%(stop)s]\n""" % \
     {'start_green' : '\033[92m',
      'stop':  '\033[0m',
      'start_underline': '\033[4m',
@@ -891,6 +906,7 @@ class MadDMSelector(common_run.EditParamCard):
      'direct':get_status_str(self.run_options['direct']),
      'directional':get_status_str(self.run_options['directional']),
      'indirect':get_status_str(self.run_options['indirect']),
+     'CR_flux':get_status_str(self.run_options['indirect']),
      'sun_capture':get_status_str(self.run_options['sun_capture']),
      'earth_capture':get_status_str(self.run_options['earth_capture']),
      }
@@ -999,6 +1015,12 @@ class MadDMSelector(common_run.EditParamCard):
         elif last_modified =='sun_capture' or last_modified=='earth_capture':
             if self.run_options['direct'] == 'OFF':
                 self.run_options['direct'] = 'ON'
+        elif last_modified =='CR_flux':
+            if self.run_options['CR_flux'] == 'ON':
+                self.run_options['indirect'] = 'ON'
+        elif last_modified =='indirect':
+            if self.run_options['indirect'] == 'OFF':
+                self.run_options['CR_flux']= 'OFF'
 
 
 
@@ -1144,8 +1166,8 @@ class MadDMCard(banner_mod.RunCard):
             logger.error('could not open Jfactor file %s ' % filename)
             return False
 
-        logger.debug('Loaded the following Jfactors:')
-        logger.debug('            Object       Distance            Jfactor')
+        logger.info('Loaded the following Jfactors:')
+        logger.info('            Object      Distance [kpc]   Jfactor [GeV^2/cm^5]')
         for jf, val in MadDMCard.initial_jfactors.iteritems():
             dist = self['distances'][jf]
             logger.info('%20s     %.2e           %.2e' %(jf, dist, val))
