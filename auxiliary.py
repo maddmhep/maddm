@@ -5,7 +5,7 @@ def integrate(integrand, x_grid=[], a=0, b=0, npts=0, **kwargs):
 
         #if the user supplies the limits then use those
         #otherwise use the grid supplied by the user.
-        if (a!=b and a!=npts):
+        if (a!=b):
             x_grid = [float(a)+ (float(b)-float(a))*k/npts for k in range(0, npts+1)]
 
         if x_grid==[]:

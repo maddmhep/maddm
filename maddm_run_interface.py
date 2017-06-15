@@ -641,7 +641,6 @@ class MADDMRunCmd(cmd.CmdShell):
             logger.info(' Solar capt. rate    : %.2e 1/s', self.last_results['solar_capture_rate'])
         if self.mode['earth_capture']:
             logger.info(' Earth capt. rate    : %.2e 1/s', self.last_results['earth_capture_rate'])
-
         if self.mode['indirect']:
 
             v = self.maddm_card['vave_indirect']
