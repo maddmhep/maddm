@@ -85,7 +85,7 @@ c           Here set the global variables used by integrand bexfore you integrat
             vave_glob = vave
             channel_glob=channel
 c------------------------------------>>>>>>>>
-            taacs_ID = simpson(integrand, 0.d0, min(10.d0*vave_glob,1.d0), grid_ID, grid_npts_ID)
+            taacs_ID = simpson(integrand, 0.d0, min(20.d0*vave_glob,1.d0), grid_ID, grid_npts_ID)
 
             return
        end function taacs_ID

@@ -1,6 +1,7 @@
 # integration routine, simpson's rule. integrates a function over a pre-set 1-D grid.
 #add option to run it with x_min, x_max npts as well.
 def integrate(integrand, x_grid=[], a=0, b=0, npts=0, **kwargs):
+
         simpson = 0.0
 
         #if the user supplies the limits then use those
@@ -21,7 +22,7 @@ def integrate(integrand, x_grid=[], a=0, b=0, npts=0, **kwargs):
 
         return simpson
 
-def write_data_to_file(x_data, y_data, filename=''):
+def write_data_to_file(x_data, y_data, filename='', header=''):
 
     if len(x_data)!= len(y_data):
         print("ERROR: x and y columns don't have the same dimensions. Will not write the data.")
@@ -29,8 +30,10 @@ def write_data_to_file(x_data, y_data, filename=''):
 
     try:
         with open(filename, 'w+') as f:
+            if header!='':
+                f.write('%s \n' % header)
             for i, x in enumerate(x_data):
-                f.write('%.5e     %.5e' %(x, y_data[i]))
+                f.write('%.5e   %.5e\n' %(x, y_data[i]))
 
     except OSError:
         print('ERROR: write_data_to_file can not open the file!')

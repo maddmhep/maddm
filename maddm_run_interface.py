@@ -287,8 +287,13 @@ class MADDMRunCmd(cmd.CmdShell):
 
         output_name = ['omegah2', 'x_freezeout', 'wimp_mass', 'sigmav_xf' ,
                        'sigmaN_SI_proton', 'sigmaN_SI_neutron', 'sigmaN_SD_proton',
-                        'sigmaN_SD_neutron','Nevents', 'smearing', 'solar_capture_rate',
-                        'earth_capture_rate', 'taacsID']
+                        'sigmaN_SD_neutron','Nevents', 'smearing']
+
+        if self.mode['sun_capture']:
+            output_name.append('solar_capture_rate')
+
+        if self.mode['sun_capture']:
+            output_name.append('earth_capture_rate')
 
         #sigv_indirect = 0.
         for line in open(pjoin(self.dir_path, output)):
@@ -297,7 +302,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 if self._two2twoLO:
                     sigv_indirect_error = 0.
                     if 'sigma*v' in line:
-                        sigv_temp = float(result[-1])
+                        sigv_temp = float(splitline[1])
                         oname =splitline[0].split(':',1)[1]
                         oname2 = oname.split('_')
                         oname = oname2[0]+'_'+oname2[1] #To eliminate the annoying suffix coming from the '/' notation
@@ -311,6 +316,7 @@ class MADDMRunCmd(cmd.CmdShell):
             for channel in cr_names:
                 output_name.append('flux_%s' % channel)
 
+        logger.debug('')
 
         result = dict(zip(output_name, result))
         #result['taacsID'] = sigv_indirect
@@ -431,7 +437,7 @@ class MADDMRunCmd(cmd.CmdShell):
         #scan_v = scan_v+[vave_temp]#/299794.458]
         #scan_v = np.unique([round(x, 6) for x in scan_v])
 
-        logger.debug(self.last_results)
+        #logger.debug(self.last_results)
 
         # ensure that VPM is the central one for the printout (so far)
         self.last_results['taacsID'] = 0.0
@@ -462,6 +468,7 @@ class MADDMRunCmd(cmd.CmdShell):
     def dNdx(self, x, channel=''):
 
         #FIX THIS. NOW I'M RETURNING 1 FOR TESTING PURPOSE
+        #FIGURE OUT IF THE FACTOR OF 1/2 IS BEING CALCULATED PROPERLY FOR ID
         return 1.0
 
         if not self._dNdE_setup:
@@ -626,7 +633,7 @@ class MADDMRunCmd(cmd.CmdShell):
             logger.info('  relic density  : %.2e %s', self.last_results['omegah2'],fail_relic_msg)
                         
             logger.info('   x_f            : %.2f', self.last_results['x_freezeout'])
-            logger.info('   sigmav(xf)     : %.2e GeV^-2 = %.2e cm^3/s', self.last_results['sigmav_xf'],self.last_results['sigmav_xf']*GeV2pb*pb2cm2)
+            logger.info('   sigmav(xf)     : %.2e GeV^-2 = %.2e cm^3/s', self.last_results['sigmav_xf'],self.last_results['sigmav_xf']*GeV2pb*pb2cm3)
             
         if self.mode['direct']:
             logger.info('\n direct detection: ')
@@ -649,6 +656,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
             detailled_keys = [k.split("#")[1] for k in self.last_results.keys() if k.startswith('taacsID#')]
 
+            #THES FOLLOWING CROSS SECTIONS ARE ALREADY IN CM^3/s!!!!!!!
             tot_taacs = 0.0
             if len(detailled_keys)>1:
                 logger.info('\n  indirect detection: ')
@@ -678,7 +686,8 @@ class MADDMRunCmd(cmd.CmdShell):
                         phis.append(self.dPhidE(energy, channel=chan))
 
                     flux_filename = pjoin(self.dir_path, 'output', 'dPhidE_%s.txt' %chan)
-                    aux.write_data_to_file(energies, phis, filename=flux_filename)
+                    #FIX THIS, WRITE THE UNITS OF FLUX
+                    aux.write_data_to_file(energies, phis, filename=flux_filename, header='# Energy    Flux []')
 
                     self.last_results['flux_%s' % chan] = self.Phi(chan=chan)
 
@@ -1254,8 +1263,8 @@ class MadDMCard(banner_mod.RunCard):
         self.add_param('x_end', 1000.0)
         self.add_param('dx_step', 1.0)
         
-        self.add_param('ngrid_init', 20)
-        self.add_param('nres_points', 20)
+        self.add_param('ngrid_init', 50)
+        self.add_param('nres_points', 50)
         self.add_param('eps_wij', 0.01)
         self.add_param('iter_wij', 2)
         
