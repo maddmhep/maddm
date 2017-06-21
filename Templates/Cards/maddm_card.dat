@@ -54,14 +54,15 @@
 #
 
 # Simpson's rule parameters
-#     For the calculation of taacs only, initial number of points in the grid (of dm velocity)
+#     For the calculation of taacs only (both relic and indirect),
+#     Initial number of points in the grid to integrate over (of dm velocity)
    %(ngrid_init)s        = ngrid_init
-#     Number of points to add for one width
+#     Number of points to add for one width around each resonance peak
 #     (the code will add points which exponentially increase in distance from the pole)
    %(nres_points)s        = nres_points
-# precision of the romberg integration for Wij
+# precision of the romberg integration for Wij (irrelevant if simpson's rule used)
    %(eps_wij)s      = eps_wij
-# minimum number of iterations in the romberg integration algorithm for both Wij
+# minimum number of iterations in the romberg integration algorithm for both Wij (irrelevant if simpson's rule used)
    %(iter_wij)s         = iter_wij
 
 #
@@ -150,4 +151,4 @@
 #
 # For indirect detection
 #
-   %(vave_indirect)s   = vave_indirect  ! average velocity of DM halo in natural units (e.g. 10E-3 for our galaxy)
+   %(vave_indirect)s   = vave_indirect  ! average velocity of DM halo in natural units (e.g. 1E-3 for our galaxy)

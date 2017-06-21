@@ -48,42 +48,7 @@ pb2cm2  = 1.00E-36
 cm22pb  = 1.00E36
 pb2cm3 = 2.99E-26
 
-# class Jfactors:
-#
-#     def __init__(self, filename=pjoin(MDMDIR,'Jfactors','jfactors.dat')):
-#         self._JF = self.read_jfactors(filename)
-#
-#     def read_jfactors(self, filename):
-#         try:
-#             infile = open(filename,'r')
-#             lines = infile.readlines()
-#             infile.close()
-#             temp = dict()
-#             for line in lines:
-#                 spline = line.split()
-#                 logger.debug('split line:')
-#                 logger.debug(spline)
-#                 jfact = spline[0]
-#                 val = float(spline[1].rstrip())
-#
-#                 temp[jfact] = val
-#             return temp
-#
-#         except OSError:
-#             logger.error('could not open file %s ' % filename)
-#             return False
-#
-#
-#     def write_jfactors(self, filename=pjoin(MDMDIR,'Jfactors','jfactors.dat')):
-#         try:
-#             outfile = open(filename, 'r')
-#             for jfact, val in self._JF.iteritems():
-#                 outfile.write('%s   %s' % (jfact, str(val) ))
-#             outfile.close()
-#             return True
-#         except OSError:
-#             logger.error('could not open file %s ' % filename)
-#             return False
+
 
 #===============================================================================
 # CommonRunCmd
@@ -140,6 +105,11 @@ class MADDMRunCmd(cmd.CmdShell):
         #self._fit_parameters= []
 
         self._run_couplings = False
+
+        #A shared param card object to the interface.
+        #All parts of the code should read this card.
+        #Set at the beginning of launch()
+        self.param_card = None
     
     def preloop(self,*args,**opts):
         super(Indirect_Cmd,self).preloop(*args,**opts)
@@ -406,9 +376,9 @@ class MADDMRunCmd(cmd.CmdShell):
 
 
 
-
     def launch_indirect(self, force):
         """running the indirect detection"""
+
 
         #If the Indirect subfolder is not created, that means that the code is
         #using the 2to2 at LO which is handled by maddm.f. Then just skip this part
@@ -424,20 +394,20 @@ class MADDMRunCmd(cmd.CmdShell):
             self.me_cmd.do_quit()
             self.me_cmd = Indirect_Cmd(pjoin(self.dir_path, 'Indirect'))
 
+
         #<------ HERE HOW ARE WE MAKING SURE THAT THE SAME CARD IS BEING  USED FOR INDIRECT
         # AND THE REST???
         runcardpath = pjoin(self.dir_path,'Indirect', 'Cards', 'run_card.dat')
         #param_path  = pjoin(self.dir_path,'Indirect', 'Cards', 'param_card.dat')
         run_card = banner_mod.RunCard(runcardpath)
         #param_card = param_card_mod.ParamCard(param_path)
+
         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
 
         vave_temp = self.maddm_card['vave_indirect']
         #scan_v = [np.power(10., -1*ii) for ii in range(2, 6)]
         #scan_v = scan_v+[vave_temp]#/299794.458]
         #scan_v = np.unique([round(x, 6) for x in scan_v])
-
-        #logger.debug(self.last_results)
 
         # ensure that VPM is the central one for the printout (so far)
         self.last_results['taacsID'] = 0.0
