@@ -31,6 +31,94 @@ logger = logging.getLogger('madgraph.plugin.maddm')
 
 MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
 
+__infty__ = 1E20
+class ExpConstraints:
+
+
+
+    def __init__(self):
+
+        self._allowed_final_states = {'qqx', 'gg', 'bbx', 'ttx', 'e+e-', 'mu+mu-', 'ta+ta-', 'w+w-', 'zz', 'hh', 'aa'}
+
+        self._oh2_planck = 0.1198
+        self._oh2_planck_width = 0.0015
+
+        self._dd_si_limit_file = pjoin(MDMDIR, 'ExpData', 'LuxBound2016_si.dat')
+        self._dd_sd_proton_limit_file = pjoin(MDMDIR, 'ExpData', 'Pico60_sd_proton.dat') # <---------CHANGE THE FILE!!!
+        self._dd_sd_neutron_limit_file = pjoin(MDMDIR, 'ExpData', 'Lux_2017_sd_neutron.dat')
+        self._id_limit_file = {'qqx':pjoin(MDMDIR, 'ExpData', 'Fermi_pass8_6years_stack15dShps_uu.dat'),
+                               'gg':'',
+                               'bbx':pjoin(MDMDIR, 'ExpData', 'Fermi_pass8_6years_bb.dat'),
+                               'ttx':'',
+                               'e+e-':pjoin(MDMDIR, 'ExpData', 'Fermi_pass8_6years_stack15dShps_ee.dat'),
+                               'mu+mu-':pjoin(MDMDIR, 'ExpData', 'Fermi_pass8_6years_stack15dShps_mumu.dat'),
+                               'ta+ta-':pjoin(MDMDIR, 'ExpData', 'Fermi_pass8_6years_stack15dShps_tautau.dat'),
+                               'w+w-':pjoin(MDMDIR, 'ExpData', 'Fermi_pass8_6years_stack15dShps_ww.dat'),
+                               'zz':'',
+                               'hh':'',
+                               'aa':''}
+        self._id_limit_vel = {'qqx':1.0e-6,'gg':1.0e-6,'bbx':1.0e-6,'ttx':1.0e-6,'e+e-':1.0e-6,'mu+mu-':1.0e-6,'ta+ta-':1.0e-6,
+                              'w+w-':1.0e-6, 'zz':1.0e-6,'hh':1.0e-6,'aa':1.0e-3}
+
+
+        self._id_limit_mdm = dict()
+        self._id_limit_sigv = dict()
+
+        self.load_constraints()
+
+    def load_constraints(self):
+        #Load in direct detection constraints
+        if self._dd_si_limit_file!='':
+            self._dd_si_limit_mDM, self._dd_si_limit_sigma = np.loadtxt(self._dd_si_limit_file, unpack=True, comments='#')
+        if self._dd_sd_proton_limit_file!='':
+            self._dd_sd_p_limit_mDM, self._dd_sd_p_limit_sigma = np.loadtxt(self._dd_sd_proton_limit_file, unpack=True, comments='#')
+        if self._dd_sd_neutron_limit_file!='':
+            self._dd_sd_n_limit_mDM, self._dd_sd_n_limit_sigma = np.loadtxt(self._dd_sd_neutron_limit_file, unpack=True, comments='#')
+
+        #Load in indirect detection constraints
+        for channel, limit_file in self._id_limit_file.iteritems():
+            if limit_file!='':
+                self._id_limit_mdm[channel], self._id_limit_sigv[channel] = np.loadtxt(limit_file, unpack=True, comments='#')
+            else:
+                self._id_limit_mdm[channel] = False
+                self._id_limit_sigv[channel] = False
+
+
+    #Returns a value in cm^2
+    def SI_max(self, mdm):
+        if (mdm < np.min(self._dd_si_limit_mDM) or mdm > np.max(self._dd_si_limit_mDM)):
+            logger.warning('Dark matter mass value '+str(mdm)+' is outside the range of SI limit')
+            return __infty__
+        else:
+            return np.interp(mdm, self._dd_si_limit_mDM, self._dd_si_limit_sigma)
+
+    #Returns a value in cm^2
+    def SD_max(self,mdm, nucleon):
+        if nucleon not in ['n','p']:
+            logger.error('nucleon can only be p or n')
+            return __infty__
+        else:
+            if nucleon=='p':
+                if (mdm < np.min(self._dd_sd_p_limit_mDM) or mdm > np.max(self._dd_sd_n_limit_mDM)):
+                    logger.warning('Dark matter mass value '+str(mdm)+' is outside the range of SD limit')
+                    return __infty__
+                else:
+                    return np.interp(mdm, self._dd_sd_p_limit_mDM, self._dd_sd_p_limit_sigma)
+            elif nucleon=='n':
+                if (mdm < np.min(self._dd_sd_n_limit_mDM) or mdm > np.max(self._dd_sd_n_limit_mDM)):
+                    logger.warning('Dark matter mass value '+str(mdm)+' is outside the range of SD limit')
+                    return __infty__
+                else:
+                    return np.interp(mdm, self._dd_sd_n_limit_mDM, self._dd_sd_n_limit_sigma)
+
+    #Returns a value in cm^3/s
+    def ID_max(self,mdm, channel):
+        if (mdm < np.min(self._id_limit_mdm[channel]) or mdm > np.max(self._id_limit_mdm[channel])):
+            logger.warning('Dark matter mass value %.2e for channel %s is outside the range of ID limit' % (mdm, channel))
+            return __infty__
+        else:
+            return np.interp(mdm, self._id_limit_mdm[channel], self._id_limit_sigv[channel])
+
 class bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -110,6 +198,8 @@ class MADDMRunCmd(cmd.CmdShell):
         #All parts of the code should read this card.
         #Set at the beginning of launch()
         self.param_card = None
+
+        self.limits = ExpConstraints()
     
     def preloop(self,*args,**opts):
         super(Indirect_Cmd,self).preloop(*args,**opts)
@@ -586,31 +676,43 @@ class MADDMRunCmd(cmd.CmdShell):
         
     def print_results(self):
         """ print the latest results """
-        omega_min = 0
-        omega_max = 0.12
+        #omega_min = 0
+        #omega_max = 0.12
 
-        logger.debug(self.last_results)
-        
-        if omega_min < self.last_results['omegah2'] < omega_max:
-            fail_relic_msg = ''
-        else:
-            fail_relic_msg = '%s Model excluded (relic not in range [%s,%s])%s' %\
-                              (bcolors.FAIL, omega_min, omega_max,bcolors.ENDC)  
+        #logger.debug(self.last_results)
+
+        mdm= self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
+
+        pass_message = '%s OK %s' % (bcolors.OKGREEN, bcolors.ENDC)
+        fail_message = ' %s EXCLUDED %s' % (bcolors.FAIL, bcolors.ENDC)
+
+        pass_relic = pass_message if self.last_results['omegah2'] < self.limits._oh2_planck else fail_message
+        pass_dd_si_proton = pass_message if self.last_results['sigmaN_SI_proton']*GeV2pb*pb2cm2 < self.limits.SI_max(mdm) else fail_message
+        pass_dd_si_neutron = pass_message if self.last_results['sigmaN_SI_neutron']*GeV2pb*pb2cm2 < self.limits.SI_max(mdm) else fail_message
+        pass_dd_sd_proton = pass_message if self.last_results['sigmaN_SI_proton']*GeV2pb*pb2cm2 < self.limits.SD_max(mdm, 'p') else fail_message
+        pass_dd_si_neutron = pass_message if self.last_results['sigmaN_SI_neutron']*GeV2pb*pb2cm2 < self.limits.SD_max(mdm, 'n') else fail_message
+
+
+        #if omega_min < self.last_results['omegah2'] < omega_max:
+        #    fail_relic_msg = ''
+        #else:
+        #    fail_relic_msg = '%s Model excluded (relic not in range [%s,%s])%s' %\
+        #                      (bcolors.FAIL, omega_min, omega_max,bcolors.ENDC)
         
         
         logger.info("*** RESULTS ***", '$MG:color:BLACK')
         if self.mode['relic']:
-            logger.info('  relic density  : %.2e %s', self.last_results['omegah2'],fail_relic_msg)
+            logger.info('  relic density  : %.2e %s', self.last_results['omegah2'],pass_relic)
                         
             logger.info('   x_f            : %.2f', self.last_results['x_freezeout'])
             logger.info('   sigmav(xf)     : %.2e GeV^-2 = %.2e cm^3/s', self.last_results['sigmav_xf'],self.last_results['sigmav_xf']*GeV2pb*pb2cm3)
             
         if self.mode['direct']:
             logger.info('\n direct detection: ')
-            logger.info(' sigmaN_SI_p      : %.2e GeV^-2 = %.2e pb',self.last_results['sigmaN_SI_proton'],self.last_results['sigmaN_SI_proton']*GeV2pb)
-            logger.info(' sigmaN_SI_n      : %.2e GeV^-2 = %.2e pb',self.last_results['sigmaN_SI_neutron'],self.last_results['sigmaN_SI_neutron']*GeV2pb)
-            logger.info(' sigmaN_SD_p      : %.2e GeV^-2 = %.2e pb',self.last_results['sigmaN_SD_proton'],self.last_results['sigmaN_SD_proton']*GeV2pb)
-            logger.info(' sigmaN_SD_n      : %.2e GeV^-2 = %.2e pb',self.last_results['sigmaN_SD_neutron'],self.last_results['sigmaN_SD_neutron']*GeV2pb)
+            logger.info(' sigmaN_SI_p      : %.2e GeV^-2 = %.2e cm^2  %s',self.last_results['sigmaN_SI_proton'],self.last_results['sigmaN_SI_proton']*GeV2pb*pb2cm2, pass_dd_si_proton)
+            logger.info(' sigmaN_SI_n      : %.2e GeV^-2 = %.2e cm^2  %s',self.last_results['sigmaN_SI_neutron'],self.last_results['sigmaN_SI_neutron']*GeV2pb*pb2cm2,pass_dd_si_proton)
+            logger.info(' sigmaN_SD_p      : %.2e GeV^-2 = %.2e cm^2  %s',self.last_results['sigmaN_SD_proton'],self.last_results['sigmaN_SD_proton']*GeV2pb*pb2cm2, pass_dd_sd_proton)
+            logger.info(' sigmaN_SD_n      : %.2e GeV^-2 = %.2e cm^2  %s',self.last_results['sigmaN_SD_neutron'],self.last_results['sigmaN_SD_neutron']*GeV2pb*pb2cm2, pass_dd_si_neutron)
         if self.mode['directional']:
             logger.info(' Nevents          : %i', self.last_results['Nevents'])
             logger.info(' smearing         : %.2e', self.last_results['smearing'])
@@ -634,8 +736,24 @@ class MADDMRunCmd(cmd.CmdShell):
                 for key in detailled_keys:
                     clean_key_list = key.split("_")
                     clean_key = clean_key_list[0]+"_"+clean_key_list[1]
-                    logger.info('    sigmav %15s : %.2e cm^3/s' % (clean_key,\
-                                    self.last_results['taacsID#%s' %(clean_key)]))
+
+                    #here check if the cross section is allowed. Do this channel by channel
+                    # Make sure that the velocity at which the limit
+                    #is evaluated matches the dm velocity in the calculation.
+                    #logger.info(clean_key_list[1])
+                    if clean_key_list[1] not in self.limits._allowed_final_states:
+                        message = '%s No limit %s' % (bcolors.GRAY, bcolors.ENDC)
+                    else:
+                        if (v == self.limits._id_limit_vel[clean_key_list[1]]):
+                            if self.last_results['taacsID#%s' %(clean_key)] < self.limits.ID_max(mdm, clean_key_list[1]):
+                                message = pass_message
+                            else:
+                                message = fail_message
+                        else:
+                            message = '%s Sigmav/limit velocity mismatch %s' %(bcolors.GRAY, bcolors.ENDC)
+
+                    logger.info('    sigmav %15s : %.2e cm^3/s %s' % (clean_key,\
+                                    self.last_results['taacsID#%s' %(clean_key)], message))
 
                     tot_taacs = tot_taacs + self.last_results['taacsID#%s' %(clean_key)]
             self.last_results['taacsID'] = tot_taacs
@@ -649,7 +767,6 @@ class MADDMRunCmd(cmd.CmdShell):
                 for chan in cr_names:
 
                     phis= []
-                    mdm= self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
                     npts = self.maddm_card['npts_for_flux']
                     energies = [1.0*(2.0*mdm)/ npts * n for n in range(npts)]
                     for energy in energies:
@@ -1116,6 +1233,44 @@ class MadDMSelector(common_run.EditParamCard):
                 self.maddm = MadDMCard(self.paths['maddm_default'])
         elif args[0] in self.maddm_set and args[0] not in self.conflict:
             start = 0
+
+        #For setting the exp. constraints
+        elif args[0] == 'dd_si_limits':
+            logger.info('The file you use for direct detection limits will be interpreted as:')
+            logger.info('Column 1 - dark matter mass in GeV')
+            logger.info('Column 2 - upper limit on direct detection cross section in pb')
+            self.limits.dd_si_limit_file = args[1]
+
+            self.limits.load_constraints()
+
+        elif args[0] == 'dd_sd_limits':
+            logger.info('The file you use for direct detection limits will be interpreted as:')
+            logger.info('Column 1 - dark matter mass in GeV')
+            logger.info('Column 2 - upper limit on direct detection cross section in pb')
+            self.limits.dd_sd_limit_file = args[1]
+
+            self.ExpConstraints.load_constraints()
+
+        elif args[0] == 'relic_limits':
+            logger.info('The info is interpreted as: <Oh^2>, CL width')
+            self.limits._oh2_planck = float(args[1])
+            self.limits._oh2_planck_width = float(args[2])
+
+        elif args[0] == 'id_limits':
+             if len(args)!= 4:
+                 logger.warning('You need to provide the following <ave. velocity> <ann. channel> <file path>')
+                 logger.warning('Annihilation channel can be: '+ str(self._allowed_final_states))
+             logger.info('The file you use for indirect detection limits will be interpreted as:')
+             logger.info('Column 1 - dark matter mass in GeV')
+             logger.info('Column 2 - upper limit on the total annihilation cross section in pb at specified average velocity')
+
+             vel = float(args[1])
+             channel = args[2]
+             id_file = args[3]
+             self.limits._id_limit_vel[channel] = vel
+             self.limits._id_limit_file[channel] = id_file
+
+             self.limits.load_constraints()
 
         else:
             return super(MadDMSelector, self).do_set(line)
