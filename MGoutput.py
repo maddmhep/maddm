@@ -601,7 +601,8 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
                 ids = self.make_ids(dm1, dm2, self.DM2SM)
                 for name in annihilation[ids]:
                     process_counter += 1
-                    fsock.writelines('process_names(%i) = \'%s\'' % (process_counter, name)) 
+                    fsock.writelines('process_names(%i) = \'%s\'' % (process_counter, name))
+
 
         for i,dm1 in enumerate(self.dm_particles):
             for j,dm2 in enumerate(self.dm_particles[i:],i):

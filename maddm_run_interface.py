@@ -8,6 +8,10 @@ import sys
 import subprocess
 import auxiliary as aux
 
+import threading, subprocess
+import json
+
+
 
 import MGoutput
 
@@ -26,15 +30,25 @@ import models.check_param_card as param_card_mod
 
 import numpy as np
 
+try:
+    import pymultinest
+except:
+    print('WARNING: Multinest module not found! All multinest parameter scanning features will be disabled.')
+
+
+#import types
+
 pjoin = os.path.join
 logger = logging.getLogger('madgraph.plugin.maddm')
+#logger.setLevel(20) #level 20 = INFO
 
 MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
 
-__infty__ = 1E20
+
+
+#Is there a better definition of infinity?
+__infty__ = float('inf')
 class ExpConstraints:
-
-
 
     def __init__(self):
 
@@ -57,14 +71,41 @@ class ExpConstraints:
                                'zz':'',
                                'hh':'',
                                'aa':''}
-        self._id_limit_vel = {'qqx':1.0e-6,'gg':1.0e-6,'bbx':1.0e-6,'ttx':1.0e-6,'e+e-':1.0e-6,'mu+mu-':1.0e-6,'ta+ta-':1.0e-6,
-                              'w+w-':1.0e-6, 'zz':1.0e-6,'hh':1.0e-6,'aa':1.0e-3}
+        self._id_limit_vel = {'qqx':1.0E-6,'gg':1.0E-6,'bbx':1.0E-6,'ttx':1.0E-6,'e+e-':1.0E-6,'mu+mu-':1.0E-6,'ta+ta-':1.0E-6,
+                              'w+w-':1.0E-6, 'zz':1.0E-6,'hh':1.0E-6,'aa':1.0E-3}
 
 
         self._id_limit_mdm = dict()
         self._id_limit_sigv = dict()
 
+        #In case there is a measurement of the cross seciton
+        self._sigma_SI = -1.0
+        self._sigma_SI_width = -1.0
+        self._sigma_SDp = -1.0
+        self._sigma_SDn = -1.0
+        self._sigma_SDp_width = -1.0
+        self._sigma_SDn_width = -1.0
+
+        self._sigma_ID = dict()
+        self._sigma_ID_width = dict()
+        for item in self._allowed_final_states:
+            self._sigma_ID[item] = -1.0
+            self._sigma_ID_width[item] = -1.0
+
+
         self.load_constraints()
+
+        logger.info('Loaded experimental constraints. To change, use the set command')
+        logger.info('Omega h^2 = %.4e +- %.4e' %(self._oh2_planck, self._oh2_planck_width))
+        logger.info('Spin Independent cross section: %s' % self._dd_si_limit_file)
+        logger.info('Spin Dependent cross section (p): %s' % self._dd_sd_proton_limit_file)
+        logger.info('Spin Dependent cross section (n): %s' % self._dd_sd_neutron_limit_file)
+
+        for chan in self._allowed_final_states:
+            logger.info('Indirect Detection cross section for final state %s at velocity %.2e: %s'\
+                        % (chan, self._id_limit_vel[chan] ,self._id_limit_file[chan]))
+
+
 
     def load_constraints(self):
         #Load in direct detection constraints
@@ -199,6 +240,8 @@ class MADDMRunCmd(cmd.CmdShell):
         #Set at the beginning of launch()
         self.param_card = None
 
+        self.multinest_running = False
+
         self.limits = ExpConstraints()
     
     def preloop(self,*args,**opts):
@@ -230,7 +273,7 @@ class MADDMRunCmd(cmd.CmdShell):
         if pattern_scan.search(text):
             if not isinstance(self, cmd.CmdShell):
                 # we are in web mode => forbid scan due to security risk
-                raise Exception, "Scan are not allowed in web mode"
+                raise Exception, "Scans are not allowed in web mode"
             # at least one scan parameter found. create an iterator to go trough the cards
             main_card = param_card_mod.ParamCardIterator(text)
             self.param_card_iterator = main_card
@@ -251,9 +294,9 @@ class MADDMRunCmd(cmd.CmdShell):
                 else:
                     self.run_mg5(['compute_widths %s --path=%s --nlo' % (' '.join(pdg), path)])
             else:
-                logger.info('''Some width are on Auto in the card. 
-    Those will be computed as soon as you have finish the edition of the cards.
-    If you want to force the computation right now and being able to re-edit
+                logger.info('''Some widths are on Auto in the card.
+    Those will be computed as soon as you have finish editing the cards.
+    If you want to force the computation right now and re-edit
     the cards afterwards, you can type \"compute_wdiths\".''')
 
 
@@ -302,16 +345,6 @@ class MADDMRunCmd(cmd.CmdShell):
         param_path  = pjoin(self.dir_path,'Cards', 'param_card.dat')
         self.param_card = param_card_mod.ParamCard(param_path)
 
-
-        # if self.proc_characteristics['has_indirect_detection']:
-        #     self._halo_profile = 'nfw'
-        #     #set up the j-factors if they aren't set up already
-        #     if not 'self._myjfactors' in locals():
-        #         self._myjfactors = Jfactors()
-        #         logger.info('Using jfactors:')
-        #         logger.info(self._myjfactors._JF)
-        #         logger.info('Current halo choice %s' % self._halo_profile)
-
         #If the Indirect subfolder is not created, that means that the code is
         #using the 2to2 at LO which is handled by maddm.f.
         if not os.path.exists(pjoin(self.dir_path, 'Indirect')):
@@ -326,7 +359,8 @@ class MADDMRunCmd(cmd.CmdShell):
             force = False
         self.ask_run_configuration(mode=[], force=force)
 
-        self.compile()
+        if not self.multinest_running:
+            self.compile()
 
         nb_output = 1
         output = pjoin(self.dir_path, 'output', 'maddm_%s.out') 
@@ -335,13 +369,14 @@ class MADDMRunCmd(cmd.CmdShell):
         else:
             output = pjoin('output', 'maddm.out')
 
+
         misc.call(['./maddm.x', output], cwd =self.dir_path)
 
         #process = subprocess.Popen(['./maddm.x'], cwd =self.dir_path, stdout=subprocess.PIPE)
         #Here we read out the results which the FORTRAN module dumped into a file
         #called 'maddm.out'. The format is such that the first line is always relic density
         # , second line is the nucleon scattering cross section (SI) for proton, third is SI
-        # nucleon cross section for the neutron etc. If a quantity was not calculated, we output -1        
+        # nucleon cross section for the neutron etc. If a quantity was not calculated, we output -1
         result = []
         #for line in process.stdout:
 
@@ -380,7 +415,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
         result = dict(zip(output_name, result))
         #result['taacsID'] = sigv_indirect
-        
+
         #if sigv_indirect:
         #    result['taacsID'] = sigv_indirect
         #    result['err_taacsID'] = math.sqrt(sigv_indirect_error)
@@ -396,15 +431,22 @@ class MADDMRunCmd(cmd.CmdShell):
 
         logger.debug('scan mode: %s' % str(self.in_scan_mode))
 
-        if not self.in_scan_mode:
+        if not self.in_scan_mode and not self.multinest_running:
             self.print_results()
-        #else:
+
+        #multinest can be launched only after one launch has been executed
+        if self.mode['run_multinest'] and not self.multinest_running:
+            self.multinest_running = True
+            self.launch_multinest()
+            self.multinest_running = False
+
+
         #    logger.info("relic density  : %.2e ", self.last_results['omegah2'])
         if self.param_card_iterator:
             param_card_iterator = self.param_card_iterator
             self.param_card_iterator = []
             param_card_iterator.store_entry(nb_output, result)
-            #print results:
+
 
             order = []
 
@@ -412,14 +454,14 @@ class MADDMRunCmd(cmd.CmdShell):
                 order += ['omegah2', 'x_freezeout', 'sigmav_xf']
             if self.mode['direct'] :
                 order += ['sigmaN_SI_proton', 'sigmaN_SI_neutron', 'sigmaN_SD_proton',
-                        'sigmaN_SD_neutron']                
+                        'sigmaN_SD_neutron']
             if self.mode['directional']:
                 order += ['Nevents', 'smearing']
             if self.mode['sun_capture']:
                 order += ['solar_capture_rate']
             if self.mode['earth_capture']:
                 order += ['earth_capture_rate']
-                
+
             if self.mode['indirect']:
 
                 if not self._two2twoLO:
@@ -463,7 +505,73 @@ class MADDMRunCmd(cmd.CmdShell):
 
             param_card_iterator.write_summary(path, order)
 
+    def launch_multinest(self):
 
+
+        if not os.path.exists(pjoin(self.dir_path, 'multinest_chains')):
+            os.mkdir(pjoin(self.dir_path, 'multinest_chains'))
+
+
+        mnest = Multinest(self)
+        mnest.load_parameters(pjoin(self.dir_path, 'Cards', 'multinest_card.dat'))
+        #the following two must be set for the code to work
+
+        resume_chain = False
+        if os.listdir(pjoin(self.dir_path, 'multinest_chains')):
+            if self.ask('A multinest chain already exists. Overwrite [y] or resume [n]? [n]', ['y','n'], default='n'):
+                f = os.listdir('multinest_chains')
+                for file in f:
+                    os.remove(pjoin('multinest_chains',file))
+            else:
+                resume_chain = True
+
+        if mnest.options['loglikelihood'] == {} or mnest.options['prior'] =='':
+            logger.error("You have to set the priors and likelihoods before launching!")
+            return
+
+        if len(mnest.options['parameters'])==0:
+            logger.error("Multinest needs you need to set up parameters to scan over before launching! [multinest_card]")
+            return
+
+        self.in_scan_mode = False
+
+        #Here print out some stuff about which parameters you're scanning over etc.
+        parameters = mnest.options['parameters']
+        logger.info("Scanning over the following [parameter, min, max]:")
+        for i in range(len(parameters)):
+            logger.info(str(parameters[i]))
+
+
+        # number of parameters to output
+        # this includes the parameters which are scanned over (they go in first)
+        # and the output parameters like relic density, dd cross section etc ...
+        n_parameters = len(parameters)
+        n_dimensions = n_parameters
+        self.parameter_vars = [parameters[i][0] for i in range(n_parameters)]
+
+        n_parameters=n_parameters+len(self.last_results)
+
+
+        logger.info("Multinest will run with the following parameters: " )
+        for key, item in mnest.options.iteritems():
+            logger.info("%20s :  %s" %(key, item))
+
+        pymultinest.run(mnest.myloglike, mnest.myprior,
+                        n_dims=n_dimensions,
+                        n_params=n_parameters,
+                        importance_nested_sampling = False,
+                        resume = resume_chain,
+                        verbose = False,
+                        sampling_efficiency = mnest.options['sampling_efficiency'],
+                        n_live_points = mnest.options['livepts'],
+                        outputfiles_basename = pjoin(self.dir_path,'multinest_chains', 'mnest_'))
+
+        logger.info('Output written in %s' % pjoin(self.dir_path,'multinest_chains'))
+        logger.info('Output  of .txt file formatted as:')
+        logger.info('column[0] : ...') #FIX THIS: What are the first two numbers?
+        logger.info('column[1] : ...')
+        for i, obs in enumerate(mnest.output_observables):
+            logger.info('column[%i] : %s' % (i+2, obs))
 
 
     def launch_indirect(self, force):
@@ -722,7 +830,7 @@ class MADDMRunCmd(cmd.CmdShell):
             logger.info(' Earth capt. rate    : %.2e 1/s', self.last_results['earth_capture_rate'])
         if self.mode['indirect']:
 
-            v = self.maddm_card['vave_indirect']
+
             #logger.info('   sigma(DM DM>all) [v = %2.e]: %.2e+-%2.e pb', v,
             #                self.last_results['indirect'],self.last_results['indirect_error'])
 
@@ -730,6 +838,10 @@ class MADDMRunCmd(cmd.CmdShell):
 
             #THES FOLLOWING CROSS SECTIONS ARE ALREADY IN CM^3/s!!!!!!!
             tot_taacs = 0.0
+
+            v = self.maddm_card['vave_indirect']
+
+
             if len(detailled_keys)>1:
                 logger.info('\n  indirect detection: ')
                 #Print out taacs for each annihilation channel
@@ -744,6 +856,7 @@ class MADDMRunCmd(cmd.CmdShell):
                     if clean_key_list[1] not in self.limits._allowed_final_states:
                         message = '%s No limit %s' % (bcolors.GRAY, bcolors.ENDC)
                     else:
+
                         if (v == self.limits._id_limit_vel[clean_key_list[1]]):
                             if self.last_results['taacsID#%s' %(clean_key)] < self.limits.ID_max(mdm, clean_key_list[1]):
                                 message = pass_message
@@ -752,8 +865,8 @@ class MADDMRunCmd(cmd.CmdShell):
                         else:
                             message = '%s Sigmav/limit velocity mismatch %s' %(bcolors.GRAY, bcolors.ENDC)
 
-                    logger.info('    sigmav %15s : %.2e cm^3/s %s' % (clean_key,\
-                                    self.last_results['taacsID#%s' %(clean_key)], message))
+                    logger.info('    sigmav %15s : %.2e cm^3/s [v = %.2e] %s' % (clean_key,\
+                                    self.last_results['taacsID#%s' %(clean_key)],v, message))
 
                     tot_taacs = tot_taacs + self.last_results['taacsID#%s' %(clean_key)]
             self.last_results['taacsID'] = tot_taacs
@@ -808,7 +921,8 @@ class MADDMRunCmd(cmd.CmdShell):
                             'sun_capture': 'ON' if process_data['has_sun_capture'] else 'Not available',
                             'earth_capture': 'ON' if process_data['has_earth_capture'] else 'Not available',
                             'indirect': 'ON' if process_data['has_indirect_detection'] else 'Not available',
-                            'CR_flux': 'ON' if process_data['has_indirect_detection'] else 'Not available'}
+                            'CR_flux': 'ON' if process_data['has_indirect_detection'] else 'Not available',
+                            'run_multinest': 'ON' if aux.module_exists('pymultinest') else 'Not available'}
                 process_data = self.proc_characteristics
 
             self.maddm_card = MadDMCard(pjoin(self.dir_path, 'Cards', 'maddm_card.dat'))
@@ -829,6 +943,7 @@ class MADDMRunCmd(cmd.CmdShell):
             self.maddm_card.set('do_earth_capture', self.mode['earth_capture'], user=False)
             self.maddm_card.set('do_indirect_detection', self.mode['indirect'], user=False)
             self.maddm_card.set('only2to2lo', self._two2twoLO, user=False)
+            self.maddm_card.set('run_multinest', self.mode['run_multinest'], user=False)
             self.maddm_card.write_include_file(pjoin(self.dir_path, 'include'))
         else:
             if not hasattr(self, 'maddm_card'):
@@ -841,7 +956,8 @@ class MADDMRunCmd(cmd.CmdShell):
                             'sun_capture': 'ON' if process_data['has_sun_capture'] else 'Not available',
                             'earth_capture': 'ON' if process_data['has_earth_capture'] else 'Not available',
                             'indirect': 'ON' if process_data['has_indirect_detection'] else 'Not available',
-                             'CR_flux': 'ON' if process_data['has_indirect_detection'] else 'Not available'}
+                             'CR_flux': 'ON' if process_data['has_indirect_detection'] else 'Not available',
+                             'run_multinest': 'ON' if aux.module_exists('pymultinest') else 'Not available'}
             if not os.path.exists(pjoin(self.dir_path, 'include', 'maddm_card.inc')):
                 # create the inc file for maddm
                 self.maddm_card.set('do_relic_density', self.mode['relic'], user=False)
@@ -851,6 +967,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 self.maddm_card.set('do_earth_capture', self.mode['earth_capture'], user=False)
                 self.maddm_card.set('do_indirect_detection', self.mode['indirect'], user=False)
                 self.maddm_card.set('only2to2lo', self._two2twoLO, user=False)
+                self.maddm_card.set('run_multinest', self.mode['run_multinest'], user=False)
                 self.maddm_card.write_include_file(pjoin(self.dir_path, 'include'))
 
             
@@ -942,7 +1059,8 @@ class MadDMSelector(common_run.EditParamCard):
     def answer(self):
         return self.run_options
 
-    digitoptions = {1: 'relic', 2:'direct', 3:'directional', 4:'indirect', 5:'CR_flux', 6:'sun_capture', 7:'earth_capture'}
+    digitoptions = {1: 'relic', 2:'direct', 3:'directional', 4:'indirect', 5:'CR_flux',\
+                    6:'sun_capture', 7:'earth_capture', 8:'run_multinest'}
 
     def __init__(self, *args, **opts):
 
@@ -958,7 +1076,8 @@ class MadDMSelector(common_run.EditParamCard):
                             'earth_capture': 'ON' if process_data['has_earth_capture'] and \
                                                    process_data['has_indirect_detection'] else 'Not available',
                             'indirect': 'ON' if process_data['has_indirect_detection'] else 'Not available',
-                            'CR_flux':'ON' if process_data['has_indirect_detection'] else 'Not available'}
+                            'CR_flux':'ON' if process_data['has_indirect_detection'] else 'Not available',
+                            'run_multinest':'ON' if aux.module_exists('pymultinest') else 'Not available'}
         
         #1. Define what to run and create the associated question
         mode = opts.pop('mode', None)  
@@ -1026,12 +1145,14 @@ class MadDMSelector(common_run.EditParamCard):
     5. Compute Cosmic Ray Flux       %(start_underline)sCR_flux%(stop)s    = %(CR_flux)s
     6. Compute Solar Capture rate    %(start_underline)ssun_capture%(stop)s    = %(sun_capture)s
     7. Compute Earth Capture rate    %(start_underline)searth_capture%(stop)s    = %(earth_capture)s
+    8. Run Multinest                 %(start_underline)srun_multinest%(stop)s    = %(run_multinest)s
 %(start_green)s You can also edit the various input card%(stop)s:
  * Enter the name/number to open the editor
  * Enter a path to a file to replace the card
  * Enter %(start_bold)sset NAME value%(stop)s to change any parameter to the requested value 
-    8. Edit the model parameters    [%(start_underline)sparam%(stop)s]
-    9. Edit the MadDM options       [%(start_underline)smaddm%(stop)s]\n""" % \
+    9. Edit the model parameters    [%(start_underline)sparam%(stop)s]
+    10. Edit the MadDM options      [%(start_underline)smaddm%(stop)s]
+    11. Edit the Multinest options  [%(start_underline)smultinest%(stop)s]\n""" % \
     {'start_green' : '\033[92m',
      'stop':  '\033[0m',
      'start_underline': '\033[4m',
@@ -1043,6 +1164,7 @@ class MadDMSelector(common_run.EditParamCard):
      'CR_flux':get_status_str(self.run_options['CR_flux']),
      'sun_capture':get_status_str(self.run_options['sun_capture']),
      'earth_capture':get_status_str(self.run_options['earth_capture']),
+     'run_multinest':get_status_str(self.run_options['run_multinest']),
      }
         return question
 
@@ -1051,6 +1173,8 @@ class MadDMSelector(common_run.EditParamCard):
         super(MadDMSelector, self).define_paths(**opt)
         self.paths['maddm'] = pjoin(self.me_dir,'Cards','maddm_card.dat')
         self.paths['maddm_default'] = pjoin(self.me_dir,'Cards','maddm_card_default.dat')
+        self.paths['multinest'] = pjoin(self.me_dir,'Cards','multinest_card.dat')
+        self.paths['multinest_default'] = pjoin(self.me_dir,'Cards','multinest_card_default.dat')
         
     
     
@@ -1070,8 +1194,11 @@ class MadDMSelector(common_run.EditParamCard):
                 elif val == len(self.digitoptions)+2:
                     self.open_file('maddm')
                     self.value = 'repeat'
+                elif val == len(self.digitoptions)+3:
+                    self.open_file('multinest')
+                    self.value = 'repeat'
                 elif val !=0:
-                    logger.warning("Number not supported: Do Nothing") 
+                    logger.warning("Number not supported: Doing Nothing")
             if '=' in line:
                 if '=' in args:
                     args.remove('=')
@@ -1158,6 +1285,7 @@ class MadDMSelector(common_run.EditParamCard):
 
 
 
+
     def check_card_consistency(self):
         
         super(MadDMSelector, self).check_card_consistency()
@@ -1236,20 +1364,44 @@ class MadDMSelector(common_run.EditParamCard):
 
         #For setting the exp. constraints
         elif args[0] == 'dd_si_limits':
-            logger.info('The file you use for direct detection limits will be interpreted as:')
-            logger.info('Column 1 - dark matter mass in GeV')
-            logger.info('Column 2 - upper limit on direct detection cross section in pb')
-            self.limits.dd_si_limit_file = args[1]
-
-            self.limits.load_constraints()
+            if len(args) >2:
+                self.limits._sigma_SI = float(args[1])
+                self.limits._sigma_SI_width = float(args[2])
+            else:
+                logger.info('The file you use for direct detection limits will be interpreted as:')
+                logger.info('Column 1 - dark matter mass in GeV')
+                logger.info('Column 2 - upper limit on direct detection cross section in pb')
+                self.limits._dd_si_limit_file = args[1]
+                self.limits.load_constraints()
 
         elif args[0] == 'dd_sd_limits':
-            logger.info('The file you use for direct detection limits will be interpreted as:')
-            logger.info('Column 1 - dark matter mass in GeV')
-            logger.info('Column 2 - upper limit on direct detection cross section in pb')
-            self.limits.dd_sd_limit_file = args[1]
 
-            self.ExpConstraints.load_constraints()
+            if len(args) > 3:
+                if args[1] == 'p':
+                    self.limits._sigma_SDp = args[2]
+                    self.limits._sigma_SDp_width = args[3]
+                elif args[1] == 'n':
+                    self.limits._sigma_SDn = args[2]
+                    self.limits._sigma_SDn_width = args[3]
+
+                else:
+                    logger.error('set dd_sd_limits needs to be formatted as:')
+                    logger.error('set dd_sd_limits <p or n> <observed val> <uncertainty>, or')
+                    logger.error('set dd_sd_limits <p or n> <limit filename>, or')
+            else:
+                logger.info('The file you use for direct detection limits will be interpreted as:')
+                logger.info('Column 1 - dark matter mass in GeV')
+                logger.info('Column 2 - upper limit on direct detection cross section in pb')
+                if args[1] == 'p':
+                    self.limits._dd_sd_proton_limit_file = args[2]
+                elif args[2] == 'n':
+                    self.limits._dd_sd_neutron_limit_file = args[2]
+                else:
+                    logger.error('set dd_sd_limits needs to be formatted as:')
+                    logger.error('set dd_sd_limits <p or n> <observed val> <uncertainty>, or')
+                    logger.error('set dd_sd_limits <p or n> <limit filename>, or')
+
+                self.ExpConstraints.load_constraints()
 
         elif args[0] == 'relic_limits':
             logger.info('The info is interpreted as: <Oh^2>, CL width')
@@ -1264,13 +1416,21 @@ class MadDMSelector(common_run.EditParamCard):
              logger.info('Column 1 - dark matter mass in GeV')
              logger.info('Column 2 - upper limit on the total annihilation cross section in pb at specified average velocity')
 
-             vel = float(args[1])
-             channel = args[2]
-             id_file = args[3]
-             self.limits._id_limit_vel[channel] = vel
-             self.limits._id_limit_file[channel] = id_file
+             if len(args) > 4:
+                 if args[2] in self.limits._allowed_final_states:
+                    self.limits._id_limit_vel[args[2]] = float(args[1])
+                    self.limits._sigma_ID[args[2]] = float(args[3])
+                    self.limits._sigma_ID_width[args[2]] = float(args[4])
+                 else:
+                     logger.error('Final state not allowed for ID limits!')
+             else:
+                 vel = float(args[1])
+                 channel = args[2]
+                 id_file = args[3]
+                 self.limits._id_limit_vel[channel] = vel
+                 self.limits._id_limit_file[channel] = id_file
 
-             self.limits.load_constraints()
+                 self.limits.load_constraints()
 
         else:
             return super(MadDMSelector, self).do_set(line)
@@ -1363,7 +1523,7 @@ class MadDMCard(banner_mod.RunCard):
 
     def default_setup(self):
         """define the default value"""
-        
+
         self.add_param('print_out', False)
         self.add_param('print_sigmas', False)
         
@@ -1375,6 +1535,7 @@ class MadDMCard(banner_mod.RunCard):
         self.add_param('do_earth_capture', False, system=True)
         self.add_param('do_indirect_detection', False, system=True)
         self.add_param('only2to2lo', False, system=True)
+        self.add_param('run_multinest', False, system=True, include=False)
 
         
         self.add_param('calc_taacs_ann_array', True)
@@ -1457,9 +1618,9 @@ class MadDMCard(banner_mod.RunCard):
         self.add_param('distances', {'__type__':1.0}, include=False)
         self.add_param('npts_for_flux', 200, include=False) #number of points for the flux diff. distribution
 
-        self.fill_jfactors()
-
         self.add_param('only_two_body_decays', True, include=False)
+
+        self.fill_jfactors()
 
         
     def write(self, output_file, template=None, python_template=False):
@@ -1521,3 +1682,256 @@ class Indirect_Cmd(me5_interface.MadEventCmdShell):
         return Presults.xsec, Presults.xerru
 
         
+
+
+class Priors:
+    priors = ['uniform', 'loguniform', 'user']
+
+class Likelihoods:
+    likelihoods = ['gaussian', 'tanh', 'user']
+    observables = ['relic', 'directSI','directSD', 'indirect']
+
+
+class Multinest():
+
+    def __init__(self, run_interface):
+
+        self.options = {
+            'prior':'loguniform',
+            'loglikelihood':{'relic':'gaussian', 'directSI':'tanh', 'directSD':'tanh', 'indirect':'tanh'},
+            'livepts':50000,
+            'sampling_efficiency':'model',
+            'parameters':[]
+
+        }
+
+        self.maddm_run = run_interface
+
+        self.param_blocks, _ = self.maddm_run.param_card.analyze_param_card()
+        self.parameter_vars = [] #names of parameters to scan over
+        self.output_observables = []
+
+
+    def load_parameters(self, multinest_card):
+        with open(multinest_card) as f:
+            lines = f.readlines()
+            for line in lines:
+                if line.startswith('#'):
+                    continue
+                else:
+                    spline = line.split('#')[0].split()
+                    if len(spline) ==0:
+                        continue
+                    #logger.debug(spline)
+                    opt1 = spline[0]
+                    if opt1 == 'scan_parameter':
+                        var_name = spline[1]
+                        min = spline[2]
+                        max = spline[3]
+                        self.options['parameters'].append([var_name, float(min), float(max)])
+                    elif opt1 =='output_variables':
+                        for j in range(1, len(spline)):
+                            self.output_observables.append(spline[j])
+
+                    elif len(spline)==3:
+                        opt2 = spline[1]
+                        if aux.isfloat(spline[2]):
+                            value = int(spline[2])
+                        else:
+                            value = spline[2]
+
+                        self.options.get(opt1)[opt2] = value
+                    elif len(spline) ==2:
+                        if aux.isfloat(spline[1]):
+                            value = int(spline[1])
+                        else:
+                            value = spline[1]
+
+                        self.options[opt1] = value
+
+        logger.debug(self.options['parameters'])
+
+
+    def change_parameter(self, name, val):
+
+        if not self.param_blocks:
+            logger.error('Parameter blocks have not been read in properly! Can not change the param. value!')
+        else:
+            try:
+                block, lhaid = self.param_blocks[name][0]
+                lhaid2 = lhaid[0]
+                self.maddm_run.param_card[block].get(lhaid2).value = val
+            except:
+                logger.error('change_parameter() can not find parameter %s in the param_card.dat file' % name)
+                sys.exit()
+
+    def myprior(self, cube, ndim, nparams):
+
+        if self.options['prior']=='uniform':
+            for i in range(ndim):
+                param_min = self.options['parameters'][i][1]
+                param_max = self.options['parameters'][i][2]
+                #cube[i] = [param_min, param_max]
+                cube[i] = param_min + cube[i] * (param_max - param_min)
+        elif self.options['prior']=='loguniform':
+            for i in range(ndim):
+                param_min = self.options['parameters'][i][1]
+                param_max = self.options['parameters'][i][2]
+                cube[i] = np.power(10., np.log10(param_min) + cube[i]*(np.log10(param_max) - np.log10(param_min)))
+        elif self.options['prior']=='user': #USER DEFINED
+            for i in range(ndim):
+                param_min = self.options['parameters'][i][1]
+                param_max = self.options['parameters'][i][2]
+                cube[i] = cube[i]
+        else:
+            logger.error('Not a valid prior choice! Only allowed priors are %s '% str(Priors.priors.keys()))
+
+
+    def myloglike(self,cube, ndim, nparams):
+
+        chi = 1.0
+
+        #Change the parameters and write them into an appropriate param_card.dat file.
+        for i in range(len(self.options['parameters'])):
+            logger.info('Changing parameter %s to %.3e' %( self.options['parameters'][i][0], cube[i]))
+            self.change_parameter(self.options['parameters'][i][0].lower(), cube[i])
+
+        self.maddm_run.param_card.write(str(pjoin(self.maddm_run.dir_path, 'Cards', 'param_card.dat')))
+
+        #Execute MadDM with the new parameters
+        self.maddm_run.do_launch('-f')
+
+        results = self.maddm_run.last_results
+        results = collections.OrderedDict(sorted(results.items()))
+
+
+        try:
+            if self.output_observables != []:
+                for i, observable in enumerate(self.output_observables):
+                    cube[ndim+i] = results[observable]
+            else:
+                for i, observable in enumerate(results):
+                    cube[ndim+i] = results[observable]
+        except:
+            logger.error('Observable %s does not exist' % observable)
+            return
+
+        if self.maddm_run.mode['relic']:
+            omegah2 = results['omegah2']
+        if self.maddm_run.mode['direct']:
+            spinSI = 0.5*(results['sigmaN_SI_proton'] + results['sigmaN_SI_neutron']) * GeV2pb * pb2cm2
+            #HERE SEPARATE PROTON AND NEUTRON
+            spinSDp = results['sigmaN_SD_proton']  * GeV2pb * pb2cm2
+            spinSDn = results['sigmaN_SD_neutron'] * GeV2pb * pb2cm2
+        #<=========== for ID we will need each channel separately.
+        if self.maddm_run.mode['indirect']:
+            sigmavID = {'tot': results['taacsID']}
+            id_vel = self.maddm_run.maddm_card['vave_indirect']
+
+            detailled_keys = [k.split("#")[1] for k in results.keys() if k.startswith('taacsID#')]
+            for key in detailled_keys:
+                logger.debug('taacsID key: %s', key)
+                sigmavID[key] = results['taacsID#%s' %(key)]
+
+        #logger.debug(sigmavID)
+
+        mdm= self.maddm_run.param_card.get_value('mass', self.maddm_run.proc_characteristics['dm_candidate'][0])
+        logger.debug('MDM: %.3e', mdm)
+        logger.debug(self.maddm_run.mode['relic'])
+        logger.debug(self.maddm_run.mode['direct'])
+
+        for obs, likelihood in self.options.get('loglikelihood').iteritems():
+            logger.debug(obs)
+            logger.debug(likelihood)
+            #relic density
+            if obs == 'relic' and self.maddm_run.mode['relic']:
+                if likelihood == 'gaussian':
+                    chi += -0.5*pow(omegah2 - self.maddm_run.limits._oh2_planck,2)/pow(self.maddm_run.limits._oh2_planck_width,2)
+                elif likelihood == 'tanh':
+                    chi += np.log(0.5*(np.tanh(self.maddm_run.limits._oh2_planck_width - omegah2)))
+                elif likelihood =='user':
+                    chi+=0
+                    #
+                    # HERE ADD YOUR OWN LOG LIKELIHOOD FOR RELIC DENSITY
+                    #
+                else:
+                    logger.error('You are not using a valid likelihood function for relic density. Omitting the contribution!')
+
+            #direct detection (SI)
+            if obs == 'directSI' and self.maddm_run.mode['direct']:
+
+                if likelihood=='tanh':
+                    chi += np.log(0.5*(np.tanh(self.maddm_run.limits.SI_max(mdm)- spinSI)+1))
+                elif likelihood == 'gaussian':
+                    #here it's defined as a half gaussian
+                    if (spinSI > self.maddm_run.limits.SI_max(mdm)):
+                        if self.maddm_run.limits._sigma_SI > 0:
+                            chi+=  -0.5*pow(spinSI - self.maddm_run.limits._sigma_SI,2)/pow(self.maddm_run.limits._sigma_SI_width,2)
+                        else:
+                            logger.error('You have to set up the sigma_SI(_width) to a positive value to use gaussian likelihood!')
+                elif likelihood == 'user':
+                    #
+                    # HERE ADD YOUR OWN LOG LIKELIHOOD FOR SI
+                    #
+                    chi+=0
+                else:
+                    logger.error('You are not using a valid likelihood function for SI direct detection. Omitting the contribution!')
+
+            #direct detection (SD)
+            if obs == 'directSD' and self.maddm_run.mode['direct']:
+                if likelihood=='tanh':
+                    chi += np.log(0.5*(np.tanh(self.maddm_run.limits.SD_max(mdm, 'p')- spinSDp)+1))
+                    chi += np.log(0.5*(np.tanh(self.maddm_run.limits.SD_max(mdm, 'n')- spinSDn)+1))
+                elif likelihood == 'gaussian':
+                    #here it's defined as a half gaussian
+                    if self.maddm_run.limits._sigma_SDp > 0:
+                        chi+=  -0.5*pow(spinSDp - self.maddm_run.limits._sigma_SDp,2)/pow(self.maddm_run.limits._sigma_SDp_width,2)
+                    else:
+                        logger.error('You have to set up the sigma_SDp(_width) to a positive value to use gaussian likelihood!')
+                    if self.maddm_run.limits.sigma_SDn > 0:
+                        chi+=  -0.5*pow(spinSDn - self.maddm_run.limits.sigma_SDn,2)/pow(self.maddm_run.limits._sigma_SDn_width,2)
+                    else:
+                        logger.error('You have to set up the sigma_SDp(_width) to a positive value to use gaussian likelihood!')
+                elif likelihood == 'user':
+                    #
+                    # HERE ADD YOUR OWN LOG LIKELIHOOD FOR SD
+                    #
+                    chi+=0
+                else:
+                    logger.error('You are not using a valid likelihood function for SD direction detection. Omitting the contribution!')
+
+            #indirect detection
+            if obs == 'indirect' and self.maddm_run.mode['indirect']:
+
+                id_vel = self.maddm_run.maddm_card['vave_indirect']
+
+                for channel in self.maddm_run.detailled_keys:
+
+                        BR = sigmavID[channel]/sigmavID['tot']
+
+                        finalstate = channel.split('_')[1]
+                        logger.debug(finalstate)
+                        if finalstate in self.maddm_run.limits._allowed_final_states:
+                            if self.maddm_run.limits._id_limit_vel[finalstate] == id_vel\
+                                    and self.maddm_run.limits._id_limit_sigv:
+
+                                if likelihood=='tanh':
+                                    chi += np.log(0.5*(np.tanh(self.maddm_run.limits.ID_max(mdm,finalstate)/max(BR, 1e-10) - sigmavID[channel])+1))
+                                elif likelihood=='gaussian':
+                                    chi +=  -0.5*pow(self.maddm_run.limits._sigma_ID[finalstate] - self.maddm_run.limits.sigma_SDn,2)\
+                                                /pow(self.maddm_run.limits._sigma_ID_width[finalstate],2)
+                                elif likelihood =='user':
+                                    #
+                                    # HERE ADD YOUR OWN LOG LIKELIHOOD FOR ID
+                                    #
+                                    chi +=0
+                            else:
+                                logger.warning('Omitting the likelihood contribution for channel %s.' % finalstate)
+                                logger.warning('The limit is not set or velocities mismatch!')
+                        else:
+                            logger.warning('No limit for channel %s. Omitting the likelihood contribution.' % finalstate)
+
+
+        return chi
+
+
