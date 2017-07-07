@@ -508,6 +508,10 @@ class MADDMRunCmd(cmd.CmdShell):
     def launch_multinest(self):
 
 
+        if self.in_scan_mode:
+            logger.error('You can not use scan syntax in the param_card.dat and run multinest!')
+            return
+
         if not os.path.exists(pjoin(self.dir_path, 'multinest_chains')):
             os.mkdir(pjoin(self.dir_path, 'multinest_chains'))
 
@@ -532,8 +536,6 @@ class MADDMRunCmd(cmd.CmdShell):
         if len(mnest.options['parameters'])==0:
             logger.error("Multinest needs you need to set up parameters to scan over before launching! [multinest_card]")
             return
-
-        self.in_scan_mode = False
 
         #Here print out some stuff about which parameters you're scanning over etc.
         parameters = mnest.options['parameters']
@@ -673,21 +675,18 @@ class MADDMRunCmd(cmd.CmdShell):
 
     #channel can be photons, electrons, positrons, protons, antiprotons, neutrinos
     def dPhidE(self,  energy, channel=''):
-         if not self.last_results['taacsID']:
-             logger.error('You can not calculate the flux before calculating <sigmav>!')
-             return -1.0
-         else:
-             #is it efficient to load the param card like this?!
-             #param_card = param_card_mod.ParamCard(self.dir_path, 'Cards', 'param_card.dat')
-             mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
-             sigv = self.last_results['taacsID']
-             halo_profile = self.maddm_card['halo_profile']
-             jfact = self.maddm_card['jfactors'][halo_profile]
 
-             #CHECK THIS EQUATION!!!!
-             phi = 1.0/(8.0*math.pi*mdm*mdm)*sigv*self.dNdx(channel, energy)*jfact*1/mdm
+         #is it efficient to load the param card like this?!
+         #param_card = param_card_mod.ParamCard(self.dir_path, 'Cards', 'param_card.dat')
+         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
+         sigv = self.last_results['taacsID']
+         halo_profile = self.maddm_card['halo_profile']
+         jfact = self.maddm_card['jfactors'][halo_profile]
 
-             return phi
+         #CHECK THIS EQUATION!!!!
+         phi = 1.0/(8.0*math.pi*mdm*mdm)*sigv*self.dNdx(channel, energy)*jfact*1/mdm
+
+         return phi
 
     def Phi(self, chan=''):
           if not self.last_results['taacsID']:
@@ -882,8 +881,13 @@ class MADDMRunCmd(cmd.CmdShell):
                     phis= []
                     npts = self.maddm_card['npts_for_flux']
                     energies = [1.0*(2.0*mdm)/ npts * n for n in range(npts)]
-                    for energy in energies:
-                        phis.append(self.dPhidE(energy, channel=chan))
+
+                    if not self.last_results['taacsID']:
+                        logger.error('You can not calculate the flux before calculating <sigmav>!')
+                        return -1.0
+                    else:
+                        for energy in energies:
+                            phis.append(self.dPhidE(energy, channel=chan))
 
                     flux_filename = pjoin(self.dir_path, 'output', 'dPhidE_%s.txt' %chan)
                     #FIX THIS, WRITE THE UNITS OF FLUX
