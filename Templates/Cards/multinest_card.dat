@@ -1,0 +1,19 @@
+#
+prior loguniform # [uniform, loguniform, user]
+#
+loglikelihood relic gaussian # [gaussian, tanh, user]
+loglikelihood directSI tanh # [gaussian, tanh, user]
+loglikelihood indirect tanh # [gaussian, tanh, user]
+#
+livepts 50000
+#
+sampling_efficiency model # [model, parameter]
+#
+#parameters to scan over: <param> <min> <max>
+#you can add as many as you want
+scan_parameter MXd 10 1000
+scan_parameter MY0 10 1000
+#
+#variable you wish to write into the output file (relic, direct_detection, ...)
+#leave empty for all available observables to be written out
+output_variables
