@@ -151,4 +151,5 @@
 #
 # For indirect detection
 #
+   %(halo_profile)s    = halo_profile   ! determines which jfactor will be used for the flux calculation
    %(vave_indirect)s   = vave_indirect  ! average velocity of DM halo in natural units (e.g. 1E-3 for our galaxy)

@@ -390,7 +390,10 @@ class MADDMRunCmd(cmd.CmdShell):
         if self.mode['sun_capture']:
             output_name.append('earth_capture_rate')
 
-        #sigv_indirect = 0.
+        if self.mode['indirect']:
+            output_name.append('taacsID')
+
+        sigv_indirect = 0.
         for line in open(pjoin(self.dir_path, output)):
                 splitline = line.split()
                 result.append(float(splitline[1]))
@@ -402,9 +405,11 @@ class MADDMRunCmd(cmd.CmdShell):
                         oname2 = oname.split('_')
                         oname = oname2[0]+'_'+oname2[1] #To eliminate the annoying suffix coming from the '/' notation
                         output_name.append('taacsID#%s' % oname)
-                        #sigv_indirect += sigv_temp
+                        sigv_indirect += sigv_temp
                         output_name.append('err_taacsID#%s' % oname)
                         result.append(sigv_temp)
+
+
 
         cr_names = ['gamma', 'p', 'pbar', 'e+', 'e-', 'neu']
         if self.mode['CR_flux']:
@@ -414,7 +419,7 @@ class MADDMRunCmd(cmd.CmdShell):
         logger.debug('')
 
         result = dict(zip(output_name, result))
-        #result['taacsID'] = sigv_indirect
+        result['taacsID'] = sigv_indirect
 
         #if sigv_indirect:
         #    result['taacsID'] = sigv_indirect
@@ -553,6 +558,29 @@ class MADDMRunCmd(cmd.CmdShell):
 
         n_parameters=n_parameters+len(self.last_results)
 
+        #if output_observables not set, automatically set it according to observables which are calculated
+        #this is needed because maddm.out file contains too much information
+        if mnest.output_observables == []:
+            if self.mode['relic']:
+                mnest.output_observables.append('omegah2')
+                mnest.output_observables.append('sigmav_xf')
+                mnest.output_observables.append('x_freezeout')
+
+            if self.mode['direct']:
+                mnest.output_observables.append('sigmaN_SI_neutron')
+                mnest.output_observables.append('sigmaN_SI_proton')
+                mnest.output_observables.append('sigmaN_SD_neutron')
+                mnest.output_observables.append('sigmaN_SD_proton')
+                mnest.output_observables.append('Nevents')
+
+            if self.mode['indirect']:
+                mnest.output_observables.append('taacsID')
+                detailled_keys = [k.split("#")[1] for k in self.last_results.keys() if k.startswith('taacsID#')]
+                for key in detailled_keys:
+                    mnest.output_observables.append(key)
+
+                #FIX THIS! HERE ADD FLUXES
+
 
         logger.info("Multinest will run with the following parameters: " )
         for key, item in mnest.options.iteritems():
@@ -566,15 +594,16 @@ class MADDMRunCmd(cmd.CmdShell):
                         verbose = False,
                         sampling_efficiency = mnest.options['sampling_efficiency'],
                         n_live_points = mnest.options['livepts'],
-                        outputfiles_basename = pjoin(self.dir_path,'multinest_chains', 'mnest_'))
+                        outputfiles_basename = pjoin(self.dir_path,'multinest_chains', mnest.options['prefix']))
 
         logger.info('Output written in %s' % pjoin(self.dir_path,'multinest_chains'))
         logger.info('Output  of .txt file formatted as:')
-        logger.info('column[0] : ...') #FIX THIS: What are the first two numbers?
-        logger.info('column[1] : ...')
+        logger.info('column[0] : Weight') #FIX THIS: What are the first two numbers?
+        logger.info('column[1] : -2 log(Likelihood)')
         for i, obs in enumerate(mnest.output_observables):
             logger.info('column[%i] : %s' % (i+2, obs))
 
+        mnest.write_log()
 
     def launch_indirect(self, force):
         """running the indirect detection"""
@@ -1616,7 +1645,7 @@ class MadDMCard(banner_mod.RunCard):
 
         #indirect detection
         self.add_param('vave_indirect', 0.001)
-        self.add_param('halo_profile', 'NFW_R3', include=False)
+        self.add_param('halo_profile', 'NFW_R3', include=True)
 
         self.add_param('jfactors', {'__type__':1.0}, include=False)
         self.add_param('distances', {'__type__':1.0}, include=False)
@@ -1705,8 +1734,8 @@ class Multinest():
             'loglikelihood':{'relic':'gaussian', 'directSI':'tanh', 'directSD':'tanh', 'indirect':'tanh'},
             'livepts':50000,
             'sampling_efficiency':'model',
-            'parameters':[]
-
+            'parameters':[],
+            'prefix':'mnest_'
         }
 
         self.maddm_run = run_interface
@@ -1714,6 +1743,20 @@ class Multinest():
         self.param_blocks, _ = self.maddm_run.param_card.analyze_param_card()
         self.parameter_vars = [] #names of parameters to scan over
         self.output_observables = []
+
+    def write_log(self, file =''):
+        if file =='':
+            file =  pjoin(self.maddm_run.dir_path,'multinest_chains', self.options['prefix']+'info.log')
+            with open(file, 'w+') as f:
+                f.write('#  options \n')
+                for option in self.options:
+                    f.write('%s  :  %s \n' % (option, self.options[option]))
+                f.write('#  output format\n')
+                f.write('column[0] : Weight\n')
+                f.write('column[1] : -2 log(Likelihood)\n')
+                for i, obs in enumerate(self.output_observables):
+                    f.write('column[%i] : %s\n' % (i+2, obs))
+
 
 
     def load_parameters(self, multinest_card):
@@ -1735,7 +1778,8 @@ class Multinest():
                         self.options['parameters'].append([var_name, float(min), float(max)])
                     elif opt1 =='output_variables':
                         for j in range(1, len(spline)):
-                            self.output_observables.append(spline[j])
+                            if spline[j] not in self.output_observables:
+                                self.output_observables.append(spline[j])
 
                     elif len(spline)==3:
                         opt2 = spline[1]
@@ -1810,12 +1854,12 @@ class Multinest():
 
 
         try:
-            if self.output_observables != []:
-                for i, observable in enumerate(self.output_observables):
-                    cube[ndim+i] = results[observable]
-            else:
-                for i, observable in enumerate(results):
-                    cube[ndim+i] = results[observable]
+#            if self.output_observables != []:
+            for i, observable in enumerate(self.output_observables):
+                cube[ndim+i] = results[observable]
+#            else:
+#                for i, observable in enumerate(results):
+#                    cube[ndim+i] = results[observable]
         except:
             logger.error('Observable %s does not exist' % observable)
             return
@@ -1840,7 +1884,7 @@ class Multinest():
         #logger.debug(sigmavID)
 
         mdm= self.maddm_run.param_card.get_value('mass', self.maddm_run.proc_characteristics['dm_candidate'][0])
-        logger.debug('MDM: %.3e', mdm)
+        #logger.debug('MDM: %.3e', mdm)
         logger.debug(self.maddm_run.mode['relic'])
         logger.debug(self.maddm_run.mode['direct'])
 

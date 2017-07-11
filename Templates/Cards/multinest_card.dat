@@ -1,4 +1,6 @@
 #
+prefix mnest_ # prefix for multinest output files
+#
 prior loguniform # [uniform, loguniform, user]
 #
 loglikelihood relic gaussian # [gaussian, tanh, user]

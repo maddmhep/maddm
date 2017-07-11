@@ -25,7 +25,8 @@ c tests.f
 c indirect_detection.f
       double precision sigmav_ID, dm_vel_dist_ID, integrand, taacs_ID, vave_glob,vave_indirect
       integer channel_glob
-      common/idstuff/ vave_glob, channel_glob, vave_indirect
+      character(20) halo_profile
+      common/idstuff/ vave_glob, channel_glob, vave_indirect, halo_profile
 
 c direct_detection.f
 	  double precision sigma_proton_SI, sigma_neutron_SI, sigma_nucleon
