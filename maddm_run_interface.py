@@ -549,15 +549,6 @@ class MADDMRunCmd(cmd.CmdShell):
             logger.info(str(parameters[i]))
 
 
-        # number of parameters to output
-        # this includes the parameters which are scanned over (they go in first)
-        # and the output parameters like relic density, dd cross section etc ...
-        n_parameters = len(parameters)
-        n_dimensions = n_parameters
-        self.parameter_vars = [parameters[i][0] for i in range(n_parameters)]
-
-        n_parameters=n_parameters+len(self.last_results)
-
         #if output_observables not set, automatically set it according to observables which are calculated
         #this is needed because maddm.out file contains too much information
         if mnest.output_observables == []:
@@ -581,6 +572,15 @@ class MADDMRunCmd(cmd.CmdShell):
 
                 #FIX THIS! HERE ADD FLUXES
 
+        # number of parameters to output
+        # this includes the parameters which are scanned over (they go in first)
+        # and the output parameters like relic density, dd cross section etc ...
+        n_parameters = len(parameters)
+        n_dimensions = n_parameters
+        #mnest.parameter_vars = [parameters[i][0] for i in range(n_parameters)]
+
+        n_parameters=n_parameters+len(mnest.output_observables)
+
 
         logger.info("Multinest will run with the following parameters: " )
         for key, item in mnest.options.iteritems():
@@ -598,10 +598,12 @@ class MADDMRunCmd(cmd.CmdShell):
 
         logger.info('Output written in %s' % pjoin(self.dir_path,'multinest_chains'))
         logger.info('Output  of .txt file formatted as:')
-        logger.info('column[0] : Weight') #FIX THIS: What are the first two numbers?
+        logger.info('column[0] : Sample Probability (Weight)') #FIX THIS: What are the first two numbers?
         logger.info('column[1] : -2 log(Likelihood)')
+        for i, var in enumerate(mnest.options['parameters']):
+            logger.info('column[%i] : %s' % (i+2, var[0]))
         for i, obs in enumerate(mnest.output_observables):
-            logger.info('column[%i] : %s' % (i+2, obs))
+            logger.info('column[%i] : %s' % (i+2+len(mnest.options['parameters']), obs))
 
         mnest.write_log()
 
@@ -864,7 +866,9 @@ class MADDMRunCmd(cmd.CmdShell):
 
             detailled_keys = [k.split("#")[1] for k in self.last_results.keys() if k.startswith('taacsID#')]
 
-            #THES FOLLOWING CROSS SECTIONS ARE ALREADY IN CM^3/s!!!!!!!
+            logger.debug(detailled_keys)
+
+            #THE FOLLOWING CROSS SECTIONS ARE ALREADY IN CM^3/s!!!!!!!
             tot_taacs = 0.0
 
             v = self.maddm_card['vave_indirect']
@@ -896,8 +900,8 @@ class MADDMRunCmd(cmd.CmdShell):
                     logger.info('    sigmav %15s : %.2e cm^3/s [v = %.2e] %s' % (clean_key,\
                                     self.last_results['taacsID#%s' %(clean_key)],v, message))
 
-                    tot_taacs = tot_taacs + self.last_results['taacsID#%s' %(clean_key)]
-            self.last_results['taacsID'] = tot_taacs
+                    #tot_taacs = tot_taacs + self.last_results['taacsID#%s' %(clean_key)]
+            #self.last_results['taacsID'] = tot_taacs
             #Print out the total taacs.
             logger.info('    sigmav    DM DM > all [vave = %2.e] : %.2e cm^3/s' % (v,\
                                     self.last_results['taacsID']))
@@ -955,7 +959,7 @@ class MADDMRunCmd(cmd.CmdShell):
                             'earth_capture': 'ON' if process_data['has_earth_capture'] else 'Not available',
                             'indirect': 'ON' if process_data['has_indirect_detection'] else 'Not available',
                             'CR_flux': 'ON' if process_data['has_indirect_detection'] else 'Not available',
-                            'run_multinest': 'ON' if aux.module_exists('pymultinest') else 'Not available'}
+                            'run_multinest': 'OFF' if aux.module_exists('pymultinest') else 'Not available'}
                 process_data = self.proc_characteristics
 
             self.maddm_card = MadDMCard(pjoin(self.dir_path, 'Cards', 'maddm_card.dat'))
@@ -990,7 +994,7 @@ class MADDMRunCmd(cmd.CmdShell):
                             'earth_capture': 'ON' if process_data['has_earth_capture'] else 'Not available',
                             'indirect': 'ON' if process_data['has_indirect_detection'] else 'Not available',
                              'CR_flux': 'ON' if process_data['has_indirect_detection'] else 'Not available',
-                             'run_multinest': 'ON' if aux.module_exists('pymultinest') else 'Not available'}
+                             'run_multinest': 'OFF' if aux.module_exists('pymultinest') else 'Not available'}
             if not os.path.exists(pjoin(self.dir_path, 'include', 'maddm_card.inc')):
                 # create the inc file for maddm
                 self.maddm_card.set('do_relic_density', self.mode['relic'], user=False)
@@ -1110,7 +1114,7 @@ class MadDMSelector(common_run.EditParamCard):
                                                    process_data['has_indirect_detection'] else 'Not available',
                             'indirect': 'ON' if process_data['has_indirect_detection'] else 'Not available',
                             'CR_flux':'ON' if process_data['has_indirect_detection'] else 'Not available',
-                            'run_multinest':'ON' if aux.module_exists('pymultinest') else 'Not available'}
+                            'run_multinest':'OFF' if aux.module_exists('pymultinest') else 'Not available'}
         
         #1. Define what to run and create the associated question
         mode = opts.pop('mode', None)  
@@ -1741,21 +1745,24 @@ class Multinest():
         self.maddm_run = run_interface
 
         self.param_blocks, _ = self.maddm_run.param_card.analyze_param_card()
-        self.parameter_vars = [] #names of parameters to scan over
+        #self.parameter_vars = [] #names of parameters to scan over
         self.output_observables = []
 
     def write_log(self, file =''):
         if file =='':
             file =  pjoin(self.maddm_run.dir_path,'multinest_chains', self.options['prefix']+'info.log')
             with open(file, 'w+') as f:
+                f.write('# Please refer to the Multinest README file for more info about output')
                 f.write('#  options \n')
                 for option in self.options:
                     f.write('%s  :  %s \n' % (option, self.options[option]))
                 f.write('#  output format\n')
-                f.write('column[0] : Weight\n')
+                f.write('column[0] : Sample Probability (Weight)\n')
                 f.write('column[1] : -2 log(Likelihood)\n')
+                for i,var in enumerate(self.options['parameters']):
+                    f.write('column[%i] : %s\n' % (i+2, var[0]))
                 for i, obs in enumerate(self.output_observables):
-                    f.write('column[%i] : %s\n' % (i+2, obs))
+                    f.write('column[%i] : %s\n' % (i+2+len(self.options['parameters']), obs))
 
 
 
@@ -1815,6 +1822,7 @@ class Multinest():
 
     def myprior(self, cube, ndim, nparams):
 
+
         if self.options['prior']=='uniform':
             for i in range(ndim):
                 param_min = self.options['parameters'][i][1]
@@ -1855,6 +1863,7 @@ class Multinest():
 
         try:
 #            if self.output_observables != []:
+            logger.debug('output obs: %s ' % self.output_observables)
             for i, observable in enumerate(self.output_observables):
                 cube[ndim+i] = results[observable]
 #            else:
