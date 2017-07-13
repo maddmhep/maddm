@@ -5,6 +5,8 @@ prior loguniform # [uniform, loguniform, user]
 #
 loglikelihood relic gaussian # [gaussian, tanh, user]
 loglikelihood directSI tanh # [gaussian, tanh, user]
+loglikelihood directSD_p tanh # [gaussian, tanh, user]
+loglikelihood directSD_n tanh # [gaussian, tanh, user]
 loglikelihood indirect tanh # [gaussian, tanh, user]
 #
 livepts 50000

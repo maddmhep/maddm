@@ -566,7 +566,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
             if self.mode['indirect']:
                 mnest.output_observables.append('taacsID')
-                detailled_keys = [k.split("#")[1] for k in self.last_results.keys() if k.startswith('taacsID#')]
+                detailled_keys = [k for k in self.last_results.keys() if k.startswith('taacsID#')]
                 for key in detailled_keys:
                     mnest.output_observables.append(key)
 
@@ -1726,7 +1726,7 @@ class Priors:
 
 class Likelihoods:
     likelihoods = ['gaussian', 'tanh', 'user']
-    observables = ['relic', 'directSI','directSD', 'indirect']
+    observables = ['relic', 'directSI','directSD_p', 'directSD_n', 'indirect'] #FIX THIS. SPLIT directSD to proton and neutron
 
 
 class Multinest():
@@ -1735,7 +1735,7 @@ class Multinest():
 
         self.options = {
             'prior':'loguniform',
-            'loglikelihood':{'relic':'gaussian', 'directSI':'tanh', 'directSD':'tanh', 'indirect':'tanh'},
+            'loglikelihood':{'relic':'gaussian', 'directSI':'tanh', 'directSD_p':'tanh','directSD_n':'tanh', 'indirect':'tanh'},
             'livepts':50000,
             'sampling_efficiency':'model',
             'parameters':[],
@@ -1827,7 +1827,7 @@ class Multinest():
             for i in range(ndim):
                 param_min = self.options['parameters'][i][1]
                 param_max = self.options['parameters'][i][2]
-                #cube[i] = [param_min, param_max]
+
                 cube[i] = param_min + cube[i] * (param_max - param_min)
         elif self.options['prior']=='loguniform':
             for i in range(ndim):
@@ -1863,9 +1863,13 @@ class Multinest():
 
         try:
 #            if self.output_observables != []:
-            logger.debug('output obs: %s ' % self.output_observables)
+#            logger.debug('output obs: %s ' % self.output_observables)
             for i, observable in enumerate(self.output_observables):
-                cube[ndim+i] = results[observable]
+                #if it's dm-nucleon cross section convert the units to cm2
+                if observable.startswith('sigmaN'):
+                    cube[ndim+i] = results[observable] * GeV2pb *pb2cm2
+                else:
+                    cube[ndim+i] = results[observable]
 #            else:
 #                for i, observable in enumerate(results):
 #                    cube[ndim+i] = results[observable]
@@ -1890,7 +1894,8 @@ class Multinest():
                 logger.debug('taacsID key: %s', key)
                 sigmavID[key] = results['taacsID#%s' %(key)]
 
-        #logger.debug(sigmavID)
+#            logger.debug('sigmavID : %s' % sigmavID)
+
 
         mdm= self.maddm_run.param_card.get_value('mass', self.maddm_run.proc_characteristics['dm_candidate'][0])
         #logger.debug('MDM: %.3e', mdm)
@@ -1898,8 +1903,7 @@ class Multinest():
         logger.debug(self.maddm_run.mode['direct'])
 
         for obs, likelihood in self.options.get('loglikelihood').iteritems():
-            logger.debug(obs)
-            logger.debug(likelihood)
+
             #relic density
             if obs == 'relic' and self.maddm_run.mode['relic']:
                 if likelihood == 'gaussian':
@@ -1934,18 +1938,21 @@ class Multinest():
                 else:
                     logger.error('You are not using a valid likelihood function for SI direct detection. Omitting the contribution!')
 
-            #direct detection (SD)
-            if obs == 'directSD' and self.maddm_run.mode['direct']:
+            #direct detection (SD) proton and neutron
+            if obs.startswith('directSD') and self.maddm_run.mode['direct']:
+                nucleon = obs.split('_')[1]
                 if likelihood=='tanh':
-                    chi += np.log(0.5*(np.tanh(self.maddm_run.limits.SD_max(mdm, 'p')- spinSDp)+1))
-                    chi += np.log(0.5*(np.tanh(self.maddm_run.limits.SD_max(mdm, 'n')- spinSDn)+1))
+                    if nucleon =='p':
+                        chi += np.log(0.5*(np.tanh(self.maddm_run.limits.SD_max(mdm, 'p')- spinSDp)+1))
+                    elif nucleon == 'n':
+                        chi += np.log(0.5*(np.tanh(self.maddm_run.limits.SD_max(mdm, 'n')- spinSDn)+1))
                 elif likelihood == 'gaussian':
                     #here it's defined as a half gaussian
-                    if self.maddm_run.limits._sigma_SDp > 0:
+                    if nucleon == 'p' and self.maddm_run.limits._sigma_SDp > 0:
                         chi+=  -0.5*pow(spinSDp - self.maddm_run.limits._sigma_SDp,2)/pow(self.maddm_run.limits._sigma_SDp_width,2)
                     else:
                         logger.error('You have to set up the sigma_SDp(_width) to a positive value to use gaussian likelihood!')
-                    if self.maddm_run.limits.sigma_SDn > 0:
+                    if nucleon == 'n' and self.maddm_run.limits.sigma_SDn > 0:
                         chi+=  -0.5*pow(spinSDn - self.maddm_run.limits.sigma_SDn,2)/pow(self.maddm_run.limits._sigma_SDn_width,2)
                     else:
                         logger.error('You have to set up the sigma_SDp(_width) to a positive value to use gaussian likelihood!')
@@ -1962,12 +1969,12 @@ class Multinest():
 
                 id_vel = self.maddm_run.maddm_card['vave_indirect']
 
-                for channel in self.maddm_run.detailled_keys:
+                for channel in [k for k in results.keys() if k.startswith('taacsID#')]:
+
+                        channel = channel.split('#')[1]
+                        finalstate = channel.split('_')[1]
 
                         BR = sigmavID[channel]/sigmavID['tot']
-
-                        finalstate = channel.split('_')[1]
-                        logger.debug(finalstate)
                         if finalstate in self.maddm_run.limits._allowed_final_states:
                             if self.maddm_run.limits._id_limit_vel[finalstate] == id_vel\
                                     and self.maddm_run.limits._id_limit_sigv:
