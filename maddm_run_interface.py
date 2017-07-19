@@ -526,14 +526,16 @@ class MADDMRunCmd(cmd.CmdShell):
         #the following two must be set for the code to work
 
         resume_chain = False
-        if os.listdir(pjoin(self.dir_path, 'multinest_chains/'+mnest.options['prefix']+'*.*')):
-            if self.ask('A multinest chain with prefix %s already exists. Overwrite [y] or resume [n]? [n]'\
-                                % mnest.options['prefix'], ['y','n'], default='n'):
-                f = os.listdir('multinest_chains')
-                for file in f:
-                    os.remove(pjoin('multinest_chains',file))
-            else:
-                resume_chain = True
+        filelist = os.listdir(pjoin(self.dir_path,'multinest_chains'))
+        for f in filelist:
+            if f.startswith(mnest.options['prefix']):
+                if self.ask('A multinest chain with prefix %s already exists. Overwrite [y] or resume [n]? [n]'\
+                                    % mnest.options['prefix'], 'n', ['y','n'],timeout=60):
+                    for file in filelist:
+                        if file.startswith(mnest.options['prefix']):
+                            os.remove(pjoin(self.dir_path,'multinest_chains',file))
+                else:
+                    resume_chain = True
 
         mnest.launch(resume = resume_chain)
         mnest.write_log()
@@ -1940,14 +1942,15 @@ class Multinest():
             if obs == 'directSI' and self.maddm_run.mode['direct']:
 
                 if likelihood=='tanh':
-                    chi0 = np.log(0.5*(np.tanh((self.maddm_run.limits.SI_max(mdm)- spinSI)\
-                                               /self.maddm_run.limits.SI_max(mdm)) + 1.000001))
-                    fuckyou = (self.maddm_run.limits.SI_max(mdm)- spinSI)/self.maddm_run.limits.SI_max(mdm)
-                    logger.info('mdm, limit, sigma(SI), chi, tanh: %.3e %.3e %.3e %.3e %.3e' % \
-                      (mdm,self.maddm_run.limits.SI_max(mdm), spinSI, chi0, np.tanh(fuckyou)))
+                    #chi0 = np.log(1.0-0.5*(np.tanh((self.maddm_run.limits.SI_max(mdm)- spinSI)\
+                    #                           /self.maddm_run.limits.SI_max(mdm)) + 1.000001))
+                    #fuckyou = (self.maddm_run.limits.SI_max(mdm)- spinSI)/self.maddm_run.limits.SI_max(mdm)
+                    #logger.info('mdm, limit, sigma(SI), chi, tanh: %.3e %.3e %.3e %.3e %.3e' % \
+                    #  (mdm,self.maddm_run.limits.SI_max(mdm), spinSI, chi0, np.tanh(fuckyou)))
                     if self.maddm_run.limits.SI_max(mdm) != __infty__:
-                        chi += np.log(0.5*(np.tanh((self.maddm_run.limits.SI_max(mdm)- spinSI)\
-                                               /self.maddm_run.limits.SI_max(mdm)) + 1.000001))
+                        chi += np.log(0.5*(np.tanh((np.log10(self.maddm_run.limits.SI_max(mdm))\
+                                                   - np.log10(spinSI)))\
+                                           + 1.000001))
                 elif likelihood == 'gaussian':
                     if self.maddm_run.limits._sigma_SI > 0:
                         chi+=  -0.5*pow(spinSI - self.maddm_run.limits._sigma_SI,2)/pow(self.maddm_run.limits._sigma_SI_width,2)
@@ -1967,14 +1970,14 @@ class Multinest():
                 if likelihood=='tanh':
                     if nucleon =='p':
                         if self.maddm_run.limits.SD_max(mdm, 'p') != __infty__:
-                            #chi+=0
-                            chi += np.log(0.5*(np.tanh((self.maddm_run.limits.SD_max(mdm, 'p')- spinSDp)\
-                                                   /self.maddm_run.limits.SD_max(mdm, 'p'))+ 1.000001))
+                            chi+=0
+                            #chi += np.log(0.5*(np.tanh((self.maddm_run.limits.SD_max(mdm, 'p')- spinSDp)\
+                            #                       /self.maddm_run.limits.SD_max(mdm, 'p'))+ 1.000001))
                     elif nucleon == 'n':
                         if self.maddm_run.limits.SD_max(mdm, 'n') != __infty__:
                             chi+=0
-                            chi += np.log(0.5*(np.tanh((self.maddm_run.limits.SD_max(mdm, 'n')- spinSDn)\
-                                                   /self.maddm_run.limits.SD_max(mdm, 'n'))+ 1.000001))
+                            #chi += np.log(0.5*(np.tanh((self.maddm_run.limits.SD_max(mdm, 'n')- spinSDn)\
+                            #                       /self.maddm_run.limits.SD_max(mdm, 'n'))+ 1.000001))
                 elif likelihood == 'gaussian':
                     if nucleon == 'p' and self.maddm_run.limits._sigma_SDp > 0:
                         chi+=  -0.5*pow(spinSDp - self.maddm_run.limits._sigma_SDp,2)/pow(self.maddm_run.limits._sigma_SDp_width,2)
