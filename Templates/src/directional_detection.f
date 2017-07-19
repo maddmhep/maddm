@@ -717,12 +717,12 @@ c        ================================================================
       double precision ER, costheta, sigmawn0SI, sigmawp0SI
       double precision MD, ve, diff, double_diff, diffcmp1, diffcmp2
       double precision fA, Z, sigmawn0SD, sigmawp0SD
-      double precision Zna, ZI, Zcarb, Zfl, Zsul
+      double precision Zna, zii, Zcarb, Zfl, Zsul
       double precision avgsn, avgsp, Js, Jsna, JsI, Jsc, Jsfl, Jssul
       double precision avgsnna, avgsnI, avgsnc, avgsnfl, avgsns
       double precision avgspna, avgspI, avgspc, avgspfl, avgsps
       double precision Aflour, AIo, Asod, Acarb, Asulp
-      double precision Ana(10), AI(10), Abna(10), AbI(10), Abfl(10)
+      double precision Ana(10), Aii(10), Abna(10), AbI(10), Abfl(10)
       double precision Afl(10), Acarbo(10), Abcarbo(10)
       double precision Asulph(10), Absulph(10)
       double precision A(10), Ab(10)
@@ -755,7 +755,7 @@ c---------------------------------- for NaI ---------------------------------c
          do i = 1, 1
             Ana(i) = 0.d0
             Abna(i)= 0.d0
-            AI(i)  = 0.d0
+            Aii(i)  = 0.d0
             AbI(i) = 0.d0
          enddo
          
@@ -772,15 +772,15 @@ c---------------------------------- for NaI ---------------------------------c
          
          Asod = Asod/nsod       ! Average of all abundance weighted Na contributions
          
-         call target_material(7, AI, AbI, ZI, nIo)
+         call target_material(7, Aii, AbI, zii, nIo)
          call Spin_matrix(7, JsI, avgspI, avgsnI)
          
          call diff_array(ER,costheta,sigmawn0SI,sigmawp0SI,sigmawn0SD,sigmawp0SD,MD,ve,
-     &    7, AI, AbI, ZI, nIo, JsI, avgspI, avgsnI, diffcmp2,flag)
+     &    7, Aii, AbI, zii, nIo, JsI, avgspI, avgsnI, diffcmp2,flag)
 
 
          do i = 1, nIo
-            AIo = AIo + AI(i)*AbI(i) ! Adding all the I components weighted by their abundances
+            AIo = AIo + Aii(i)*AbI(i) ! Adding all the I components weighted by their abundances
          enddo
          AIo = AIo/nIo          ! Average of all abundance weighted Na contributions
          

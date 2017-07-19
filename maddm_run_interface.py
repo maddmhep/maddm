@@ -40,7 +40,7 @@ except:
 
 pjoin = os.path.join
 logger = logging.getLogger('madgraph.plugin.maddm')
-#logger.setLevel(20) #level 20 = INFO
+logger.setLevel(20) #level 20 = INFO
 
 MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
 
@@ -526,86 +526,18 @@ class MADDMRunCmd(cmd.CmdShell):
         #the following two must be set for the code to work
 
         resume_chain = False
-        if os.listdir(pjoin(self.dir_path, 'multinest_chains')):
-            if self.ask('A multinest chain already exists. Overwrite [y] or resume [n]? [n]', ['y','n'], default='n'):
+        if os.listdir(pjoin(self.dir_path, 'multinest_chains/'+mnest.options['prefix']+'*.*')):
+            if self.ask('A multinest chain with prefix %s already exists. Overwrite [y] or resume [n]? [n]'\
+                                % mnest.options['prefix'], ['y','n'], default='n'):
                 f = os.listdir('multinest_chains')
                 for file in f:
                     os.remove(pjoin('multinest_chains',file))
             else:
                 resume_chain = True
 
-        if mnest.options['loglikelihood'] == {} or mnest.options['prior'] =='':
-            logger.error("You have to set the priors and likelihoods before launching!")
-            return
-
-        if len(mnest.options['parameters'])==0:
-            logger.error("Multinest needs you need to set up parameters to scan over before launching! [multinest_card]")
-            return
-
-        #Here print out some stuff about which parameters you're scanning over etc.
-        parameters = mnest.options['parameters']
-        logger.info("Scanning over the following [parameter, min, max]:")
-        for i in range(len(parameters)):
-            logger.info(str(parameters[i]))
-
-
-        #if output_observables not set, automatically set it according to observables which are calculated
-        #this is needed because maddm.out file contains too much information
-        if mnest.output_observables == []:
-            if self.mode['relic']:
-                mnest.output_observables.append('omegah2')
-                mnest.output_observables.append('sigmav_xf')
-                mnest.output_observables.append('x_freezeout')
-
-            if self.mode['direct']:
-                mnest.output_observables.append('sigmaN_SI_neutron')
-                mnest.output_observables.append('sigmaN_SI_proton')
-                mnest.output_observables.append('sigmaN_SD_neutron')
-                mnest.output_observables.append('sigmaN_SD_proton')
-                mnest.output_observables.append('Nevents')
-
-            if self.mode['indirect']:
-                mnest.output_observables.append('taacsID')
-                detailled_keys = [k for k in self.last_results.keys() if k.startswith('taacsID#')]
-                for key in detailled_keys:
-                    mnest.output_observables.append(key)
-
-                #FIX THIS! HERE ADD FLUXES
-
-        # number of parameters to output
-        # this includes the parameters which are scanned over (they go in first)
-        # and the output parameters like relic density, dd cross section etc ...
-        n_parameters = len(parameters)
-        n_dimensions = n_parameters
-        #mnest.parameter_vars = [parameters[i][0] for i in range(n_parameters)]
-
-        n_parameters=n_parameters+len(mnest.output_observables)
-
-
-        logger.info("Multinest will run with the following parameters: " )
-        for key, item in mnest.options.iteritems():
-            logger.info("%20s :  %s" %(key, item))
-
-        pymultinest.run(mnest.myloglike, mnest.myprior,
-                        n_dims=n_dimensions,
-                        n_params=n_parameters,
-                        importance_nested_sampling = False,
-                        resume = resume_chain,
-                        verbose = False,
-                        sampling_efficiency = mnest.options['sampling_efficiency'],
-                        n_live_points = mnest.options['livepts'],
-                        outputfiles_basename = pjoin(self.dir_path,'multinest_chains', mnest.options['prefix']))
-
-        logger.info('Output written in %s' % pjoin(self.dir_path,'multinest_chains'))
-        logger.info('Output  of .txt file formatted as:')
-        logger.info('column[0] : Sample Probability (Weight)') #FIX THIS: What are the first two numbers?
-        logger.info('column[1] : -2 log(Likelihood)')
-        for i, var in enumerate(mnest.options['parameters']):
-            logger.info('column[%i] : %s' % (i+2, var[0]))
-        for i, obs in enumerate(mnest.output_observables):
-            logger.info('column[%i] : %s' % (i+2+len(mnest.options['parameters']), obs))
-
+        mnest.launch(resume = resume_chain)
         mnest.write_log()
+
 
     def launch_indirect(self, force):
         """running the indirect detection"""
@@ -1010,7 +942,7 @@ class MADDMRunCmd(cmd.CmdShell):
             
         self.check_param_card(pjoin(self.dir_path, 'Cards', 'param_card.dat'))
         
-        if not self.in_scan_mode:    
+        if not self.in_scan_mode and not self.mode['run_multinest']:
             logger.info("Start computing %s" % ','.join([name for name, value in self.mode.items() if value]))
         return self.mode
 
@@ -1656,8 +1588,12 @@ class MadDMCard(banner_mod.RunCard):
         self.add_param('npts_for_flux', 200, include=False) #number of points for the flux diff. distribution
 
         self.add_param('only_two_body_decays', True, include=False)
+        #self.add_param('num_of_elements', 60)
 
         self.fill_jfactors()
+
+
+
 
         
     def write(self, output_file, template=None, python_template=False):
@@ -1726,7 +1662,7 @@ class Priors:
 
 class Likelihoods:
     likelihoods = ['gaussian', 'tanh', 'user']
-    observables = ['relic', 'directSI','directSD_p', 'directSD_n', 'indirect'] #FIX THIS. SPLIT directSD to proton and neutron
+    observables = ['relic', 'directSI','directSD_p', 'directSD_n', 'indirect']
 
 
 class Multinest():
@@ -1747,6 +1683,87 @@ class Multinest():
         self.param_blocks, _ = self.maddm_run.param_card.analyze_param_card()
         #self.parameter_vars = [] #names of parameters to scan over
         self.output_observables = []
+
+        self.counter = 0
+
+
+
+    #Starts the multinest run.
+    def launch(self, resume=True):
+
+        if self.options['loglikelihood'] == {} or self.options['prior'] =='':
+            logger.error("You have to set the priors and likelihoods before launching!")
+            return False
+
+        if len(self.options['parameters'])==0:
+            logger.error("Multinest needs you need to set up parameters to scan over before launching! [multinest_card]")
+            return False
+
+        #Here print out some stuff about which parameters you're scanning over etc.
+        parameters = self.options['parameters']
+        logger.info("Scanning over the following [parameter, min, max]:")
+        for i in range(len(parameters)):
+            logger.info(str(parameters[i]))
+
+
+        #if output_observables not set, automatically set it according to observables which are calculated
+        #this is needed because maddm.out file contains too much information
+        if self.output_observables == []:
+            if self.maddm_run.mode['relic']:
+                self.output_observables.append('omegah2')
+                self.output_observables.append('sigmav_xf')
+                self.output_observables.append('x_freezeout')
+
+            if self.maddm_run.mode['direct']:
+                self.output_observables.append('sigmaN_SI_neutron')
+                self.output_observables.append('sigmaN_SI_proton')
+                self.output_observables.append('sigmaN_SD_neutron')
+                self.output_observables.append('sigmaN_SD_proton')
+                self.output_observables.append('Nevents')
+
+            if self.maddm_run.mode['indirect']:
+                self.output_observables.append('taacsID')
+                detailled_keys = [k for k in self.maddm_run.last_results.keys() if k.startswith('taacsID#')]
+                for key in detailled_keys:
+                    self.output_observables.append(key)
+
+                #FIX THIS! HERE ADD FLUXES
+
+        # number of parameters to output
+        # this includes the parameters which are scanned over (they go in first)
+        # and the output parameters like relic density, dd cross section etc ...
+        n_parameters = len(parameters)
+        n_dimensions = n_parameters
+        #mnest.parameter_vars = [parameters[i][0] for i in range(n_parameters)]
+
+        n_parameters=n_parameters+len(self.output_observables)
+
+
+        logger.info("Multinest will run with the following parameters: " )
+        for key, item in self.options.iteritems():
+            logger.info("%20s :  %s" %(key, item))
+
+        pymultinest.run(self.myloglike, self.myprior,
+                        n_dims=n_dimensions,
+                        n_params=n_parameters,
+                        importance_nested_sampling = False,
+                        resume = resume,
+                        verbose = False,
+                        sampling_efficiency = self.options['sampling_efficiency'],
+                        n_live_points = self.options['livepts'],
+                        outputfiles_basename = pjoin(self.maddm_run.dir_path,'multinest_chains', self.options['prefix']))
+
+        logger.info('Output written in %s' % pjoin(self.maddm_run.dir_path,'multinest_chains'))
+        logger.info('Output  of .txt file formatted as:')
+        logger.info('column[0] : Sample Probability (Weight)') #FIX THIS: What are the first two numbers?
+        logger.info('column[1] : -2 log(Likelihood)')
+        for i, var in enumerate(self.options['parameters']):
+            logger.info('column[%i] : %s' % (i+2, var[0]))
+        for i, obs in enumerate(self.output_observables):
+            logger.info('column[%i] : %s' % (i+2+len(self.options['parameters']), obs))
+
+        return True
+
 
     def write_log(self, file =''):
         if file =='':
@@ -1849,7 +1866,7 @@ class Multinest():
 
         #Change the parameters and write them into an appropriate param_card.dat file.
         for i in range(len(self.options['parameters'])):
-            logger.info('Changing parameter %s to %.3e' %( self.options['parameters'][i][0], cube[i]))
+            logger.debug('Changing parameter %s to %.3e' %( self.options['parameters'][i][0], cube[i]))
             self.change_parameter(self.options['parameters'][i][0].lower(), cube[i])
 
         self.maddm_run.param_card.write(str(pjoin(self.maddm_run.dir_path, 'Cards', 'param_card.dat')))
@@ -1881,7 +1898,6 @@ class Multinest():
             omegah2 = results['omegah2']
         if self.maddm_run.mode['direct']:
             spinSI = 0.5*(results['sigmaN_SI_proton'] + results['sigmaN_SI_neutron']) * GeV2pb * pb2cm2
-            #HERE SEPARATE PROTON AND NEUTRON
             spinSDp = results['sigmaN_SD_proton']  * GeV2pb * pb2cm2
             spinSDn = results['sigmaN_SD_neutron'] * GeV2pb * pb2cm2
         #<=========== for ID we will need each channel separately.
@@ -1897,7 +1913,7 @@ class Multinest():
 #            logger.debug('sigmavID : %s' % sigmavID)
 
 
-        mdm= self.maddm_run.param_card.get_value('mass', self.maddm_run.proc_characteristics['dm_candidate'][0])
+        mdm = self.maddm_run.param_card.get_value('mass', self.maddm_run.proc_characteristics['dm_candidate'][0])
         #logger.debug('MDM: %.3e', mdm)
         logger.debug(self.maddm_run.mode['relic'])
         logger.debug(self.maddm_run.mode['direct'])
@@ -1909,7 +1925,9 @@ class Multinest():
                 if likelihood == 'gaussian':
                     chi += -0.5*pow(omegah2 - self.maddm_run.limits._oh2_planck,2)/pow(self.maddm_run.limits._oh2_planck_width,2)
                 elif likelihood == 'tanh':
-                    chi += np.log(0.5*(np.tanh(self.maddm_run.limits._oh2_planck_width - omegah2)))
+                    if omegah2 > 0:
+                        chi += np.log(0.5*(np.tanh((self.maddm_run.limits._oh2_planck - omegah2)\
+                                                   /self.maddm_run.limits._oh2_planck)+1.000001))
                 elif likelihood =='user':
                     chi+=0
                     #
@@ -1922,14 +1940,19 @@ class Multinest():
             if obs == 'directSI' and self.maddm_run.mode['direct']:
 
                 if likelihood=='tanh':
-                    chi += np.log(0.5*(np.tanh(self.maddm_run.limits.SI_max(mdm)- spinSI)+1))
+                    chi0 = np.log(0.5*(np.tanh((self.maddm_run.limits.SI_max(mdm)- spinSI)\
+                                               /self.maddm_run.limits.SI_max(mdm)) + 1.000001))
+                    fuckyou = (self.maddm_run.limits.SI_max(mdm)- spinSI)/self.maddm_run.limits.SI_max(mdm)
+                    logger.info('mdm, limit, sigma(SI), chi, tanh: %.3e %.3e %.3e %.3e %.3e' % \
+                      (mdm,self.maddm_run.limits.SI_max(mdm), spinSI, chi0, np.tanh(fuckyou)))
+                    if self.maddm_run.limits.SI_max(mdm) != __infty__:
+                        chi += np.log(0.5*(np.tanh((self.maddm_run.limits.SI_max(mdm)- spinSI)\
+                                               /self.maddm_run.limits.SI_max(mdm)) + 1.000001))
                 elif likelihood == 'gaussian':
-                    #here it's defined as a half gaussian
-                    if (spinSI > self.maddm_run.limits.SI_max(mdm)):
-                        if self.maddm_run.limits._sigma_SI > 0:
-                            chi+=  -0.5*pow(spinSI - self.maddm_run.limits._sigma_SI,2)/pow(self.maddm_run.limits._sigma_SI_width,2)
-                        else:
-                            logger.error('You have to set up the sigma_SI(_width) to a positive value to use gaussian likelihood!')
+                    if self.maddm_run.limits._sigma_SI > 0:
+                        chi+=  -0.5*pow(spinSI - self.maddm_run.limits._sigma_SI,2)/pow(self.maddm_run.limits._sigma_SI_width,2)
+                    else:
+                        logger.error('You have to set up the sigma_SI(_width) to a positive value to use gaussian likelihood!')
                 elif likelihood == 'user':
                     #
                     # HERE ADD YOUR OWN LOG LIKELIHOOD FOR SI
@@ -1943,11 +1966,16 @@ class Multinest():
                 nucleon = obs.split('_')[1]
                 if likelihood=='tanh':
                     if nucleon =='p':
-                        chi += np.log(0.5*(np.tanh(self.maddm_run.limits.SD_max(mdm, 'p')- spinSDp)+1))
+                        if self.maddm_run.limits.SD_max(mdm, 'p') != __infty__:
+                            #chi+=0
+                            chi += np.log(0.5*(np.tanh((self.maddm_run.limits.SD_max(mdm, 'p')- spinSDp)\
+                                                   /self.maddm_run.limits.SD_max(mdm, 'p'))+ 1.000001))
                     elif nucleon == 'n':
-                        chi += np.log(0.5*(np.tanh(self.maddm_run.limits.SD_max(mdm, 'n')- spinSDn)+1))
+                        if self.maddm_run.limits.SD_max(mdm, 'n') != __infty__:
+                            chi+=0
+                            chi += np.log(0.5*(np.tanh((self.maddm_run.limits.SD_max(mdm, 'n')- spinSDn)\
+                                                   /self.maddm_run.limits.SD_max(mdm, 'n'))+ 1.000001))
                 elif likelihood == 'gaussian':
-                    #here it's defined as a half gaussian
                     if nucleon == 'p' and self.maddm_run.limits._sigma_SDp > 0:
                         chi+=  -0.5*pow(spinSDp - self.maddm_run.limits._sigma_SDp,2)/pow(self.maddm_run.limits._sigma_SDp_width,2)
                     else:
@@ -1995,6 +2023,11 @@ class Multinest():
                         else:
                             logger.warning('No limit for channel %s. Omitting the likelihood contribution.' % finalstate)
 
+        #Print the counter on the screen
+        self.counter += 1
+        toprint = 'Scanned over %i points. \r' % self.counter
+        print toprint,
+        sys.stdout.flush()
 
         return chi
 

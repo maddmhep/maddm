@@ -177,7 +177,19 @@ c  Directional detection switch
 c------------------------Capture rate---------------------------------
       logical do_sun_capture, do_earth_capture
       double precision sun_cap_rate, earth_cap_rate
+      integer nelements, n_celestial_bodies
+      parameter (nelements = 118)
+      parameter (n_celestial_bodies = 3)
       common/capture/do_sun_capture, do_earth_capture, sun_cap_rate, earth_cap_rate
+
+      double precision, dimension(n_celestial_bodies, nelements) ::  Ai
+      double precision, dimension(n_celestial_bodies, nelements) :: Zi
+      double precision, dimension(n_celestial_bodies, nelements) :: fi
+      double precision, dimension(n_celestial_bodies, nelements) :: phii
+      double precision, dimension(n_celestial_bodies, nelements) :: Finf
+      double precision, dimension(n_celestial_bodies, nelements) :: mci
+      double precision, dimension(n_celestial_bodies, nelements) :: ali
+      common/capture_params/ Ai, Zi, fi, phii, Finf, mci, ali
 
 c------------------------ Resonance information --------------------------
 ! s-channel Resonance locations
