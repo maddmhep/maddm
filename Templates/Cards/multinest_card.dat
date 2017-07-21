@@ -3,11 +3,11 @@ prefix mnest_ # prefix for multinest output files
 #
 prior loguniform # [uniform, loguniform, user]
 #
-loglikelihood relic gaussian # [gaussian, tanh, user]
-loglikelihood directSI tanh # [gaussian, tanh, user]
-loglikelihood directSD_p tanh # [gaussian, tanh, user]
-loglikelihood directSD_n tanh # [gaussian, tanh, user]
-loglikelihood indirect tanh # [gaussian, tanh, user]
+loglikelihood relic        gaussian   # [gaussian, half_gauss, user]
+loglikelihood directSI     half_gauss # [gaussian, half_gauss, user]
+loglikelihood directSD_p   half_gauss # [gaussian, half_gauss, user]
+loglikelihood directSD_n   half_gauss # [gaussian, half_gauss, user]
+loglikelihood indirect     half_gauss # [gaussian, half_gauss, user]
 #
 livepts 50000
 #

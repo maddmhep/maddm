@@ -7,6 +7,7 @@ import re
 import sys
 import subprocess
 import auxiliary as aux
+import timeit
 
 import threading, subprocess
 import json
@@ -526,16 +527,20 @@ class MADDMRunCmd(cmd.CmdShell):
         #the following two must be set for the code to work
 
         resume_chain = False
+        prefix_found = False
         filelist = os.listdir(pjoin(self.dir_path,'multinest_chains'))
         for f in filelist:
             if f.startswith(mnest.options['prefix']):
-                if self.ask('A multinest chain with prefix %s already exists. Overwrite [y] or resume [n]? [n]'\
-                                    % mnest.options['prefix'], 'n', ['y','n'],timeout=60):
-                    for file in filelist:
-                        if file.startswith(mnest.options['prefix']):
-                            os.remove(pjoin(self.dir_path,'multinest_chains',file))
-                else:
-                    resume_chain = True
+                prefix_found = True
+
+        if prefix_found:
+            if self.ask('A multinest chain with prefix %s already exists. Overwrite [y] or resume [n]? [n]'\
+                                % mnest.options['prefix'], 'n', ['y','n'],timeout=60):
+                for file in filelist:
+                    if file.startswith(mnest.options['prefix']):
+                        os.remove(pjoin(self.dir_path,'multinest_chains',file))
+            else:
+                resume_chain = True
 
         mnest.launch(resume = resume_chain)
         mnest.write_log()
@@ -1663,7 +1668,7 @@ class Priors:
     priors = ['uniform', 'loguniform', 'user']
 
 class Likelihoods:
-    likelihoods = ['gaussian', 'tanh', 'user']
+    likelihoods = ['gaussian', 'half_gauss', 'user']
     observables = ['relic', 'directSI','directSD_p', 'directSD_n', 'indirect']
 
 
@@ -1673,7 +1678,7 @@ class Multinest():
 
         self.options = {
             'prior':'loguniform',
-            'loglikelihood':{'relic':'gaussian', 'directSI':'tanh', 'directSD_p':'tanh','directSD_n':'tanh', 'indirect':'tanh'},
+            'loglikelihood':{'relic':'gaussian', 'directSI':'half_gauss', 'directSD_p':'half_gauss','directSD_n':'half_gauss', 'indirect':'half_gauss'},
             'livepts':50000,
             'sampling_efficiency':'model',
             'parameters':[],
@@ -1926,31 +1931,40 @@ class Multinest():
             if obs == 'relic' and self.maddm_run.mode['relic']:
                 if likelihood == 'gaussian':
                     chi += -0.5*pow(omegah2 - self.maddm_run.limits._oh2_planck,2)/pow(self.maddm_run.limits._oh2_planck_width,2)
-                elif likelihood == 'tanh':
+                elif likelihood == 'half_gauss':
                     if omegah2 > 0:
-                        chi += np.log(0.5*(np.tanh((self.maddm_run.limits._oh2_planck - omegah2)\
-                                                   /self.maddm_run.limits._oh2_planck)+1.000001))
+                        #chi += np.log(0.5*(np.tanh((self.maddm_run.limits._oh2_planck - omegah2)\
+                        #                           /self.maddm_run.limits._oh2_planck)+1.000001))
+                        if omegah2 > self.maddm_run.limits._oh2_planck:
+                            chi+= -0.5*pow(np.log10(self.maddm_run.limits._oh2_planck/omegah2),2)\
+                                  /pow(0.01,2)
                 elif likelihood =='user':
                     chi+=0
                     #
                     # HERE ADD YOUR OWN LOG LIKELIHOOD FOR RELIC DENSITY
                     #
+                elif likelihood == '':
+                    chi+=0
                 else:
                     logger.error('You are not using a valid likelihood function for relic density. Omitting the contribution!')
 
             #direct detection (SI)
             if obs == 'directSI' and self.maddm_run.mode['direct']:
 
-                if likelihood=='tanh':
+                if likelihood=='half_gauss':
                     #chi0 = np.log(1.0-0.5*(np.tanh((self.maddm_run.limits.SI_max(mdm)- spinSI)\
                     #                           /self.maddm_run.limits.SI_max(mdm)) + 1.000001))
                     #fuckyou = (self.maddm_run.limits.SI_max(mdm)- spinSI)/self.maddm_run.limits.SI_max(mdm)
                     #logger.info('mdm, limit, sigma(SI), chi, tanh: %.3e %.3e %.3e %.3e %.3e' % \
                     #  (mdm,self.maddm_run.limits.SI_max(mdm), spinSI, chi0, np.tanh(fuckyou)))
-                    if self.maddm_run.limits.SI_max(mdm) != __infty__:
-                        chi += np.log(0.5*(np.tanh((np.log10(self.maddm_run.limits.SI_max(mdm))\
-                                                   - np.log10(spinSI)))\
-                                           + 1.000001))
+                    #if self.maddm_run.limits.SI_max(mdm) != __infty__:
+                        #chi += np.log(0.5*(np.tanh(100*(self.maddm_run.limits.SI_max(mdm) - spinSI)\
+                        #                    /self.maddm_run.limits.SI_max(mdm))\
+                        #                   + 1.000001))
+                    if spinSI > self.maddm_run.limits.SI_max(mdm):
+                        chi+= -0.5*pow(np.log10(self.maddm_run.limits.SI_max(mdm)/spinSI),2)\
+                                  /pow(0.01,2)
+
                 elif likelihood == 'gaussian':
                     if self.maddm_run.limits._sigma_SI > 0:
                         chi+=  -0.5*pow(spinSI - self.maddm_run.limits._sigma_SI,2)/pow(self.maddm_run.limits._sigma_SI_width,2)
@@ -1961,23 +1975,24 @@ class Multinest():
                     # HERE ADD YOUR OWN LOG LIKELIHOOD FOR SI
                     #
                     chi+=0
+
+                elif likelihood == '':
+                    chi+=0
                 else:
                     logger.error('You are not using a valid likelihood function for SI direct detection. Omitting the contribution!')
 
             #direct detection (SD) proton and neutron
             if obs.startswith('directSD') and self.maddm_run.mode['direct']:
                 nucleon = obs.split('_')[1]
-                if likelihood=='tanh':
+                if likelihood=='half_gauss':
                     if nucleon =='p':
-                        if self.maddm_run.limits.SD_max(mdm, 'p') != __infty__:
-                            chi+=0
-                            #chi += np.log(0.5*(np.tanh((self.maddm_run.limits.SD_max(mdm, 'p')- spinSDp)\
-                            #                       /self.maddm_run.limits.SD_max(mdm, 'p'))+ 1.000001))
+                        if spinSDp > self.maddm_run.limits.SD_max(mdm, 'p'):
+                            chi+= -0.5*pow(np.log10(self.maddm_run.limits.SD_max(mdm, 'p')/spinSDp),2)\
+                                  /pow(0.01,2)
                     elif nucleon == 'n':
-                        if self.maddm_run.limits.SD_max(mdm, 'n') != __infty__:
-                            chi+=0
-                            #chi += np.log(0.5*(np.tanh((self.maddm_run.limits.SD_max(mdm, 'n')- spinSDn)\
-                            #                       /self.maddm_run.limits.SD_max(mdm, 'n'))+ 1.000001))
+                       if spinSDp > self.maddm_run.limits.SD_max(mdm,'n'):
+                            chi+= -0.5*pow(np.log10(self.maddm_run.limits.SD_max(mdm, 'n')/spinSDn),2)\
+                                  /pow(0.01,2)
                 elif likelihood == 'gaussian':
                     if nucleon == 'p' and self.maddm_run.limits._sigma_SDp > 0:
                         chi+=  -0.5*pow(spinSDp - self.maddm_run.limits._sigma_SDp,2)/pow(self.maddm_run.limits._sigma_SDp_width,2)
@@ -1991,6 +2006,8 @@ class Multinest():
                     #
                     # HERE ADD YOUR OWN LOG LIKELIHOOD FOR SD
                     #
+                    chi+=0
+                elif likelihood == '':
                     chi+=0
                 else:
                     logger.error('You are not using a valid likelihood function for SD direction detection. Omitting the contribution!')
@@ -2010,8 +2027,10 @@ class Multinest():
                             if self.maddm_run.limits._id_limit_vel[finalstate] == id_vel\
                                     and self.maddm_run.limits._id_limit_sigv:
 
-                                if likelihood=='tanh':
-                                    chi += np.log(0.5*(np.tanh(self.maddm_run.limits.ID_max(mdm,finalstate)/max(BR, 1e-10) - sigmavID[channel])+1))
+                                if likelihood=='half_gauss':
+                                    if sigmavID[channel] > self.maddm_run.limits.ID_max(mdm,finalstate)/max(BR, 1e-10):
+                                        chi += -0.5*pow(np.log10(self.maddm_run.limits.ID_max(mdm,finalstate)\
+                                                             /(max(BR, 1e-10)*sigmavID[channel])),2)/pow(0.01,2)
                                 elif likelihood=='gaussian':
                                     chi +=  -0.5*pow(self.maddm_run.limits._sigma_ID[finalstate] - self.maddm_run.limits.sigma_SDn,2)\
                                                 /pow(self.maddm_run.limits._sigma_ID_width[finalstate],2)
@@ -2020,6 +2039,8 @@ class Multinest():
                                     # HERE ADD YOUR OWN LOG LIKELIHOOD FOR ID
                                     #
                                     chi +=0
+                                elif likelihood == '':
+                                    chi+=0
                             else:
                                 logger.warning('Omitting the likelihood contribution for channel %s.' % finalstate)
                                 logger.warning('The limit is not set or velocities mismatch!')
@@ -2027,10 +2048,11 @@ class Multinest():
                             logger.warning('No limit for channel %s. Omitting the likelihood contribution.' % finalstate)
 
         #Print the counter on the screen
+
+        if self.counter % 100 ==0:
+            toprint = 'Scanned over %i points.' % self.counter
+            logger.info(toprint)
         self.counter += 1
-        toprint = 'Scanned over %i points. \r' % self.counter
-        print toprint,
-        sys.stdout.flush()
 
         return chi
 
