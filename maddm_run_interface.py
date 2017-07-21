@@ -1937,7 +1937,7 @@ class Multinest():
                         #                           /self.maddm_run.limits._oh2_planck)+1.000001))
                         if omegah2 > self.maddm_run.limits._oh2_planck:
                             chi+= -0.5*pow(np.log10(self.maddm_run.limits._oh2_planck/omegah2),2)\
-                                  /pow(0.01,2)
+                                  /pow(self.maddm_run.limits._oh2_planck_width,2)
                 elif likelihood =='user':
                     chi+=0
                     #
