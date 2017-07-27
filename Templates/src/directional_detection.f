@@ -884,16 +884,14 @@ c--------------------------------For CS2----------------------------------------
       Implicit none
       
       Integer	i, j, k, flag, n, mater
-      double precision sec, KeV, cm, fm, km, barn, picbarn, GeV, MeV
-      double precision MeVtoKev, GevtoKeV, c, v0, vesc, ve, AMU 
-      double precision E0, MD0, RhoD, rn, muA, kmtocm, cs, daytosec, hrtosec
-      double precision Naa, kratio, yrtosec, tontokg, hukgtokg, GeVtoMev
+      double precision E0, MD0, rn, muA, v0, vesc, vearth, AMU, rhoD,c, ve
+      double precision  kratio
       double precision MD, day, costheta 
-      double precision diff, ER, vearth, invcmtoGeV, cmtoinvGeV
-      double precision m_neutron, m_proton, fn, fp, Z, mu_p, mu_n
+      double precision diff, ER
+      double precision fn, fp, Z, mu_p, mu_n
       double precision ap, an, sigmawp0SI, sigmawn0SI, sigmawp0SD, sigmawn0SD
       double precision sigmawpSI, sigmawnSI, sigmawpSD, sigmawnSD
-      double precision avgsp, avgsn, Js, formsd, g1, mq, lambbda, G_fermi
+      double precision avgsp, avgsn, Js, formsd, mq, lambbda
       double precision IcSD, FWS
 
       double precision A(10), Ab(10)
@@ -928,56 +926,28 @@ c--------------------------------For CS2----------------------------------------
       Allocate (SigmaSI(n))
       Allocate (sigmaSD(n))
       Allocate (sigmaWN(n))
-
-! base units
-      sec   = 1.d0
-      GeV   = 1.d0
-      cm    = 1.d0
-      cs    = 1.d0
-
-! Some important constants and conversion factors.
-      
-      fm         = 1.d-13*cm
-      km         = 1.d+5*cm
-      kmtocm     = 1.d+5
-      barn       = 1.d-24*cm**2
-      picbarn    = 1.d-12*1.d-24*cm**2
-      GeVtokev   = 1.d+6
-      GeVtoMeV   = 1.d+3
-      invcmtoGeV = 1.98d-14 ! converts cm^-1 to GeV
-      cmtoinvGeV = 5.076d+13 ! converts cm to GeV^-1
-      Mevtokev   = 1.d+3
-      daytosec   = 24.d0*60.d0*60.d0
-      hrtosec    = 60.d0*60.d0
-      tontokg    = 1000.d0
-      hukgtokg   = 100.d0
-      
-      
-      c         = 3.d+5*(km/sec) ! Speed of light
-      v0        = vMP*(km/sec) !Most Probable velocity of WIMPs in DM Halo
-      vesc      = vescape*(km/sec) ! Escape velocity of a WIMP from the Galactic Halo.
-      vearth    = ve*(km/sec) ! Velocity of the Earth, taken from the V_E function.
-      AMU       = 0.932d0*(GeV/cs**2) ! Atomic Mass Units
-      RhoD      = rhoDM*GeV*cs**(-2)*cm**(-3) !Density of Dark Matter in our local part of the Galaxy.
-      Naa       = 6.023d+26 ! Avogadro's number
-      M_neutron = 0.939*(GeV/cs**2) ! Mass of the Neutron
-      M_proton  = 0.938*(GeV/cs**2) ! Mass of the Proton
-      G_fermi   = 1.166d-5*(GeV**(-2)) ! Fermi Constant
-      g1        = 0.357088d0 ! value of the U(1) gauge coupling constant
       
 !	Some variables
             
       MD0       = MD*(GeV/cs**2)
       E0        = (1.d0/2.d0)*MD0*((v0/c)**2)*GeVtoKeV ! most probable kinetic energy of WIMPs
       
-      sigmawnSI = sigmawn0SI*picbarn !WIMP-proton spin independent cross-section in cm^2
-      sigmawpSI = sigmawp0SI*picbarn !WIMP-neutron spin independent cross-section in cm^2
+      sigmawnSI = sigmawn0SI*picobarn !WIMP-proton spin independent cross-section in cm^2
+      sigmawpSI = sigmawp0SI*picobarn !WIMP-neutron spin independent cross-section in cm^2
 
-      sigmawnSD = sigmawn0SD*picbarn !WIMP-neutron spin dependent cross-section in cm^2
-      sigmawpSD = sigmawp0SD*picbarn !WIMP-proton spin dependent cross-section in cm^2
+      sigmawnSD = sigmawn0SD*picobarn !WIMP-neutron spin dependent cross-section in cm^2
+      sigmawpSD = sigmawp0SD*picobarn !WIMP-proton spin dependent cross-section in cm^2
 
       mu_p      = MD0*M_proton/(MD0 + M_proton) ! reduced mass of Proton-WIMP
       mu_n      = MD0*M_neutron/(MD0 + M_neutron) ! reduced mass of Neutron-WIMP
+
+      v0        = vMP*(km/sec) !Most Probable velocity of WIMPs in DM Halo
+      vesc      = vescape*(km/sec) ! Escape velocity of a WIMP from the Galactic Halo.
+      vearth    = ve*(km/sec) ! Velocity of the Earth, taken from the V_E function.
+      AMU       = 0.932d0*(GeV/cs**2) ! Atomic Mass Units
+      RhoD      = rhoDM*GeV*cs**(-2)*cm**(-3) !Density of Dark Matter in our local part of the Galaxy.
+
+      c         = 3.d+5 ! Speed of light in km/s
 
 c form factor contribution terms for the spin independent calculation.
       fn  = sqrt((pi/4.d0)*sigmawnSI*(1.d0/mu_n)**2.d0) ! cm/GeV
@@ -1034,8 +1004,8 @@ c form factor contribution terms for the spin dependent calculation.
          write(*,*) 'DM Mass is', MD0,'GeV/c^2'
          write(*,*) 'Recoil Energy :', ER,'keV'         
          do i = 1, n
-            write(*,*) 'Spin Independent cross-section:', sigmaSI(i)/picbarn ,'pb'
-            write(*,*) 'Spin dependent cross-section  :', sigmaSD(i)/picbarn ,'pb'
+            write(*,*) 'Spin Independent cross-section:', sigmaSI(i)/picobarn ,'pb'
+            write(*,*) 'Spin dependent cross-section  :', sigmaSD(i)/picobarn ,'pb'
          enddo
          write(*,*) 'an =', an*cmtoinvGeV
          write(*,*) 'an =', an*cmtoinvGeV

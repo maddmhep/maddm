@@ -12,9 +12,9 @@ c-------------------------------------------------------------------------c
       include 'coupl.inc'
 
 c parameters used in this routine only
-      Integer sm_flag, prnt_tag, k
+      Integer sm_flag, prnt_tag, k, ii
       double precision Oh2, sigv
-      double precision total_events, sigmawnSI, sigmawpSI, gevtopb,pbtocm3
+      double precision total_events, sigmawnSI, sigmawpSI
       double precision sigmawnSD, sigmawpSD
       double precision vID_natural
       character(len=32) outfilename
@@ -58,8 +58,7 @@ c     calls are to sigma_nucleon(proton, spin_independent).
 c     proton = 1 is for proton, 0 for neutron
 c     spin_independent = 1 for SI and 0 for SD.
 
-      gevtopb = 3.89d+8
-      pbtocm3 = 2.99d-26
+
       prnt_tag = 0
 
       if (do_direct_detection) then
@@ -125,12 +124,12 @@ C      Here write the output.
 	  write(33,*) 'smearing: ', sm_flag
 
 
-      if (do_sun_capture) then
-         write(33, *) 'solar_capture_rate: ', sun_cap_rate, '1/s'
-      endif
-
-      if (do_earth_capture) then
-         write(33, *) 'earth_capture_rate: ', earth_cap_rate, '1/s'
+      if (do_capture.and.do_direct_detection) then
+         do ii=1, n_celestial_bodies
+            capture_rate(ii) = Ccap(ii, 0.5d0*(sigma_proton_SI + sigma_neutron_SI)*gevtopb*pbtocm2,
+     &                                sigma_proton_SD*gevtopb*pbtocm2, sigma_neutron_SD*gevtopb*pbtocm2, mdm(1))
+            write(33, *) 'ccap:  ', object_name(ii), capture_rate(ii), ' 1/s'
+         enddo
       endif
 
       if (do_indirect_detection.and.only2to2lo) then

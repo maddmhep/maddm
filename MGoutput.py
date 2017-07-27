@@ -45,8 +45,7 @@ class MADDMProcCharacteristic(banner_mod.ProcCharacteristic):
         self.add_param('has_direct_detection', False)
         self.add_param('has_directional_detection', False)
         self.add_param('has_indirect_detection', False)
-        self.add_param('has_sun_capture', False)
-        self.add_param('has_earth_capture', False)
+        self.add_param('has_capture', False)
         self.add_param('dm_candidate', [0])
         self.add_param('coannihilator', [0])
         self.add_param('model', '')
@@ -268,8 +267,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         if proc_id in [self.DD]:
             self.proc_characteristic['has_direct_detection'] = True
             self.proc_characteristic['has_directional_detection'] = True
-            self.proc_characteristic['has_sun_capture'] = True
-            self.proc_characteristic['has_earth_capture'] = True
+            self.proc_characteristic['has_capture'] = True
 
         # Set lowercase/uppercase Fortran code
         writers.FortranWriter.downcase = False

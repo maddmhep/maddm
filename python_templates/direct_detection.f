@@ -23,9 +23,9 @@ c-------------------------------------------------------------------------------
       %(quark_masses)s
 
       if (proton .eq. 1) then
-         MN=0.9383d0
+         MN=m_neutron
       else
-         MN=0.9396d0
+         MN=m_proton
       endif
         
       mr=(MN*mdm(1))/(MN+mdm(1))

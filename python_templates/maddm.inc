@@ -157,8 +157,6 @@ c  Directional detection switch
       Integer Material
       common/target/Material
 
-!c Declare unit conversions and definitions
-!      double precision pi
 
 !c Declare WIMP constants
       double precision rhoDM, vescape, vMP
@@ -171,16 +169,57 @@ c  Directional detection switch
 
 !  Declare simulation variables
       Integer Energy_bins, cos_theta_bins, day_bins
-      double precision En_min,En_max,cos_min,cos_max,day_min,day_max
+      double precision En_min,En_max,cos_min,cos_max,day_min,day_max, m_proton, m_neutron, m_nucleon
+      double precision Naa, G_fermi, g1,sec, GeV, cm, cs, fm, km, kmtocm, barn, picobarn, GeVtokev, pbtocm2,
+     & GeVtoMeV, invcmtoGeV, cmtoinvGeV,Mevtokev,daytosec, hrtosec,tontokg,hukgtokg, gevtopb, pbtocm3
       common/simu/Energy_bins,cos_theta_bins,day_bins,En_min,En_max,cos_min,cos_max,day_min,day_max
 
+
+!  Constants
+      parameter(m_proton = 0.938d0)
+      parameter(m_neutron = 0.940d0)
+      parameter(m_nucleon = 0.939d0)
+      parameter(Naa       = 6.023d+26) ! Avogadro's number
+      parameter(G_fermi   = 1.166d-5) ! Fermi Constant in (GeV**(-2))
+      parameter(g1        = 0.357088d0) ! value of the U(1) gauge coupling constant
+
+! base units
+      parameter(sec   = 1.d0)
+      parameter(GeV   = 1.d0)
+      parameter(cm    = 1.d0)
+      parameter(cs    = 1.d0)
+
+! Some important constants and conversion factors.
+
+      parameter(fm         = 1.d-13) ! cm
+      parameter(km         = 1.d+5)  ! cm
+      parameter(kmtocm     = 1.d+5)  !cm
+      parameter(barn       = 1.d-24) ! cm^2
+      parameter(picobarn    = 1.d-12*1.d-24) ! cm^2
+      parameter(GeVtokev   = 1.d+6)
+      parameter(GeVtoMeV   = 1.d+3)
+      parameter(invcmtoGeV = 1.98d-14) ! converts cm^-1 to GeV
+      parameter(cmtoinvGeV = 5.076d+13) ! converts cm to GeV^-1
+      parameter(Mevtokev   = 1.d+3)
+      parameter(daytosec   = 24.d0*60.d0*60.d0)
+      parameter(hrtosec    = 60.d0*60.d0)
+      parameter(tontokg    = 1000.d0)
+      parameter(hukgtokg   = 100.d0)
+      parameter(gevtopb    = 3.89d+8)
+      parameter(pbtocm3    = 2.99d-26)
+      parameter(pbtocm2    = 1.00d-36)
+
 c------------------------Capture rate---------------------------------
-      logical do_sun_capture, do_earth_capture
-      double precision sun_cap_rate, earth_cap_rate
+      logical do_capture
+
       integer nelements, n_celestial_bodies
       parameter (nelements = 118)
-      parameter (n_celestial_bodies = 3)
-      common/capture/do_sun_capture, do_earth_capture, sun_cap_rate, earth_cap_rate
+      parameter (n_celestial_bodies = 1)
+      double precision capture_rate(n_celestial_bodies), c0(n_celestial_bodies), vbar(n_celestial_bodies)
+     &  , vesc0(n_celestial_bodies), rho0(n_celestial_bodies), M0(n_celestial_bodies)
+      double precision Ccap, Akin, Skin, Fform
+
+      character(30) object_name(n_celestial_bodies)
 
       double precision, dimension(n_celestial_bodies, nelements) ::  Ai
       double precision, dimension(n_celestial_bodies, nelements) :: Zi
@@ -189,7 +228,8 @@ c------------------------Capture rate---------------------------------
       double precision, dimension(n_celestial_bodies, nelements) :: Finf
       double precision, dimension(n_celestial_bodies, nelements) :: mci
       double precision, dimension(n_celestial_bodies, nelements) :: ali
-      common/capture_params/ Ai, Zi, fi, phii, Finf, mci, ali
+      common/capture_params/ Ai, Zi, fi, phii, Finf, mci, ali,do_capture,
+     & capture_rate, c0, M0, rho0, vbar, object_name
 
 c------------------------ Resonance information --------------------------
 ! s-channel Resonance locations
@@ -200,3 +240,4 @@ c------------------------ Resonance information --------------------------
       double precision beta_res(nres)
       double precision beta_res_width(nres)
       common/resonancevars/resonances, resonance_widths, beta_res, beta_res_width, nres_points, ngrid_init
+

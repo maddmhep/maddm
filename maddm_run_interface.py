@@ -385,30 +385,35 @@ class MADDMRunCmd(cmd.CmdShell):
                        'sigmaN_SI_proton', 'sigmaN_SI_neutron', 'sigmaN_SD_proton',
                         'sigmaN_SD_neutron','Nevents', 'smearing']
 
-        if self.mode['sun_capture']:
-            output_name.append('solar_capture_rate')
-
-        if self.mode['sun_capture']:
-            output_name.append('earth_capture_rate')
-
         if self.mode['indirect']:
             output_name.append('taacsID')
 
         sigv_indirect = 0.
         for line in open(pjoin(self.dir_path, output)):
                 splitline = line.split()
-                result.append(float(splitline[1]))
-                if self._two2twoLO:
-                    sigv_indirect_error = 0.
-                    if 'sigma*v' in line:
-                        sigv_temp = float(splitline[1])
-                        oname =splitline[0].split(':',1)[1]
-                        oname2 = oname.split('_')
-                        oname = oname2[0]+'_'+oname2[1] #To eliminate the annoying suffix coming from the '/' notation
-                        output_name.append('taacsID#%s' % oname)
-                        sigv_indirect += sigv_temp
-                        output_name.append('err_taacsID#%s' % oname)
-                        result.append(sigv_temp)
+                #logger.info(splitline)
+
+                #If capture rate is calculated.
+                if 'ccap' in line:
+                    oname = splitline[0].strip(':')+'_'+splitline[1]
+                    output_name.append(oname)
+                    val = splitline[2]
+                    result.append(float(val))
+
+                else:
+                    result.append(float(splitline[1]))
+                    if self._two2twoLO:
+                        sigv_indirect_error = 0.
+                        if 'sigma*v' in line:
+                            sigv_temp = float(splitline[1])
+                            oname =splitline[0].split(':',1)[1]
+                            oname2 = oname.split('_')
+                            oname = oname2[0]+'_'+oname2[1] #To eliminate the annoying suffix coming from the '/' notation
+                            output_name.append('taacsID#%s' % oname)
+                            sigv_indirect += sigv_temp
+                            output_name.append('err_taacsID#%s' % oname)
+                            result.append(sigv_temp)
+
 
 
 
@@ -428,7 +433,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
 
         self.last_results = result
-        logger.debug(self.last_results)
+        #logger.debug(self.last_results)
 
         if self.mode['indirect'] and not self._two2twoLO:
             with misc.MuteLogger(names=['madevent','madgraph'],levels=[50,50]):
@@ -463,12 +468,15 @@ class MADDMRunCmd(cmd.CmdShell):
                         'sigmaN_SD_neutron']
             if self.mode['directional']:
                 order += ['Nevents', 'smearing']
-            if self.mode['sun_capture']:
-                order += ['solar_capture_rate']
-            if self.mode['earth_capture']:
-                order += ['earth_capture_rate']
+            if self.mode['capture']:
+                detailled_keys = [k[5:] for k in self.last_result
+                                  if k.startswith('ccap_') and '#' not in k]
+                for key in detailled_keys:
+                    order += [key]
+
 
             if self.mode['indirect']:
+
 
                 if not self._two2twoLO:
                     order +=['halo_velocity']#,'indirect', 'indirect_error']
@@ -793,10 +801,12 @@ class MADDMRunCmd(cmd.CmdShell):
         if self.mode['directional']:
             logger.info(' Nevents          : %i', self.last_results['Nevents'])
             logger.info(' smearing         : %.2e', self.last_results['smearing'])
-        if self.mode['sun_capture']:
-            logger.info(' Solar capt. rate    : %.2e 1/s', self.last_results['solar_capture_rate'])
-        if self.mode['earth_capture']:
-            logger.info(' Earth capt. rate    : %.2e 1/s', self.last_results['earth_capture_rate'])
+        if self.mode['capture']:
+            logger.info('\n capture coefficients: ')
+            #logger.info(self.last_results.keys())
+            detailled_keys = [k for k in self.last_results.keys() if k.startswith('ccap')]
+            for key in detailled_keys:
+                logger.info(' %s            : %.2e 1/s' % (key, self.last_results[key]))
         if self.mode['indirect']:
 
 
@@ -805,7 +815,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
             detailled_keys = [k.split("#")[1] for k in self.last_results.keys() if k.startswith('taacsID#')]
 
-            logger.debug(detailled_keys)
+            #logger.debug(detailled_keys)
 
             #THE FOLLOWING CROSS SECTIONS ARE ALREADY IN CM^3/s!!!!!!!
             tot_taacs = 0.0
@@ -888,14 +898,13 @@ class MADDMRunCmd(cmd.CmdShell):
         
         if not force:
             process_data = self.proc_characteristics
-            self.mode = self.ask('', '0', mode=mode, data=self.proc_characteristics, 
+            self.mode = self.ask('', '0', mode=mode, data=self.proc_characteristics,
                             ask_class=MadDMSelector, timeout=60, path_msg=' ')
             if self.mode in ['', '0']:
                 self.mode = {'relic': 'ON' if process_data['has_relic_density'] else 'Not available',
                             'direct': 'ON' if process_data['has_direct_detection'] else 'Not available',
                             'directional': 'ON' if process_data['has_directional_detection'] else 'Not available',
-                            'sun_capture': 'ON' if process_data['has_sun_capture'] else 'Not available',
-                            'earth_capture': 'ON' if process_data['has_earth_capture'] else 'Not available',
+                            'capture': 'ON' if process_data['has_capture'] else 'Not available',
                             'indirect': 'ON' if process_data['has_indirect_detection'] else 'Not available',
                             'CR_flux': 'ON' if process_data['has_indirect_detection'] else 'Not available',
                             'run_multinest': 'OFF' if aux.module_exists('pymultinest') else 'Not available'}
@@ -905,7 +914,7 @@ class MADDMRunCmd(cmd.CmdShell):
             for key, value in self.mode.items():
                 if value == 'ON' or value is True:
                     self.mode[key] = True
-    
+
                 else:
                     self.mode[key] = False
 
@@ -915,8 +924,7 @@ class MADDMRunCmd(cmd.CmdShell):
             self.maddm_card.set('do_relic_density', self.mode['relic'], user=False)
             self.maddm_card.set('do_direct_detection', self.mode['direct'], user=False)
             self.maddm_card.set('do_directional_detection', self.mode['directional'], user=False)
-            self.maddm_card.set('do_sun_capture', self.mode['sun_capture'], user=False)
-            self.maddm_card.set('do_earth_capture', self.mode['earth_capture'], user=False)
+            self.maddm_card.set('do_capture', self.mode['capture'], user=False)
             self.maddm_card.set('do_indirect_detection', self.mode['indirect'], user=False)
             self.maddm_card.set('only2to2lo', self._two2twoLO, user=False)
             self.maddm_card.set('run_multinest', self.mode['run_multinest'], user=False)
@@ -929,8 +937,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 self.mode = {'relic': 'ON' if process_data['has_relic_density'] else 'Not available',
                             'direct': 'ON' if process_data['has_direct_detection'] else 'Not available',
                             'directional': 'ON' if process_data['has_directional_detection'] else 'Not available',
-                            'sun_capture': 'ON' if process_data['has_sun_capture'] else 'Not available',
-                            'earth_capture': 'ON' if process_data['has_earth_capture'] else 'Not available',
+                            'capture': 'ON' if process_data['has_capture'] else 'Not available',
                             'indirect': 'ON' if process_data['has_indirect_detection'] else 'Not available',
                              'CR_flux': 'ON' if process_data['has_indirect_detection'] else 'Not available',
                              'run_multinest': 'OFF' if aux.module_exists('pymultinest') else 'Not available'}
@@ -939,8 +946,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 self.maddm_card.set('do_relic_density', self.mode['relic'], user=False)
                 self.maddm_card.set('do_direct_detection', self.mode['direct'], user=False)
                 self.maddm_card.set('do_directional_detection', self.mode['directional'], user=False)
-                self.maddm_card.set('do_sun_capture', self.mode['sun_capture'], user=False)
-                self.maddm_card.set('do_earth_capture', self.mode['earth_capture'], user=False)
+                self.maddm_card.set('do_capture', self.mode['capture'], user=False)
                 self.maddm_card.set('do_indirect_detection', self.mode['indirect'], user=False)
                 self.maddm_card.set('only2to2lo', self._two2twoLO, user=False)
                 self.maddm_card.set('run_multinest', self.mode['run_multinest'], user=False)
@@ -1036,7 +1042,7 @@ class MadDMSelector(common_run.EditParamCard):
         return self.run_options
 
     digitoptions = {1: 'relic', 2:'direct', 3:'directional', 4:'indirect', 5:'CR_flux',\
-                    6:'sun_capture', 7:'earth_capture', 8:'run_multinest'}
+                    6:'capture', 7:'run_multinest'}
 
     def __init__(self, *args, **opts):
 
@@ -1047,10 +1053,8 @@ class MadDMSelector(common_run.EditParamCard):
         self.run_options = {'relic': 'ON' if process_data['has_relic_density'] else 'Not available',
                             'direct': 'ON' if process_data['has_direct_detection'] else 'Not available',
                             'directional': 'ON' if process_data['has_directional_detection'] else 'Not available',
-                            'sun_capture': 'ON' if process_data['has_sun_capture'] and \
-                                                   process_data['has_indirect_detection'] else 'Not available',
-                            'earth_capture': 'ON' if process_data['has_earth_capture'] and \
-                                                   process_data['has_indirect_detection'] else 'Not available',
+                            'capture': 'ON' if process_data['has_capture'] and \
+                                                   process_data['has_direct_detection'] else 'Not available',
                             'indirect': 'ON' if process_data['has_indirect_detection'] else 'Not available',
                             'CR_flux':'ON' if process_data['has_indirect_detection'] else 'Not available',
                             'run_multinest':'OFF' if aux.module_exists('pymultinest') else 'Not available'}
@@ -1114,21 +1118,20 @@ class MadDMSelector(common_run.EditParamCard):
         
         question = """\n%(start_green)sHere is the current status of requested run %(stop)s: 
  * Enter the name/number to (de-)activate the corresponding feature
-    1. Compute the Relic Density     %(start_underline)srelic%(stop)s       = %(relic)s
-    2. Compute Direct Detection      %(start_underline)sdirect%(stop)s      = %(direct)s
-    3. Compute Directional Detection %(start_underline)sdirectional%(stop)s = %(directional)s
-    4. Compute Indirect Detection    %(start_underline)sindirect%(stop)s    = %(indirect)s
-    5. Compute Cosmic Ray Flux       %(start_underline)sCR_flux%(stop)s    = %(CR_flux)s
-    6. Compute Solar Capture rate    %(start_underline)ssun_capture%(stop)s    = %(sun_capture)s
-    7. Compute Earth Capture rate    %(start_underline)searth_capture%(stop)s    = %(earth_capture)s
-    8. Run Multinest                 %(start_underline)srun_multinest%(stop)s    = %(run_multinest)s
+    1. Compute the Relic Density      %(start_underline)srelic%(stop)s       = %(relic)s
+    2. Compute Direct Detection       %(start_underline)sdirect%(stop)s      = %(direct)s
+    3. Compute Directional Detection  %(start_underline)sdirectional%(stop)s = %(directional)s
+    4. Compute Indirect Detection     %(start_underline)sindirect%(stop)s    = %(indirect)s
+    5. Compute Cosmic Ray Flux        %(start_underline)sCR_flux%(stop)s    = %(CR_flux)s
+    6. Compute Capture Rate Coeffs.   %(start_underline)scapture%(stop)s    = %(capture)s
+    7. Run Multinest                  %(start_underline)srun_multinest%(stop)s    = %(run_multinest)s
 %(start_green)s You can also edit the various input card%(stop)s:
  * Enter the name/number to open the editor
  * Enter a path to a file to replace the card
  * Enter %(start_bold)sset NAME value%(stop)s to change any parameter to the requested value 
-    9. Edit the model parameters    [%(start_underline)sparam%(stop)s]
-    10. Edit the MadDM options      [%(start_underline)smaddm%(stop)s]
-    11. Edit the Multinest options  [%(start_underline)smultinest%(stop)s]\n""" % \
+    8. Edit the model parameters    [%(start_underline)sparam%(stop)s]
+    9. Edit the MadDM options      [%(start_underline)smaddm%(stop)s]
+    10. Edit the Multinest options  [%(start_underline)smultinest%(stop)s]\n""" % \
     {'start_green' : '\033[92m',
      'stop':  '\033[0m',
      'start_underline': '\033[4m',
@@ -1138,8 +1141,7 @@ class MadDMSelector(common_run.EditParamCard):
      'directional':get_status_str(self.run_options['directional']),
      'indirect':get_status_str(self.run_options['indirect']),
      'CR_flux':get_status_str(self.run_options['CR_flux']),
-     'sun_capture':get_status_str(self.run_options['sun_capture']),
-     'earth_capture':get_status_str(self.run_options['earth_capture']),
+     'capture':get_status_str(self.run_options['capture']),
      'run_multinest':get_status_str(self.run_options['run_multinest']),
      }
         return question
@@ -1247,9 +1249,8 @@ class MadDMSelector(common_run.EditParamCard):
         elif last_modified == 'direct':
             if self.run_options['direct'] == 'OFF':
                 self.run_options['directional'] = 'OFF'
-                self.run_options['sun_capture'] = 'OFF'
-                self.run_options['earth_capture'] = 'OFF'
-        elif last_modified =='sun_capture' or last_modified=='earth_capture':
+                self.run_options['capture'] = 'OFF'
+        elif last_modified =='capture':
             if self.run_options['direct'] == 'OFF':
                 self.run_options['direct'] = 'ON'
         elif last_modified =='CR_flux':
@@ -1507,8 +1508,8 @@ class MadDMCard(banner_mod.RunCard):
         self.add_param('do_relic_density', True, system=True)
         self.add_param('do_direct_detection', False, system=True)
         self.add_param('do_directional_detection', False, system=True)
-        self.add_param('do_sun_capture', False, system=True)
-        self.add_param('do_earth_capture', False, system=True)
+        self.add_param('do_capture', False, system=True)
+
         self.add_param('do_indirect_detection', False, system=True)
         self.add_param('only2to2lo', False, system=True)
         self.add_param('run_multinest', False, system=True, include=False)
@@ -1669,7 +1670,7 @@ class Priors:
 
 class Likelihoods:
     likelihoods = ['gaussian', 'half_gauss', 'user']
-    observables = ['relic', 'directSI','directSD_p', 'directSD_n', 'indirect']
+    observables = ['relic', 'directSI','directSD_p', 'directSD_n', 'indirect', 'capture']
 
 
 class Multinest():
@@ -1682,7 +1683,8 @@ class Multinest():
             'livepts':50000,
             'sampling_efficiency':'model',
             'parameters':[],
-            'prefix':'mnest_'
+            'prefix':'mnest_',
+            'half_gauss_width':{'spinSI':0.01, 'spinSD_p':0.01, 'spinSD_n':0.01} #log of the width
         }
 
         self.maddm_run = run_interface
@@ -1734,6 +1736,11 @@ class Multinest():
                 for key in detailled_keys:
                     self.output_observables.append(key)
 
+            if self.maddm_run.mode['capture']:
+                detailled_keys = [k for k in self.maddm_run.last_results.keys() if k.startswith('ccap_')]
+                for key in detailled_keys:
+                    self.output_observables.append(key)
+
                 #FIX THIS! HERE ADD FLUXES
 
         # number of parameters to output
@@ -1762,7 +1769,7 @@ class Multinest():
 
         logger.info('Output written in %s' % pjoin(self.maddm_run.dir_path,'multinest_chains'))
         logger.info('Output  of .txt file formatted as:')
-        logger.info('column[0] : Sample Probability (Weight)') #FIX THIS: What are the first two numbers?
+        logger.info('column[0] : Sample Probability (Weight)')
         logger.info('column[1] : -2 log(Likelihood)')
         for i, var in enumerate(self.options['parameters']):
             logger.info('column[%i] : %s' % (i+2, var[0]))
@@ -1796,6 +1803,14 @@ class Multinest():
             for line in lines:
                 if line.startswith('#'):
                     continue
+                elif 'half_gauss' in line:
+                    spline = line.split('#')[0].split()
+                    type = spline[1]
+                    half_gauss = spline[2]
+                    self.options['loglikelihood'][type] = half_gauss
+                    if len(spline)==4:
+                        width_val = float(spline[3])
+                        self.options['half_gauss_width'][type] = width_val
                 else:
                     spline = line.split('#')[0].split()
                     if len(spline) ==0:
@@ -1811,7 +1826,6 @@ class Multinest():
                         for j in range(1, len(spline)):
                             if spline[j] not in self.output_observables:
                                 self.output_observables.append(spline[j])
-
                     elif len(spline)==3:
                         opt2 = spline[1]
                         if aux.isfloat(spline[2]):
@@ -1937,7 +1951,7 @@ class Multinest():
                         #                           /self.maddm_run.limits._oh2_planck)+1.000001))
                         if omegah2 > self.maddm_run.limits._oh2_planck:
                             chi+= -0.5*pow(np.log10(self.maddm_run.limits._oh2_planck/omegah2),2)\
-                                  /pow(self.maddm_run.limits._oh2_planck_width,2)
+                                  /pow(np.log10(self.maddm_run.limits._oh2_planck_width),2)
                 elif likelihood =='user':
                     chi+=0
                     #
@@ -1963,7 +1977,7 @@ class Multinest():
                         #                   + 1.000001))
                     if spinSI > self.maddm_run.limits.SI_max(mdm):
                         chi+= -0.5*pow(np.log10(self.maddm_run.limits.SI_max(mdm)/spinSI),2)\
-                                  /pow(0.01,2)
+                                  /pow(self.options['half_gauss_width']['spinSI'],2)
 
                 elif likelihood == 'gaussian':
                     if self.maddm_run.limits._sigma_SI > 0:
@@ -1988,11 +2002,11 @@ class Multinest():
                     if nucleon =='p':
                         if spinSDp > self.maddm_run.limits.SD_max(mdm, 'p'):
                             chi+= -0.5*pow(np.log10(self.maddm_run.limits.SD_max(mdm, 'p')/spinSDp),2)\
-                                  /pow(0.01,2)
+                                  /pow(self.options['half_gauss_width']['spinSDp'],2)
                     elif nucleon == 'n':
                        if spinSDp > self.maddm_run.limits.SD_max(mdm,'n'):
                             chi+= -0.5*pow(np.log10(self.maddm_run.limits.SD_max(mdm, 'n')/spinSDn),2)\
-                                  /pow(0.01,2)
+                                  /pow(self.options['half_gauss_width']['spinSDn'],2)
                 elif likelihood == 'gaussian':
                     if nucleon == 'p' and self.maddm_run.limits._sigma_SDp > 0:
                         chi+=  -0.5*pow(spinSDp - self.maddm_run.limits._sigma_SDp,2)/pow(self.maddm_run.limits._sigma_SDp_width,2)
