@@ -49,7 +49,7 @@ MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
 
 #Is there a better definition of infinity?
 __infty__ = float('inf')
-__mnestlog0__ = -1E90
+__mnestlog0__ = -1.0E90
 class ExpConstraints:
 
     def __init__(self):
