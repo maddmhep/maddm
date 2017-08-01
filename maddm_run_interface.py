@@ -49,6 +49,7 @@ MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
 
 #Is there a better definition of infinity?
 __infty__ = float('inf')
+__mnestlog0__ = -1E90
 class ExpConstraints:
 
     def __init__(self):
@@ -1943,57 +1944,56 @@ class Multinest():
 
             #relic density
             if obs == 'relic' and self.maddm_run.mode['relic']:
-                if likelihood == 'gaussian':
-                    chi += -0.5*pow(omegah2 - self.maddm_run.limits._oh2_planck,2)/pow(self.maddm_run.limits._oh2_planck_width,2)
-                elif likelihood == 'half_gauss':
-                    if omegah2 > 0:
-                        #chi += np.log(0.5*(np.tanh((self.maddm_run.limits._oh2_planck - omegah2)\
-                        #                           /self.maddm_run.limits._oh2_planck)+1.000001))
-                        if omegah2 > self.maddm_run.limits._oh2_planck:
-                            chi+= -0.5*pow(np.log10(self.maddm_run.limits._oh2_planck/omegah2),2)\
-                                  /pow(np.log10(self.maddm_run.limits._oh2_planck_width),2)
-                elif likelihood =='user':
-                    chi+=0
-                    #
-                    # HERE ADD YOUR OWN LOG LIKELIHOOD FOR RELIC DENSITY
-                    #
-                elif likelihood == '':
-                    chi+=0
+
+                #if relic density evaluates to -1 (too early freezeout for example)
+                #then discard this point by assigning some high log likelihood.
+                if omegah2 < 0:
+                    chi+= __mnestlog0__
                 else:
-                    logger.error('You are not using a valid likelihood function for relic density. Omitting the contribution!')
+
+                    if likelihood == 'gaussian':
+                        chi += -0.5*pow(omegah2 - self.maddm_run.limits._oh2_planck,2)/pow(self.maddm_run.limits._oh2_planck_width,2)
+                    elif likelihood == 'half_gauss':
+                        if omegah2 > 0:
+                            #chi += np.log(0.5*(np.tanh((self.maddm_run.limits._oh2_planck - omegah2)\
+                            #                           /self.maddm_run.limits._oh2_planck)+1.000001))
+                            if omegah2 > self.maddm_run.limits._oh2_planck:
+                                chi+= -0.5*pow(np.log10(self.maddm_run.limits._oh2_planck/omegah2),2)\
+                                      /pow(np.log10(self.maddm_run.limits._oh2_planck_width),2)
+                    elif likelihood =='user':
+                        chi+=0
+                        #
+                        # HERE ADD YOUR OWN LOG LIKELIHOOD FOR RELIC DENSITY
+                        #
+                    elif likelihood == '':
+                        chi+=0
+                    else:
+                        logger.error('You are not using a valid likelihood function for relic density. Omitting the contribution!')
 
             #direct detection (SI)
             if obs == 'directSI' and self.maddm_run.mode['direct']:
 
-                if likelihood=='half_gauss':
-                    #chi0 = np.log(1.0-0.5*(np.tanh((self.maddm_run.limits.SI_max(mdm)- spinSI)\
-                    #                           /self.maddm_run.limits.SI_max(mdm)) + 1.000001))
-                    #fuckyou = (self.maddm_run.limits.SI_max(mdm)- spinSI)/self.maddm_run.limits.SI_max(mdm)
-                    #logger.info('mdm, limit, sigma(SI), chi, tanh: %.3e %.3e %.3e %.3e %.3e' % \
-                    #  (mdm,self.maddm_run.limits.SI_max(mdm), spinSI, chi0, np.tanh(fuckyou)))
-                    #if self.maddm_run.limits.SI_max(mdm) != __infty__:
-                        #chi += np.log(0.5*(np.tanh(100*(self.maddm_run.limits.SI_max(mdm) - spinSI)\
-                        #                    /self.maddm_run.limits.SI_max(mdm))\
-                        #                   + 1.000001))
-                    if spinSI > self.maddm_run.limits.SI_max(mdm):
-                        chi+= -0.5*pow(np.log10(self.maddm_run.limits.SI_max(mdm)/spinSI),2)\
-                                  /pow(self.options['half_gauss_width']['spinSI'],2)
+                    if likelihood=='half_gauss':
 
-                elif likelihood == 'gaussian':
-                    if self.maddm_run.limits._sigma_SI > 0:
-                        chi+=  -0.5*pow(spinSI - self.maddm_run.limits._sigma_SI,2)/pow(self.maddm_run.limits._sigma_SI_width,2)
+                        if spinSI > self.maddm_run.limits.SI_max(mdm):
+                            chi+= -0.5*pow(np.log10(self.maddm_run.limits.SI_max(mdm)/spinSI),2)\
+                                      /pow(self.options['half_gauss_width']['spinSI'],2)
+
+                    elif likelihood == 'gaussian':
+                        if self.maddm_run.limits._sigma_SI > 0:
+                            chi+=  -0.5*pow(spinSI - self.maddm_run.limits._sigma_SI,2)/pow(self.maddm_run.limits._sigma_SI_width,2)
+                        else:
+                            logger.error('You have to set up the sigma_SI(_width) to a positive value to use gaussian likelihood!')
+                    elif likelihood == 'user':
+                        #
+                        # HERE ADD YOUR OWN LOG LIKELIHOOD FOR SI
+                        #
+                        chi+=0
+
+                    elif likelihood == '':
+                        chi+=0
                     else:
-                        logger.error('You have to set up the sigma_SI(_width) to a positive value to use gaussian likelihood!')
-                elif likelihood == 'user':
-                    #
-                    # HERE ADD YOUR OWN LOG LIKELIHOOD FOR SI
-                    #
-                    chi+=0
-
-                elif likelihood == '':
-                    chi+=0
-                else:
-                    logger.error('You are not using a valid likelihood function for SI direct detection. Omitting the contribution!')
+                        logger.error('You are not using a valid likelihood function for SI direct detection. Omitting the contribution!')
 
             #direct detection (SD) proton and neutron
             if obs.startswith('directSD') and self.maddm_run.mode['direct']:
