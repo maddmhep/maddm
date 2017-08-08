@@ -19,6 +19,7 @@ import aloha.create_aloha as create_aloha
 from madgraph import MG5DIR
 from madgraph.iolibs.files import cp
 from madgraph.loop import loop_exporters
+from madgraph.core.base_objects import Process
 
 
 class MYStringIO(StringIO):
@@ -113,7 +114,8 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
             files.ln(pjoin(self.dir_path, 'Source','MODEL', name),
                  pjoin(self.dir_path, 'include'))
          
-    
+    def write_procdef_mg5(self,*args):
+        return
     
     def pass_information_from_cmd(self, cmd):
         """pass information from the command interface to the exporter.
@@ -188,9 +190,10 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
                     mode = 'tot'
                 elif value ==2:
                     mode = 'eft'       
-            elif value:
-                mode = 'tot'
-            
+            #elif value and mode == 'bsm':
+            #    mode = 'tot'
+
+#        misc.sprint(orders, mode, efttype)            
         return mode, efttype
         
                 
@@ -227,7 +230,6 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         else:
             raise Exception
         
-
         self.write_matrix_element(writers.FortranWriter(filename_matrix),\
                             matrix_element, helicity_model)
 
@@ -954,12 +956,14 @@ class ProcessExporterIndirectD(object):
         super(ProcessExporterIndirectD, self).finalize(matrix_elements, history, mg5options, flaglist)
         
         path = pjoin(self.dir_path, 'Cards', 'param_card.dat')
-        try:
-            os.remove(path)
-        except Exception:
-            pass
-        files.ln('../../Cards/param_card.dat', starting_dir=os.path.dirname(path),
-                 cwd=os.path.dirname(path))   
+        if os.path.exists(pjoin('..','..', 'Cards', 'param_card.dat')):
+            try:
+                os.remove(path)
+            except Exception:
+                pass
+            
+            files.ln('../../Cards/param_card.dat', starting_dir=os.path.dirname(path),
+                     cwd=os.path.dirname(path))   
         
         filename = os.path.join(self.dir_path, 'Cards', 'me5_configuration.txt')
         self.cmd.do_save('options %s' % filename.replace(' ', '\ '), check=False,
@@ -969,6 +973,36 @@ class ProcessExporterIndirectD(object):
                                      'procdef_mg5.dat'),
                                 self.cmd._curr_model['name'],
                                 self.cmd._generate_info)
+        
+    def copy_template(self, model):
+        
+        out = super(ProcessExporterIndirectD,self).copy_template(model)
+        
+        f90_files = ['amos_besselk.f']
+        for f in f90_files:
+            files.cp(pjoin(MDMDIR, 'Templates','Indirect', f),
+                     pjoin(self.dir_path,'Source'))
+        
+        self.modify_dummy()
+        return out
+    #===========================================================================
+    # write_source_makefile
+    #===========================================================================
+    def write_source_makefile(self, writer):
+        """Write the nexternal.inc file for MG4"""
+
+        replace_dict = super(ProcessExporterIndirectD, self).write_source_makefile(None)
+
+        path = pjoin(MG5DIR,'madgraph','iolibs','template_files','madevent_makefile_source')
+
+        replace_dict['additional_dsample'] += ' amos_besselk.o'
+
+        
+        if writer:
+            text = open(path).read() % replace_dict
+            writer.write(text)
+            
+        return replace_dict
         
         
     def pass_information_from_cmd(self, cmd):
@@ -980,17 +1014,17 @@ class ProcessExporterIndirectD(object):
         return super(ProcessExporterIndirectD, self).pass_information_from_cmd(cmd)
              
     #===========================================================================
-    # create the run_card for MW
+    # create the run_card
     #=========================================================================== 
     def create_run_card(self, matrix_elements, history):
         """ """
  
         run_card = banner_mod.RunCard()
     
-        # pass to default for MW
+        # pass to new default
         run_card["run_tag"] = "\'DM\'"
         run_card['dynamical_scale_choice'] = 4
-        run_card['lpp1'] = 0
+        run_card['lpp1'] = 9
         run_card['lpp2'] = 0
         run_card['use_syst'] = False
         run_card.remove_all_cut()
@@ -1001,7 +1035,27 @@ class ProcessExporterIndirectD(object):
         run_card.write(pjoin(self.dir_path, 'Cards', 'run_card.dat'),
                        template=pjoin(MG5DIR, 'Template', 'LO', 'Cards', 'run_card.dat'),
                        python_template=True)
+    
+    
+    #===========================================================================
+    # set the dedicated PDF for the energy
+    #=========================================================================== 
+    def modify_dummy(self):
+
+
+        #remove the get_dummy_x1 routine
+        path = pjoin(self.dir_path,'SubProcesses','dummy_fct.f')
+        text = open(path).read()
+        new_writer = writers.FortranWriter(path)
+        new_writer.remove_routine(text, 'get_dummy_x1', formatting=False)
+        # add at the end the actual routine
+        text =  open(pjoin(MDMDIR, 'Templates','Indirect','dummy_fct.f')).read()
+        new_writer.write(text)
+
         
+        
+
+
         
 class ProcessExporterIndirectDLO(ProcessExporterIndirectD,export_v4.ProcessExporterFortranMEGroup):
     pass

@@ -385,7 +385,10 @@ class MadDM_interface(master_interface.MasterCmd):
                 line = re.sub(r'''(?<=@)(%s\b)''' % '\\b|'.join(self.process_tag), 
                               lambda x: `self.process_tag[x.group(0)]`, line)
             return super(MadDM_interface, self).do_add(line)
-            
+        
+    @misc.mute_logger(['madgraph', 'models'], [30,30])    
+    def add_model(self,*args,**opts):
+        super(MadDM_interface, self).add_model(*args, **opts)
 
     def complete_generate(self, text, line, begidx, endidx, formatting=True):
         """Complete particle information + handle maddm options"""
@@ -467,7 +470,8 @@ class MadDM_interface(master_interface.MasterCmd):
         
         args = self.split_arg(line)
         (options, args) = madgraph_interface._launch_parser.parse_args(args)
-        self.check_launch(args, options)
+        with misc.TMP_variable(self, '_export_formats', ['maddm']):
+            self.check_launch(args, options)
         options = options.__dict__        
         
         
@@ -679,6 +683,7 @@ class MadDM_interface(master_interface.MasterCmd):
             self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'SD+QED')
 
     #-----------------------------------------------------------------------#
+    @misc.mute_logger(['madgraph','aloha','cmdprint'], [30,30,30])
     def DiagramsDD(self, SI_name, SD_name, type, excluded=[]):
         """Generates direct detection diagrams. i_dm is the index of DM part. 
                  Whether spin dependent or spin independent diagrams should be                 
@@ -688,7 +693,7 @@ class MadDM_interface(master_interface.MasterCmd):
                  to zero. If you want the spin independent full lagrangian + eff.
                  then you need to set SI_order=2 and QED_order=2...
                  WARNING: This function is a proxy to be used inside
-                 GenerateDiagramsDirDetect() function and no place else!
+                 GenerateDiagramsDirDetect() function and no where else!
         """                                                             
         
         quarks = range(1,7) # ['d', 'u', 's', 'c', 'b','t']
@@ -714,7 +719,7 @@ class MadDM_interface(master_interface.MasterCmd):
                      'excluded': ('/ %s' % ' '.join(excluded) if excluded else ''),
                      'orders': orders
                      }
-            
+
             try:
                 self.do_add('process %s' % proc)
             except (self.InvalidCmd, diagram_generation.NoDiagramException), error:

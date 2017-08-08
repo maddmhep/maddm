@@ -1452,7 +1452,6 @@ class MadDMCard(banner_mod.RunCard):
             self['distances'] = dict(MadDMCard.initial_distances)
             return
         try:
-            misc.sprint('Reading jfactors')
             infile = open(filename,'r')
             lines = infile.readlines()
             infile.close()
