@@ -964,7 +964,9 @@ class MADDMRunCmd(cmd.CmdShell):
 
     def compile(self):
         """compile the code"""
-        
+
+        logger.info(self.mode)
+
         if self.in_scan_mode:
             return
 
@@ -974,6 +976,8 @@ class MADDMRunCmd(cmd.CmdShell):
             misc.compile(['relic_density'],cwd=self.dir_path)
         elif self.mode['direct'] and not self.mode['relic']:
             misc.compile(['direct_detection'],cwd=self.dir_path)
+        elif self.mode['indirect'] and not self.mode['relic']:
+            misc.compile(['relic_density'],cwd=self.dir_path)
         else:
             raise Exception, "No computation requested. End the computation"
     
