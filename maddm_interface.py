@@ -375,10 +375,6 @@ class MadDM_interface(master_interface.MasterCmd):
                 return self.generate_direct(excluded)
         elif len(args) and args[0] in ["indirect_detection", "indirect"]:
             self.generate_indirect(args[1:])
-        elif len(args) and args[0] in ["earth_capture", "earth"]:
-            self.generate_EarthCapture()
-        elif len(args) and args[0] in ["sun_capture", "sun"]:
-            self.generate_SolarCapture()
 
         else:
             if '@' in line:
@@ -399,7 +395,7 @@ class MadDM_interface(master_interface.MasterCmd):
             out = {"standard options": out}
         
         if len(args) == 1:
-            options = ['relic_density', 'direct_detection', 'indirect_detection', 'sun_capture', 'earth_capture']
+            options = ['relic_density', 'direct_detection', 'indirect_detection', 'capture']
             out['maddm options'] = self.list_completion(text, options , line)
         return self.deal_multiple_categories(out, formatting)
 
@@ -412,7 +408,7 @@ class MadDM_interface(master_interface.MasterCmd):
             out = {"standard options": out}
         
         if len(args) == 1:
-            options = ['relic_density', 'direct_detection', 'indirect_detection', 'sun_capture', 'earth_capture']
+            options = ['relic_density', 'direct_detection', 'indirect_detection', 'capture']
             out['maddm options'] = self.list_completion(text, options , line)
         return self.deal_multiple_categories(out, formatting)
 
@@ -491,11 +487,6 @@ class MadDM_interface(master_interface.MasterCmd):
                 else:
                     self._MDM.exec_cmd('quit')
                 return
-
-
-
-
-
 
 
     def define_multiparticles(self, label, list_of_particles):
@@ -650,7 +641,7 @@ class MadDM_interface(master_interface.MasterCmd):
             logger.warning("More than one DM candidate. Can not run Direct Detection.")
             return 
   
-   
+        #generate a special
         
         #Now figure out the label of the effective vertex to use. The convention is:
         #<SI or SD>EFF<F, S, or V>, i.e. SIEFFV for Spin Independent Effective vertex for Vector Current.

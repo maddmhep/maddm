@@ -50,6 +50,7 @@ MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
 #Is there a better definition of infinity?
 __infty__ = float('inf')
 __mnestlog0__ = -1.0E90
+
 class ExpConstraints:
 
     def __init__(self):
@@ -1447,6 +1448,7 @@ class MadDMCard(banner_mod.RunCard):
         return super(banner_mod.RunCard, cls).__new__(cls, finput)
 
     def fill_jfactors(self, filename=pjoin(MDMDIR,'Jfactors','jfactors.dat')):
+
         if MadDMCard.initial_jfactors:
             self['jfactors'] = dict(MadDMCard.initial_jfactors)
             self['distances'] = dict(MadDMCard.initial_distances)
@@ -1458,7 +1460,7 @@ class MadDMCard(banner_mod.RunCard):
             temp = dict()
             temp2=dict()
             for line in lines:
-                if line.startswith('#'):
+                if line.startswith('#') or line.strip() == '':
                     continue
                 spline = line.split()
                 jfact = spline[0]
@@ -1669,7 +1671,7 @@ class Priors:
     priors = ['uniform', 'loguniform', 'user']
 
 class Likelihoods:
-    likelihoods = ['gaussian', 'half_gauss', 'user']
+    likelihoods = ['gaussian', 'half_gauss', 'user', 'off']
     observables = ['relic', 'directSI','directSD_p', 'directSD_n', 'indirect', 'capture']
 
 
@@ -1783,7 +1785,7 @@ class Multinest():
         if file =='':
             file =  pjoin(self.maddm_run.dir_path,'multinest_chains', self.options['prefix']+'info.log')
             with open(file, 'w+') as f:
-                f.write('# Please refer to the Multinest README file for more info about output')
+                f.write('# Please refer to the Multinest README file for more info about output.\n')
                 f.write('#  options \n')
                 for option in self.options:
                     f.write('%s  :  %s \n' % (option, self.options[option]))
@@ -1949,7 +1951,6 @@ class Multinest():
                 if omegah2 < 0:
                     chi+= __mnestlog0__
                 else:
-
                     if likelihood == 'gaussian':
                         chi += -0.5*pow(omegah2 - self.maddm_run.limits._oh2_planck,2)/pow(self.maddm_run.limits._oh2_planck_width,2)
                     elif likelihood == 'half_gauss':

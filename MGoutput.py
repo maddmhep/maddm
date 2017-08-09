@@ -568,6 +568,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         dd_initial_state = {'bsm':[], 'eft':[],'tot':[]} # store the pdg of the initial state
         
         for me in matrix_element_list.get_matrix_elements():
+
             p = me.get('processes')[0]
             tag = p.get('id')
             p1,p2,p3,p4 = p.get('legs')
@@ -589,8 +590,12 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
                 scattering_sm[ids].append(abs(p2.get('id')))
             elif tag == self.DD:
                 ddtype, si_or_sd = self.get_dd_type(p)
+                logger.debug('type: %s' % ddtype)
                 dd_names[ddtype].append(self.get_process_name(me, print_id=False))
-                dd_initial_state[ddtype].append(p.get_initial_ids()[1])                                             
+                dd_initial_state[ddtype].append(p.get_initial_ids()[1])
+
+            #logger.debug('dd_names:')
+            #logger.debug(dd_names)
                                                              
         
         # writting the information

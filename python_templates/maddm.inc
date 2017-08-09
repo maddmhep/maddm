@@ -213,7 +213,7 @@ c------------------------Capture rate---------------------------------
       logical do_capture
 
       integer nelements, n_celestial_bodies
-      parameter (nelements = 118)
+      parameter (nelements = 294)
       parameter (n_celestial_bodies = 1)
       double precision capture_rate(n_celestial_bodies), c0(n_celestial_bodies), vbar(n_celestial_bodies)
      &  , vesc0(n_celestial_bodies), rho0(n_celestial_bodies), M0(n_celestial_bodies)
