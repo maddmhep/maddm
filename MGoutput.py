@@ -981,33 +981,27 @@ class ProcessExporterIndirectD(object):
         
     def copy_template(self, model):
         
-        out = super(ProcessExporterIndirectD,self).copy_template(model)
-        
-        f90_files = ['amos_besselk.f']
-        for f in f90_files:
-            files.cp(pjoin(MDMDIR, 'Templates','Indirect', f),
-                     pjoin(self.dir_path,'Source'))
-        
+        out = super(ProcessExporterIndirectD,self).copy_template(model)        
         self.modify_dummy()
+
         return out
     #===========================================================================
     # write_source_makefile
     #===========================================================================
-    def write_source_makefile(self, writer):
-        """Write the nexternal.inc file for MG4"""
+    #def write_source_makefile(self, writer):
+    #    """Write the nexternal.inc file for MG4"""
+    #
+    #    replace_dict = super(ProcessExporterIndirectD, self).write_source_makefile(None)
+    #
+    #    path = pjoin(MG5DIR,'madgraph','iolibs','template_files','madevent_makefile_source')
 
-        replace_dict = super(ProcessExporterIndirectD, self).write_source_makefile(None)
-
-        path = pjoin(MG5DIR,'madgraph','iolibs','template_files','madevent_makefile_source')
-
-        replace_dict['additional_dsample'] += ' amos_besselk.o'
 
         
-        if writer:
-            text = open(path).read() % replace_dict
-            writer.write(text)
-            
-        return replace_dict
+    #    if writer:
+    #        text = open(path).read() % replace_dict
+    #        writer.write(text)
+    #        
+    #    return replace_dict
         
         
     def pass_information_from_cmd(self, cmd):
@@ -1054,7 +1048,7 @@ class ProcessExporterIndirectD(object):
         new_writer = writers.FortranWriter(path)
         new_writer.remove_routine(text, 'get_dummy_x1', formatting=False)
         # add at the end the actual routine
-        text =  open(pjoin(MDMDIR, 'Templates','Indirect','dummy_fct.f')).read()
+        text =  open(pjoin(MDMDIR,'Indirect','dummy_fct.f')).read()
         new_writer.write(text)
 
         
