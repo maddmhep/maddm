@@ -965,21 +965,23 @@ class MADDMRunCmd(cmd.CmdShell):
     def compile(self):
         """compile the code"""
 
-        logger.info(self.mode)
+        #logger.info(self.mode)
 
         if self.in_scan_mode:
             return
 
-        if self.mode['relic'] and self.mode['direct']:
-            misc.compile(['all'],cwd=self.dir_path)
-        elif self.mode['relic'] and not self.mode['direct']:
-            misc.compile(['relic_density'],cwd=self.dir_path)
-        elif self.mode['direct'] and not self.mode['relic']:
-            misc.compile(['direct_detection'],cwd=self.dir_path)
-        elif self.mode['indirect'] and not self.mode['relic']:
-            misc.compile(['relic_density'],cwd=self.dir_path)
-        else:
-            raise Exception, "No computation requested. End the computation"
+        misc.compile(['all'],cwd=self.dir_path)
+
+        # if self.mode['relic'] and self.mode['direct']:
+        #     misc.compile(['all'],cwd=self.dir_path)
+        # elif self.mode['relic'] and not self.mode['direct']:
+        #     misc.compile(['relic_density'],cwd=self.dir_path)
+        # elif self.mode['direct'] and not self.mode['relic']:
+        #     misc.compile(['direct_detection'],cwd=self.dir_path)
+        # elif self.mode['indirect'] and not self.mode['relic']:
+        #     misc.compile(['relic_density'],cwd=self.dir_path)
+        # else:
+        #     raise Exception, "No computation requested. End the computation"
     
         if os.path.exists(pjoin(self.dir_path, 'src', 'maddm.x')) or os.path.exists(pjoin(self.dir_path, 'maddm.x')):
             logger.info("compilation done")
