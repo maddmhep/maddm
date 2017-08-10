@@ -38,17 +38,27 @@ c-----------------------------------------------------------------------
             double precision width, additional_pt, vave
             integer channel, kk, jj, grid_pos
 
+c take as the initial grid the one from relic density
+c which has all the resonance locations already in
+            grid_ID = grid
+
             width = vave ! width of the maxwellian = most probable vel.
-            grid_pos = grid_npts_ID
+
+c navigate the grid position to the location of v =1.0
+            grid_pos = 1
+            do while (grid_ID(grid_pos).le.1.d0)
+                grid_pos = grid_pos + 1
+            enddo
+
             grid_ID(grid_pos)=width
-            grid_pos=grid_pos-1
+
             do jj=1, nres_points
                     additional_pt = width +5.d0*width/nres_points*jj
                     if (additional_pt.lt.1.d0) then
                         grid_ID(grid_pos) = additional_pt
-                        grid_pos=grid_pos-1
-                        if (grid_npts_ID.lt.grid_pos.or.grid_pos.lt.1) then
-                            write(*,*) 'Error: grid array not large enough!'
+                        grid_pos=grid_pos+1
+                        if (grid_npts.lt.grid_pos.or.grid_pos.lt.1) then
+                            write(*,*) 'Error 1 (ID grid): grid array not large enough!'
                             call exit(1)
                         endif
                     endif
@@ -56,17 +66,17 @@ c-----------------------------------------------------------------------
                     additional_pt = width - 5.d0*width/nres_points*jj
                     if (additional_pt.gt.0.d0) then
                         grid_ID(grid_pos) = additional_pt
-                        grid_pos=grid_pos-1
-                        if (grid_npts_ID.lt.grid_pos.or.grid_pos.lt.1) then
-                            write(*,*) 'Error: grid array not large enough!'
+                        grid_pos=grid_pos+1
+                        if (grid_npts.lt.grid_pos.or.grid_pos.lt.1) then
+                            write(*,*) 'Error 2 (ID grid): grid array not large enough!'
                             call exit(1)
                         endif
                     endif
                enddo
 
 
-            call Duplicates(grid_ID, grid_npts_ID)
-            call  Bubble_Sort(grid_ID, grid_npts_ID)
+            call Duplicates(grid_ID, grid_npts)
+            call  Bubble_Sort(grid_ID, grid_npts)
 
        end
 
@@ -84,14 +94,14 @@ c---------------------------------------------------------------------
 c           Here set the global variables used by integrand bexfore you integrate it
             vave_glob = vave
             channel_glob=channel
-c------------------------------------>>>>>>>>
-            taacs_ID = simpson(integrand, 0.d0, min(20.d0*vave_glob,1.d0), grid_ID, grid_npts_ID)
+
+            taacs_ID = simpson(integrand, 0.d0, min(20.d0*vave_glob,1.d0), grid_ID, grid_npts)
 
             return
        end function taacs_ID
 
 c---------------------------------------------------------------------
-c   Non relativistic approximation to the velocity dist.
+c   Non relativistic approximation to the velocity dist (relative velocity).
 c-------------------------------------------------------------------
        function dm_vel_dist_ID(v, vave)
 

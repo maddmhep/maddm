@@ -46,6 +46,9 @@ c subroutine to initialize the necessary parameters for the calculation
 c ---- RELIC DENSITY CALCULATION -----
 c      call to relic_density will automatically set x_f and sigmav_xf.
 	  if (do_relic_density) then
+
+c      set up integration grid here so that it's only set up once.
+	        call set_up_grid(0.d0, 1.d0)
             Oh2 = relic_density(relic_canonical)
 	  else
 	  		Oh2 = -1d0
@@ -133,13 +136,18 @@ C      Here write the output.
       endif
 
       if (do_indirect_detection.and.only2to2lo) then
+       if (.not.do_relic_density) then
+           call set_up_grid(0.d0,1.d0)
+       endif
 c      here natural just signals that it's in natural units.
         vID_natural = vave_indirect !/299792.d0
 
 c           Here construct the integration grid in the same way as with relic density
 c           use the grid initialized by the relic density calculation (grid_ID) but add the
 c           peak of the velocity distribution
+
         call set_up_grid_ID(vID_natural)
+
         do k=1, ANN_NUM_PROCESSES
 c   here sigv is in units of 'pb' so convert it to cm^3/s
             sigv =  taacs_ID(k,vID_natural)*pbtocm3 ! the last thing is the size of the integration grid. Leave at 10000.

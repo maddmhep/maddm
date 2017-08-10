@@ -1,8 +1,6 @@
 c function names
 c integrate.f
-      double precision simpson, simpson_adaptive, simpson_taacs, grid_ID(10000)
-      integer grid_npts_ID
-      common/idgrids/grid_ID, grid_npts_ID
+      double precision simpson, simpson_adaptive
 c init.f
       double precision get_Y_eq, get_gstar, get_Wij_ann, Wij_ann_integrand
 c interpolate.f
@@ -233,11 +231,14 @@ c------------------------Capture rate---------------------------------
 
 c------------------------ Resonance information --------------------------
 ! s-channel Resonance locations
-      Integer nres, ngrid_init, nres_points
+      Integer nres, ngrid_init, nres_points, grid_npts
       parameter (nres = %(n_resonances)d)
+      parameter (grid_npts = 2000)
+      double precision grid(grid_npts), grid_ID(grid_npts)
       double precision resonances(nres)
       double precision resonance_widths(nres)
       double precision beta_res(nres)
       double precision beta_res_width(nres)
       common/resonancevars/resonances, resonance_widths, beta_res, beta_res_width, nres_points, ngrid_init
+      common/grids/ grid_ID, grid
 

@@ -70,35 +70,38 @@ c         jacobian = 2*beta1/(beta0*(1.d0+( (beta1**2 - beta0**2)**2/ (beta0**2*
 c         return
 c      end
 
-
 c-------------------------------------------------------------------------c
-c 1-D function integration using the Simpson's method
+c set up integration grid for relic density. First initialize the whole fix
+c length array (about 2000 element, see maddm.inc for more details) to 10.
+c then go through from the first one and set up the part from a to b.
+c in all cases b is maximally 1. Then add resonance positions after 1.
+c Then sort the array. The simpson routine will know to use only the part
+c from 0 to 1 omitting all the remaining 10s.
 c-------------------------------------------------------------------------c
-      function simpson_taacs(func, a,b, tolerance, grid_npts)
+      subroutine set_up_grid(a, b)
+c-------------------------------------------------------------------------c
 
-         implicit none
-         include 'maddm.inc'
-         include 'coupl.inc'
+      implicit none
+      include 'maddm.inc'
+      include 'coupl.inc'
 
-         double precision tolerance, a,b, func, additional_pt, exponent
-         double precision left, right, whole, end_pt, start_pt, width
-         external func
-         integer ii, jj,kk, grid_pos, grid_npts
-         double precision grid(grid_npts)
+      double precision  a,b, func, additional_pt, exponent
+      double precision left, right, whole, end_pt, start_pt, width
 
-         include 'resonances.inc'
+      integer ii, jj, kk, grid_pos
+
 c    Set up the integration grid
 c    Initialize to 10*b, so that we can identify the relevant points
 c    by going only to b in the integration grid and neglecting the rest.
-         grid_pos = 1
-         grid=10.d0*b
+          grid_pos = 1
+          grid=10.d0*b
 
 c         write(*,*) 'width: ', beta_res_width(1)
 
 c    Make sure that the array is large enough to store the grid
          if (grid_npts.lt.ngrid_init) then
-            write(*,*) 'Error: grid array not large enough!'
-            call exit(1)
+             write(*,*) 'Error: grid array not large enough!'
+             call exit(1)
          endif
 
          do ii=1, ngrid_init+1
@@ -144,37 +147,7 @@ c                enddo
            endif
        enddo
 
-c PUT THE GRID INTO A GLOBAL VARIABLE SO IT CAN BE USED FOR ID
-        grid_ID = grid
-        grid_npts_ID = grid_npts
 
-c then add the peak of the velocity distribution (for indirect detection's sake)
-c       width = dsqrt(2.d0)/dsqrt(x_pass) ! width of the maxwellian = most probable vel.
-c       grid(grid_pos)=width
-c       grid_pos=grid_pos+1
-c       do jj=0, nres_points
-c                pts_to_add_adaptive = ceiling(real(pts_to_add_adaptive / 2))
-c                do kk = 1, pts_to_add_adaptive
-c                    additional_pt = width +3.d0*width/nres_points*jj
-c                    if (additional_pt.lt.b) then
-c                        grid(grid_pos) = additional_pt
-c                        grid_pos=grid_pos+1
-c                        if (grid_npts.lt.grid_pos) then
-c                            write(*,*) 'Error: grid array not large enough!'
-c                            call exit(1)
-c                        endif
-c                    endif
-
-c                    additional_pt = beta_res(ii) - 3.d0*width/nres_points*jj
-c                    if (additional_pt.gt.a) then
-c                        grid(grid_pos) = additional_pt
-c                        grid_pos=grid_pos+1
-c                        if (grid_npts.lt.grid_pos) then
-c                            write(*,*) 'Error: grid array not large enough!'
-c                            call exit(1)
-c                        endif
-c                    endif
-c                enddo
 
 c remove duplicates
 c sort the grid
@@ -186,25 +159,33 @@ c       do ii=1, grid_pos
 c           write(*,*) grid(ii)
 c       enddo
 
-c transform the grid
-c      ii=1
-c      do while (grid(ii).le.1.d0)
-c           val = eps_trans(grid(ii), beta_res(1), beta_res_width(1))
-c           if (val.ge.0.d0) then
-c               grid_transform(ii) = eps_trans(grid(ii), beta_res(1), beta_res_width(1))
-c           endif
-c           ii=ii+1
-c      enddo
+       end subroutine set_up_grid
+c------------------------------------------------------------
 
-       simpson_taacs = simpson(func,0.d0, 1.d0, grid, grid_npts)
-       return
+c-------------------------------------------------------------------------c
+c 1-D function integration using the Simpson's method - OLD!!!
+c-------------------------------------------------------------------------c
+c      function simpson_taacs(func, a,b, grid, grid_npts)
 
-       end function simpson_taacs
+c         implicit none
+c         include 'maddm.inc'
+c         include 'coupl.inc'
+
+c         external func
+
+
+c         include 'resonances.inc'
+
+
+c       simpson_taacs = simpson(func,0.d0, 1.d0, grid, grid_npts)
+c       return
+
+c       end function simpson_taacs
 
 c-------------------------------------------------------------------------c
 c 1-D function integration - SIMPSON'S RULE, integrates from 0 to 1
 c-------------------------------------------------------------------------c
-      function simpson(func,  a, b, grid, grid_npts)
+      function simpson(func,  a, b, grid_simp, gr_npts)
 
       implicit none
       include 'maddm.inc'
@@ -213,19 +194,24 @@ c-------------------------------------------------------------------------c
       double precision func, exponent
       double precision  whole, end_pt, start_pt,a, b
       external func
-      integer grid_npts, ii
-      double precision grid(grid_npts)
+      integer gr_npts, ii
+      double precision grid_simp(gr_npts)
 
       simpson = 0.d0
       ii = 1
 
-      do while (grid(ii+1).le.b)
-           start_pt = grid(ii)
+      if (a.lt.grid_simp(1).or.b.gt.grid_simp(gr_npts-1) ) then
+           write(*,*) 'Error: Simpson integration bounds outside the grid.'
+           return
+      endif
+
+      do while (grid_simp(ii+1).le.b)
+           start_pt = grid_simp(ii)
            if (start_pt.lt.a) then
                ii= ii+1
                continue
            endif
-           end_pt =  grid(ii+1)
+           end_pt =  grid_simp(ii+1)
 c            write(101,*) start_pt, func(start_pt)
 c           write(*,*) 'start, end', start_pt, end_pt
 c           write(*,*) 'func: ', func(0.d0), func(0.00001d0)

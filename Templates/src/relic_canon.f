@@ -174,7 +174,7 @@ c-------------------------------------------------------------------------c
       include 'maddm.inc'
       include 'coupl.inc'
 c input parameters
-      double precision x, integral, result, testvar, cosine
+      double precision x,  cosine
 
 c external function to be integrated over
       external taacs_integrand_canon, cosine
@@ -188,12 +188,12 @@ c passing x so that taacs_integrand can use it
 c This is used if we are doing a 1-d integration of taacs
 c      call romberg(taacs_integrand_canon, 0.d0, 1.d0, taacs_canon, eps_taacs, iter_taacs)
 
-c call simpson's rule
-        testvar =simpson_taacs(taacs_integrand_canon, 0.d0, 1.d0, eps_taacs, 10000)
+c call simpson's rule (assumes grid is set up)
+        taacs_canon =simpson(taacs_integrand_canon, 0.d0, 1.d0, grid, grid_npts)
 c       write(*,*) 'test: ', testvar
 
 C c Return a constant value for taacs (for testing purposes ONLY)
-C       taacs = 1.0d-10
+C       taacs_canon = 3.0d-9
 
       return
       end
