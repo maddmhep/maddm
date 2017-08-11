@@ -609,10 +609,10 @@ class MADDMRunCmd(cmd.CmdShell):
             clean_key = clean_key_list[1]+"_"+clean_key_list[2]
             if key.startswith('xsec'):
                 #<------- FIX THIS. GET RID OF VAVE_TEMP. THIS WILL JUST GET INTEGRATED BY MADEVENT
-                self.last_results['taacsID#%s' %(clean_key)] = vave_temp*self.me_cmd.results.get_detail('cross')* pb2cm3
-                self.last_results['taacsID'] += vave_temp*self.me_cmd.results.get_detail('cross')* pb2cm3
+                self.last_results['taacsID#%s' %(clean_key)] = self.me_cmd.results.get_detail('cross')* pb2cm3
+                self.last_results['taacsID'] += self.me_cmd.results.get_detail('cross')* pb2cm3
             elif key.startswith('xerr'):
-                self.last_results['err_taacsID#%s' %(clean_key)] = vave_temp*self.me_cmd.results.get_detail('error') * pb2cm3
+                self.last_results['err_taacsID#%s' %(clean_key)] = self.me_cmd.results.get_detail('error') * pb2cm3
 
 
     def dNdx(self, x, channel=''):
@@ -766,7 +766,7 @@ class MADDMRunCmd(cmd.CmdShell):
         #omega_min = 0
         #omega_max = 0.12
 
-        #logger.debug(self.last_results)
+        #logger.info(self.last_results)
 
         mdm= self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
 
@@ -811,44 +811,45 @@ class MADDMRunCmd(cmd.CmdShell):
                 logger.info(' %s            : %.2e 1/s' % (key, self.last_results[key]))
         if self.mode['indirect']:
 
+            #detailled_keys = [k.split("#")[1] for k in self.last_results.keys() if k.startswith('taacsID#')]
+            detailled_keys = [k for k in self.last_results.keys() if k.startswith('taacsID#')]
 
-            #logger.info('   sigma(DM DM>all) [v = %2.e]: %.2e+-%2.e pb', v,
-            #                self.last_results['indirect'],self.last_results['indirect_error'])
-
-            detailled_keys = [k.split("#")[1] for k in self.last_results.keys() if k.startswith('taacsID#')]
-
-            #logger.debug(detailled_keys)
+            #logger.info(detailled_keys)
+            #logger.info(len(detailled_keys))
 
             #THE FOLLOWING CROSS SECTIONS ARE ALREADY IN CM^3/s!!!!!!!
-            tot_taacs = 0.0
 
             v = self.maddm_card['vave_indirect']
 
+            logger.info('\n  indirect detection: ')
+            if len(detailled_keys)>0:
 
-            if len(detailled_keys)>1:
-                logger.info('\n  indirect detection: ')
                 #Print out taacs for each annihilation channel
                 for key in detailled_keys:
-                    clean_key_list = key.split("_")
-                    clean_key = clean_key_list[0]+"_"+clean_key_list[1]
+                    #logger.info(key)
+                    clean_key_list = key.split("#")
+                    #logger.info(clean_key_list)
+                    clean_key = clean_key_list[1] #clean_key_list[0]+"_"+clean_key_list[1]
+                    #logger.info(clean_key)
+                    finalstate = clean_key.split("_")[1]
 
                     #here check if the cross section is allowed. Do this channel by channel
                     # Make sure that the velocity at which the limit
                     #is evaluated matches the dm velocity in the calculation.
                     #logger.info(clean_key_list[1])
-                    if clean_key_list[1] not in self.limits._allowed_final_states:
+                    if finalstate not in self.limits._allowed_final_states:
                         message = '%s No limit %s' % (bcolors.GRAY, bcolors.ENDC)
                     else:
 
-                        if (v == self.limits._id_limit_vel[clean_key_list[1]]):
-                            if self.last_results['taacsID#%s' %(clean_key)] < self.limits.ID_max(mdm, clean_key_list[1]):
+                        if (v == self.limits._id_limit_vel[finalstate]):
+                            if self.last_results[key] < self.limits.ID_max(mdm, finalstate):
                                 message = pass_message
                             else:
                                 message = fail_message
                         else:
                             message = '%s Sigmav/limit velocity mismatch %s' %(bcolors.GRAY, bcolors.ENDC)
 
-                    logger.info('    sigmav %15s : %.2e cm^3/s [v = %.2e] %s' % (clean_key,\
+                    logger.info('    sigmav %s : %.2e cm^3/s [v = %.2e] %s' % (clean_key,\
                                     self.last_results['taacsID#%s' %(clean_key)],v, message))
 
                     #tot_taacs = tot_taacs + self.last_results['taacsID#%s' %(clean_key)]
@@ -1396,10 +1397,11 @@ class MadDMSelector(common_run.EditParamCard):
         elif args[0] == 'id_limits':
              if len(args)!= 4:
                  logger.warning('You need to provide the following <ave. velocity> <ann. channel> <file path>')
+                 logger.warning('or  <ave. velocity> <ann. channel> <obs. cross section> <obs. uncertainty>')
                  logger.warning('Annihilation channel can be: '+ str(self._allowed_final_states))
              logger.info('The file you use for indirect detection limits will be interpreted as:')
              logger.info('Column 1 - dark matter mass in GeV')
-             logger.info('Column 2 - upper limit on the total annihilation cross section in pb at specified average velocity')
+             logger.info('Column 2 - upper limit on the total annihilation cross section in cm^3/s at specified average velocity')
 
              if len(args) > 4:
                  if args[2] in self.limits._allowed_final_states:
