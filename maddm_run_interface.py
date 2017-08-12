@@ -603,16 +603,18 @@ class MADDMRunCmd(cmd.CmdShell):
         #self.last_results['indirect#%s' %i] = self.me_cmd.results.get_detail('cross')
         #self.last_results['indirect_error#%s' %i] = self.me_cmd.results.get_detail('error')
 
-        for key, value in self.me_cmd.Presults.items():
+        logger.debug(self.me_cmd.Presults)
+
+        for key, value in self.me_cmd.Presults.iteritems():
 
             clean_key_list = key.split("_")
             clean_key = clean_key_list[1]+"_"+clean_key_list[2]
             if key.startswith('xsec'):
                 #<------- FIX THIS. GET RID OF VAVE_TEMP. THIS WILL JUST GET INTEGRATED BY MADEVENT
-                self.last_results['taacsID#%s' %(clean_key)] = self.me_cmd.results.get_detail('cross')* pb2cm3
-                self.last_results['taacsID'] += self.me_cmd.results.get_detail('cross')* pb2cm3
+                self.last_results['taacsID#%s' %(clean_key)] = value* pb2cm3
+                self.last_results['taacsID'] += value* pb2cm3
             elif key.startswith('xerr'):
-                self.last_results['err_taacsID#%s' %(clean_key)] = self.me_cmd.results.get_detail('error') * pb2cm3
+                self.last_results['err_taacsID#%s' %(clean_key)] = value * pb2cm3
 
 
     def dNdx(self, x, channel=''):
@@ -766,7 +768,7 @@ class MADDMRunCmd(cmd.CmdShell):
         #omega_min = 0
         #omega_max = 0.12
 
-        #logger.info(self.last_results)
+        logger.info(self.last_results)
 
         mdm= self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
 
@@ -814,7 +816,7 @@ class MADDMRunCmd(cmd.CmdShell):
             #detailled_keys = [k.split("#")[1] for k in self.last_results.keys() if k.startswith('taacsID#')]
             detailled_keys = [k for k in self.last_results.keys() if k.startswith('taacsID#')]
 
-            #logger.info(detailled_keys)
+            logger.info(detailled_keys)
             #logger.info(len(detailled_keys))
 
             #THE FOLLOWING CROSS SECTIONS ARE ALREADY IN CM^3/s!!!!!!!
