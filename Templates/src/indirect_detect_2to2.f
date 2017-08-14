@@ -1,5 +1,5 @@
 c-------------------------------------------------
-c the functioneprovides a sigma*v at velocity v (not thermally averaged!!!)
+c the functioneprovides a sigma*v at RELATIVE velocity v (not thermally averaged!!!)
 c-------------------------------------------------
        function sigmav_ID(channel, v)
 
@@ -21,7 +21,7 @@ c    HERE AT SOME POINT CHECK THAT i =1, n and j=1,n are not double counting 1 <
 c                        write(*,*) i, j, channel
                         call getfsmasses_ann(pmass,i,j,channel)
 c                       write(*,*) pmass(1)
-                        e1 = dsqrt(pmass(1)*pmass(1)/(1.d0-v*v))
+                        e1 = dsqrt(pmass(1)*pmass(1)/(1.d0-v*v/4.d0)) ! divide by 4 for vcm
                         e2 = e1
                         sigma_ID = sigma_ID + cross_check_process(i, j, channel, 1, e1,e2, 0)
                     enddo
@@ -95,7 +95,7 @@ c           Here set the global variables used by integrand bexfore you integrat
             vave_glob = vave
             channel_glob=channel
 
-            taacs_ID = simpson(integrand, 0.d0, min(20.d0*vave_glob,1.d0), grid_ID, grid_npts)
+            taacs_ID = simpson(integrand, 0.d0, min(20.d0*vave,1.d0), grid_ID, grid_npts)
 
             return
        end function taacs_ID
@@ -124,7 +124,9 @@ c----------------------------------------------------------------------
             include 'maddm.inc'
             double precision v
 
-            integrand = sigmav_ID(channel_glob, v/2.d0) *dm_vel_dist_ID(v, vave_glob)
-            if (integrand.lt.1d-50) integrand=0.d0
+            integrand = sigmav_ID(channel_glob, v) *dm_vel_dist_ID(v, vave_glob) ! v is vrelative
+            if (integrand.lt.1d-50) then
+                integrand=0.d0
+            endif
             return
        end function integrand

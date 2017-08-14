@@ -471,7 +471,7 @@ class MADDMRunCmd(cmd.CmdShell):
             if self.mode['directional']:
                 order += ['Nevents', 'smearing']
             if self.mode['capture']:
-                detailled_keys = [k[5:] for k in self.last_result
+                detailled_keys = [k for k in self.last_results
                                   if k.startswith('ccap_') and '#' not in k]
                 for key in detailled_keys:
                     order += [key]
