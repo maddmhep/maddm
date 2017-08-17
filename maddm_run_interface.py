@@ -1600,7 +1600,7 @@ class MadDMCard(banner_mod.RunCard):
         #For the solar/earth capture rate
 
         #indirect detection
-        self.add_param('vave_indirect', 0.001)
+        self.add_param('vave_indirect', 0.001, include=True)
         self.add_param('halo_profile', 'NFW_R3', include=True)
 
         self.add_param('jfactors', {'__type__':1.0}, include=False)
