@@ -390,6 +390,7 @@ class MADDMRunCmd(cmd.CmdShell):
         if self.mode['indirect']:
             output_name.append('taacsID')
 
+
         sigv_indirect = 0.
         for line in open(pjoin(self.dir_path, output)):
                 splitline = line.split()
@@ -414,27 +415,65 @@ class MADDMRunCmd(cmd.CmdShell):
                             output_name.append('taacsID#%s' % oname)
                             sigv_indirect += sigv_temp
                             output_name.append('err_taacsID#%s' % oname)
-                            result.append(sigv_temp)
+                            result.append(sigv_temp) #the value of cross section
+                            result.append(0.e0) #put 0 for the error.
 
 
 
 
-        cr_names = ['gamma', 'p', 'pbar', 'e+', 'e-', 'neu']
+        cr_names = ['gamma',  'pbar', 'e+', 'neue', 'neumu', 'neutau']
+
+        #Here we need to add the Cr flux output into the order and zip the results before
+        #extracting numbers for fluxes because dPhidE needs results['taacsID..'] to be present.
+
         if self.mode['CR_flux']:
-            for channel in cr_names:
-                output_name.append('flux_%s' % channel)
-
-        logger.debug('')
+            for chan in cr_names:
+                output_name.append('flux_%s' % chan)
+                result.append(-1.0)
 
         result = dict(zip(output_name, result))
         result['taacsID'] = sigv_indirect
+        self.last_results = result
+
+        #Now that the sigmav values are set, we can compute the fluxes
+        if self.mode['CR_flux']:
+
+            if not self.mode['indirect']:
+                logger.error('You can not calculate the flux before calculating <sigmav>!')
+                return -1.0
+            else:
+
+                #Here we need to skip this part if the scan is being conducted because
+                #the value of dark matter mass could be 'scan: ...'
+                if not self.param_card_iterator:
+                    mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
+                    #logger.debug(mdm)
+
+                    for chan in cr_names:
+
+                        phis= []
+                        npts = self.maddm_card['npts_for_flux']
+                        energies = [1.0*(2.0*mdm)/ npts * n for n in range(npts)]
+
+
+                        for energy in energies:
+                            phis.append(self.dPhidE(energy, channel=chan))
+
+                        flux_filename = pjoin(self.dir_path, 'output', 'dPhidE_%s.txt' %chan)
+                        #FIX THIS, WRITE THE UNITS OF FLUX
+                        aux.write_data_to_file(energies, phis, filename=flux_filename, header='# Energy    Flux []')
+
+                        self.last_results['flux_%s' % chan] = self.Phi(chan=chan)
+                    #output_name.append('flux_%s' % chan)
+
+        #logger.info(self.last_results)
 
         #if sigv_indirect:
         #    result['taacsID'] = sigv_indirect
         #    result['err_taacsID'] = math.sqrt(sigv_indirect_error)
 
 
-        self.last_results = result
+
         #logger.debug(self.last_results)
 
         if self.mode['indirect'] and not self._two2twoLO:
@@ -447,12 +486,19 @@ class MADDMRunCmd(cmd.CmdShell):
         if not self.in_scan_mode and not self.multinest_running:
             self.print_results()
 
+        # --------------------------------------------------------------------#
+        #   THIS PART IS FOR MULTINEST SCANS
+        # --------------------------------------------------------------------#
+
         #multinest can be launched only after one launch has been executed
         if self.mode['run_multinest'] and not self.multinest_running:
             self.multinest_running = True
             self.launch_multinest()
             self.multinest_running = False
 
+        # --------------------------------------------------------------------#
+        #   THIS PART IS FOR SEQUENTIAL SCANS
+        # --------------------------------------------------------------------#
 
         #    logger.info("relic density  : %.2e ", self.last_results['omegah2'])
         if self.param_card_iterator:
@@ -479,24 +525,27 @@ class MADDMRunCmd(cmd.CmdShell):
 
             if self.mode['indirect']:
 
+                #if not self._two2twoLO:
+                #order +=['halo_velocity']#,'indirect', 'indirect_error']
+                detailled_keys = [k for k in self.last_results
+                              if k.startswith('taacsID#') ]
 
-                if not self._two2twoLO:
-                    order +=['halo_velocity']#,'indirect', 'indirect_error']
-                    detailled_keys = [k[5:] for k in self.last_results
-                                  if k.startswith('xsec_') and '#' not in k]
-                    if len(detailled_keys)>1:
-                        for key in detailled_keys:
-                            #reformat the key so that it only takes the initial and final states
-                            #Useful is there is "/" syntax, because "no" suffix is added.
-                            clean_key_list = key.split("_")
-                            clean_key = clean_key_list[1]+"_"+clean_key_list[2]
-                            order +=['taacsID#%s' % (clean_key), 'err_taacsID#%s' % (clean_key)]
+                #logger.info(detailled_keys)
+                #logger.info(self.last_results)
+
+                if len(detailled_keys)>1:
+                    for key in detailled_keys:
+                        #reformat the key so that it only takes the initial and final states
+                        #Useful is there is "/" syntax, because "no" suffix is added.
+                        clean_key_list = key.split("_")
+                        clean_key = clean_key_list[0]+"_"+clean_key_list[1]
+                        order +=[clean_key]
 
             if self.mode['CR_flux']:
                 for channel in cr_names:
                     order.append('flux_%s' % channel)
 
-
+            #logger.info(order)
 
             #<=-------------- Mihailo commented out max_col = 10
             to_print = param_card_iterator.write_summary(None, order,nbcol=10)#, max_col=10)
@@ -575,7 +624,7 @@ class MADDMRunCmd(cmd.CmdShell):
             self.me_cmd = Indirect_Cmd(pjoin(self.dir_path, 'Indirect'))
 
 
-        #<------ HERE HOW ARE WE MAKING SURE THAT THE SAME CARD IS BEING  USED FOR INDIRECT
+        #<------ FIX THIS! HERE HOW ARE WE MAKING SURE THAT THE SAME CARD IS BEING  USED FOR INDIRECT
         # AND THE REST???
         runcardpath = pjoin(self.dir_path,'Indirect', 'Cards', 'run_card.dat')
         #param_path  = pjoin(self.dir_path,'Indirect', 'Cards', 'param_card.dat')
@@ -691,95 +740,32 @@ class MADDMRunCmd(cmd.CmdShell):
 
              return phi
 
-
-
-
-#-------------------------------------------------------------------------------------
-# (OLD STUFF, KEEP COMMENTED OUT, MAYBE SOME PIECES WILL BE USEFUL IN THE FUTURE)
-#-------------------------------------------------------------------------------------
-#integrand of sigma*v(v, vave) for the calculation of taacs
-#     def integrand(self, v):
-#         return v*self.velocity_distribution(self.maddm_card['vave_indirect'], v)*self.ID_sigmav(v)
-#
-#
-#     #A function to fit the low velocity part of the annihilation cross section
-#     def fit_ID_crossect(self, sigma_x, sigma_y, degree=3):
-#             try:
-#                 fit_parameters = np.polyfit(sigma_x, sigma_y, deg=degree)
-#             except np.RankWarning:
-#                 logger.warning("The fitting function is not performing well! Check the quality of the fit!")
-#                 pass
-#
-#             return np.array(fit_parameters)
-#
-#     #Indirect detection cross section as a function of velocity (at low velocity)
-#     def ID_sigmav(self, vel):
-#             p = np.poly1d(self._fit_parameters)
-#             return p(vel)
-#
-# # Halo velocity distribution. Use the non-rel. Maxwell Boltzmann distribution as an approximation
-#     def velocity_distribution(self, vave, v):
-#         return np.sqrt(2.0/np.pi)*np.power(1.0/(vave*vave),1.5)*v*v*np.exp(-v*v/(2.0*vave*vave))
-# Function which perform the thermal averaging of the cross section for the purpose
-# of indirect detection
-# #     def calculate_taacs(self, scan_v, channel=0):
-# #
-# #         sigmav=[]
-# #         velocities=[]
-# #
-# #         for i, v in enumerate(scan_v):
-# #             sigmav.append(v*self.last_results['indirect#%s' %i]/GeV2pb)   #sigma*v array in GeV^(-2)
-# #             velocities.append(v)
-# #
-# #         #then add the peak of the velocity distribution and points around it for better precision
-# #         velocity_grid = velocities[:]
-# #         vave_temp = self.maddm_card['vave_indirect']
-# #         velocity_grid.append(vave_temp)
-# #         for kk in range(1, self.maddm_card['nres_points']):
-# #             pt1 = vave_temp + 5.0*vave_temp/kk
-# #             if pt1 < 0.0:
-# #                 velocity_grid.append(pt1)
-# #             pt2 = vave_temp - 5.0*vave_temp/kk
-# #             if pt2 > 1.0:
-# #                 velocity_grid.append(pt2)
-# #         velocity_grid = np.sort(velocity_grid)
-# #
-# #         self._fit_parameters = self.fit_ID_crossect(velocities, sigmav)
-# #         taacs = self.integrate(velocity_grid, 0.0, 1.0)
-# #
-# #         #print self._fit_parameters
-# #         #print velocities
-# #         #print sigmav
-#
-#         logger.info('sigma*v fit parameters: ', self._fit_parameters)
-#
-#         logger.info('v: ', velocities)
-#         logger.info('sigma*v', sigmav)
-#
-#
-#         return taacs
-
-
-#-------------------------------------------------------------------------------------
-#-------------------------------------------------------------------------------------
         
     def print_results(self):
         """ print the latest results """
         #omega_min = 0
         #omega_max = 0.12
 
-        logger.info(self.last_results)
+        #logger.debug(self.last_results)
 
         mdm= self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
 
         pass_message = '%s OK %s' % (bcolors.OKGREEN, bcolors.ENDC)
         fail_message = ' %s EXCLUDED %s' % (bcolors.FAIL, bcolors.ENDC)
 
-        pass_relic = pass_message if self.last_results['omegah2'] < self.limits._oh2_planck else fail_message
-        pass_dd_si_proton = pass_message if self.last_results['sigmaN_SI_proton']*GeV2pb*pb2cm2 < self.limits.SI_max(mdm) else fail_message
-        pass_dd_si_neutron = pass_message if self.last_results['sigmaN_SI_neutron']*GeV2pb*pb2cm2 < self.limits.SI_max(mdm) else fail_message
-        pass_dd_sd_proton = pass_message if self.last_results['sigmaN_SI_proton']*GeV2pb*pb2cm2 < self.limits.SD_max(mdm, 'p') else fail_message
-        pass_dd_si_neutron = pass_message if self.last_results['sigmaN_SI_neutron']*GeV2pb*pb2cm2 < self.limits.SD_max(mdm, 'n') else fail_message
+        #skip this if there is a sequential scan going on.
+        if not self.param_card_iterator:
+            pass_relic = pass_message if self.last_results['omegah2'] < self.limits._oh2_planck else fail_message
+            pass_dd_si_proton = pass_message if self.last_results['sigmaN_SI_proton']*GeV2pb*pb2cm2 < self.limits.SI_max(mdm) else fail_message
+            pass_dd_si_neutron = pass_message if self.last_results['sigmaN_SI_neutron']*GeV2pb*pb2cm2 < self.limits.SI_max(mdm) else fail_message
+            pass_dd_sd_proton = pass_message if self.last_results['sigmaN_SI_proton']*GeV2pb*pb2cm2 < self.limits.SD_max(mdm, 'p') else fail_message
+            pass_dd_si_neutron = pass_message if self.last_results['sigmaN_SI_neutron']*GeV2pb*pb2cm2 < self.limits.SD_max(mdm, 'n') else fail_message
+        else:
+            pass_relic = ''
+            pass_dd_si_proton = ''
+            pass_dd_si_neutron = ''
+            pass_dd_sd_proton = ''
+            pass_dd_sd_neutron = ''
 
 
         #if omega_min < self.last_results['omegah2'] < omega_max:
@@ -816,7 +802,7 @@ class MADDMRunCmd(cmd.CmdShell):
             #detailled_keys = [k.split("#")[1] for k in self.last_results.keys() if k.startswith('taacsID#')]
             detailled_keys = [k for k in self.last_results.keys() if k.startswith('taacsID#')]
 
-            logger.info(detailled_keys)
+            #logger.info(detailled_keys)
             #logger.info(len(detailled_keys))
 
             #THE FOLLOWING CROSS SECTIONS ARE ALREADY IN CM^3/s!!!!!!!
@@ -842,14 +828,16 @@ class MADDMRunCmd(cmd.CmdShell):
                     if finalstate not in self.limits._allowed_final_states:
                         message = '%s No limit %s' % (bcolors.GRAY, bcolors.ENDC)
                     else:
-
-                        if (v == self.limits._id_limit_vel[finalstate]):
-                            if self.last_results[key] < self.limits.ID_max(mdm, finalstate):
-                                message = pass_message
+                        if not self.param_card_iterator:
+                            if (v == self.limits._id_limit_vel[finalstate]):
+                                if self.last_results[key] < self.limits.ID_max(mdm, finalstate):
+                                    message = pass_message
+                                else:
+                                    message = fail_message
                             else:
-                                message = fail_message
+                                message = '%s Sigmav/limit velocity mismatch %s' %(bcolors.GRAY, bcolors.ENDC)
                         else:
-                            message = '%s Sigmav/limit velocity mismatch %s' %(bcolors.GRAY, bcolors.ENDC)
+                            message = ''
 
                     logger.info('    sigmav %s : %.2e cm^3/s [v = %.2e] %s' % (clean_key,\
                                     self.last_results['taacsID#%s' %(clean_key)],v, message))
@@ -862,25 +850,8 @@ class MADDMRunCmd(cmd.CmdShell):
 
             if self.mode['CR_flux']:
                 logger.info('\n  cosmic ray fluxes: ')
-                cr_names = ['gamma', 'p', 'pbar', 'e+', 'e-', 'neu']
+                cr_names = ['gamma',  'pbar', 'e+', 'neue', 'neumu', 'neutau']
                 for chan in cr_names:
-
-                    phis= []
-                    npts = self.maddm_card['npts_for_flux']
-                    energies = [1.0*(2.0*mdm)/ npts * n for n in range(npts)]
-
-                    if not self.last_results['taacsID']:
-                        logger.error('You can not calculate the flux before calculating <sigmav>!')
-                        return -1.0
-                    else:
-                        for energy in energies:
-                            phis.append(self.dPhidE(energy, channel=chan))
-
-                    flux_filename = pjoin(self.dir_path, 'output', 'dPhidE_%s.txt' %chan)
-                    #FIX THIS, WRITE THE UNITS OF FLUX
-                    aux.write_data_to_file(energies, phis, filename=flux_filename, header='# Energy    Flux []')
-
-                    self.last_results['flux_%s' % chan] = self.Phi(chan=chan)
 
                     logger.info('%10s : %.3e units' %(chan, self.last_results['flux_%s' % chan] ))
 
