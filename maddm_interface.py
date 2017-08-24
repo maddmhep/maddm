@@ -117,11 +117,15 @@ class MadDM_interface(master_interface.MasterCmd):
                     self.search_dm_candidate([])
                 elif args[1].startswith('/'):
                     self.search_dm_candidate([a.replace('/', '') for a in args[1:]])
-                elif len(args)==2:
-                    self._dm_candidate = [self._curr_model.get_particle(args[1])]
-                    if not self._dm_candidate[0]:
+                elif len(args)>=2:
+                    self._dm_candidate = [self._curr_model.get_particle(dm) for dm in args[1:]]
+                    #remove None
+                    self._dm_candidate = [dm for dm in self._dm_candidate if dm]
+                    if not self._dm_candidate:
                         raise DMError, '%s is not a valid particle for the model.' % args[1] 
-                    self.update_model_with_EFT()
+                    if len(self._dm_candidate) == 1:
+                        # No update of the model if 2(or more) DM since DD is not possible
+                        self.update_model_with_EFT()
             
             elif args[0] == 'coannihilator':
                 if not self._dm_candidate:
