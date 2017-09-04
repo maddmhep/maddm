@@ -1682,6 +1682,8 @@ class Multinest():
     #Starts the multinest run.
     def launch(self, resume=True):
 
+        self.param_card_orig = param_card_mod.ParamCard(self.maddm_run.param_card)
+
         if self.options['loglikelihood'] == {} or self.options['prior'] =='':
             logger.error("You have to set the priors and likelihoods before launching!")
             return False
@@ -1868,6 +1870,8 @@ class Multinest():
         chi = 1.0
 
         #Change the parameters and write them into an appropriate param_card.dat file.
+        # reset param_card to original one (important for auto width)
+        self.maddm_run.param_card = param_card_mod.ParamCard(self.param_card_orig)
         for i in range(len(self.options['parameters'])):
             logger.debug('Changing parameter %s to %.3e' %( self.options['parameters'][i][0], cube[i]))
             self.change_parameter(self.options['parameters'][i][0].lower(), cube[i])
