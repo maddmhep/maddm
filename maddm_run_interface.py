@@ -1701,7 +1701,10 @@ class Multinest():
 
         #if output_observables not set, automatically set it according to observables which are calculated
         #this is needed because maddm.out file contains too much information
-        if self.output_observables == []:
+        if self.output_observables == [] or 'default' in self.output_observables:
+            if 'default' in self.output_observables:
+                self.output_observables.remove('default')
+            
             if self.maddm_run.mode['relic']:
                 self.output_observables.append('omegah2')
                 self.output_observables.append('sigmav_xf')
@@ -1892,8 +1895,13 @@ class Multinest():
                 #if it's dm-nucleon cross section convert the units to cm2
                 if observable.startswith('sigmaN'):
                     cube[ndim+i] = results[observable] * GeV2pb *pb2cm2
-                else:
+                elif observable in results:
                     cube[ndim+i] = results[observable]
+                elif observable in self.param_blocks:
+                    block, lhaid = self.param_blocks[observable][0]
+                    lhaid2 = lhaid[0]
+                    cube[ndim+i] = self.maddm_run.param_card.get_value(block, lhaid2)
+                    
 #            else:
 #                for i, observable in enumerate(results):
 #                    cube[ndim+i] = results[observable]
