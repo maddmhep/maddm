@@ -9,6 +9,7 @@ import madgraph.core.diagram_generation as diagram_generation
 import madgraph.interface.master_interface as master_interface
 import madgraph.interface.madgraph_interface as madgraph_interface
 import madgraph.various.misc as misc
+import madgraph.iolibs.files as files
 #import darkmatter as darkmatter
 import madgraph.interface.common_run_interface as common_run
 import models.check_param_card as check_param_card
@@ -450,14 +451,18 @@ class MadDM_interface(master_interface.MasterCmd):
                 with misc.TMP_variable(self,
                     ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps', '_done_export'],
                     [self._ID_procs, self._ID_matrix_elements, self._ID_amps, None]):
-                    super(MadDM_interface, self).do_output('madevent_maddm %s/Indirect' % path)
+                    super(MadDM_interface, self).do_output('madevent %s/Indirect' % path)
 
             import MGoutput
             proc_path = pjoin(path, 'matrix_elements', 'proc_characteristics')
             proc_charac = MGoutput.MADDMProcCharacteristic(proc_path)
             proc_charac['has_indirect_detection'] = True
             proc_charac.write(proc_path)
-        
+            
+            #ensure to sync the param_card
+            os.remove(pjoin(path, 'Indirect', 'Cards', 'param_card.dat'))
+            files.ln(pjoin(path, 'Cards', 'param_card.dat'), 
+                     pjoin(path, 'Indirect', 'Cards'))
 
     def find_output_type(self, path):
         if os.path.exists(pjoin(path,'matrix_elements','proc_characteristics')):

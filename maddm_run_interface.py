@@ -55,7 +55,7 @@ class ExpConstraints:
 
     def __init__(self):
 
-        self._allowed_final_states = {'qqx', 'gg', 'bbx', 'ttx', 'e+e-', 'mu+mu-', 'ta+ta-', 'w+w-', 'zz', 'hh', 'aa'}
+        self._allowed_final_states = ['qqx', 'gg', 'bbx', 'ttx', 'e+e-', 'mu+mu-', 'ta+ta-', 'w+w-', 'zz', 'hh', 'aa']
 
         self._oh2_planck = 0.1198
         self._oh2_planck_width = 0.0015
@@ -623,8 +623,6 @@ class MADDMRunCmd(cmd.CmdShell):
             self.me_cmd.do_quit()
             self.me_cmd = Indirect_Cmd(pjoin(self.dir_path, 'Indirect'))
 
-
-        #<------ FIX THIS! HERE HOW ARE WE MAKING SURE THAT THE SAME CARD IS BEING  USED FOR INDIRECT
         # AND THE REST???
         runcardpath = pjoin(self.dir_path,'Indirect', 'Cards', 'run_card.dat')
         #param_path  = pjoin(self.dir_path,'Indirect', 'Cards', 'param_card.dat')
@@ -632,7 +630,6 @@ class MADDMRunCmd(cmd.CmdShell):
         #param_card = param_card_mod.ParamCard(param_path)
 
         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
-
         vave_temp = self.maddm_card['vave_indirect']
         #scan_v = [np.power(10., -1*ii) for ii in range(2, 6)]
         #scan_v = scan_v+[vave_temp]#/299794.458]
@@ -644,6 +641,8 @@ class MADDMRunCmd(cmd.CmdShell):
 
         run_card['ebeam1'] = mdm * math.sqrt(1+vave_temp**2)
         run_card['ebeam2'] = mdm * math.sqrt(1+vave_temp**2)
+        run_card['use_syst'] = False
+        run_card.remove_all_cut()
         run_card.write(runcardpath)
             
         self.me_cmd.do_launch('-f')

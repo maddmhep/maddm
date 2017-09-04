@@ -11,8 +11,7 @@ new_interface = maddm_interface.MadDM_interface
 
  
 ## Does it define a new output mode. Need to be define
-new_output = {'maddm': MGoutput.ProcessExporterMadDM,
-              'madevent_maddm': MGoutput.ProcessExporterIndirectD}
+new_output = {'maddm': MGoutput.ProcessExporterMadDM}
 
 ## The test/code have been validated up to this version
 latest_validated_version = (2,5,1)
