@@ -1655,7 +1655,7 @@ class Likelihoods:
     observables = ['relic', 'directSI','directSD_p', 'directSD_n', 'indirect', 'capture']
 
 
-class Multinest():
+class Multinest(object):
 
     def __init__(self, run_interface):
 
@@ -1996,7 +1996,7 @@ class Multinest():
                             chi+= -0.5*pow(np.log10(self.maddm_run.limits.SD_max(mdm, 'p')/spinSDp),2)\
                                   /pow(self.options['half_gauss_width']['spinSDp'],2)
                     elif nucleon == 'n':
-                       if spinSDp > self.maddm_run.limits.SD_max(mdm,'n'):
+                        if spinSDp > self.maddm_run.limits.SD_max(mdm,'n'):
                             chi+= -0.5*pow(np.log10(self.maddm_run.limits.SD_max(mdm, 'n')/spinSDn),2)\
                                   /pow(self.options['half_gauss_width']['spinSDn'],2)
                 elif likelihood == 'gaussian':

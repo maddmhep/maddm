@@ -452,6 +452,10 @@ class MadDM_interface(master_interface.MasterCmd):
                     ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps', '_done_export'],
                     [self._ID_procs, self._ID_matrix_elements, self._ID_amps, None]):
                     super(MadDM_interface, self).do_output('madevent %s/Indirect' % path)
+                #ensure to sync the param_card
+                os.remove(pjoin(path, 'Indirect', 'Cards', 'param_card.dat'))
+                files.ln(pjoin(path, 'Cards', 'param_card.dat'), 
+                         pjoin(path, 'Indirect', 'Cards'))
 
             import MGoutput
             proc_path = pjoin(path, 'matrix_elements', 'proc_characteristics')
@@ -459,10 +463,6 @@ class MadDM_interface(master_interface.MasterCmd):
             proc_charac['has_indirect_detection'] = True
             proc_charac.write(proc_path)
             
-            #ensure to sync the param_card
-            os.remove(pjoin(path, 'Indirect', 'Cards', 'param_card.dat'))
-            files.ln(pjoin(path, 'Cards', 'param_card.dat'), 
-                     pjoin(path, 'Indirect', 'Cards'))
 
     def find_output_type(self, path):
         if os.path.exists(pjoin(path,'matrix_elements','proc_characteristics')):
