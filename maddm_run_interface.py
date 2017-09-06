@@ -8,6 +8,7 @@ import sys
 import subprocess
 import auxiliary as aux
 import timeit
+import stat
 
 import threading, subprocess
 import json
@@ -15,6 +16,8 @@ import json
 
 
 import MGoutput
+from madgraph import MadGraph5Error
+from models import check_param_card
 
 MG5MODE = True
 import madgraph
@@ -435,6 +438,12 @@ class MADDMRunCmd(cmd.CmdShell):
         result['taacsID'] = sigv_indirect
         self.last_results = result
 
+        #logger.debug(self.last_results)
+
+        if self.mode['indirect'] and not self._two2twoLO:
+            with misc.MuteLogger(names=['madevent','madgraph'],levels=[50,50]):
+                self.launch_indirect(force)
+
         #Now that the sigmav values are set, we can compute the fluxes
         if self.mode['CR_flux']:
 
@@ -471,14 +480,6 @@ class MADDMRunCmd(cmd.CmdShell):
         #if sigv_indirect:
         #    result['taacsID'] = sigv_indirect
         #    result['err_taacsID'] = math.sqrt(sigv_indirect_error)
-
-
-
-        #logger.debug(self.last_results)
-
-        if self.mode['indirect'] and not self._two2twoLO:
-            with misc.MuteLogger(names=['madevent','madgraph'],levels=[50,50]):
-                self.launch_indirect(force)
 
 
         logger.debug('scan mode: %s' % str(self.in_scan_mode))
@@ -618,16 +619,17 @@ class MADDMRunCmd(cmd.CmdShell):
         if not self.in_scan_mode: 
             logger.info('Running indirect detection')
         if not hasattr(self, 'me_cmd'):
+            try:
+                os.remove(pjoin(self.dir_path, 'RunWeb'))
+            except Exception:
+                pass
             self.me_cmd = Indirect_Cmd(pjoin(self.dir_path, 'Indirect'))
         elif self.me_cmd.me_dir != pjoin(self.dir_path, 'Indirect'):
             self.me_cmd.do_quit()
             self.me_cmd = Indirect_Cmd(pjoin(self.dir_path, 'Indirect'))
 
-        # AND THE REST???
         runcardpath = pjoin(self.dir_path,'Indirect', 'Cards', 'run_card.dat')
-        #param_path  = pjoin(self.dir_path,'Indirect', 'Cards', 'param_card.dat')
         run_card = banner_mod.RunCard(runcardpath)
-        #param_card = param_card_mod.ParamCard(param_path)
 
         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
         vave_temp = self.maddm_card['vave_indirect']
@@ -646,7 +648,24 @@ class MADDMRunCmd(cmd.CmdShell):
         run_card.write(runcardpath)
             
         self.me_cmd.do_launch('-f')
-
+        
+        #compile the pythia8 script
+        if not os.path.exists(pjoin(self.dir_path,'bin','internal','main101')) and \
+            self.mode['CR_flux']:
+            if not hasattr(self, 'mg5'):
+                self.run_mg5('')
+            py8 = self.mg5.options['pythia8_path']
+            files.cp(pjoin(py8, 'share','Pythia8','examples','Makefile'), 
+               pjoin(self.dir_path,'bin','internal'))
+            files.cp(pjoin(py8, 'share','Pythia8','examples','Makefile.inc'), 
+               pjoin(self.dir_path,'bin','internal'))
+            try:
+                misc.compile(['main101'], cwd=pjoin(self.dir_path,'bin','internal'))
+            except MadGraph5Error,e:
+                print e
+                logger.critical('Indirect detection, py8 script can not be compiled. Skip indirect detection')
+                return
+        
         #self.last_results['halo_velocity#%s' %i] = vave_temp
         #self.last_results['indirect#%s' %i] = self.me_cmd.results.get_detail('cross')
         #self.last_results['indirect_error#%s' %i] = self.me_cmd.results.get_detail('error')
@@ -664,6 +683,66 @@ class MADDMRunCmd(cmd.CmdShell):
             elif key.startswith('xerr'):
                 self.last_results['err_taacsID#%s' %(clean_key)] = value * pb2cm3
 
+        if self.mode['CR_flux']:
+            # Now write the card.
+            if not self.in_scan_mode: 
+                pythia_cmd_card = pjoin(self.dir_path, 'Indirect' ,'Source', "spectrum.cmnd")
+                                                
+                # Now write Pythia8 card
+                # Start by reading, starting from the default one so that the 'user_set'
+                # tag are correctly set.
+                PY8_Card = Indirect_PY8Card(pjoin(self.dir_path, 'Cards', 
+                                                        'pythia8_card_default.dat'))
+                PY8_Card.read(pjoin(self.dir_path, 'Cards', 'pythia8_card.dat'),
+                                                                      setter='user')
+                PY8_Card.write(pythia_cmd_card, 
+                               pjoin(self.dir_path, 'Cards', 'pythia8_card_default.dat'),
+                                direct_pythia_input=True)
+                
+            run_name = self.me_cmd.run_name
+            # launch pythia8
+            pythia_log = pjoin(self.dir_path , 'Indirect', 'Events', run_name,
+                                                         'pythia8.log')
+
+            # Write a bash wrapper to run the shower with custom environment variables
+            wrapper_path = pjoin(self.dir_path,'Indirect', 'Events',run_name,'run_shower.sh')
+            wrapper = open(wrapper_path,'w')
+            shell = 'bash' if misc.get_shell_type() in ['bash',None] else 'tcsh'
+            shell_exe = None
+            if os.path.exists('/usr/bin/env'):
+                shell_exe = '/usr/bin/env %s'%shell
+            else: 
+                shell_exe = misc.which(shell)
+            if not shell_exe:
+                raise self.InvalidCmd('No s hell could be found in your environment.\n'+
+                  "Make sure that either '%s' is in your path or that the"%shell+\
+                  " command '/usr/bin/env %s' exists and returns a valid path."%shell)
+            
+            pythia_main = pjoin(self.dir_path,'bin','internal','main101')
+            exe_cmd = "#!%s\n%s" % (shell_exe, pythia_main)
+            wrapper.write(exe_cmd)
+            wrapper.close()
+
+            # Set it as executable
+            st = os.stat(wrapper_path)
+            os.chmod(wrapper_path, st.st_mode | stat.S_IEXEC)
+            # No need for parallelization ?
+            logger.info('Follow Pythia8 shower by running the '+
+                    'following command (in a separate terminal):\n    tail -f %s' % pythia_log)
+            
+            options = self.me_cmd.options
+            if options['run_mode']==1:
+                cluster = self.me_cmd.cluster    
+                ret_code = cluster.launch_and_wait(wrapper_path, 
+                        argument= [], stdout= pythia_log, stderr=subprocess.STDOUT,
+                                      cwd=pjoin(self.dir_path,'Indirect','Events',run_name))
+            else:                
+                ret_code = misc.call(wrapper_path, stdout=open(pythia_log,'w'), stderr=subprocess.STDOUT,
+                                      cwd=pjoin(self.dir_path,'Indirect','Events',run_name))
+            if ret_code != 0:
+                raise self.InvalidCmd, 'Pythia8 shower interrupted with return'+\
+                        ' code %d.\n'%ret_code+\
+                        'You can find more information in this log file:\n%s'%pythia_log
 
     def dNdx(self, x, channel=''):
 
@@ -685,6 +764,8 @@ class MADDMRunCmd(cmd.CmdShell):
 
 
     def load_dNdx(self, filename):
+        """check if a distribution for a particular DM IS already generated"""
+        
         try:
             f = open(filename, 'r')
             lines = f.readlines()
@@ -875,6 +956,7 @@ class MADDMRunCmd(cmd.CmdShell):
             process_data = self.proc_characteristics
             self.mode = self.ask('', '0', mode=mode, data=self.proc_characteristics,
                             ask_class=MadDMSelector, timeout=60, path_msg=' ')
+            
             if self.mode in ['', '0']:
                 self.mode = {'relic': 'ON' if process_data['has_relic_density'] else 'Not available',
                             'direct': 'ON' if process_data['has_direct_detection'] else 'Not available',
@@ -929,6 +1011,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
             
         self.check_param_card(pjoin(self.dir_path, 'Cards', 'param_card.dat'))
+        self.param_card = check_param_card.ParamCard(pjoin(self.dir_path, 'Cards', 'param_card.dat'))
         
         if not self.in_scan_mode and not self.mode['run_multinest']:
             logger.info("Start computing %s" % ','.join([name for name, value in self.mode.items() if value]))
@@ -1013,9 +1096,48 @@ class MADDMRunCmd(cmd.CmdShell):
         elif not os.path.isfile(args[0]):
             raise self.InvalidCmd('No default path for this file')
 
+class Indirect_PY8Card(banner_mod.PY8Card):
+    
+    def default_setup(self):
+        """ Sets up the list of available PY8 parameters."""
+        
+        self.add_param("Main:timesAllowErrors", 10, hidden=True, comment="allow a few failures before quitting")
+        self.add_param("Main:NumberOfEvents", -1,  comment="number of events to go trough")
+        self.add_param("Main:spareParm1", 1000, hidden=True, comment=" mass of the Dark matter")
+        self.add_param("Main:spareWord1" , './', hidden=True, comment="specify output dir") 
+        # Init
+        self.add_param("Init:showChangedSettings", True, hidden=True, comment="list changed settingspython")
+        self.add_param("Init:showChangedParticleData", True, hidden=True, comment="print changed particle and decay data")
+        # Next
+        self.add_param("Next:numberCount", 1000, hidden=True, comment="print message every n events")
+        self.add_param("Next:numberShowInfo", 1, hidden=True, comment="print event information n times")
+        self.add_param("Next:numberShowProcess", 1, hidden=True, comment="print process record n times")
+        self.add_param("Next:numberShowEvent", 1, hidden=True, comment="print event record n times")
+        #Beam
+        self.add_param("Beams:frameType", 4, hidden=True,comment='Tell Pythia8 that an LHEF input is used.')
+        self.add_param("Beams:LHEF", "unweighted_events.lhe.gz", hidden=True)
+        self.add_param("PDF:lepton", False, hidden=True, comment="radiation from initial particles")
+        # Parton level
+        self.add_param("PartonLevel:MPI", False, hidden=True, comment="multiparton interactions")
+        self.add_param("PartonLevel:ISR", False, hidden=True, comment="initial-state radiation")
+        self.add_param("PartonLevel:FSR", True, hidden=True, comment="final-state radiation")
+        # Weakshower <- allow the user to switch this ON
+        self.add_param("TimeShower:weakShower", False, comment="Run weak-shower for FSR")
+        self.add_param("TimeShower:weakShowerMode", 0, comment="Determine which branchings are allowed (0 -> W and Z)")
+        self.add_param("TimeShower:pTminWeak", 0.1)
+        self.add_param("WeakShower:vetoWeakJets", True)
+        self.add_param("WeakShower:singleEmission", True)
+        self.add_param("WeakShower:enhancement",1.0,comment="enhanced weak shower rate")
+        # decay all particles
+        self.add_param("13:mayDecay", True, hidden=True, comment="decays muons")
+        self.add_param("211:mayDecay", True, hidden=True, comment="decays pions")
+        self.add_param("321:mayDecay", True, hidden=True, comment="decays Kaons")
+        self.add_param("130:mayDecay", True, hidden=True, comment="decays K_LO")
+        self.add_param("310:mayDecay", True, hidden=True, comment="decays K_SO")
+        self.add_param("2112:mayDecay", True, hidden=True, comment="decays neutron")
 
 
-class MadDMSelector(common_run.EditParamCard):
+class MadDMSelector(common_run.AskforEditCard):
     """ """
 
     @property
@@ -1025,10 +1147,12 @@ class MadDMSelector(common_run.EditParamCard):
     digitoptions = {1: 'relic', 2:'direct', 3:'directional', 4:'indirect', 5:'CR_flux',\
                     6:'capture', 7:'run_multinest'}
 
+    PY8Card_class = Indirect_PY8Card
+    
     def __init__(self, *args, **opts):
 
 
-
+        self.me_dir = opts['mother_interface'].dir_path
         #0. some default variable
         process_data = opts.pop('data', collections.defaultdict(bool))
         self.run_options = {'relic': 'ON' if process_data['has_relic_density'] else 'Not available',
@@ -1062,7 +1186,11 @@ class MadDMSelector(common_run.EditParamCard):
                 
         # 3.initialise the object         
         param_card_path = pjoin(opts['mother_interface'].dir_path, 'Cards', 'param_card.dat')
-        super(MadDMSelector,self).__init__(question, [param_card_path], **opts)
+        pythia8_card_path = pjoin(opts['mother_interface'].dir_path, 'Cards', 'pythia8_card.dat')
+        
+        super(MadDMSelector,self).__init__(question, {'param':param_card_path,
+                                                      'pythia8':pythia8_card_path},
+                                           **opts)
 
         self.me_dir = opts['mother_interface'].dir_path
         self.define_paths(pwd=self.me_dir) 
@@ -1111,22 +1239,27 @@ class MadDMSelector(common_run.EditParamCard):
  * Enter a path to a file to replace the card
  * Enter %(start_bold)sset NAME value%(stop)s to change any parameter to the requested value 
     8. Edit the model parameters    [%(start_underline)sparam%(stop)s]
-    9. Edit the MadDM options      [%(start_underline)smaddm%(stop)s]
-    10. Edit the Multinest options  [%(start_underline)smultinest%(stop)s]\n""" % \
-    {'start_green' : '\033[92m',
-     'stop':  '\033[0m',
-     'start_underline': '\033[4m',
-     'start_bold':'\033[1m', 
-     'relic': get_status_str(self.run_options['relic']),
-     'direct':get_status_str(self.run_options['direct']),
-     'directional':get_status_str(self.run_options['directional']),
-     'indirect':get_status_str(self.run_options['indirect']),
-     'CR_flux':get_status_str(self.run_options['CR_flux']),
-     'capture':get_status_str(self.run_options['capture']),
-     'run_multinest':get_status_str(self.run_options['run_multinest']),
-     }
-        return question
+    9. Edit the MadDM options      [%(start_underline)smaddm%(stop)s]\n"""
 
+        if self.run_options['run_multinest'] == "ON":
+            question += """    10. Edit the Multinest options  [%(start_underline)smultinest%(stop)s]\n"""
+    
+        if self.run_options['CR_flux'] == "ON":
+            question += """    11. Edit the Showering Card for CR_flux  [%(start_underline)sflux%(stop)s]\n"""
+    
+        return question % {'start_green' : '\033[92m',
+                         'stop':  '\033[0m',
+                         'start_underline': '\033[4m',
+                         'start_bold':'\033[1m', 
+                         'relic': get_status_str(self.run_options['relic']),
+                         'direct':get_status_str(self.run_options['direct']),
+                         'directional':get_status_str(self.run_options['directional']),
+                         'indirect':get_status_str(self.run_options['indirect']),
+                         'CR_flux':get_status_str(self.run_options['CR_flux']),
+                         'capture':get_status_str(self.run_options['capture']),
+                         'run_multinest':get_status_str(self.run_options['run_multinest']),
+                        }
+    
     def define_paths(self, **opt):
         
         super(MadDMSelector, self).define_paths(**opt)
@@ -1134,7 +1267,9 @@ class MadDMSelector(common_run.EditParamCard):
         self.paths['maddm_default'] = pjoin(self.me_dir,'Cards','maddm_card_default.dat')
         self.paths['multinest'] = pjoin(self.me_dir,'Cards','multinest_card.dat')
         self.paths['multinest_default'] = pjoin(self.me_dir,'Cards','multinest_card_default.dat')
-        
+        self.paths['flux'] = pjoin(self.me_dir,'Cards','pythia8_card.dat')
+        self.paths['flux_default'] = pjoin(self.me_dir,'Cards','pythia8_card_default.dat')
+                
     
     
     def default(self, line):
@@ -1156,6 +1291,9 @@ class MadDMSelector(common_run.EditParamCard):
                 elif val == len(self.digitoptions)+3:
                     self.open_file('multinest')
                     self.value = 'repeat'
+                elif val == len(self.digitoptions)+4:
+                    self.open_file('pythia8')
+                    self.value = 'repeat'                    
                 elif val !=0:
                     logger.warning("Number not supported: Doing Nothing")
             if '=' in line:
@@ -1278,8 +1416,8 @@ class MadDMSelector(common_run.EditParamCard):
                 logger.warning('using the \'set\' command without opening the file will discard all your manual change')
     
     def complete_set(self, text, line, begidx, endidx, formatting=True):
-       """ Complete the set command"""
-       try:
+        """ Complete the set command"""
+       #try:
         possibilities = super(MadDMSelector,self).complete_set(text, line, begidx, endidx, formatting=False)
         args = self.split_arg(line[0:begidx])
         if len(args)>1 and args[1] == 'maddm_card':
@@ -1297,8 +1435,8 @@ class MadDMSelector(common_run.EditParamCard):
             possibilities['maddm Card'] = ['default']
             
         return self.deal_multiple_categories(possibilities, formatting)
-       except Exception, error:
-           misc.sprint(error)
+       #except Exception, error:
+       #    misc.sprint(error)
 
     def do_set(self, line):
         """ edit the value of one parameter in the card"""
@@ -1677,12 +1815,11 @@ class Multinest(object):
 
         self.counter = 0
 
-
-
     #Starts the multinest run.
     def launch(self, resume=True):
 
         self.param_card_orig = param_card_mod.ParamCard(self.maddm_run.param_card)
+        
 
         if self.options['loglikelihood'] == {} or self.options['prior'] =='':
             logger.error("You have to set the priors and likelihoods before launching!")

@@ -457,6 +457,11 @@ class MadDM_interface(master_interface.MasterCmd):
                 files.ln(pjoin(path, 'Cards', 'param_card.dat'), 
                          pjoin(path, 'Indirect', 'Cards'))
 
+                #ensure to sync the param_card
+                os.remove(pjoin(path, 'Indirect', 'Cards', 'param_card.dat'))
+                files.ln(pjoin(path, 'Cards', 'param_card.dat'), 
+                     pjoin(path, 'Indirect', 'Cards'))
+
             import MGoutput
             proc_path = pjoin(path, 'matrix_elements', 'proc_characteristics')
             proc_charac = MGoutput.MADDMProcCharacteristic(proc_path)
@@ -470,12 +475,23 @@ class MadDM_interface(master_interface.MasterCmd):
         else:
             return super(MadDM_interface, self).find_output_type(path)
 
+    def check_output(self,*args, **opts):
+        
+        if 'maddm' in self._export_formats:
+            # can happen if running launch directly
+            export_formats = list(self._export_formats )
+            export_formats.remove('maddm')
+            with misc.TMP_variable(self, '_export_formats', export_formats):
+                return super(MadDM_interface, self).check_output(*args, **opts)
+        else:
+            return super(MadDM_interface, self).check_output(*args, **opts)
+
     def do_launch(self, line):
         
         
         args = self.split_arg(line)
         (options, args) = madgraph_interface._launch_parser.parse_args(args)
-        with misc.TMP_variable(self, '_export_formats', ['maddm']):
+        with misc.TMP_variable(self, '_export_formats', self._export_formats + ['maddm']):
             self.check_launch(args, options)
         options = options.__dict__        
         
@@ -746,11 +762,22 @@ class MadDM_interface(master_interface.MasterCmd):
         if '2to2lo' in argument:
             self._ID_procs ='2to2lo'
             return
+        
+        if not self.options['pythia8_path']:
+            logger.warning('''In order to have distribution related to indirect detection:
+             Pythia8 needs to be linked to the code. You can install it by typing 'install pythia8'.
+             You can compute the rate (no distribution) by typing 'add indirect 2to2lo'. ''')
+            return
+
 
         #Check if the argument contains only two particles in the final state
         #if not, force the code to use madevent
         if (len(' '.join(argument).split('/')[0].split())!=2):
             self._force_madevent_for_ID = True
+
+        if argument == []:
+            logger.critical('indirect detection needs to specify the final state: i.e. "add indirect b b~"')
+            return
 
         # flip indirect/standard process definition
         with misc.TMP_variable(self, ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps'], 
