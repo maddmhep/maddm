@@ -67,10 +67,9 @@ int main() {
 
  // Begin event loop.
   int nEvent = 0;
-  int maxevent = pythia.mode("Main:NumberOfEvents");
+  int maxevent = pythia.settings.mode("Main:NumberOfEvents");
 
-  for (int iEvent = 0; (iEvent < maxevent || maxevent < 0) ; ++iEvent) {
-
+  for (int iEvent = 0; (iEvent < maxevent || maxevent <= 0) ; ++iEvent) {
     // Generate events. Quit if many failures.
     if (!pythia.next()) {
       if (++iAbort < nAbort) continue;

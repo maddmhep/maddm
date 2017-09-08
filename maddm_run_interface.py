@@ -696,6 +696,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 # tag are correctly set.
                 PY8_Card = Indirect_PY8Card(pjoin(self.dir_path, 'Cards', 
                                                         'pythia8_card_default.dat'))
+                PY8_Card['Main:spareParm1'] = mdm
                 PY8_Card.read(pjoin(self.dir_path, 'Cards', 'pythia8_card.dat'),
                                                                       setter='user')
                 PY8_Card.write(pythia_cmd_card, 
