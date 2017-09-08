@@ -247,6 +247,7 @@ class MADDMRunCmd(cmd.CmdShell):
         self.param_card = None
 
         self.multinest_running = False
+        self.auto_width = set() # keep track of width set on Auto
 
         self.limits = ExpConstraints()
     
@@ -270,7 +271,8 @@ class MADDMRunCmd(cmd.CmdShell):
         2) Check that all the width are define in the param_card.
         - If a scan parameter is define. create the iterator and recall this fonction 
           on the first element.
-        - If some width are set on 'Auto', call the computation tools."""
+        - If some width are set on 'Auto', call the computation tools.
+        - keep track of the width of auto if some present"""
         
         pattern_scan = re.compile(r'''^(decay)?[\s\d]*scan''', re.I+re.M)  
         pattern_width = re.compile(r'''decay\s+(\+?\-?\d+)\s+auto(@NLO|)''',re.I)
@@ -289,11 +291,12 @@ class MADDMRunCmd(cmd.CmdShell):
         
         pdg_info = pattern_width.findall(text)
         if pdg_info:
+            pdg = [pdg for pdg,nlo in pdg_info]
+            self.auto_width = set(pdg)
             if run:
                 if not self.in_scan_mode:
                     logger.info('Computing the width set on auto in the param_card.dat')
                 has_nlo = any(nlo.lower()=="@nlo" for _,nlo in pdg_info)
-                pdg = [pdg for pdg,nlo in pdg_info]
                 if not has_nlo:
                     self.do_compute_widths('%s --path=%s' % (' '.join(pdg), path))
                     #self.run_mg5(['compute_widths %s --path=%s' % (' '.join(pdg), path)])
@@ -1009,7 +1012,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 self.maddm_card.set('run_multinest', self.mode['run_multinest'], user=False)
                 self.maddm_card.write_include_file(pjoin(self.dir_path, 'include'))
 
-            
+        self.auto_width = set() #ensure to reset auto_width! at the 
         self.check_param_card(pjoin(self.dir_path, 'Cards', 'param_card.dat'))
         self.param_card = check_param_card.ParamCard(pjoin(self.dir_path, 'Cards', 'param_card.dat'))
         
@@ -1819,6 +1822,8 @@ class Multinest(object):
     def launch(self, resume=True):
 
         self.param_card_orig = param_card_mod.ParamCard(self.maddm_run.param_card)
+        for pdg in self.maddm_run.auto_width:
+            self.param_card_orig.get('decay', pdg).value = 'Auto'
         
 
         if self.options['loglikelihood'] == {} or self.options['prior'] =='':
