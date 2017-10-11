@@ -426,7 +426,8 @@ class MadDM_interface(master_interface.MasterCmd):
         
         args = self.split_arg(line)
         (options, args) = madgraph_interface._launch_parser.parse_args(args)
-        self.check_launch(args, options)
+        with misc.TMP_variable(self, '_export_formats', self._export_formats + ['maddm']):
+            self.check_launch(args, options)
         options = options.__dict__        
         
         
