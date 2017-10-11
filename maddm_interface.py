@@ -426,7 +426,8 @@ class MadDM_interface(master_interface.MasterCmd):
         
         args = self.split_arg(line)
         (options, args) = madgraph_interface._launch_parser.parse_args(args)
-        self.check_launch(args, options)
+        with misc.TMP_variable(self, '_export_formats', self._export_formats + ['maddm']):
+            self.check_launch(args, options)
         options = options.__dict__        
         
         
@@ -781,8 +782,17 @@ class MadDM_interface(master_interface.MasterCmd):
 
         if self._param_card:
             for block in self._param_card:
+                if block not in param_card:
+                    logger.debug('%s not valid block entry in the card' ,block)
+                    continue   
                 for param in self._param_card[block]:
-                    param_card[block].get(param.lhacode).value =  param.value
+                    try:
+                        slhaparam = param_card[block].get(param.lhacode)
+                    except KeyError:
+                        logger.debug('%s %s not valid entry in the card', block,param.lhacode)
+#                        misc.sprint(block,param.lhacode, 'fail')
+                    else:    
+                        slhaparam.value =  param.value
  
         self._param_card = param_card        
         if not isinstance(self._curr_model, model_reader.ModelReader):

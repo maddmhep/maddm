@@ -93,6 +93,10 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         out =  super(ProcessExporterMadDM, self).convert_model(model, 
                                                wanted_lorentz, wanted_couplings)
         return out
+
+    def write_procdef_mg5(self,*args,**opts):
+        """ do nothing """
+        return
     
     def make_model_symbolic_link(self):
         """Make the copy/symbolic links"""
