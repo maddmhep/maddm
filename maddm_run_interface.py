@@ -44,7 +44,7 @@ except:
 
 pjoin = os.path.join
 logger = logging.getLogger('madgraph.plugin.maddm')
-logger.setLevel(20) #level 20 = INFO
+logger.setLevel(10) #level 20 = INFO
 
 MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
 
@@ -426,14 +426,18 @@ class MADDMRunCmd(cmd.CmdShell):
 
 
 
-
-        cr_names = ['gamma',  'pbar', 'e+', 'neue', 'neumu', 'neutau']
+                            
+        #cr_names = ['gamma',  'pbar', 'e+', 'neue', 'neumu', 'neutau']
+        #cr_names = ['g',  'p', 'e', 'nue', 'numu', 'nutau']
+        cr_names = ['p', 'e']
+        np_names = ['g','nue','numu','nutau']
+        #### FIX this for neutrinos,actually check that from dSphs it's ok to get the source spectrum
 
         #Here we need to add the Cr flux output into the order and zip the results before
         #extracting numbers for fluxes because dPhidE needs results['taacsID..'] to be present.
 
         if self.mode['CR_flux']:
-            for chan in cr_names:
+            for chan in np_names:
                 output_name.append('flux_%s' % chan)
                 result.append(-1.0)
 
@@ -459,24 +463,33 @@ class MADDMRunCmd(cmd.CmdShell):
                 #the value of dark matter mass could be 'scan: ...'
                 if not self.param_card_iterator:
                     mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
+                    run_name = self.me_cmd.run_name
+                    npts = self.maddm_card['npts_for_flux']
+                    energies = [1.0*(mdm)/ npts * n for n in range(npts)] ##  logscale is better, to be changed...
                     #logger.debug(mdm)
+
+                    for chan in np_names:
+
+                        phis= []
+                        for energy in energies:
+                            phis.append(self.dPhidE(energy, channel=chan))
+                                                        
+                        flux_filename = pjoin(self.dir_path,'Indirect', 'Events', run_name, 'dPhidE_dSphName_%s.txt' %chan)
+                        #flux_filename = pjoin(self.dir_path, 'output', 'dPhidE_%s.txt' %chan)
+                        aux.write_data_to_file(energies, phis, filename=flux_filename, header='# Energy [GeV]    Differential Flux [GeV^-1 cm^-2 s^-1 sr^-1]')
+
+                        self.last_results['flux_%s' % chan] = self.Phi(chan=chan)
+                        #output_name.append('flux_%s' % chan)
 
                     for chan in cr_names:
 
-                        phis= []
-                        npts = self.maddm_card['npts_for_flux']
-                        energies = [1.0*(2.0*mdm)/ npts * n for n in range(npts)]
+                      Espectrum= []
+                      for energy in energies:
+                          Espectrum.append(self.dNdx(energy, channel=chan))
 
-
-                        for energy in energies:
-                            phis.append(self.dPhidE(energy, channel=chan))
-
-                        flux_filename = pjoin(self.dir_path, 'output', 'dPhidE_%s.txt' %chan)
-                        #FIX THIS, WRITE THE UNITS OF FLUX
-                        aux.write_data_to_file(energies, phis, filename=flux_filename, header='# Energy    Flux []')
-
-                        self.last_results['flux_%s' % chan] = self.Phi(chan=chan)
-                    #output_name.append('flux_%s' % chan)
+                      dNde_filename = pjoin(self.dir_path,'Indirect', 'Events', run_name, 'dNdE_%s.txt' %chan)
+                      aux.write_data_to_file(energies, Espectrum, filename=dNde_filename, header='# E_kin [GeV]   dNdE [GeV^-1]')
+                          
 
         #logger.info(self.last_results)
 
@@ -545,8 +558,11 @@ class MADDMRunCmd(cmd.CmdShell):
                         clean_key = clean_key_list[0]+"_"+clean_key_list[1]
                         order +=[clean_key]
 
+
+            ### fix here below because i have distinguished charged and neutral particle, for now loop only on neutral particles
+            ## nothing to do for now for cr_names (save the spectra?)
             if self.mode['CR_flux']:
-                for channel in cr_names:
+                for channel in np_names:
                     order.append('flux_%s' % channel)
 
             #logger.info(order)
@@ -556,6 +572,10 @@ class MADDMRunCmd(cmd.CmdShell):
             for line in to_print.split('\n'):
                 if line:
                     logger.info(line)
+                    ## added by chiara to check the width (next three lines)
+                    self._param_card = param_card_mod.ParamCard('/Users/arina/Documents/physics/software/maddm_dev2/test_width/Cards/param_card.dat')
+                    width = self.param_card.get_value('width', 5000000)
+                    logger.warning('--> WY0: %.2e' % width)
 
             #check if the param_card defines a scan.
             with misc.TMP_variable(self, 'in_scan_mode', True):
@@ -565,6 +585,10 @@ class MADDMRunCmd(cmd.CmdShell):
                         self.exec_cmd("launch -f", precmd=True, postcmd=True,
                                                    errorhandling=False)
                         param_card_iterator.store_entry(nb_output+i, self.last_results)
+                        ### the following three lines are added by chiara to check the widht = auto function 
+                        self._param_card = param_card_mod.ParamCard('/Users/arina/Documents/physics/software/maddm_dev2/test_width/Cards/param_card.dat')
+                        width = self.param_card.get_value('width', 5000000)
+                        logger.warning('--> try again WY0: %.2e' % width)
                         #<=-------------- Mihailo commented out max_col = 10
                         logger.info(param_card_iterator.write_summary(None, order, lastline=True,nbcol=10)[:-1])#, max_col=10)[:-1])
             param_card_iterator.write(pjoin(self.dir_path,'Cards','param_card.dat'))
@@ -573,6 +597,7 @@ class MADDMRunCmd(cmd.CmdShell):
             logger.info("write all results in %s" % path ,'$MG:color:BLACK')
 
             param_card_iterator.write_summary(path, order)
+            
 
     def launch_multinest(self):
 
@@ -750,26 +775,37 @@ class MADDMRunCmd(cmd.CmdShell):
 
     def dNdx(self, x, channel=''):
 
-        #FIX THIS. NOW I'M RETURNING 1 FOR TESTING PURPOSE
         #FIGURE OUT IF THE FACTOR OF 1/2 IS BEING CALCULATED PROPERLY FOR ID
-        return 1.0
+        #return 1.0
+    
+    ## changes by chiara below (i.e. changed name of variables and corrected a typo dNdx instead of dNdE and changed path to files)
+    ## here the spectrum for gamma rays is loaded and interpolated (the spectrum can come either from pythia run or tables, decide a name...) 
+        global dNdx_x, dNdx_y, mdm
+        #if not self._dNdE_setup:
+        filename = channel+'x_lhe.dat'
+        run_name = self.me_cmd.run_name
+        testpath = pjoin(self.dir_path,'Indirect', 'Events', run_name, filename)
+        if os.path.exists(pjoin(self.dir_path,'Indirect', 'Events', run_name, filename)):
+                #logger.debug('ok looking for the file')
+                #logger.info('Found file '+ self.dir_path, 'Indirect','Events',run_name, filename+' for the '+channel+' spectrum.')
+                dNdx_x, dNdx_y = self.load_dNdx(testpath)
+                #self._dNdE_setup = True
+        else:
+                logger.debug('spectra do not exist call pythia again')
+                #run pythia.--> no here we should load cirellis' tables
+                #self._dNdE_setup = True
+                
+        mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
+        # THIS IS TO TEST
+        #for i in range(len(dNdx_x)):
+        #    print 10**(dNdx_x[i])*mdm, dNdx_y[i]/(10**(dNdx_x[i])*mdm*2.30259)  ## 2.30259 = Log10; 
 
-        if not self._dNdE_setup:
-            filename = channel+'.dat'
-            if os.path.exists(pjoin(self.dir_path, 'output', filename)):
-                logger.info('Found file '+ self.dir_path, 'output', filename+' for the '+channel+' spectrum.')
-                dNdE_x, dNdE_y = self.load_dNdE(filename)
-                self._dNdE_setup = True
-            else:
-                #run pythia.
-                self._dNdE_setup = True
-
-        return np.interp(x, dNdE_x, dNdE_y)
-
+        return np.interp(x, mdm*np.power(10,dNdx_x),dNdx_y/(np.power(10,dNdx_x)*mdm*2.30259))   ## dNdx_x = E /mDM; dNdlogx = dNdx_y
+            
 
     def load_dNdx(self, filename):
         """check if a distribution for a particular DM IS already generated"""
-        
+        #logger.debug(filename)
         try:
             f = open(filename, 'r')
             lines = f.readlines()
@@ -788,7 +824,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
         return x, y
 
-    #channel can be photons, electrons, positrons, protons, antiprotons, neutrinos
+    # generic differential flux from dSPhs, channel can be photons or neutrinos 
     def dPhidE(self,  energy, channel=''):
 
          #is it efficient to load the param card like this?!
@@ -798,10 +834,11 @@ class MADDMRunCmd(cmd.CmdShell):
          halo_profile = self.maddm_card['halo_profile']
          jfact = self.maddm_card['jfactors'][halo_profile]
 
-         #CHECK THIS EQUATION!!!!
-         phi = 1.0/(8.0*math.pi*mdm*mdm)*sigv*self.dNdx(channel, energy)*jfact*1/mdm
-
-         return phi
+         dphi = 1.0/(8.0*math.pi*mdm*mdm)*sigv*self.dNdx(energy, channel)*jfact          ### factor 1/4 for majorana and 1/8 for dirac
+         # expression below for dphi is just to check
+         #dphi = self.dNdx(energy, channel)
+         
+         return dphi
 
     def Phi(self, chan=''):
           if not self.last_results['taacsID']:
@@ -818,10 +855,14 @@ class MADDMRunCmd(cmd.CmdShell):
              grid = [de*2*mdm/npts for de in range(0, npts+1)]
 
              #CHECK HERE THAT THE JACOBIAN FROM X TO E IS CORRECT
-             integrate_dNdE = 1.0/mdm*aux.integrate(self.dNdx, grid, channel=chan)
+             integrate_dNdE = aux.integrate(self.dNdx, grid, channel=chan)  # 1/mdm
+             print
+             #logger.debug('sigmav: %.5e' % sigv)
+             #logger.debug('mdm: %.5e' % mdm)
+             #logger.debug(jfact)
 
              phi = 1.0/(8.0*math.pi*mdm*mdm)*sigv*jfact*integrate_dNdE
-
+            
              return phi
 
         
@@ -933,11 +974,12 @@ class MADDMRunCmd(cmd.CmdShell):
                                     self.last_results['taacsID']))
 
             if self.mode['CR_flux']:
-                logger.info('\n  cosmic ray fluxes: ')
-                cr_names = ['gamma',  'pbar', 'e+', 'neue', 'neumu', 'neutau']
-                for chan in cr_names:
+                logger.info('\n  gamma-ray flux: ')
+                np_names = ['g','nue', 'numu', 'nutau'] #,  'p', 'e', ]
+                #cr_names = ['gamma',  'pbar', 'e+', 'neue', 'neumu', 'neutau']
+                for chan in np_names:
 
-                    logger.info('%10s : %.3e units' %(chan, self.last_results['flux_%s' % chan] ))
+                    logger.info('%10s : %.3e particles/(cm^2 s sr)' %(chan, self.last_results['flux_%s' % chan] ))
 
                 logger.info('Differential fluxes written in output/flux_<cr species>.txt')
     
@@ -1712,8 +1754,8 @@ class MadDMCard(banner_mod.RunCard):
         #For the solar/earth capture rate
 
         #indirect detection
-        self.add_param('vave_indirect', 0.001, include=True)
-        self.add_param('halo_profile', 'NFW_R3', include=True)
+        self.add_param('vave_indirect', 0.00001, include=True)
+        self.add_param('halo_profile', 'Draco', include=True)   ##### this naming doesn't make sense fix it!!!!!!!!
 
         self.add_param('jfactors', {'__type__':1.0}, include=False)
         self.add_param('distances', {'__type__':1.0}, include=False)
@@ -1823,9 +1865,15 @@ class Multinest(object):
     def launch(self, resume=True):
 
         self.param_card_orig = param_card_mod.ParamCard(self.maddm_run.param_card)
+#<<<<<<< TREE
+        ## added by chiara
+        print('wy0 == ',self.param_card_orig.get_value('decay', 5000000))
+        ## end of addition
+#=======
         for pdg in self.maddm_run.auto_width:
             self.param_card_orig.get('decay', pdg).value = 'Auto'
         
+#>>>>>>> MERGE-SOURCE
 
         if self.options['loglikelihood'] == {} or self.options['prior'] =='':
             logger.error("You have to set the priors and likelihoods before launching!")
@@ -1871,7 +1919,12 @@ class Multinest(object):
                 for key in detailled_keys:
                     self.output_observables.append(key)
 
-                #FIX THIS! HERE ADD FLUXES
+            #FIX THIS! HERE ADD FLUXES        
+            #if self.maddm_run.mode['CR_flux']:
+            #    detailled_keys = [k for k in self.maddm_run.last_results.keys() if k.startswith('??????????')]
+            #    for key in detailled_keys:
+            #        self.output_observables.append(key)
+               
 
         # number of parameters to output
         # this includes the parameters which are scanned over (they go in first)
@@ -2044,6 +2097,7 @@ class Multinest(object):
                     block, lhaid = self.param_blocks[observable][0]
                     lhaid2 = lhaid[0]
                     cube[ndim+i] = self.maddm_run.param_card.get_value(block, lhaid2)
+                    logger.warning('LHAID: %.3e  VALUE: %.3e' %(lhaid2, self.maddm_run.param_card.get_value(block, lhaid2)))
                     
 #            else:
 #                for i, observable in enumerate(results):
