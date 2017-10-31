@@ -2213,7 +2213,7 @@ class Multinest(object):
                 elif likelihood == '':
                     chi+=0
                 else:
-                    logger.error('You are not using a valid likelihood function for SD direction detection. Omitting the contribution!')
+                    logger.error('You are not using a valid likelihood function for SD direct detection. Omitting the contribution!')
 
             #indirect detection
             if obs == 'indirect' and self.maddm_run.mode['indirect']:
