@@ -58,7 +58,7 @@ class ExpConstraints:
 
     def __init__(self):
 
-        self._allowed_final_states = ['qqx', 'gg', 'bbx', 'ttx', 'e+e-', 'mu+mu-', 'ta+ta-', 'w+w-', 'zz', 'hh', 'aa']
+        self._allowed_final_states = ['qqx', 'gg', 'bbx', 'ttx', 'e+e-', 'mu+mu-', 'ta+ta-', 'w+w-', 'zz', 'hh', 'aaER16','aaIR90','aaNFWcR3','aaNFWR41']
 
         self._oh2_planck = 0.1198
         self._oh2_planck_width = 0.0015
@@ -76,9 +76,12 @@ class ExpConstraints:
                                'w+w-':pjoin(MDMDIR, 'ExpData', 'Fermi_pass8_6years_stack15dShps_ww.dat'),
                                'zz':'',
                                'hh':'',
-                               'aa':''}
-        self._id_limit_vel = {'qqx':1.0E-6,'gg':1.0E-6,'bbx':1.0E-6,'ttx':1.0E-6,'e+e-':1.0E-6,'mu+mu-':1.0E-6,'ta+ta-':1.0E-6,
-                              'w+w-':1.0E-6, 'zz':1.0E-6,'hh':1.0E-6,'aa':1.0E-3}
+                               'aaER16':pjoin(MDMDIR,'ExpData', 'Fermi_lines_2015_Einasto_R16.dat'),
+                               'aaIR90':pjoin(MDMDIR,'ExpData', 'Fermi_lines_2015_Isothermal_R90.dat'),
+                               'aaNFWcR3':pjoin(MDMDIR,'ExpData', 'Fermi_lines_2015_NFWcontracted_R3.dat'),
+                               'aaNFWR41':pjoin(MDMDIR,'ExpData', 'Fermi_lines_2015_NFW_R41.dat')}
+        self._id_limit_vel = {'qqx':2.0E-5,'gg':2.0E-5,'bbx':2.0E-5,'ttx':2.0E-5,'e+e-':2.0E-5,'mu+mu-':2.0E-5,'ta+ta-':2.0E-5,
+                              'w+w-':2.0E-5, 'zz':2.0E-5,'hh':2.0E-5,'aaER16':1.0E-3,'aaIR90':1.0E-3,'aaNFWcR3':1.0E-3,'aaNFWR41':1.0E-3}
 
 
         self._id_limit_mdm = dict()
@@ -267,11 +270,11 @@ class MADDMRunCmd(cmd.CmdShell):
 
     def check_param_card(self, path, run=True):
         """
-        1) Check that no scan parameter are present
-        2) Check that all the width are define in the param_card.
-        - If a scan parameter is define. create the iterator and recall this fonction 
+        1) Check that no scan parameters are present
+        2) Check that all the width are defined in the param_card.
+        - If a scan parameter is defined. create the iterator and recall this function 
           on the first element.
-        - If some width are set on 'Auto', call the computation tools.
+        - If some widths are set on 'Auto', call the computation tools.
         - keep track of the width of auto if some present"""
         
         pattern_scan = re.compile(r'''^(decay)?[\s\d]*scan''', re.I+re.M)  
@@ -864,6 +867,10 @@ class MADDMRunCmd(cmd.CmdShell):
              phi = 1.0/(8.0*math.pi*mdm*mdm)*sigv*jfact*integrate_dNdE
             
              return phi
+
+
+    def FermilnL(self):
+        return sigmav_excluded
 
         
     def print_results(self):
@@ -1754,7 +1761,7 @@ class MadDMCard(banner_mod.RunCard):
         #For the solar/earth capture rate
 
         #indirect detection
-        self.add_param('vave_indirect', 0.00001, include=True)
+        self.add_param('vave_indirect', 0.00002, include=True)
         self.add_param('halo_profile', 'Draco', include=True)   ##### this naming doesn't make sense fix it!!!!!!!!
 
         self.add_param('jfactors', {'__type__':1.0}, include=False)
