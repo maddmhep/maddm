@@ -1,4 +1,3 @@
-import importlib
 # integration routine, simpson's rule. integrates a function over a pre-set 1-D grid.
 #add option to run it with x_min, x_max npts as well.
 def integrate(integrand, x_grid=[], a=0, b=0, npts=0, **kwargs):
@@ -44,7 +43,7 @@ def write_data_to_file(x_data, y_data, filename='', header=''):
 #To check if modules are installed
 def module_exists(className):
     try:
-        importlib.import_module(className)
+        __import__(className, globals(), locals(), [], -1)
         return True
     except:
         return False

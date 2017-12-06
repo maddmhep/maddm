@@ -286,8 +286,9 @@ class MadDM_interface(master_interface.MasterCmd):
                 timeout = 0
                 out = self.ask(question, '0', possible_answer, timeout=int(1.5*timeout),
                                   path_msg='enter path', 
-                                  ask_class = common_run.EditParamCard,
-                                  card=[path])
+                                  ask_class = EditParamCard,
+                                  card=[path],
+                                  pwd=os.getcwd())
         else:
             path = answer
             
@@ -842,7 +843,25 @@ class MadDM_interface(master_interface.MasterCmd):
             self._curr_model = model_reader.ModelReader(self._curr_model) 
         self._curr_model.set_parameters_and_couplings(self._param_card) 
         
-        
+import madgraph.interface.common_run_interface as common_run
+import madgraph.interface.extended_cmd as cmd
+
+class EditParamCard(common_run.AskforEditCard):
+    """a dedicated module for the param"""
+
+    special_shortcut ={}
+
+    def __init__(self, question, card=[], mode='auto', *args, **opt):
+
+        if not card:
+            card = ['param']
+        return super(EditParamCard,self).__init__(question, card, mode=mode, *args, **opt)
+
+    def do_asperge(self, *args, **opts):
+        "Not available"
+        logger.warning("asperge not available in this mode")
+
+    
  
 
         

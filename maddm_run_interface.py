@@ -253,6 +253,7 @@ class MADDMRunCmd(cmd.CmdShell):
         self.auto_width = set() # keep track of width set on Auto
 
         self.limits = ExpConstraints()
+        self.options = {}
     
     def preloop(self,*args,**opts):
         super(Indirect_Cmd,self).preloop(*args,**opts)
@@ -1007,20 +1008,25 @@ class MADDMRunCmd(cmd.CmdShell):
         
         if not force:
             process_data = self.proc_characteristics
-            self.mode = self.ask('', '0', mode=mode, data=self.proc_characteristics,
-                            ask_class=MadDMSelector, timeout=60, path_msg=' ')
+            self.mode, cmd_quest = self.ask('', '0', mode=mode, 
+                            data=self.proc_characteristics,
+                            ask_class=MadDMSelector, timeout=60, path_msg=' ',
+                            return_instance=True)
             
-            if self.mode in ['', '0']:
-                self.mode = {'relic': 'ON' if process_data['has_relic_density'] else 'Not available',
-                            'direct': 'ON' if process_data['has_direct_detection'] else 'Not available',
-                            'directional': 'ON' if process_data['has_directional_detection'] else 'Not available',
-                            'capture': 'ON' if process_data['has_capture'] else 'Not available',
-                            'indirect': 'ON' if process_data['has_indirect_detection'] else 'Not available',
-                            'CR_flux': 'ON' if process_data['has_indirect_detection'] else 'Not available',
-                            'run_multinest': 'OFF' if aux.module_exists('pymultinest') else 'Not available'}
-                process_data = self.proc_characteristics
+            # automatically switch to keep_wgt option
+            #edit the maddm_card to be consistent with self.mode
+            cmd_quest.get_cardcmd()
+            #if self.mode in ['', '0']:
+            #    self.mode = {'relic': 'ON' if process_data['has_relic_density'] else 'Not available',
+            #                'direct': 'ON' if process_data['has_direct_detection'] else 'Not available',
+            #                'directional': 'ON' if process_data['has_directional_detection'] else 'Not available',
+            #                'capture': 'ON' if process_data['has_capture'] else 'Not available',
+            #                'indirect': 'ON' if process_data['has_indirect_detection'] else 'Not available',
+            #                'CR_flux': 'ON' if process_data['has_indirect_detection'] else 'Not available',
+            #                'run_multinest': 'OFF' if aux.module_exists('pymultinest') else 'Not available'}
+            #    process_data = self.proc_characteristics
 
-            self.maddm_card = MadDMCard(pjoin(self.dir_path, 'Cards', 'maddm_card.dat'))
+            self.maddm_card = cmd_quest.maddm
             for key, value in self.mode.items():
                 if value == 'ON' or value is True:
                     self.mode[key] = True
@@ -1031,15 +1037,16 @@ class MADDMRunCmd(cmd.CmdShell):
             # create the inc file for maddm
             logger.debug('2to2 in ask_run_configuration: %s' % self._two2twoLO)
 
-            self.maddm_card.set('do_relic_density', self.mode['relic'], user=False)
-            self.maddm_card.set('do_direct_detection', self.mode['direct'], user=False)
-            self.maddm_card.set('do_directional_detection', self.mode['directional'], user=False)
-            self.maddm_card.set('do_capture', self.mode['capture'], user=False)
-            self.maddm_card.set('do_indirect_detection', self.mode['indirect'], user=False)
-            self.maddm_card.set('only2to2lo', self._two2twoLO, user=False)
-            self.maddm_card.set('run_multinest', self.mode['run_multinest'], user=False)
-            self.maddm_card.write_include_file(pjoin(self.dir_path, 'include'))
+            #self.maddm_card.set('do_relic_density', self.mode['relic'], user=False)
+            #self.maddm_card.set('do_direct_detection', self.mode['direct'], user=False)
+            #self.maddm_card.set('do_directional_detection', self.mode['directional'], user=False)
+            #self.maddm_card.set('do_capture', self.mode['capture'], user=False)
+            #self.maddm_card.set('do_indirect_detection', self.mode['indirect'], user=False)
+            #self.maddm_card.set('only2to2lo', self._two2twoLO, user=False)
+            #self.maddm_card.set('run_multinest', self.mode['run_multinest'], user=False)
+            #self.maddm_card.write_include_file(pjoin(self.dir_path, 'include'))
         else:
+            raise Exception, 'Need to check that mode'
             if not hasattr(self, 'maddm_card'):
                 self.maddm_card = MadDMCard(pjoin(self.dir_path, 'Cards', 'maddm_card.dat'))
             if not hasattr(self, 'mode'):
@@ -1066,7 +1073,8 @@ class MADDMRunCmd(cmd.CmdShell):
         self.check_param_card(pjoin(self.dir_path, 'Cards', 'param_card.dat'))
         self.param_card = check_param_card.ParamCard(pjoin(self.dir_path, 'Cards', 'param_card.dat'))
         
-        if not self.in_scan_mode and not self.mode['run_multinest']:
+        
+        if not self.in_scan_mode and not self.mode['nestscan']:
             logger.info("Start computing %s" % ','.join([name for name, value in self.mode.items() if value]))
         return self.mode
 
@@ -1190,65 +1198,203 @@ class Indirect_PY8Card(banner_mod.PY8Card):
         self.add_param("2112:mayDecay", True, hidden=True, comment="decays neutron")
 
 
-class MadDMSelector(common_run.AskforEditCard):
+class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
     """ """
 
-    @property
-    def answer(self):
-        return self.run_options
-
-    digitoptions = {1: 'relic', 2:'direct', 3:'directional', 4:'indirect', 5:'CR_flux',\
-                    6:'capture', 7:'run_multinest'}
-
+    to_control= [('relic', 'Compute the Relic Density'),
+                      ('direct', 'Compute direct(ional) detection'),
+                      ('indirect', 'Compute indirect detection/flux'),
+                      ('nestscan', 'Run Multinest scan'),
+                ]
+    to_init_card = ['param', 'maddm']
     PY8Card_class = Indirect_PY8Card
     
-    def __init__(self, *args, **opts):
+    integer_bias = len(to_control) + 1 # integer corresponding to the first entry in self.cards
+    
+    ####################################################################
+    # everything related to relic option
+    ####################################################################    
+    def set_default_relic(self):
+        """set the default value for relic="""
+        
+        if self.availmode['has_relic_density']:
+            self.switch['relic'] = 'ON'
+        else:
+            self.switch['relic'] = 'Not Avail.'
 
+    def get_allowed_relic(self):
+        """Specify which parameter are allowed for relic="""
+        
+        
+        if hasattr(self, 'allowed_relic'):
+            return getattr(self, 'allowed_relic')
+        
+        if self.availmode['has_relic_density']:
+            self.allowed_relic = ['ON', 'OFF']
+        else:
+            self.allowed_relic = []
+        
+        return self.allowed_relic
+
+    ####################################################################
+    # everything related to direct option
+    ####################################################################    
+    def set_default_direct(self):
+        """set the default value for relic="""
+        
+        if self.availmode['has_directional_detection']:
+            self.switch['direct'] = 'directional'
+        elif self.availmode['has_direct_detection']:
+            self.switch['direct'] = 'direct'        
+        else:
+            self.switch['direct'] = 'Not Avail.'
+
+    def get_allowed_direct(self):
+        """Specify which parameter are allowed for relic="""
+        
+        
+        if hasattr(self, 'allowed_direct'):
+            return getattr(self, 'allowed_direct')
+
+        if self.availmode['has_directional_detection']:
+            self.allowed_direct =  ['directional', 'direct','OFF']
+        elif self.availmode['has_direct_detection']:
+            self.allowed_direct =  ['direct','OFF']
+        else:
+            return []
+
+    def check_value_direct(self, value):
+        """ allow diret=ON in top of standard mode """
+        
+        if value in self.get_allowed('direct'):
+            return True
+        
+        value =value.lower()
+        if value in ['on'] and self.availmode['has_direct_detection' ]:
+            return 'direct'
+        
+    def get_cardcmd_direct(self, value):
+        """return the command to set the maddm_card consistent with the switch"""
+        
+        cmd =[]
+        if value == 'directional':
+            cmd.append('set do_directional_detection True')
+            value = 'direct'
+        else:
+            cmd.append('set do_directional_detection False')
+        
+        if value in ['ON', 'direct']:
+            cmd.append('set do_direct_detection True')
+        else:
+            cmd.append('set do_direct_detection False')
+
+        return cmd
+
+
+    ####################################################################
+    # everything related to indirect option
+    ####################################################################    
+    
+    # TODO -> add check if PY8/Dragon are available for the switch 
+    
+    def set_default_indirect(self):
+        """set the default value for relic="""
+        
+        if self.availmode['has_indirect_detection']:
+            self.switch['indirect'] = 'sigmav'     
+        else:
+            self.switch['indirect'] = 'Not Avail.'
+
+    def get_allowed_indirect(self):
+        """Specify which parameter are allowed for relic="""
+        
+        
+        if hasattr(self, 'allowed_indirect'):
+            return getattr(self, 'allowed_indirect')
+
+        if self.availmode['has_indirect_detection']:
+            self.allowed_indirect =  ['OFF', 'sigmav', 'flux_source', 'flux_earth']
+        else:
+            return []
+
+    
+    def check_value_indirect(self, value):
+        """ allow diret=ON in top of standard mode """
+        
+        other_valid = ['source_PPPC4DMID', 'source_py8', 
+                       'earth_PPPC4DMID+dragon',
+                     'earth_PPPC4DMID', 'earth_py8+dragon'] 
+        
+        if value in self.get_allowed('indirect'):
+            return True
+        
+        value = value.lower()
+        # valid but hidden options
+        if value in other_valid:
+            return True
+        if value.startswith('flux_') and value[5:] in other_valid:
+            return value[5:] 
+
+        # handle other alias        
+        if value in ['on'] and self.availmode['has_indirect_detection' ]:
+            return 'sigmav'
+
+        if value in ['dragon']:
+            return 'earth_py8+dragon'
+        
+        if value in ['py8', 'py', 'pythia', 'pythia8']:
+            return 'source_py8'
+                
+    ####################################################################
+    # everything related to multinset option
+    ####################################################################    
+    def set_default_nestscan(self):
+        """set the default value for nestscan="""
+        
+        if aux.module_exists('pymultinest'):
+            self.switch['nestscan'] = 'OFF'
+        else:
+            self.switch['nestscan'] = 'Not Avail.'
+
+    def get_allowed_nestscan(self):
+        """Specify which parameter are allowed for relic="""
+        
+        
+        if hasattr(self, 'allowed_nestscan'):
+            return getattr(self, 'allowed_nestscan')
+        
+        if aux.module_exists('pymultinest'):
+            self.allowed_nestscan = ['ON', 'OFF']
+        else:
+            self.allowed_nestscan = []
+        
+        return self.allowed_nestscan
+
+
+
+
+    
+    def __init__(self, question, *args, **opts):
 
         self.me_dir = opts['mother_interface'].dir_path
-        #0. some default variable
-        process_data = opts.pop('data', collections.defaultdict(bool))
-        self.run_options = {'relic': 'ON' if process_data['has_relic_density'] else 'Not available',
-                            'direct': 'ON' if process_data['has_direct_detection'] else 'Not available',
-                            'directional': 'ON' if process_data['has_directional_detection'] else 'Not available',
-                            'capture': 'ON' if process_data['has_capture'] and \
-                                                   process_data['has_direct_detection'] else 'Not available',
-                            'indirect': 'ON' if process_data['has_indirect_detection'] else 'Not available',
-                            'CR_flux':'ON' if process_data['has_indirect_detection'] else 'Not available',
-                            'run_multinest':'OFF' if aux.module_exists('pymultinest') else 'Not available'}
-        
-        #1. Define what to run and create the associated question
-        mode = opts.pop('mode', None)  
-        if mode:
-            for key, value in mode.items():
-                if self.run_options[key] in ['ON', 'OFF']:
-                    self.run_options[key] = value      
-        question = self.create_question()            
-                    
-        #2. Define the list of allowed argument
-        allow_args = [str(0), 'done', str(len(self.digitoptions)+1), 'param', str(len(self.digitoptions)+2), 'maddm']
-        for i,key in self.digitoptions.iteritems():
-            if self.run_options[key] in ['ON', 'OFF']:
-                allow_args.append(str(i+1))
-                allow_args.append(key)
-                allow_args.append('%s=on' % key)
-                allow_args.append('%s=off' % key)
-        opts['allow_arg'] = allow_args
+        self.availmode = opts.pop('data', collections.defaultdict(bool))
+        # call the initialisation of the ControlSwith part
 
-        logger.debug(opts['allow_arg'])
-                
-        # 3.initialise the object         
+        cmd.ControlSwitch.__init__(self, self.to_control, opts['mother_interface'], *args, **opts)
+        # initialise the various card to control
+        question = ''
+        
         param_card_path = pjoin(opts['mother_interface'].dir_path, 'Cards', 'param_card.dat')
         pythia8_card_path = pjoin(opts['mother_interface'].dir_path, 'Cards', 'pythia8_card.dat')
-        
-        super(MadDMSelector,self).__init__(question, {'param':param_card_path,
-                                                      'pythia8':pythia8_card_path},
-                                           **opts)
 
-        self.me_dir = opts['mother_interface'].dir_path
-        self.define_paths(pwd=self.me_dir) 
+        cards = [param_card_path, 'maddm', 'multinest', pythia8_card_path]
+        common_run.AskforEditCard.__init__(self, question, cards,
+                                            *args, **opts)
+        self.question = self.create_question()
+                
+    def init_maddm(self, path):
+        """ initialize cards for the reading/writing of maddm"""
         
-        #4. Initialise the maddm cards
         self.maddm_def = MadDMCard(self.paths['maddm_default'])
         try:
             self.maddm = MadDMCard(self.paths['maddm'])
@@ -1259,59 +1405,48 @@ class MadDMSelector(common_run.AskforEditCard):
             self.maddm = MadDMCard(self.paths['maddm'])
             
         self.maddm_set = self.maddm_def.keys() + self.maddm_def.hidden_param
-        for var in self.pname2block:
-            if var in self.maddm_set:
-                self.conflict.append(var) 
-                
-        self.has_delphes = False 
-     
+        return self.maddm.keys() 
+
+    def get_cardcmd(self):
+        """ return the list of command that need to be run to have a consistent 
+            set of cards with the switch value choosen """
         
+        cmd = super(MadDMSelector,self).get_cardcmd()
+        for c in cmd:
+            self.exec_cmd(c)        
+
+        return cmd 
 
     def create_question(self):
         """create the new question depending of the status"""
         
-        def get_status_str(status):
-            if status == 'ON':
-                return bcolors.OKGREEN + 'ON' + bcolors.ENDC
-            elif status == 'OFF':
-                return bcolors.FAIL + 'OFF' + bcolors.ENDC
-            else:
-                return bcolors.WARNING + status + bcolors.ENDC
+        # Technical note: 
+        # Note that some special trigger happens for 
+        #    7/8 trigger via self.trigger_7 and self.trigger_8
+        #    If you change the numbering, please change the name of the 
+        #    trigger function accordingly.
         
-        question = """\n%(start_green)sHere is the current status of requested run %(stop)s: 
- * Enter the name/number to (de-)activate the corresponding feature
-    1. Compute the Relic Density      %(start_underline)srelic%(stop)s       = %(relic)s
-    2. Compute Direct Detection       %(start_underline)sdirect%(stop)s      = %(direct)s
-    3. Compute Directional Detection  %(start_underline)sdirectional%(stop)s = %(directional)s
-    4. Compute Indirect Detection     %(start_underline)sindirect%(stop)s    = %(indirect)s
-    5. Compute Cosmic Ray Flux        %(start_underline)sCR_flux%(stop)s    = %(CR_flux)s
-    6. Compute Capture Rate Coeffs.   %(start_underline)scapture%(stop)s    = %(capture)s
-    7. Run Multinest                  %(start_underline)srun_multinest%(stop)s    = %(run_multinest)s
-%(start_green)s You can also edit the various input card%(stop)s:
+        question = cmd.ControlSwitch.create_question(self, help_text=False)
+        question +="""\n%(start_green)s You can also edit the various input card%(stop)s:
  * Enter the name/number to open the editor
  * Enter a path to a file to replace the card
  * Enter %(start_bold)sset NAME value%(stop)s to change any parameter to the requested value 
-    8. Edit the model parameters    [%(start_underline)sparam%(stop)s]
-    9. Edit the MadDM options      [%(start_underline)smaddm%(stop)s]\n"""
+    5. Edit the model parameters    [%(start_underline)sparam%(stop)s]
+    6. Edit the MadDM options      [%(start_underline)smaddm%(stop)s]\n"""
 
-        if self.run_options['run_multinest'] == "ON":
-            question += """    10. Edit the Multinest options  [%(start_underline)smultinest%(stop)s]\n"""
+        current_val  = self.answer # use that to be secure with conflict -> always propose card
+        if current_val['nestscan'] == "ON" or self.switch["nestscan"] ==  "ON":
+            question += """    7. Edit the Multinest options  [%(start_underline)smultinest%(stop)s]\n"""
     
-        if self.run_options['CR_flux'] == "ON":
-            question += """    11. Edit the Showering Card for CR_flux  [%(start_underline)sflux%(stop)s]\n"""
+        if current_val['indirect'].startswith('flux') or self.switch["indirect"].startswith('flux'):
+            question += """    8. Edit the Showering Card for flux  [%(start_underline)sflux%(stop)s]\n"""
     
-        return question % {'start_green' : '\033[92m',
+        self.question =  question % {'start_green' : '\033[92m',
                          'stop':  '\033[0m',
                          'start_underline': '\033[4m',
                          'start_bold':'\033[1m', 
-                         'relic': get_status_str(self.run_options['relic']),
-                         'direct':get_status_str(self.run_options['direct']),
-                         'directional':get_status_str(self.run_options['directional']),
-                         'indirect':get_status_str(self.run_options['indirect']),
-                         'CR_flux':get_status_str(self.run_options['CR_flux']),
-                         'capture':get_status_str(self.run_options['capture']),
-                         'run_multinest':get_status_str(self.run_options['run_multinest']),
                         }
+        return self.question
     
     def define_paths(self, **opt):
         
@@ -1324,67 +1459,54 @@ class MadDMSelector(common_run.AskforEditCard):
         self.paths['flux_default'] = pjoin(self.me_dir,'Cards','pythia8_card_default.dat')
                 
     
-    
+    # TODO HERE!
     def default(self, line):
         """Default action if line is not recognized"""
         
-        line = line.strip()
-        args = line.split()
-        if args:
-            if args[0].isdigit():
-                val = int(args[0])
-                if val in range(1,len(self.digitoptions)+1):
-                    args[0] = self.digitoptions[val]
-                elif val == len(self.digitoptions)+1:
-                    self.open_file('param')
-                    self.value = 'repeat'
-                elif val == len(self.digitoptions)+2:
-                    self.open_file('maddm')
-                    self.value = 'repeat'
-                elif val == len(self.digitoptions)+3:
-                    self.open_file('multinest')
-                    self.value = 'repeat'
-                elif val == len(self.digitoptions)+4:
-                    self.open_file('pythia8')
-                    self.value = 'repeat'                    
-                elif val !=0:
-                    logger.warning("Number not supported: Doing Nothing")
-            if '=' in line:
-                if '=' in args:
-                    args.remove('=')
-                if '=' in args[0]:
-                    args = args[0].split('=')
-                tag, value = args
-                if self.run_options[tag] in ['ON', 'OFF']:
-                    if value.lower() == 'on':
-                        self.run_options[tag] = 'ON'
-                    elif value.lower() == 'off':
-                        self.run_options[tag] = 'OFF'
-                    else:
-                        logger.warning('%s is not a valid entry')
-                    self.check_coherence(tag)
-                self.value = 'repeat'
-            elif args[0] in self.run_options:
-                if self.run_options[args[0]] == 'ON':
-                    self.run_options[args[0]] = 'OFF'
-                elif self.run_options[args[0]] == 'OFF':
-                    self.run_options[args[0]] = 'ON'
-                else:
-                    logger.warning('This entry can not be changed for this running directory.')
-                self.value = 'repeat'
-                self.check_coherence(args[0])
-        if hasattr(self, 'value') and self.value == 'repeat':
-            self.question = self.create_question()
-            return line
-        elif os.path.exists(line):
-            super(MadDMSelector, self).default(line)
-            self.value = 'repeat'
-            return line  
-        elif not hasattr(self, 'value'):
-            return self.run_options
-        else:
-            return super(MadDMSelector, self).default(line)
+        try:
+            return cmd.ControlSwitch.default(self, line, raise_error=True)
+        except cmd.NotValidInput:
+            return common_run.AskforEditCard.default(self, line)     
         
+    def trigger_7(self, line):
+        """ trigger function for default function:
+            allows to modify the line/ trigger action.
+            
+            check that nestscan can be ON
+               if it is, set it ON,
+               otherswise, print a warning and set the line to reask the 
+               question (return False)
+        """
+        
+        #  1) do like the user type "multinest=ON"
+        #  2) go to the line edition
+        self.set_switch('nestscan', "ON", user=True) 
+        if self.switch['nestscan'] == "ON":
+            return line
+        # not valid nestscan - > reask question
+        else:
+            return 
+
+    def trigger_8(self, line):
+        """ trigger function for default function:
+            allows to modify the line/ trigger action.
+            
+            check that indirect can be ON
+               if it is, set it ON,
+               otherswise, print a warning and set the line to reask the 
+               question (return False)
+        """
+        
+        #  1) do like the user type "indirect=ON"
+        #  2) go to the line edition
+        self.set_switch('indirect', "ON", user=True) 
+        if self.switch['indirect'] == "ON":
+            return line
+        # not valid indirect - > reask question
+        else:
+            return 
+    
+    trigger_flux = trigger_8
     
     def do_compute_widths(self, line):
         """normal fct but ensure that self.maddm_card is up-to-date"""
@@ -1413,26 +1535,6 @@ class MadDMSelector(common_run.AskforEditCard):
                 return super(MadDMSelector, self).do_update(line)
          
     
-    def check_coherence(self, last_modified):
-
-        if last_modified == 'directional':
-            if self.run_options['directional'] == 'ON':
-                self.run_options['direct'] = 'ON'
-        elif last_modified == 'direct':
-            if self.run_options['direct'] == 'OFF':
-                self.run_options['directional'] = 'OFF'
-                self.run_options['capture'] = 'OFF'
-        elif last_modified =='capture':
-            if self.run_options['direct'] == 'OFF':
-                self.run_options['direct'] = 'ON'
-        elif last_modified =='CR_flux':
-            if self.run_options['CR_flux'] == 'ON':
-                self.run_options['indirect'] = 'ON'
-        elif last_modified =='indirect':
-            if self.run_options['indirect'] == 'OFF':
-                self.run_options['CR_flux']= 'OFF'
-
-
 
 
     def check_card_consistency(self):
@@ -1444,7 +1546,7 @@ class MadDMSelector(common_run.AskforEditCard):
         #self.write_jfactors()
 
         # If direct detection is ON ensure that quark mass are not zero
-        if self.run_options['direct'] == 'ON':
+        if self.run_options['direct'] != 'OFF':
             to_change = []
             for i in range(1,7):
                 if self.param_card.get_value('mass', i) == 0.:
@@ -1455,9 +1557,9 @@ class MadDMSelector(common_run.AskforEditCard):
                 for i in to_change:
                     self.do_set('param_card mass %s %s' % (i, quark_masses[i]))
         
-    def open_file(self, path):
         
-        path = super(MadDMSelector,self).open_file(path)
+    def reload_card(self, path):
+        """ensure that maddm object are kept in sync"""
         
         if path == self.paths['maddm']:
             try:
@@ -1467,7 +1569,10 @@ class MadDMSelector(common_run.AskforEditCard):
                 logger.error('problem detected: %s' % e)
                 logger.error('Please re-open the file and fix the problem.')
                 logger.warning('using the \'set\' command without opening the file will discard all your manual change')
-    
+        else:
+            return super(MadDMSelector,self).reload_card(path)
+        
+        
     def complete_set(self, text, line, begidx, endidx, formatting=True):
         """ Complete the set command"""
        #try:
@@ -1682,6 +1787,7 @@ class MadDMCard(banner_mod.RunCard):
         self.add_param('do_direct_detection', False, system=True)
         self.add_param('do_directional_detection', False, system=True)
         self.add_param('do_capture', False, system=True)
+        
 
         self.add_param('do_indirect_detection', False, system=True)
         self.add_param('only2to2lo', False, system=True)
@@ -1757,7 +1863,7 @@ class MadDMCard(banner_mod.RunCard):
         self.add_param('cos_theta_bins', 20)
         self.add_param('day_bins', 10)
         self.add_param('smearing', False)
-
+        
         #For the solar/earth capture rate
 
         #indirect detection
@@ -1770,9 +1876,12 @@ class MadDMCard(banner_mod.RunCard):
 
         self.add_param('only_two_body_decays', True, include=False)
         #self.add_param('num_of_elements', 60)
-
+        
         self.fill_jfactors()
 
+        self.add_param('indirect_flux_source_method', 'pythia8', comment='choose between pythia8 and PPPC4DMID')
+        self.add_param('indirect_flux_earth_method', 'dragon', comment='choose between dragon and PPPC4DMID')
+        self.add_param('sigmav_method', 'reshuffling', comment='choose between simpson, madevent, reshuffling')
 
 
 
