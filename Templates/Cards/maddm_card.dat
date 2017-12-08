@@ -21,7 +21,11 @@
 #                 ########
 #
 ###################################################################################
-
+#
+#  Need to have more parameter? You can display all the hidden ones via the command
+#   update to_full
+#
+###################################################################################
 # Controlling some printout of the calculation
   %(print_out)s      = print_out         # status update
   %(print_sigmas)s      = print_sigmas      # print out the values of the annihilation 
@@ -151,5 +155,7 @@
 #
 # For indirect detection
 #
-   %(halo_profile)s    = halo_profile   ! determines which jfactor will be used for the flux calculation
+   %(sigmav_method)s    = sigmav_method ! simpson [fast but no PY8_flux available], madevent, reshuffling
+   %(indirect_flux_source_method)s   = indirect_flux_source_method ! pythia8 or PPPC4DMID
+   %(indirect_flux_earth_method)s    =  indirect_flux_earth_method ! pythia8+PPPC4DMID or PPPC4DMID
    %(vave_indirect)s   = vave_indirect  ! average velocity of DM halo in natural units (e.g. 1E-3 for our galaxy)

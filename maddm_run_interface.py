@@ -44,7 +44,7 @@ except:
 
 pjoin = os.path.join
 logger = logging.getLogger('madgraph.plugin.maddm')
-logger.setLevel(10) #level 20 = INFO
+#logger.setLevel(10) #level 20 = INFO
 
 MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
 
@@ -257,8 +257,8 @@ class MADDMRunCmd(cmd.CmdShell):
     
     def preloop(self,*args,**opts):
         super(Indirect_Cmd,self).preloop(*args,**opts)
-        self.prompt = 'Maddm:%s' % self.prompt
-        
+        self.prompt = 'Maddm:%s' % self.prompt 
+    
     def get_characteristics(self, path=None):
         """reads the proc_characteristics file and initialises the correspondant
         dictionary"""
@@ -358,12 +358,6 @@ class MADDMRunCmd(cmd.CmdShell):
         param_path  = pjoin(self.dir_path,'Cards', 'param_card.dat')
         self.param_card = param_card_mod.ParamCard(param_path)
 
-        #If the Indirect subfolder is not created, that means that the code is
-        #using the 2to2 at LO which is handled by maddm.f.
-        if not os.path.exists(pjoin(self.dir_path, 'Indirect')):
-            self._two2twoLO = True
-
-        logger.debug('2to2: %s' % self._two2twoLO)
 
         args = line.split()
         if '-f' in args or '--force' in args:
@@ -371,6 +365,7 @@ class MADDMRunCmd(cmd.CmdShell):
         else:
             force = False
         self.ask_run_configuration(mode=[], force=force)
+
 
         if not self.multinest_running:
             self.compile()
@@ -440,7 +435,7 @@ class MADDMRunCmd(cmd.CmdShell):
         #Here we need to add the Cr flux output into the order and zip the results before
         #extracting numbers for fluxes because dPhidE needs results['taacsID..'] to be present.
 
-        if self.mode['CR_flux']:
+        if str(self.mode['indirect']).startswith('flux'):
             for chan in np_names:
                 output_name.append('flux_%s' % chan)
                 result.append(-1.0)
@@ -456,44 +451,37 @@ class MADDMRunCmd(cmd.CmdShell):
                 self.launch_indirect(force)
 
         #Now that the sigmav values are set, we can compute the fluxes
-        if self.mode['CR_flux']:
+        if str(self.mode['indirect']).startswith('flux'):
+            #Here we need to skip this part if the scan is being conducted because
+            #the value of dark matter mass could be 'scan: ...'
+            if not self.param_card_iterator:
+                mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
+                run_name = self.me_cmd.run_name
+                npts = self.maddm_card['npts_for_flux']
+                energies = [1.0*(mdm)/ npts * n for n in range(npts)] ##  logscale is better, to be changed...
+                #logger.debug(mdm)
 
-            if not self.mode['indirect']:
-                logger.error('You can not calculate the flux before calculating <sigmav>!')
-                return -1.0
-            else:
+                for chan in np_names:
 
-                #Here we need to skip this part if the scan is being conducted because
-                #the value of dark matter mass could be 'scan: ...'
-                if not self.param_card_iterator:
-                    mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
-                    run_name = self.me_cmd.run_name
-                    npts = self.maddm_card['npts_for_flux']
-                    energies = [1.0*(mdm)/ npts * n for n in range(npts)] ##  logscale is better, to be changed...
-                    #logger.debug(mdm)
+                    phis= []
+                    for energy in energies:
+                        phis.append(self.dPhidE(energy, channel=chan))
+                                                    
+                    flux_filename = pjoin(self.dir_path,'Indirect', 'Events', run_name, 'dPhidE_dSphName_%s.txt' %chan)
+                    #flux_filename = pjoin(self.dir_path, 'output', 'dPhidE_%s.txt' %chan)
+                    aux.write_data_to_file(energies, phis, filename=flux_filename, header='# Energy [GeV]    Differential Flux [GeV^-1 cm^-2 s^-1 sr^-1]')
 
-                    for chan in np_names:
+                    self.last_results['flux_%s' % chan] = self.Phi(chan=chan)
+                    #output_name.append('flux_%s' % chan)
 
-                        phis= []
-                        for energy in energies:
-                            phis.append(self.dPhidE(energy, channel=chan))
-                                                        
-                        flux_filename = pjoin(self.dir_path,'Indirect', 'Events', run_name, 'dPhidE_dSphName_%s.txt' %chan)
-                        #flux_filename = pjoin(self.dir_path, 'output', 'dPhidE_%s.txt' %chan)
-                        aux.write_data_to_file(energies, phis, filename=flux_filename, header='# Energy [GeV]    Differential Flux [GeV^-1 cm^-2 s^-1 sr^-1]')
+                for chan in cr_names:
+                    Espectrum= []
+                    for energy in energies:
+                        Espectrum.append(self.dNdx(energy, channel=chan))
 
-                        self.last_results['flux_%s' % chan] = self.Phi(chan=chan)
-                        #output_name.append('flux_%s' % chan)
-
-                    for chan in cr_names:
-
-                      Espectrum= []
-                      for energy in energies:
-                          Espectrum.append(self.dNdx(energy, channel=chan))
-
-                      dNde_filename = pjoin(self.dir_path,'Indirect', 'Events', run_name, 'dNdE_%s.txt' %chan)
-                      aux.write_data_to_file(energies, Espectrum, filename=dNde_filename, header='# E_kin [GeV]   dNdE [GeV^-1]')
-                          
+                    dNde_filename = pjoin(self.dir_path,'Indirect', 'Events', run_name, 'dNdE_%s.txt' %chan)
+                    aux.write_data_to_file(energies, Espectrum, filename=dNde_filename, header='# E_kin [GeV]   dNdE [GeV^-1]')
+                      
 
         #logger.info(self.last_results)
 
@@ -502,7 +490,6 @@ class MADDMRunCmd(cmd.CmdShell):
         #    result['err_taacsID'] = math.sqrt(sigv_indirect_error)
 
 
-        logger.debug('scan mode: %s' % str(self.in_scan_mode))
 
         if not self.in_scan_mode and not self.multinest_running:
             self.print_results()
@@ -512,7 +499,7 @@ class MADDMRunCmd(cmd.CmdShell):
         # --------------------------------------------------------------------#
 
         #multinest can be launched only after one launch has been executed
-        if self.mode['run_multinest'] and not self.multinest_running:
+        if self.mode['nestscan'] and not self.multinest_running:
             self.multinest_running = True
             self.launch_multinest()
             self.multinest_running = False
@@ -535,7 +522,7 @@ class MADDMRunCmd(cmd.CmdShell):
             if self.mode['direct'] :
                 order += ['sigmaN_SI_proton', 'sigmaN_SI_neutron', 'sigmaN_SD_proton',
                         'sigmaN_SD_neutron']
-            if self.mode['directional']:
+            if self.mode['direct'] == 'directional':
                 order += ['Nevents', 'smearing']
             if self.mode['capture']:
                 detailled_keys = [k for k in self.last_results
@@ -647,6 +634,9 @@ class MADDMRunCmd(cmd.CmdShell):
         if not os.path.exists(pjoin(self.dir_path, 'Indirect')):
             self._two2twoLO = True
             return
+        elif self.maddm_card['sigmav_method'] == 'simpson':
+            self._two2twoLO = True
+            return            
 
         if not self.in_scan_mode: 
             logger.info('Running indirect detection')
@@ -665,9 +655,6 @@ class MADDMRunCmd(cmd.CmdShell):
 
         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
         vave_temp = self.maddm_card['vave_indirect']
-        #scan_v = [np.power(10., -1*ii) for ii in range(2, 6)]
-        #scan_v = scan_v+[vave_temp]#/299794.458]
-        #scan_v = np.unique([round(x, 6) for x in scan_v])
 
         # ensure that VPM is the central one for the printout (so far)
         self.last_results['taacsID'] = 0.0
@@ -677,33 +664,17 @@ class MADDMRunCmd(cmd.CmdShell):
         run_card['ebeam2'] = mdm * math.sqrt(1+vave_temp**2)
         run_card['use_syst'] = False
         run_card.remove_all_cut()
+        
+        if os.path.exists(pjoin(self.dir_path, 'Cards', 'pythia8_card.dat')):
+            py8card = Indirect_PY8Card(pjoin(self.dir_path, 'Cards', 'pythia8_card.dat'))
+            if py8card['Main:NumberOfEvents'] != -1:
+                run_card['nevents'] == py8card['Main:NumberOfEvents']
+        
         run_card.write(runcardpath)
             
         self.me_cmd.do_launch('-f')
-        
-        #compile the pythia8 script
-        if not os.path.exists(pjoin(self.dir_path,'bin','internal','main101')) and \
-            self.mode['CR_flux']:
-            if not hasattr(self, 'mg5'):
-                self.run_mg5('')
-            py8 = self.mg5.options['pythia8_path']
-            files.cp(pjoin(py8, 'share','Pythia8','examples','Makefile'), 
-               pjoin(self.dir_path,'bin','internal'))
-            files.cp(pjoin(py8, 'share','Pythia8','examples','Makefile.inc'), 
-               pjoin(self.dir_path,'bin','internal'))
-            try:
-                misc.compile(['main101'], cwd=pjoin(self.dir_path,'bin','internal'))
-            except MadGraph5Error,e:
-                print e
-                logger.critical('Indirect detection, py8 script can not be compiled. Skip indirect detection')
-                return
-        
-        #self.last_results['halo_velocity#%s' %i] = vave_temp
-        #self.last_results['indirect#%s' %i] = self.me_cmd.results.get_detail('cross')
-        #self.last_results['indirect_error#%s' %i] = self.me_cmd.results.get_detail('error')
 
-        logger.debug(self.me_cmd.Presults)
-
+        # store result
         for key, value in self.me_cmd.Presults.iteritems():
 
             clean_key_list = key.split("_")
@@ -715,67 +686,103 @@ class MADDMRunCmd(cmd.CmdShell):
             elif key.startswith('xerr'):
                 self.last_results['err_taacsID#%s' %(clean_key)] = value * pb2cm3
 
-        if self.mode['CR_flux']:
-            # Now write the card.
-            if not self.in_scan_mode: 
-                pythia_cmd_card = pjoin(self.dir_path, 'Indirect' ,'Source', "spectrum.cmnd")
-                                                
-                # Now write Pythia8 card
-                # Start by reading, starting from the default one so that the 'user_set'
-                # tag are correctly set.
-                PY8_Card = Indirect_PY8Card(pjoin(self.dir_path, 'Cards', 
-                                                        'pythia8_card_default.dat'))
-                PY8_Card['Main:spareParm1'] = mdm
-                PY8_Card.read(pjoin(self.dir_path, 'Cards', 'pythia8_card.dat'),
-                                                                      setter='user')
-                PY8_Card.write(pythia_cmd_card, 
-                               pjoin(self.dir_path, 'Cards', 'pythia8_card_default.dat'),
-                                direct_pythia_input=True)
-                
-            run_name = self.me_cmd.run_name
-            # launch pythia8
-            pythia_log = pjoin(self.dir_path , 'Indirect', 'Events', run_name,
-                                                         'pythia8.log')
-
-            # Write a bash wrapper to run the shower with custom environment variables
-            wrapper_path = pjoin(self.dir_path,'Indirect', 'Events',run_name,'run_shower.sh')
-            wrapper = open(wrapper_path,'w')
-            shell = 'bash' if misc.get_shell_type() in ['bash',None] else 'tcsh'
-            shell_exe = None
-            if os.path.exists('/usr/bin/env'):
-                shell_exe = '/usr/bin/env %s'%shell
-            else: 
-                shell_exe = misc.which(shell)
-            if not shell_exe:
-                raise self.InvalidCmd('No s hell could be found in your environment.\n'+
-                  "Make sure that either '%s' is in your path or that the"%shell+\
-                  " command '/usr/bin/env %s' exists and returns a valid path."%shell)
+        
+        #check for flux:
+        if not str(self.mode['indirect']).startswith('flux'):
+            return
+        
+        if self.maddm_card['indirect_flux_source_method'] == 'pythia8':
+            self.run_pythia8_for_flux()
+        
+        #
+        #
+        #  ADD HERE HANDLING FOR CIRIELLI/DRAGON
+        #
+        #
             
-            pythia_main = pjoin(self.dir_path,'bin','internal','main101')
-            exe_cmd = "#!%s\n%s" % (shell_exe, pythia_main)
-            wrapper.write(exe_cmd)
-            wrapper.close()
-
-            # Set it as executable
-            st = os.stat(wrapper_path)
-            os.chmod(wrapper_path, st.st_mode | stat.S_IEXEC)
-            # No need for parallelization ?
-            logger.info('Follow Pythia8 shower by running the '+
-                    'following command (in a separate terminal):\n    tail -f %s' % pythia_log)
             
-            options = self.me_cmd.options
-            if options['run_mode']==1:
-                cluster = self.me_cmd.cluster    
-                ret_code = cluster.launch_and_wait(wrapper_path, 
-                        argument= [], stdout= pythia_log, stderr=subprocess.STDOUT,
-                                      cwd=pjoin(self.dir_path,'Indirect','Events',run_name))
-            else:                
-                ret_code = misc.call(wrapper_path, stdout=open(pythia_log,'w'), stderr=subprocess.STDOUT,
-                                      cwd=pjoin(self.dir_path,'Indirect','Events',run_name))
-            if ret_code != 0:
-                raise self.InvalidCmd, 'Pythia8 shower interrupted with return'+\
-                        ' code %d.\n'%ret_code+\
-                        'You can find more information in this log file:\n%s'%pythia_log
+            
+    def run_pythia8_for_flux(self):
+        """ compile and run pythia8 for the flux"""
+        
+        mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
+        
+        #compile the pythia8 script
+        if not os.path.exists(pjoin(self.dir_path,'bin','internal','main101')):
+            if not hasattr(self, 'mg5'):
+                self.run_mg5('')
+            py8 = self.mg5.options['pythia8_path']
+            files.cp(pjoin(py8, 'share','Pythia8','examples','Makefile'), 
+               pjoin(self.dir_path,'bin','internal'))
+            files.cp(pjoin(py8, 'share','Pythia8','examples','Makefile.inc'), 
+               pjoin(self.dir_path,'bin','internal'))
+            try:
+                misc.compile(['main101'], cwd=pjoin(self.dir_path,'bin','internal'))
+            except MadGraph5Error,e:
+                print e
+                logger.critical('Indirect detection, py8 script can not be compiled. Skip flux at earth')
+                return
+        
+        # Now write the card.
+        if not self.in_scan_mode: 
+            pythia_cmd_card = pjoin(self.dir_path, 'Indirect' ,'Source', "spectrum.cmnd")
+                                            
+            # Now write Pythia8 card
+            # Start by reading, starting from the default one so that the 'user_set'
+            # tag are correctly set.
+            PY8_Card = Indirect_PY8Card(pjoin(self.dir_path, 'Cards', 
+                                                    'pythia8_card_default.dat'))
+            PY8_Card['Main:spareParm1'] = mdm
+            PY8_Card.read(pjoin(self.dir_path, 'Cards', 'pythia8_card.dat'),
+                                                                  setter='user')
+            PY8_Card.write(pythia_cmd_card, 
+                           pjoin(self.dir_path, 'Cards', 'pythia8_card_default.dat'),
+                            direct_pythia_input=True)
+            
+        run_name = self.me_cmd.run_name
+        # launch pythia8
+        pythia_log = pjoin(self.dir_path , 'Indirect', 'Events', run_name,
+                                                     'pythia8.log')
+
+        # Write a bash wrapper to run the shower with custom environment variables
+        wrapper_path = pjoin(self.dir_path,'Indirect', 'Events',run_name,'run_shower.sh')
+        wrapper = open(wrapper_path,'w')
+        shell = 'bash' if misc.get_shell_type() in ['bash',None] else 'tcsh'
+        shell_exe = None
+        if os.path.exists('/usr/bin/env'):
+            shell_exe = '/usr/bin/env %s'%shell
+        else: 
+            shell_exe = misc.which(shell)
+        if not shell_exe:
+            raise self.InvalidCmd('No s hell could be found in your environment.\n'+
+              "Make sure that either '%s' is in your path or that the"%shell+\
+              " command '/usr/bin/env %s' exists and returns a valid path."%shell)
+        
+        pythia_main = pjoin(self.dir_path,'bin','internal','main101')
+        exe_cmd = "#!%s\n%s" % (shell_exe, pythia_main)
+        wrapper.write(exe_cmd)
+        wrapper.close()
+
+        # Set it as executable
+        st = os.stat(wrapper_path)
+        os.chmod(wrapper_path, st.st_mode | stat.S_IEXEC)
+        # No need for parallelization ?
+        logger.info('Follow Pythia8 shower by running the '+
+                'following command (in a separate terminal):\n    tail -f %s' % pythia_log)
+        
+        options = self.me_cmd.options
+        if options['run_mode']==1:
+            cluster = self.me_cmd.cluster    
+            ret_code = cluster.launch_and_wait(wrapper_path, 
+                    argument= [], stdout= pythia_log, stderr=subprocess.STDOUT,
+                                  cwd=pjoin(self.dir_path,'Indirect','Events',run_name))
+        else:                
+            ret_code = misc.call(wrapper_path, stdout=open(pythia_log,'w'), stderr=subprocess.STDOUT,
+                                  cwd=pjoin(self.dir_path,'Indirect','Events',run_name))
+        if ret_code != 0:
+            raise self.InvalidCmd, 'Pythia8 shower interrupted with return'+\
+                    ' code %d.\n'%ret_code+\
+                    'You can find more information in this log file:\n%s' % pythia_log
 
     def dNdx(self, x, channel=''):
 
@@ -828,46 +835,45 @@ class MADDMRunCmd(cmd.CmdShell):
 
         return x, y
 
-    # generic differential flux from dSPhs, channel can be photons or neutrinos 
+
     def dPhidE(self,  energy, channel=''):
+        """generic differential flux from dSPhs, channel can be photons or neutrinos"""
 
-         #is it efficient to load the param card like this?!
-         #param_card = param_card_mod.ParamCard(self.dir_path, 'Cards', 'param_card.dat')
-         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
-         sigv = self.last_results['taacsID']
-         halo_profile = self.maddm_card['halo_profile']
-         jfact = self.maddm_card['jfactors'][halo_profile]
+        mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
+        sigv = self.last_results['taacsID']
+        halo_profile = self.maddm_card['halo_profile']
+        jfact = self.maddm_card['jfactors'][halo_profile]
 
-         dphi = 1.0/(8.0*math.pi*mdm*mdm)*sigv*self.dNdx(energy, channel)*jfact          ### factor 1/4 for majorana and 1/8 for dirac
-         # expression below for dphi is just to check
-         #dphi = self.dNdx(energy, channel)
+        dphi = 1.0/(8.0*math.pi*mdm*mdm)*sigv*self.dNdx(energy, channel)*jfact          ### factor 1/4 for majorana and 1/8 for dirac
+        # expression below for dphi is just to check
+        #dphi = self.dNdx(energy, channel)
          
-         return dphi
+        return dphi
 
     def Phi(self, chan=''):
-          if not self.last_results['taacsID']:
-             logger.error('You can not calculate the flux before calculating <sigmav>!')
-             return -1.0
-          else:
-             #param_card = param_card_mod.ParamCard(self.dir_path, 'Cards', 'param_card.dat')
-             mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
-             sigv = self.last_results['taacsID']
-             halo_profile = self.maddm_card['halo_profile']
-             jfact = self.maddm_card['jfactors'][halo_profile]
-
-             npts =  self.maddm_card['npts_for_flux']
-             grid = [de*2*mdm/npts for de in range(0, npts+1)]
-
-             #CHECK HERE THAT THE JACOBIAN FROM X TO E IS CORRECT
-             integrate_dNdE = aux.integrate(self.dNdx, grid, channel=chan)  # 1/mdm
-             print
-             #logger.debug('sigmav: %.5e' % sigv)
-             #logger.debug('mdm: %.5e' % mdm)
-             #logger.debug(jfact)
-
-             phi = 1.0/(8.0*math.pi*mdm*mdm)*sigv*jfact*integrate_dNdE
+        if not self.last_results['taacsID']:
+            logger.error('You can not calculate the flux before calculating <sigmav>!')
+            return -1.0
+        else:
+            #param_card = param_card_mod.ParamCard(self.dir_path, 'Cards', 'param_card.dat')
+            mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
+            sigv = self.last_results['taacsID']
+            halo_profile = self.maddm_card['halo_profile']
+            jfact = self.maddm_card['jfactors'][halo_profile]
             
-             return phi
+            npts =  self.maddm_card['npts_for_flux']
+            grid = [de*2*mdm/npts for de in range(0, npts+1)]
+            
+            #CHECK HERE THAT THE JACOBIAN FROM X TO E IS CORRECT
+            integrate_dNdE = aux.integrate(self.dNdx, grid, channel=chan)  # 1/mdm
+            
+            #logger.debug('sigmav: %.5e' % sigv)
+            #logger.debug('mdm: %.5e' % mdm)
+            #logger.debug(jfact)
+            
+            phi = 1.0/(8.0*math.pi*mdm*mdm)*sigv*jfact*integrate_dNdE
+            
+            return phi
 
 
     def FermilnL(self):
@@ -921,7 +927,7 @@ class MADDMRunCmd(cmd.CmdShell):
             logger.info(' sigmaN_SI_n      : %.2e GeV^-2 = %.2e cm^2  %s',self.last_results['sigmaN_SI_neutron'],self.last_results['sigmaN_SI_neutron']*GeV2pb*pb2cm2,pass_dd_si_proton)
             logger.info(' sigmaN_SD_p      : %.2e GeV^-2 = %.2e cm^2  %s',self.last_results['sigmaN_SD_proton'],self.last_results['sigmaN_SD_proton']*GeV2pb*pb2cm2, pass_dd_sd_proton)
             logger.info(' sigmaN_SD_n      : %.2e GeV^-2 = %.2e cm^2  %s',self.last_results['sigmaN_SD_neutron'],self.last_results['sigmaN_SD_neutron']*GeV2pb*pb2cm2, pass_dd_si_neutron)
-        if self.mode['directional']:
+        if self.mode['direct'] == 'directional':
             logger.info(' Nevents          : %i', self.last_results['Nevents'])
             logger.info(' smearing         : %.2e', self.last_results['smearing'])
         if self.mode['capture']:
@@ -981,7 +987,7 @@ class MADDMRunCmd(cmd.CmdShell):
             logger.info('    sigmav    DM DM > all [vave = %2.e] : %.2e cm^3/s' % (v,\
                                     self.last_results['taacsID']))
 
-            if self.mode['CR_flux']:
+            if str(self.mode['indirect']).startswith('flux'):
                 logger.info('\n  gamma-ray flux: ')
                 np_names = ['g','nue', 'numu', 'nutau'] #,  'p', 'e', ]
                 #cr_names = ['gamma',  'pbar', 'e+', 'neue', 'neumu', 'neutau']
@@ -1031,9 +1037,10 @@ class MADDMRunCmd(cmd.CmdShell):
                 if value == 'ON' or value is True:
                     self.mode[key] = True
 
-                else:
+                elif value == 'OFF':
                     self.mode[key] = False
-
+            self.mode['capture'] = False
+            misc.sprint(self.mode)
             # create the inc file for maddm
             logger.debug('2to2 in ask_run_configuration: %s' % self._two2twoLO)
 
@@ -1074,6 +1081,20 @@ class MADDMRunCmd(cmd.CmdShell):
         self.param_card = check_param_card.ParamCard(pjoin(self.dir_path, 'Cards', 'param_card.dat'))
         
         
+        #set self._two2twoLO if we need to use simpson method
+        #If the Indirect subfolder is not created, that means that the code is
+        #using the 2to2 at LO which is handled by maddm.f.
+        if self.maddm_card['sigmav_method'] == 'simpson':
+            self._two2twoLO = True
+        elif os.path.exists(pjoin(self.dir_path, 'Indirect')):
+            self._two2twoLO = False
+        else:
+            misc.sprint(os.listdir(self.dir_path))
+            raise Exception, 'Madevent output for indirect detection not available'
+            
+        logger.debug('2to2: %s' % self._two2twoLO)
+        
+        
         if not self.in_scan_mode and not self.mode['nestscan']:
             logger.info("Start computing %s" % ','.join([name for name, value in self.mode.items() if value]))
         return self.mode
@@ -1087,6 +1108,7 @@ class MADDMRunCmd(cmd.CmdShell):
         if self.in_scan_mode:
             return
 
+        self.maddm_card.write_include_file(pjoin(self.dir_path,'include'))
         misc.compile(['all'],cwd=self.dir_path)
 
         # if self.mode['relic'] and self.mode['direct']:
@@ -1358,8 +1380,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
 
     def get_allowed_nestscan(self):
         """Specify which parameter are allowed for relic="""
-        
-        
+            
         if hasattr(self, 'allowed_nestscan'):
             return getattr(self, 'allowed_nestscan')
         
@@ -1369,9 +1390,6 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
             self.allowed_nestscan = []
         
         return self.allowed_nestscan
-
-
-
 
     
     def __init__(self, question, *args, **opts):
@@ -1534,7 +1552,11 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
             else:
                 return super(MadDMSelector, self).do_update(line)
          
-    
+    def update_to_full(self, line):
+        """ trigger via update to_full LINE"""
+        
+        logger.info("update the maddm_card by including all the hidden parameter")
+        self.maddm.write(self.paths['maddm'], write_hidden=True)
 
 
     def check_card_consistency(self):
@@ -1753,11 +1775,11 @@ class MadDMCard(banner_mod.RunCard):
             logger.error('could not open Jfactor file %s ' % filename)
             return False
 
-        logger.info('Loaded the following Jfactors:')
-        logger.info('            Object      Distance [kpc]   Jfactor [GeV^2/cm^5]')
-        for jf, val in MadDMCard.initial_jfactors.iteritems():
-            dist = self['distances'][jf]
-            logger.info('%20s     %.2e           %.2e' %(jf, dist, val))
+        #logger.info('Loaded the following Jfactors:')
+        #logger.info('            Object      Distance [kpc]   Jfactor [GeV^2/cm^5]')
+        #for jf, val in MadDMCard.initial_jfactors.iteritems():
+        #    dist = self['distances'][jf]
+        #    logger.info('%20s     %.2e           %.2e' %(jf, dist, val))
 
     def write_jfactors(self):
 
@@ -1879,18 +1901,19 @@ class MadDMCard(banner_mod.RunCard):
         
         self.fill_jfactors()
 
-        self.add_param('indirect_flux_source_method', 'pythia8', comment='choose between pythia8 and PPPC4DMID')
-        self.add_param('indirect_flux_earth_method', 'dragon', comment='choose between dragon and PPPC4DMID')
-        self.add_param('sigmav_method', 'reshuffling', comment='choose between simpson, madevent, reshuffling')
+        self.add_param('indirect_flux_source_method', 'pythia8', comment='choose between pythia8 and PPPC4DMID', include=False)
+        self.add_param('indirect_flux_earth_method', 'dragon', comment='choose between dragon and PPPC4DMID', include=False)
+        self.add_param('sigmav_method', 'reshuffling', comment='choose between simpson, madevent, reshuffling', include=False)
 
 
 
         
-    def write(self, output_file, template=None, python_template=False):
+    def write(self, output_file, template=None, python_template=False,
+              write_hidden=False):
         """Write the run_card in output_file according to template 
            (a path to a valid run_card)"""
 
-        self.write_jfactors() 
+        #self.write_jfactors() 
         
 
         if not template:
@@ -1898,7 +1921,8 @@ class MadDMCard(banner_mod.RunCard):
             python_template = True
 
         super(MadDMCard, self).write(output_file, template=template,
-                                    python_template=python_template) 
+                                    python_template=python_template,
+                                    write_hidden=False) 
 
     def check_validity(self):
         """ """
@@ -1909,13 +1933,30 @@ class MadDMCard(banner_mod.RunCard):
         if self['SNu'] + self['SNs'] + self['SNd'] - self['SNg'] -1 > 1e-3:
             raise InvalidMaddmCard, 'The sum of SM* parameter should be 1.0 get %s' % (self['SNu'] + self['SNs'] + self['SNd'] + self['SNg'])
         
-
+        if self['sigmav_method'] == 'simpson':
+            if self['indirect_flux_source_method'] == 'pythia8':
+                logger.warning('since sigmav_method is on simpson, indirect_flux_source_method has been switch to PPPC4MID')
+                self['indirect_flux_source_method'] == 'PPPC4DMID'
+            if self['indirect_flux_earth_method'] != 'PPPC4DMID':
+                logger.warning('since sigmav_method is on simpson, indirect_flux_earth_method has been switch to PPPC4MID')
+                self['indirect_flux_earth_method'] == 'PPPC4DMID'                
+        elif self['indirect_flux_earth_method'] == 'PPPC4DMID+dragon':
+            if self['indirect_flux_source_method'] != 'PPPC4DMID':
+                logger.warning('since indirect_flux_earth_method is on PPPC4DMID+dragon, indirect_flux_source_method has been switch to PPPC4DMID')
+                self['indirect_flux_source_method'] == 'PPPC4DMID'
+        elif self['indirect_flux_earth_method'] == 'PPPC4DMID':
+            if self['indirect_flux_source_method'].lower() not in ['PPPC4DMID', 'none']:
+                logger.warning('since indirect_flux_earth_method is on PPPC4DMID, indirect_flux_source_method has been switch to none')
+            self['indirect_flux_source_method'] = 'none'
+                
+                
 class Indirect_Cmd(me5_interface.MadEventCmdShell):
     
     def __init__(self, *args, **opts):
         
         super(Indirect_Cmd, self).__init__(*args, **opts)
         self.history_header = ''
+        self.options['automatic_html_opening'] = False
     
     def preloop(self,*args,**opts):
         super(Indirect_Cmd,self).preloop(*args,**opts)

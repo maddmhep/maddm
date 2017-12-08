@@ -83,6 +83,32 @@ class MadDM_interface(master_interface.MasterCmd):
     eff_operators_SI = {1:'SIEFFS', 2:'SIEFFF', 3:'SIEFFV'}
     eff_operators_SD = {1:False, 2:'SDEFFF', 3:'SDEFFV'} 
     
+    
+    # for install command:
+    _install_opts = list(master_interface.MasterCmd._install_opts)
+    _install_opts.append('PPPC4DMID')
+    install_ad = dict(master_interface.MasterCmd.install_ad)
+    install_ad.update({'PPPC4DMID': ['1012.4515']})
+    install_name =  dict(master_interface.MasterCmd.install_name)
+    install_name.update({'PPPC4DMID':'PPPC4DMID'})
+    
+    # path to PPPC4DMID
+    
+    options_configuration = dict(master_interface.MasterCmd.options_configuration)
+    options_configuration['pppc4dmid_path'] = './PPPC4DMID'
+    
+    def post_install_PPPC4DMID(self):
+        return
+    
+    def set_configuration(self, *args, **opts):
+        out = master_interface.MasterCmd.set_configuration(self, *args, **opts)
+        
+        if self.options['pppc4dmid_path'] and not os.path.exists(self.options['pppc4dmid_path']):
+            self.options['pppc4dmid_path'] = None
+            
+        self.do_save('options', to_keep={'pppc4dmid_path':'./PPPC4DMID'})
+        return out
+    
     def preloop(self, *args, **opts):
         super(MadDM_interface, self).preloop(*args, **opts)
         self.prompt = 'MadDM>'
@@ -768,7 +794,7 @@ class MadDM_interface(master_interface.MasterCmd):
             logger.warning('''In order to have distribution related to indirect detection:
              Pythia8 needs to be linked to the code. You can install it by typing 'install pythia8'.
              You can compute the rate (no distribution) by typing 'add indirect 2to2lo'. ''')
-            return
+        #    return
 
 
         #Check if the argument contains only two particles in the final state
@@ -777,8 +803,25 @@ class MadDM_interface(master_interface.MasterCmd):
             self._force_madevent_for_ID = True
 
         if argument == []:
-            logger.critical('indirect detection needs to specify the final state: i.e. "add indirect b b~"')
+            self.exec_cmd('define q_mdm = 1 2 3 4 -1 -2 -3 -4')
+            final_states = ['q_mdm q_mdm','21 21', '5 -5', '6 -6', '22 22', '23 23', '24 -24','25 25', '11 -11', '13 -13', '15 -15', '12 -12', '14 -14', '16 -16']
+            for final_state in final_states:
+                try:
+                    self.exec_cmd('add indirect %s --noloop' % final_state)
+                except diagram_generation.NoDiagramException:
+                    continue
+                    logger.info('no diagraom for %s' % final_state)
+
             return
+#            self.exec_cmd('define sm = all / bsm')
+#            self.exec_cmd('display multiparticles')
+#            logger.critical('indirect detection needs to specify the final state: i.e. "add indirect b b~"')
+#            return
+    
+        allow_loop_induce=True
+        if '--noloop' in argument:
+            argument.remove('--noloop')
+            allow_loop_induce=False
 
         # flip indirect/standard process definition
         with misc.TMP_variable(self, ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps'], 
@@ -798,8 +841,9 @@ class MadDM_interface(master_interface.MasterCmd):
                 try:
                     self.do_add('process %s' % proc)
                 except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
-                    proc = '%s %s > %s %s [noborn=QCD] @ID ' % (name, antiname, ' '.join(argument), coupling)
-                    self.do_add('process %s' % proc)
+                    if allow_loop_induce:
+                        proc = '%s %s > %s %s [noborn=QCD] @ID ' % (name, antiname, ' '.join(argument), coupling)
+                        self.do_add('process %s' % proc)
   
     def update_model_with_EFT(self):
         """ """

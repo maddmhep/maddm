@@ -14,6 +14,6 @@ new_interface = maddm_interface.MadDM_interface
 new_output = {'maddm': MGoutput.ProcessExporterMadDM}
 
 ## The test/code have been validated up to this version
-latest_validated_version = (2,5,1)
-minimal_mg5amcnlo_version = (2,3,4)
+latest_validated_version = (2,6,1)
+minimal_mg5amcnlo_version = (2,5,0)
 maximal_mg5amcnlo_version = (1000,1000,1000)
