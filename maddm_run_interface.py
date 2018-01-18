@@ -1448,9 +1448,11 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         question +="""\n%(start_green)s You can also edit the various input card%(stop)s:
  * Enter the name/number to open the editor
  * Enter a path to a file to replace the card
- * Enter %(start_bold)sset NAME value%(stop)s to change any parameter to the requested value 
-    5. Edit the model parameters    [%(start_underline)sparam%(stop)s]
-    6. Edit the MadDM options      [%(start_underline)smaddm%(stop)s]\n"""
+ * Enter %(start_bold)sset NAME value%(stop)s to change any parameter to the requested value
+ /=============================================================================\ 
+ |  5. Edit the model parameters    [%(start_underline)sparam%(stop)s]                                    |  
+ |  6. Edit the MadDM options       [%(start_underline)smaddm%(stop)s]                                    |
+ \=============================================================================/\n"""
 
         current_val  = self.answer # use that to be secure with conflict -> always propose card
         if current_val['nestscan'] == "ON" or self.switch["nestscan"] ==  "ON":
@@ -1892,9 +1894,9 @@ class MadDMCard(banner_mod.RunCard):
         self.add_param('vave_indirect', 0.00002, include=True)
         self.add_param('halo_profile', 'Draco', include=True)   ##### this naming doesn't make sense fix it!!!!!!!!
 
-        self.add_param('jfactors', {'__type__':1.0}, include=False)
-        self.add_param('distances', {'__type__':1.0}, include=False)
-        self.add_param('npts_for_flux', 200, include=False) #number of points for the flux diff. distribution
+        self.add_param('jfactors', {'__type__':1.0}, include=False, hidden=True)
+        self.add_param('distances', {'__type__':1.0}, include=False, hidden=True)
+        self.add_param('npts_for_flux', 200, include=False, hidden=True) #number of points for the flux diff. distribution
 
         self.add_param('only_two_body_decays', True, include=False)
         #self.add_param('num_of_elements', 60)
@@ -1926,6 +1928,8 @@ class MadDMCard(banner_mod.RunCard):
 
     def check_validity(self):
         """ """
+        
+        super(MadDMCard, self).check_validity()
         
         if self['SPu'] + self['SPs'] + self['SPd'] + self['SPg'] -1 > 1e-3:
             raise InvalidMaddmCard , 'The sum of SP* parameter should be 1.0 get %s' % (self['SPu'] + self['SPs'] + self['SPd'] + self['SPg'])
