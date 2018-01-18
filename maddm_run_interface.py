@@ -1022,15 +1022,6 @@ class MADDMRunCmd(cmd.CmdShell):
             # automatically switch to keep_wgt option
             #edit the maddm_card to be consistent with self.mode
             cmd_quest.get_cardcmd()
-            #if self.mode in ['', '0']:
-            #    self.mode = {'relic': 'ON' if process_data['has_relic_density'] else 'Not available',
-            #                'direct': 'ON' if process_data['has_direct_detection'] else 'Not available',
-            #                'directional': 'ON' if process_data['has_directional_detection'] else 'Not available',
-            #                'capture': 'ON' if process_data['has_capture'] else 'Not available',
-            #                'indirect': 'ON' if process_data['has_indirect_detection'] else 'Not available',
-            #                'CR_flux': 'ON' if process_data['has_indirect_detection'] else 'Not available',
-            #                'run_multinest': 'OFF' if aux.module_exists('pymultinest') else 'Not available'}
-            #    process_data = self.proc_characteristics
 
             self.maddm_card = cmd_quest.maddm
             for key, value in self.mode.items():
@@ -1040,18 +1031,9 @@ class MADDMRunCmd(cmd.CmdShell):
                 elif value == 'OFF':
                     self.mode[key] = False
             self.mode['capture'] = False
-            misc.sprint(self.mode)
             # create the inc file for maddm
             logger.debug('2to2 in ask_run_configuration: %s' % self._two2twoLO)
 
-            #self.maddm_card.set('do_relic_density', self.mode['relic'], user=False)
-            #self.maddm_card.set('do_direct_detection', self.mode['direct'], user=False)
-            #self.maddm_card.set('do_directional_detection', self.mode['directional'], user=False)
-            #self.maddm_card.set('do_capture', self.mode['capture'], user=False)
-            #self.maddm_card.set('do_indirect_detection', self.mode['indirect'], user=False)
-            #self.maddm_card.set('only2to2lo', self._two2twoLO, user=False)
-            #self.maddm_card.set('run_multinest', self.mode['run_multinest'], user=False)
-            #self.maddm_card.write_include_file(pjoin(self.dir_path, 'include'))
         else:
             raise Exception, 'Need to check that mode'
             if not hasattr(self, 'maddm_card'):
@@ -1086,6 +1068,8 @@ class MADDMRunCmd(cmd.CmdShell):
         #using the 2to2 at LO which is handled by maddm.f.
         if self.maddm_card['sigmav_method'] == 'simpson':
             self._two2twoLO = True
+        elif not self.mode['indirect']:
+            self._two2twoLO = False
         elif os.path.exists(pjoin(self.dir_path, 'Indirect')):
             self._two2twoLO = False
         else:
