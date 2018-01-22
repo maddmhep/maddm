@@ -138,7 +138,7 @@ class ExpConstraints:
 
         #Load in indirect detection constraints                                                                                                                 
         for channel, limit_file in self._id_limit_file.iteritems():
-            print channel,  '' , limit_file # FF
+            #print channel,  '' , limit_file # FF
             if limit_file != '': # FF : need to redo the limit files as a two columns                                                                             
              if 'MadDM_FermiLim' in limit_file:
                 self._id_limit_mdm[channel]  = np.loadtxt(limit_file, unpack=True)[0]
@@ -460,9 +460,9 @@ class MADDMRunCmd(cmd.CmdShell):
                 result.append(-1.0)
           
         result = dict(zip(output_name, result))
-        #print 'results: ', result   
+        #print 'FF results: ', result   
         result['taacsID'] = sigv_indirect
-        #print 'results_2: ', result
+        #print 'FF results_2: ', result
         self.last_results = result
 
         #logger.debug(self.last_results)
@@ -472,15 +472,14 @@ class MADDMRunCmd(cmd.CmdShell):
 #                self.launch_indirect(force)
 
         if self.mode['indirect']:
-                print 'self.mode: ', self.mode 
-                print 'FF: I am launchig indirect detection '
-                print 'MDMDIR  ' , MDMDIR
+                #print 'FF self.mode: ', self.mode 
+                #print 'FF: I am launchig indirect detection '
+                #print 'FF MDMDIR  ' , MDMDIR
                 self.launch_indirect(force)
 
-#           print 'I am trying the PPPC'
 
 
-        print 'result_3 ' , result  # Why is this empty (i.e. == 0 ? where is the sigma calculated? )
+        # print 'FF result_3 ' , result  # Why is this empty (i.e. == 0 ? where is the sigma calculated? )
         #Now that the sigmav values are set, we can compute the fluxes
         if str(self.mode['indirect']).startswith('flux'):
             #Here we need to skip this part if the scan is being conducted because
@@ -836,43 +835,45 @@ class MADDMRunCmd(cmd.CmdShell):
                  logger.info('PPPC4DMID Spectra at Earth not found! Do you want to donwload them?')                                                                              
            sp_dic = np.load(PPPCDIR+'/PPPC_Tables_EW.npy') ## Change here the correct dictionary!
            return sp_dic
-               
-
-
-         
-
-    def interpolate_spectra(self, sp_dic):
+             
+    # FF this function extracts the values of the spectra interpolated linearly between two values mdm_1 and mdm_2
+    # mdm is the DM candidate mass, spectrum is gammas, positron etc, channel is the SM annihilation e.g. bbar, hh etc.   
+    # FF remeber to CHECK if it works when min and max are the same values, i.e. exactly for a value in the Masses lists!!! 
+    def interpolate_spectra(self, sp_dic, spectrum , channel):
         print 'FF I am interpolating'
-
-        '''
-      def __init__(self, Dic):
-           
-          self.Masses = np.array([float(i) for i in Dic['gammas'].keys()]) # The masses are the same for all the spectra and channels
-          self.Dic = Dic
-      
-      def interp_spec(self,sp='',ch='',mDM = ''):
-          
-           Dic = self.Dic
-           M    = self.Masses
-           #LogX = dic['x']
-           DM_min =  M[M >= mDM].min()  # extracting lower mass limit to interpolate from
-           DM_max =  M[M <= mDM].max()  # extracting upper mass limit to interpolate from
-           print DM_min, DM_max
-           
-           spec_1 = Dic[sp][ str(DM_min) ][ch]
-           spec_2 = Dic[sp][ str(DM_max) ][ch]
+        mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
+        M   = sp_dic['Masses']
+        dm_min =  M[M >= mdm].min()  # extracting lower mass limit to interpolate from
+        dm_max =  M[M <= mdm].max()  # extracting upper mass limit to interpolate from
+        
+        spec_1 = Dic[spectrum][ str(dm_min) ][channel]
+        spec_2 = Dic[spectrum][ str(dm_max) ][channel]
          
-           Interpolated = []
-           for x in range(len(spec_1)): # the spectrum values are ordered as 'x' vaues extracted from the Log[10,x] in the PPPC Tables
-               interp_function = interp1d([DM_min,DM_max], [spec_1[x],spec_2[x]] )
-               value =  interp_function(mDM)
-               Interpolated.append( value )
+        interpolated = []
+        for x in range(len(spec_1)): # the spectrum values are ordered as 'x' vaues extracted from the Log[10,x] in the PPPC Tables
+               interp_function = interp1d([dm_min, dm_max], [spec_1[x],spec_2[x]] )
+               value =  interp_function(mdm)
+               interpolated.append(value)
            
-           return Interpolated
-       '''
-   
+        return interpolated
 
+    # this function checks if a point is excluded by indirect detection results, with the fast method:
+    # given the sigmav , the channel considered and the BR, it load the experimental results and check if the point is excluded or allowed
+    def fast_limit_check(self, sigmav, channel, br):
+        mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
+        masses = self._id_limit_mdm [channel]
+        lim    = self._id_limit_sigv[channel]
+        interp_function = interp1d(masses,lim)
+        exp_res = interp_function(mdm)
+        if exp_res <= 0: # this should not happen since the exp res must be > 0
+               logger.error('Invalid experimental sigmav for the spectrum ', spectrum , ' from the annihilation channel ', channel)
+               return 0
+        theo    = eval(sigmav) * eval(br)
+        rvalue = exp_res / theo 
+        return rvalue 
+          
 
+    
 
 
 
@@ -969,7 +970,16 @@ class MADDMRunCmd(cmd.CmdShell):
 
 
     def FermilnL(self):
-        return sigmav_excluded
+        print 'Implement Jans code'
+
+
+
+
+
+
+
+
+
 
         
     def print_results(self):
