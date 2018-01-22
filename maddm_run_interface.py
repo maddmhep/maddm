@@ -48,7 +48,7 @@ logger = logging.getLogger('madgraph.plugin.maddm')
 
 MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
 
-
+PPPCDIR = os.getcwd()+'/PPPC4DMID/tables_PPPC4DMID_dictionary'
 
 #Is there a better definition of infinity?
 __infty__ = float('inf')
@@ -58,7 +58,7 @@ class ExpConstraints:
 
     def __init__(self):
 
-        self._allowed_final_states = ['qqx', 'gg', 'bbx', 'ttx', 'e+e-', 'mu+mu-', 'ta+ta-', 'w+w-', 'zz', 'hh', 'aaER16','aaIR90','aaNFWcR3','aaNFWR41']
+        self._allowed_final_states = ['qqx', 'ccx', 'gg', 'bbx', 'ttx', 'e+e-', 'mu+mu-', 'ta+ta-', 'w+w-', 'zz', 'hh', 'hess2013','hess2016', 'aaER16','aaIR90','aaNFWcR3','aaNFWR41']
 
         self._oh2_planck = 0.1198
         self._oh2_planck_width = 0.0015
@@ -66,22 +66,33 @@ class ExpConstraints:
         self._dd_si_limit_file = pjoin(MDMDIR, 'ExpData', 'LuxBound2016_si.dat')
         self._dd_sd_proton_limit_file = pjoin(MDMDIR, 'ExpData', 'Pico60_sd_proton.dat') # <---------CHANGE THE FILE!!!
         self._dd_sd_neutron_limit_file = pjoin(MDMDIR, 'ExpData', 'Lux_2017_sd_neutron.dat')
-        self._id_limit_file = {'qqx':pjoin(MDMDIR, 'ExpData', 'Fermi_pass8_6years_stack15dShps_uu.dat'),
-                               'gg':'',
-                               'bbx':pjoin(MDMDIR, 'ExpData', 'Fermi_pass8_6years_bb.dat'),
-                               'ttx':'',
-                               'e+e-':pjoin(MDMDIR, 'ExpData', 'Fermi_pass8_6years_stack15dShps_ee.dat'),
-                               'mu+mu-':pjoin(MDMDIR, 'ExpData', 'Fermi_pass8_6years_stack15dShps_mumu.dat'),
-                               'ta+ta-':pjoin(MDMDIR, 'ExpData', 'Fermi_pass8_6years_stack15dShps_tautau.dat'),
-                               'w+w-':pjoin(MDMDIR, 'ExpData', 'Fermi_pass8_6years_stack15dShps_ww.dat'),
-                               'zz':'',
-                               'hh':'',
+        self._id_limit_file = {'qqx'   :pjoin(MDMDIR, 'ExpData', 'MadDM_FermiLim_qq.dat'),
+                               'ccx'   :pjoin(MDMDIR, 'ExpData', 'MadDM_FermiLim_cc.dat'),
+                               'gg'    :pjoin(MDMDIR, 'ExpData', 'MadDM_FermiLim_gg.dat'),
+                               'bbx'   :pjoin(MDMDIR, 'ExpData', 'MadDM_FermiLim_bb.dat'),
+                               'ttx'   :pjoin(MDMDIR, 'ExpData', 'MadDM_FermiLim_tt.dat'),
+                               'e+e-'  :pjoin(MDMDIR, 'ExpData', 'MadDM_FermiLim_ee.dat'),
+                               'mu+mu-':pjoin(MDMDIR, 'ExpData', 'MadDM_FermiLim_mumu.dat'),
+                               'ta+ta-':pjoin(MDMDIR, 'ExpData', 'MadDM_FermiLim_tautau.dat'),
+                               'w+w-'  :pjoin(MDMDIR, 'ExpData', 'MadDM_FermiLim_ww.dat'),
+                               'zz'    :pjoin(MDMDIR, 'ExpData', 'MadDM_FermiLim_zz.dat'),
+                               'hh'    :pjoin(MDMDIR, 'ExpData', 'MadDM_FermiLim_hh.dat'),
+
+
+                               'hess2013': pjoin(MDMDIR,'ExpData', 'hess_I_2013_einasto.dat'),
+                               'hess2016': pjoin(MDMDIR,'ExpData', 'hess_2016_einasto.dat'),
+
                                'aaER16':pjoin(MDMDIR,'ExpData', 'Fermi_lines_2015_Einasto_R16.dat'),
                                'aaIR90':pjoin(MDMDIR,'ExpData', 'Fermi_lines_2015_Isothermal_R90.dat'),
                                'aaNFWcR3':pjoin(MDMDIR,'ExpData', 'Fermi_lines_2015_NFWcontracted_R3.dat'),
                                'aaNFWR41':pjoin(MDMDIR,'ExpData', 'Fermi_lines_2015_NFW_R41.dat')}
-        self._id_limit_vel = {'qqx':2.0E-5,'gg':2.0E-5,'bbx':2.0E-5,'ttx':2.0E-5,'e+e-':2.0E-5,'mu+mu-':2.0E-5,'ta+ta-':2.0E-5,
-                              'w+w-':2.0E-5, 'zz':2.0E-5,'hh':2.0E-5,'aaER16':1.0E-3,'aaIR90':1.0E-3,'aaNFWcR3':1.0E-3,'aaNFWR41':1.0E-3}
+
+
+
+        self._id_limit_vel = {'qqx':2.0E-5, 'ccx':2.0E-5, 'gg':2.0E-5,'bbx':2.0E-5,'ttx':2.0E-5,'e+e-':2.0E-5,'mu+mu-':2.0E-5,'ta+ta-':2.0E-5,
+                              'w+w-':2.0E-5, 'zz':2.0E-5,'hh':2.0E-5,
+                              'aaER16':1.0E-3,'aaIR90':1.0E-3,'aaNFWcR3':1.0E-3,'aaNFWR41':1.0E-3 ,
+                              'hess2013': 999 , 'hess2016': 999 } # FF: check these values for hess
 
 
         self._id_limit_mdm = dict()
@@ -125,14 +136,18 @@ class ExpConstraints:
         if self._dd_sd_neutron_limit_file!='':
             self._dd_sd_n_limit_mDM, self._dd_sd_n_limit_sigma = np.loadtxt(self._dd_sd_neutron_limit_file, unpack=True, comments='#')
 
-        #Load in indirect detection constraints
+        #Load in indirect detection constraints                                                                                                                 
         for channel, limit_file in self._id_limit_file.iteritems():
-            if limit_file!='':
-                self._id_limit_mdm[channel], self._id_limit_sigv[channel] = np.loadtxt(limit_file, unpack=True, comments='#')
+            print channel,  '' , limit_file # FF
+            if limit_file != '': # FF : need to redo the limit files as a two columns                                                                             
+             if 'MadDM_FermiLim' in limit_file:
+                self._id_limit_mdm[channel]  = np.loadtxt(limit_file, unpack=True)[0]
+                self._id_limit_sigv[channel] = np.loadtxt(limit_file, unpack=True)[3]
+             else:  self._id_limit_mdm[channel] ,  self._id_limit_sigv[channel] = np.loadtxt(limit_file, unpack=True , comments = '#')
+
             else:
                 self._id_limit_mdm[channel] = False
                 self._id_limit_sigv[channel] = False
-
 
     #Returns a value in cm^2
     def SI_max(self, mdm):
@@ -393,10 +408,12 @@ class MADDMRunCmd(cmd.CmdShell):
                         'sigmaN_SD_neutron','Nevents', 'smearing']
 
         if self.mode['indirect']:
+            #print 'FF output_name ', output_name
             output_name.append('taacsID')
 
 
         sigv_indirect = 0.
+        #print 'FF the output is ', output 
         for line in open(pjoin(self.dir_path, output)):
                 splitline = line.split()
                 #logger.info(splitline)
@@ -409,9 +426,11 @@ class MADDMRunCmd(cmd.CmdShell):
                     result.append(float(val))
 
                 else:
+                    #print 'FF the results is ', result
+                    #print 'FF the dir_path and the line are' , self.dir_path , ' ' , line 
                     result.append(float(splitline[1]))
                     if self._two2twoLO:
-                        sigv_indirect_error = 0.
+                        sigv_indirect_error = 0. ## FF: never used anywhere???
                         if 'sigma*v' in line:
                             sigv_temp = float(splitline[1])
                             oname =splitline[0].split(':',1)[1]
@@ -439,17 +458,29 @@ class MADDMRunCmd(cmd.CmdShell):
             for chan in np_names:
                 output_name.append('flux_%s' % chan)
                 result.append(-1.0)
-
+          
         result = dict(zip(output_name, result))
+        #print 'results: ', result   
         result['taacsID'] = sigv_indirect
+        #print 'results_2: ', result
         self.last_results = result
 
         #logger.debug(self.last_results)
 
-        if self.mode['indirect'] and not self._two2twoLO:
-            with misc.MuteLogger(names=['madevent','madgraph'],levels=[50,50]):
+#        if self.mode['indirect'] and not self._two2twoLO:
+#            with misc.MuteLogger(names=['madevent','madgraph'],levels=[50,50]):
+#                self.launch_indirect(force)
+
+        if self.mode['indirect']:
+                print 'self.mode: ', self.mode 
+                print 'FF: I am launchig indirect detection '
+                print 'MDMDIR  ' , MDMDIR
                 self.launch_indirect(force)
 
+#           print 'I am trying the PPPC'
+
+
+        print 'result_3 ' , result  # Why is this empty (i.e. == 0 ? where is the sigma calculated? )
         #Now that the sigmav values are set, we can compute the fluxes
         if str(self.mode['indirect']).startswith('flux'):
             #Here we need to skip this part if the scan is being conducted because
@@ -535,8 +566,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
                 #if not self._two2twoLO:
                 #order +=['halo_velocity']#,'indirect', 'indirect_error']
-                detailled_keys = [k for k in self.last_results
-                              if k.startswith('taacsID#') ]
+                detailled_keys = [k for k in self.last_results if k.startswith('taacsID#') ]
 
                 #logger.info(detailled_keys)
                 #logger.info(self.last_results)
@@ -627,16 +657,17 @@ class MADDMRunCmd(cmd.CmdShell):
 
     def launch_indirect(self, force):
         """running the indirect detection"""
-
-
+        
         #If the Indirect subfolder is not created, that means that the code is
         #using the 2to2 at LO which is handled by maddm.f. Then just skip this part
+        
+        # what if the directory is there from before and I want to change the method for the next run?
         if not os.path.exists(pjoin(self.dir_path, 'Indirect')):
             self._two2twoLO = True
             return
         elif self.maddm_card['sigmav_method'] == 'simpson':
             self._two2twoLO = True
-            return            
+            return 
 
         if not self.in_scan_mode: 
             logger.info('Running indirect detection')
@@ -688,11 +719,17 @@ class MADDMRunCmd(cmd.CmdShell):
 
         
         #check for flux:
-        if not str(self.mode['indirect']).startswith('flux'):
-            return
-        
+        #if not str(self.mode['indirect']).startswith('flux'):
+        #    return
+               
+        print 'the card is ', self.maddm_card['indirect_flux_source_method'] , '_'
         if self.maddm_card['indirect_flux_source_method'] == 'pythia8':
             self.run_pythia8_for_flux()
+
+ 
+        if self.maddm_card['indirect_flux_source_method'] == 'PPPC4DMID':
+            self.logger('I am trying to use the Tables')
+            print ' The mother directory is ', MDMDIR 
         
         #
         #
@@ -783,6 +820,61 @@ class MADDMRunCmd(cmd.CmdShell):
             raise self.InvalidCmd, 'Pythia8 shower interrupted with return'+\
                     ' code %d.\n'%ret_code+\
                     'You can find more information in this log file:\n%s' % pythia_log
+
+    def load_PPPC_source(self,PPPCDIR):
+        if self.maddm_card['indirect_flux_source_method'] == 'PPPC4DMID':
+           if not os.path.isfile(PPPCDIR+'/PPPC_Tables_EW.npy'):
+              logger.info('PPPC4DMID Spectra at source not found! Do you want to donwload them?')
+              ### FF Automatic donwload?
+           sp_dic = np.load(PPPCDIR+'/PPPC_Tables_EW.npy')
+           return sp_dic 
+ 
+    ## FF FIX path to the correct Earth dictionary when it is there! now use temporarily the _source one
+    def load_PPPC_earth(self,PPPCDIR):
+        if self.maddm_card['indirect_flux_earth_method'] == 'PPPC4DMID':
+           if not os.path.isfile(PPPCDIR+'/PPPC_Tables_EW.npy'):
+                 logger.info('PPPC4DMID Spectra at Earth not found! Do you want to donwload them?')                                                                              
+           sp_dic = np.load(PPPCDIR+'/PPPC_Tables_EW.npy') ## Change here the correct dictionary!
+           return sp_dic
+               
+
+
+         
+
+    def interpolate_spectra(self, sp_dic):
+        print 'FF I am interpolating'
+
+        '''
+      def __init__(self, Dic):
+           
+          self.Masses = np.array([float(i) for i in Dic['gammas'].keys()]) # The masses are the same for all the spectra and channels
+          self.Dic = Dic
+      
+      def interp_spec(self,sp='',ch='',mDM = ''):
+          
+           Dic = self.Dic
+           M    = self.Masses
+           #LogX = dic['x']
+           DM_min =  M[M >= mDM].min()  # extracting lower mass limit to interpolate from
+           DM_max =  M[M <= mDM].max()  # extracting upper mass limit to interpolate from
+           print DM_min, DM_max
+           
+           spec_1 = Dic[sp][ str(DM_min) ][ch]
+           spec_2 = Dic[sp][ str(DM_max) ][ch]
+         
+           Interpolated = []
+           for x in range(len(spec_1)): # the spectrum values are ordered as 'x' vaues extracted from the Log[10,x] in the PPPC Tables
+               interp_function = interp1d([DM_min,DM_max], [spec_1[x],spec_2[x]] )
+               value =  interp_function(mDM)
+               Interpolated.append( value )
+           
+           return Interpolated
+       '''
+   
+
+
+
+
 
     def dNdx(self, x, channel=''):
 
@@ -949,6 +1041,8 @@ class MADDMRunCmd(cmd.CmdShell):
             v = self.maddm_card['vave_indirect']
 
             logger.info('\n  indirect detection: ')
+            print 'FF limits._allowed_final_states' , self.limits._allowed_final_states
+            print 'detailled_keys' , detailled_keys
             if len(detailled_keys)>0:
 
                 #Print out taacs for each annihilation channel
@@ -965,6 +1059,7 @@ class MADDMRunCmd(cmd.CmdShell):
                     #is evaluated matches the dm velocity in the calculation.
                     #logger.info(clean_key_list[1])
                     if finalstate not in self.limits._allowed_final_states:
+                        
                         message = '%s No limit %s' % (bcolors.GRAY, bcolors.ENDC)
                     else:
                         if not self.param_card_iterator:
