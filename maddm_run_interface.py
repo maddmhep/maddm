@@ -392,9 +392,7 @@ class MADDMRunCmd(cmd.CmdShell):
         else:
             output = pjoin('output', 'maddm.out')
 
-
         misc.call(['./maddm.x', output], cwd =self.dir_path)
-
         #process = subprocess.Popen(['./maddm.x'], cwd =self.dir_path, stdout=subprocess.PIPE)
         #Here we read out the results which the FORTRAN module dumped into a file
         #called 'maddm.out'. The format is such that the first line is always relic density
@@ -407,10 +405,9 @@ class MADDMRunCmd(cmd.CmdShell):
                        'sigmaN_SI_proton', 'sigmaN_SI_neutron', 'sigmaN_SD_proton',
                         'sigmaN_SD_neutron','Nevents', 'smearing']
 
+        print 'FF self.mode', self.mode
         if self.mode['indirect']:
-            #print 'FF output_name ', output_name
             output_name.append('taacsID')
-
 
         sigv_indirect = 0.
         #print 'FF the output is ', output 
@@ -426,12 +423,14 @@ class MADDMRunCmd(cmd.CmdShell):
                     result.append(float(val))
 
                 else:
-                    #print 'FF the results is ', result
                     #print 'FF the dir_path and the line are' , self.dir_path , ' ' , line 
+                    
                     result.append(float(splitline[1]))
                     if self._two2twoLO:
                         sigv_indirect_error = 0. ## FF: never used anywhere???
-                        if 'sigma*v' in line:
+                        if 'sigma*v' in line: # this block never happens
+                            print 'FF is this ever happening ??? '
+                            raw_input()
                             sigv_temp = float(splitline[1])
                             oname =splitline[0].split(':',1)[1]
                             oname2 = oname.split('_')
@@ -460,11 +459,9 @@ class MADDMRunCmd(cmd.CmdShell):
                 result.append(-1.0)
           
         result = dict(zip(output_name, result))
-        #print 'FF results: ', result   
         result['taacsID'] = sigv_indirect
-        #print 'FF results_2: ', result
         self.last_results = result
-
+        print 'The last result is' , result 
         #logger.debug(self.last_results)
 
 #        if self.mode['indirect'] and not self._two2twoLO:
@@ -477,9 +474,6 @@ class MADDMRunCmd(cmd.CmdShell):
                 #print 'FF MDMDIR  ' , MDMDIR
                 self.launch_indirect(force)
 
-
-
-        # print 'FF result_3 ' , result  # Why is this empty (i.e. == 0 ? where is the sigma calculated? )
         #Now that the sigmav values are set, we can compute the fluxes
         if str(self.mode['indirect']).startswith('flux'):
             #Here we need to skip this part if the scan is being conducted because
