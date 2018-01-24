@@ -1334,16 +1334,8 @@ class MADDMRunCmd(cmd.CmdShell):
                             'indirect': 'ON' if process_data['has_indirect_detection'] else 'Not available',
                              'CR_flux': 'ON' if process_data['has_indirect_detection'] else 'Not available',
                              'run_multinest': 'OFF' if aux.module_exists('pymultinest') else 'Not available'}
-            if not os.path.exists(pjoin(self.dir_path, 'include', 'maddm_card.inc')):
-                # create the inc file for maddm
-                self.maddm_card.set('do_relic_density', self.mode['relic'], user=False)
-                self.maddm_card.set('do_direct_detection', self.mode['direct'], user=False)
-                self.maddm_card.set('do_directional_detection', self.mode['directional'], user=False)
-                self.maddm_card.set('do_capture', self.mode['capture'], user=False)
-                self.maddm_card.set('do_indirect_detection', self.mode['indirect'], user=False)
-                self.maddm_card.set('only2to2lo', self._two2twoLO, user=False)
-                self.maddm_card.set('run_multinest', self.mode['run_multinest'], user=False)
-                self.maddm_card.write_include_file(pjoin(self.dir_path, 'include'))
+
+
 
         self.auto_width = set() #ensure to reset auto_width! at the 
         self.check_param_card(pjoin(self.dir_path, 'Cards', 'param_card.dat'))
@@ -1364,7 +1356,19 @@ class MADDMRunCmd(cmd.CmdShell):
             raise Exception, 'Madevent output for indirect detection not available'
             
         logger.debug('2to2: %s' % self._two2twoLO)
-        
+
+        #set fortran switch and write include file
+        if not self.in_scan_mode:
+            misc.sprint('update madd_card', self.mode)
+            # create the inc file for maddm
+            self.maddm_card.set('do_relic_density', self.mode['relic'], user=False)
+            self.maddm_card.set('do_direct_detection', True if self.mode['direct'] else False, user=False)
+            self.maddm_card.set('do_directional_detection', self.mode['direct'] == 'directional', user=False)
+            self.maddm_card.set('do_capture', self.mode['capture'], user=False)
+            self.maddm_card.set('do_indirect_detection', True if self.mode['indirect'] else False, user=False)
+            self.maddm_card.set('only2to2lo', self._two2twoLO, user=False)
+            #self.maddm_card.set('run_multinest', self.mode['run_multinest'], user=False)
+            self.maddm_card.write_include_file(pjoin(self.dir_path, 'include'))        
         
         if not self.in_scan_mode and not self.mode['nestscan']:
             logger.info("Start computing %s" % ','.join([name for name, value in self.mode.items() if value]))
