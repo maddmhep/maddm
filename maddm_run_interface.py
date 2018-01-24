@@ -13,13 +13,6 @@ import stat
 import threading, subprocess
 import json
 
-# FF check if these are already imported somewhere else?                                                                                                                        
-import scipy                                                                                                                                                                     
-from scipy.interpolate import interp1d                                                                                                                                          
-from scipy.integrate import quad                                                                                                                                            
-from scipy.optimize import minimize_scalar                                                                                                                                   
-from scipy.special import gammainc
-#from math import pi 
 
 
 import MGoutput
@@ -54,9 +47,8 @@ logger = logging.getLogger('madgraph.plugin.maddm')
 #logger.setLevel(10) #level 20 = INFO
 
 MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
-PPPCDIR = os.getcwd()+'/PPPC4DMID/tables_PPPC4DMID_dictionary'
 
-os.system('rm /home/users/f/a/fambrogi/NEW_MADDM/MadDM_ToPush/maddm_dev2/DEVELOP/Indirect/RunWeb') ## FF
+PPPCDIR = os.getcwd()+'/PPPC4DMID/tables_PPPC4DMID_dictionary'
 
 #Is there a better definition of infinity?
 __infty__ = float('inf')
@@ -74,7 +66,6 @@ class ExpConstraints:
         self._dd_si_limit_file = pjoin(MDMDIR, 'ExpData', 'LuxBound2016_si.dat')
         self._dd_sd_proton_limit_file = pjoin(MDMDIR, 'ExpData', 'Pico60_sd_proton.dat') # <---------CHANGE THE FILE!!!
         self._dd_sd_neutron_limit_file = pjoin(MDMDIR, 'ExpData', 'Lux_2017_sd_neutron.dat')
-
         self._id_limit_file = {'qqx'   :pjoin(MDMDIR, 'ExpData', 'MadDM_FermiLim_qq.dat'),
                                'ccx'   :pjoin(MDMDIR, 'ExpData', 'MadDM_FermiLim_cc.dat'),
                                'gg'    :pjoin(MDMDIR, 'ExpData', 'MadDM_FermiLim_gg.dat'),
@@ -87,11 +78,12 @@ class ExpConstraints:
                                'zz'    :pjoin(MDMDIR, 'ExpData', 'MadDM_FermiLim_zz.dat'),
                                'hh'    :pjoin(MDMDIR, 'ExpData', 'MadDM_FermiLim_hh.dat'),
 
+
                                'hess2013': pjoin(MDMDIR,'ExpData', 'hess_I_2013_einasto.dat'),
                                'hess2016': pjoin(MDMDIR,'ExpData', 'hess_2016_einasto.dat'),
 
-                               'aaER16'  :pjoin(MDMDIR,'ExpData', 'Fermi_lines_2015_Einasto_R16.dat'),
-                               'aaIR90'  :pjoin(MDMDIR,'ExpData', 'Fermi_lines_2015_Isothermal_R90.dat'),
+                               'aaER16':pjoin(MDMDIR,'ExpData', 'Fermi_lines_2015_Einasto_R16.dat'),
+                               'aaIR90':pjoin(MDMDIR,'ExpData', 'Fermi_lines_2015_Isothermal_R90.dat'),
                                'aaNFWcR3':pjoin(MDMDIR,'ExpData', 'Fermi_lines_2015_NFWcontracted_R3.dat'),
                                'aaNFWR41':pjoin(MDMDIR,'ExpData', 'Fermi_lines_2015_NFW_R41.dat')}
 
@@ -120,6 +112,7 @@ class ExpConstraints:
             self._sigma_ID[item] = -1.0
             self._sigma_ID_width[item] = -1.0
 
+
         self.load_constraints()
 
         logger.info('Loaded experimental constraints. To change, use the set command')
@@ -128,9 +121,11 @@ class ExpConstraints:
         logger.info('Spin Dependent cross section (p): %s' % self._dd_sd_proton_limit_file)
         logger.info('Spin Dependent cross section (n): %s' % self._dd_sd_neutron_limit_file)
 
-        #for chan in self._allowed_final_states:
-        #    logger.info('Indirect Detection cross section for final state %s at velocity %.2e: %s'\
-        #                % (chan, self._id_limit_vel[chan] ,self._id_limit_file[chan]))
+        for chan in self._allowed_final_states:
+            logger.info('Indirect Detection cross section for final state %s at velocity %.2e: %s'\
+                        % (chan, self._id_limit_vel[chan] ,self._id_limit_file[chan]))
+
+
 
     def load_constraints(self):
         #Load in direct detection constraints
@@ -143,6 +138,7 @@ class ExpConstraints:
 
         #Load in indirect detection constraints                                                                                                                 
         for channel, limit_file in self._id_limit_file.iteritems():
+            #print channel,  '' , limit_file # FF
             if limit_file != '': # FF : need to redo the limit files as a two columns                                                                             
              if 'MadDM_FermiLim' in limit_file:
                 self._id_limit_mdm[channel]  = np.loadtxt(limit_file, unpack=True)[0]
@@ -405,18 +401,16 @@ class MADDMRunCmd(cmd.CmdShell):
         result = []
         #for line in process.stdout:
 
-        ### FF I think the FORTRAN module maddm.x does not calculate any <sigma*v> ???
-
-        # FF the output name must reflect the order of the output maddm.out from the FORTRAN routine
         output_name = ['omegah2', 'x_freezeout', 'wimp_mass', 'sigmav_xf' ,
                        'sigmaN_SI_proton', 'sigmaN_SI_neutron', 'sigmaN_SD_proton',
-                       'sigmaN_SD_neutron','Nevents', 'smearing']
+                        'sigmaN_SD_neutron','Nevents', 'smearing']
 
+        print 'FF self.mode', self.mode
         if self.mode['indirect']:
             output_name.append('taacsID')
 
-        sigv_indirect = 9.9E-25
-        #print 'FF the output is ', output ## it is the file output/maddm.out
+        sigv_indirect = 0.
+        #print 'FF the output is ', output 
         for line in open(pjoin(self.dir_path, output)):
                 splitline = line.split()
                 #logger.info(splitline)
@@ -430,15 +424,11 @@ class MADDMRunCmd(cmd.CmdShell):
 
                 else:
                     #print 'FF the dir_path and the line are' , self.dir_path , ' ' , line 
-                    #FF what is taacsID ? each SM process annihilation channel? I need to store all of them for the branching ratio
+                    
                     result.append(float(splitline[1]))
                     if self._two2twoLO:
                         sigv_indirect_error = 0. ## FF: never used anywhere???
-                        ### FF fake addition for later checks it work:                                                                                                              
-                        #for name in ['qqx', 'ccx', 'gg', 'bbx', 'ttx', 'e+e-', 'mu+mu-', 'ta+ta-', 'w+w-', 'zz', 'hh']:                                                                                         #result['taacsID#'+name] = 5.5E-25 
                         if 'sigma*v' in line: # this block never happens
-                            print 'FF is this ever happening ??? '
-                            raw_input()
                             sigv_temp = float(splitline[1])
                             oname =splitline[0].split(':',1)[1]
                             oname2 = oname.split('_')
@@ -448,7 +438,10 @@ class MADDMRunCmd(cmd.CmdShell):
                             output_name.append('err_taacsID#%s' % oname)
                             result.append(sigv_temp) #the value of cross section
                             result.append(0.e0) #put 0 for the error.
-                                
+
+
+
+                            
         #cr_names = ['gamma',  'pbar', 'e+', 'neue', 'neumu', 'neutau']
         #cr_names = ['g',  'p', 'e', 'nue', 'numu', 'nutau']
         cr_names = ['p', 'e']
@@ -463,17 +456,10 @@ class MADDMRunCmd(cmd.CmdShell):
                 output_name.append('flux_%s' % chan)
                 result.append(-1.0)
           
-        # FF this make a dictionary out of the results stored in the output file produced by the FORTRAN routine
-        # FF then, it adds the total cross section which is the sum of all the different production channels
-        # FF how it works: it loops over the results list (which is read from the Fortrtan file) and the results_name list (which is simply how we want to name
-        # the result), and it makes a dictionary of name and the corresponding value. 
         result = dict(zip(output_name, result))
         result['taacsID'] = sigv_indirect
-
-
-    
         self.last_results = result
-        print 'FF The last result is' , result 
+        print 'The last result is' , result 
         #logger.debug(self.last_results)
 
 #        if self.mode['indirect'] and not self._two2twoLO:
@@ -666,13 +652,13 @@ class MADDMRunCmd(cmd.CmdShell):
         #If the Indirect subfolder is not created, that means that the code is
         #using the 2to2 at LO which is handled by maddm.f. Then just skip this part
         
+        # what if the directory is there from before and I want to change the method for the next run?
         if not os.path.exists(pjoin(self.dir_path, 'Indirect')):
             self._two2twoLO = True
-            #return # FF uncomment (for testing it breaks the loop)
+            return
         elif self.maddm_card['sigmav_method'] == 'simpson':
             self._two2twoLO = True
-            #return 
-
+            return 
 
         if not self.in_scan_mode: 
             logger.info('Running indirect detection')
@@ -707,18 +693,14 @@ class MADDMRunCmd(cmd.CmdShell):
                 run_card['nevents'] == py8card['Main:NumberOfEvents']
         
         run_card.write(runcardpath)
-        
-          
+            
         self.me_cmd.do_launch('-f')
 
-       
         # store result
-        print 'FF Presults: ', self.me_cmd.Presults.iteritems() 
-
         for key, value in self.me_cmd.Presults.iteritems():
-            print 'FF key, value', key , ' ' , value 
 
-            clean_key = key.split("SubProcesses")[1].split('_')[2] # FF this is just to write in a nice way in the res dictionary
+            clean_key_list = key.split("_")
+            clean_key = clean_key_list[1]+"_"+clean_key_list[2]
             if key.startswith('xsec'):
                 #<------- FIX THIS. GET RID OF VAVE_TEMP. THIS WILL JUST GET INTEGRATED BY MADEVENT
                 self.last_results['taacsID#%s' %(clean_key)] = value* pb2cm3
@@ -726,22 +708,20 @@ class MADDMRunCmd(cmd.CmdShell):
             elif key.startswith('xerr'):
                 self.last_results['err_taacsID#%s' %(clean_key)] = value * pb2cm3
 
-        print 'FF Results after MG5', self.last_results                  
+        
+        #check for flux:
+        #if not str(self.mode['indirect']).startswith('flux'):
+        #    return
+               
+        print 'the card is ', self.maddm_card['indirect_flux_source_method'] , '_'
         if self.maddm_card['indirect_flux_source_method'] == 'pythia8':
             self.run_pythia8_for_flux()
-   
 
+ 
         if self.maddm_card['indirect_flux_source_method'] == 'PPPC4DMID':
-            logger.info('Loading the PPPC4DMID spectra at source')
-            if not os.path.isfile(PPPCDIR+'/PPPC_Tables_EW.npy'):
-                  logger.info('PPPC4DMID Spectra at source not found! Do you want to donwload them?') ### FF implement automatic download if not existing? 
-            sp_dic = np.load(PPPCDIR+'/PPPC_Tables_EW.npy').item()
-            #print  sp_dic['gammas']['6.0']['ee']
-            logger.info('Loaded the spectra')
-
-              
-
-
+            self.logger('I am trying to use the Tables')
+            print ' The mother directory is ', MDMDIR 
+        
         #
         #
         #  ADD HERE HANDLING FOR CIRIELLI/DRAGON
@@ -832,7 +812,14 @@ class MADDMRunCmd(cmd.CmdShell):
                     ' code %d.\n'%ret_code+\
                     'You can find more information in this log file:\n%s' % pythia_log
 
-
+    def load_PPPC_source(self,PPPCDIR):
+        if self.maddm_card['indirect_flux_source_method'] == 'PPPC4DMID':
+           if not os.path.isfile(PPPCDIR+'/PPPC_Tables_EW.npy'):
+              logger.info('PPPC4DMID Spectra at source not found! Do you want to donwload them?')
+              ### FF Automatic donwload?
+           sp_dic = np.load(PPPCDIR+'/PPPC_Tables_EW.npy')
+           return sp_dic 
+ 
     ## FF FIX path to the correct Earth dictionary when it is there! now use temporarily the _source one
     def load_PPPC_earth(self,PPPCDIR):
         if self.maddm_card['indirect_flux_earth_method'] == 'PPPC4DMID':
@@ -845,7 +832,7 @@ class MADDMRunCmd(cmd.CmdShell):
     # mdm is the DM candidate mass, spectrum is gammas, positron etc, channel is the SM annihilation e.g. bbar, hh etc.   
     # FF remeber to CHECK if it works when min and max are the same values, i.e. exactly for a value in the Masses lists!!! 
     def interpolate_spectra(self, sp_dic, spectrum , channel):
-        print 'FF I am interpolating the spectra'
+        print 'FF I am interpolating'
         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
         M   = sp_dic['Masses']
         dm_min =  M[M >= mdm].min()  # extracting lower mass limit to interpolate from
@@ -862,26 +849,26 @@ class MADDMRunCmd(cmd.CmdShell):
            
         return interpolated
 
-    # FF this function checks if a point is excluded by indirect detection results, with the fast method:
-    # FF given the sigmav , the channel considered and the BR, it load the experimental results and check if the point is excluded or allowed
-    # FF I think I do not need the BR snce I have directly the annihilation sigma for each separate channel
-    def fast_indirect_limit_check(self, sigmav='', channel='', br= 1):
-       
+    # this function checks if a point is excluded by indirect detection results, with the fast method:
+    # given the sigmav , the channel considered and the BR, it load the experimental results and check if the point is excluded or allowed
+    def fast_limit_check(self, sigmav, channel, br):
         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
-       
-        masses = self.limits._id_limit_mdm [channel]
-        lim    = self.limits._id_limit_sigv[channel]
-        if mdm < masses.min(): return 'n.a.' # when the DM mass is < 2*SM the value is not in the limit file
-        # FF print 'Lim:' ,lim,  'Masses:', masses
+        masses = self._id_limit_mdm [channel]
+        lim    = self._id_limit_sigv[channel]
         interp_function = interp1d(masses,lim)
         exp_res = interp_function(mdm)
         if exp_res <= 0: # this should not happen since the exp res must be > 0
                logger.error('Invalid experimental sigmav for the spectrum ', spectrum , ' from the annihilation channel ', channel)
                return 0
-        theo    = float(sigmav) * float(br)
-        rvalue = exp_res / theo  
-        return '%.3f' % rvalue 
+        theo    = eval(sigmav) * eval(br)
+        rvalue = exp_res / theo 
+        return rvalue 
           
+
+    
+
+
+
     def dNdx(self, x, channel=''):
 
         #FIGURE OUT IF THE FACTOR OF 1/2 IS BEING CALCULATED PROPERLY FOR ID
@@ -973,7 +960,14 @@ class MADDMRunCmd(cmd.CmdShell):
             
             return phi
 
-
+    # FF check if these are already imported somewhere else?
+    import numpy as np
+    import scipy
+    from scipy.interpolate import interp1d
+    from scipy.integrate import quad
+    from scipy.optimize import minimize_scalar
+    from scipy.special import gammainc
+    from math import pi
     nBin = 24
     j0 = 3.086e21 # convention spectra
 
@@ -1151,6 +1145,22 @@ class MADDMRunCmd(cmd.CmdShell):
 
         return [sigmav_ul , p_value]
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         
     def print_results(self):
         """ print the latest results """
@@ -1210,6 +1220,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 logger.info(' %s            : %.2e 1/s' % (key, self.last_results[key]))
         if self.mode['indirect']:
 
+            #detailled_keys = [k.split("#")[1] for k in self.last_results.keys() if k.startswith('taacsID#')]
             detailled_keys = [k for k in self.last_results.keys() if k.startswith('taacsID#')]
 
             #logger.info(detailled_keys)
@@ -1219,11 +1230,9 @@ class MADDMRunCmd(cmd.CmdShell):
 
             v = self.maddm_card['vave_indirect']
 
-            #### FF OLD logger INFO
-            '''
             logger.info('\n  indirect detection: ')
-            #print 'FF limits._allowed_final_states' , self.limits._allowed_final_states
-            #print 'FF detailled_keys' , detailled_keys
+            print 'FF limits._allowed_final_states' , self.limits._allowed_final_states
+            print 'detailled_keys' , detailled_keys
             if len(detailled_keys)>0:
 
                 #Print out taacs for each annihilation channel
@@ -1260,17 +1269,8 @@ class MADDMRunCmd(cmd.CmdShell):
                     #tot_taacs = tot_taacs + self.last_results['taacsID#%s' %(clean_key)]
             #self.last_results['taacsID'] = tot_taacs
             #Print out the total taacs.
-            '''
-
-            for ch in detailled_keys:
-                CH = ch.split('#')[1]
-# FF cannot make this work ??? logger.info('The limit for the annihilation channel: ', ch , ' is: %.2E cm^3/s' %(self.last_results[ch]) )
-                lim = self.fast_indirect_limit_check(sigmav= self.last_results[ch], channel=CH,  br= 1)
-                space = ' '*(7-len(CH))
-                print 'The limit for the annihilation channel: ', CH , space ,'is: \t', self.last_results[ch] , 'cm^3/s \t (r=' + lim + ')' 
-
-
-            logger.info('    sigmav    DM DM > all [vave = %2.e] : %.2e cm^3/s' % (v, self.last_results['taacsID']))
+            logger.info('    sigmav    DM DM > all [vave = %2.e] : %.2e cm^3/s' % (v,\
+                                    self.last_results['taacsID']))
 
             if str(self.mode['indirect']).startswith('flux'):
                 logger.info('\n  gamma-ray flux: ')
@@ -1282,7 +1282,6 @@ class MADDMRunCmd(cmd.CmdShell):
 
                 logger.info('Differential fluxes written in output/flux_<cr species>.txt')
     
-    ### FF: not used anywhere (empty)
     def is_excluded_relic(self, relic, omega_min = 0., omega_max = 0.1):
         """  This function determines whether a model point is excluded or not
              based on the resulting relic density, spin independent and spin
