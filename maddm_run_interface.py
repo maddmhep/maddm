@@ -13,6 +13,14 @@ import stat
 import threading, subprocess
 import json
 
+# FF check if these are already imported somewhere else?                                                                                                                            
+import scipy
+from scipy.interpolate import interp1d
+from scipy.integrate import quad
+from scipy.optimize import minimize_scalar
+from scipy.special import gammainc
+#from math import pi 
+
 
 
 import MGoutput
@@ -47,8 +55,9 @@ logger = logging.getLogger('madgraph.plugin.maddm')
 #logger.setLevel(10) #level 20 = INFO
 
 MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
-
 PPPCDIR = os.getcwd()+'/PPPC4DMID/tables_PPPC4DMID_dictionary'
+
+os.system('rm /home/users/f/a/fambrogi/NEW_MADDM/MadDM_ToPush/maddm_dev2/NEW_ALL/Indirect/RunWeb') ## FF                                                                            
 
 #Is there a better definition of infinity?
 __infty__ = float('inf')
@@ -87,13 +96,10 @@ class ExpConstraints:
                                'aaNFWcR3':pjoin(MDMDIR,'ExpData', 'Fermi_lines_2015_NFWcontracted_R3.dat'),
                                'aaNFWR41':pjoin(MDMDIR,'ExpData', 'Fermi_lines_2015_NFW_R41.dat')}
 
-
-
         self._id_limit_vel = {'qqx':2.0E-5, 'ccx':2.0E-5, 'gg':2.0E-5,'bbx':2.0E-5,'ttx':2.0E-5,'e+e-':2.0E-5,'mu+mu-':2.0E-5,'ta+ta-':2.0E-5,
                               'w+w-':2.0E-5, 'zz':2.0E-5,'hh':2.0E-5,
                               'aaER16':1.0E-3,'aaIR90':1.0E-3,'aaNFWcR3':1.0E-3,'aaNFWR41':1.0E-3 ,
-                              'hess2013': 999 , 'hess2016': 999 } # FF: check these values for hess
-
+                              'hess2013': 999 , 'hess2016': 999 } # FF: check these values for Hess
 
         self._id_limit_mdm = dict()
         self._id_limit_sigv = dict()
@@ -112,7 +118,6 @@ class ExpConstraints:
             self._sigma_ID[item] = -1.0
             self._sigma_ID_width[item] = -1.0
 
-
         self.load_constraints()
 
         logger.info('Loaded experimental constraints. To change, use the set command')
@@ -126,7 +131,6 @@ class ExpConstraints:
                         % (chan, self._id_limit_vel[chan] ,self._id_limit_file[chan]))
 
 
-
     def load_constraints(self):
         #Load in direct detection constraints
         if self._dd_si_limit_file!='':
@@ -136,10 +140,9 @@ class ExpConstraints:
         if self._dd_sd_neutron_limit_file!='':
             self._dd_sd_n_limit_mDM, self._dd_sd_n_limit_sigma = np.loadtxt(self._dd_sd_neutron_limit_file, unpack=True, comments='#')
 
-        #Load in indirect detection constraints                                                                                                                 
+        # FF Load in indirect detection constraints                                                                                                            
         for channel, limit_file in self._id_limit_file.iteritems():
-            #print channel,  '' , limit_file # FF
-            if limit_file != '': # FF : need to redo the limit files as a two columns                                                                             
+            if limit_file != '': # FF : need to redo the limit files as two columns                                                                             
              if 'MadDM_FermiLim' in limit_file:
                 self._id_limit_mdm[channel]  = np.loadtxt(limit_file, unpack=True)[0]
                 self._id_limit_sigv[channel] = np.loadtxt(limit_file, unpack=True)[3]
@@ -183,6 +186,53 @@ class ExpConstraints:
             return __infty__
         else:
             return np.interp(mdm, self._id_limit_mdm[channel], self._id_limit_sigv[channel])
+
+class PPPC_Spectra:
+
+    def __init__(self):
+        
+        self.spectra  = ['antiprotons', 'gammas', 'neutrinos_e', 'neutrinos_mu', 'neutrinos_tau', 'positrons']
+        self.channels = ['ee', 'mumu', 'tautau', 'qq', 'cc', 'bb', 'tt', 'ZZ', 'WW', 'hh', 'gammagamma', 'gg']
+
+        self.map_allowed_final_state_PPPC : {'qqx':'qq', 'ccx':'cc', 'gg':'gg', 'bbx':'bb', 'ttx':'tt',
+                                             'e+e-':'ee', 'mu+mu-':'mumu', 'ta+ta-':'tautau', 'w+w-':'WW', 'zz':'ZZ', 'hh' }
+    def check_mass(self,mdm):
+        if (mdm < 5.0 or mdm > 100000):
+            logger.error('DM mass outsie the range of available PPPC spectra. Please run spectra generation with pythia8') # Break and ask the user to download the Tables
+            return 
+        else: return True 
+
+    def load_PPPC_source(self):
+        if not os.path.isfile(PPPCDIR+'/PPPC_Tables_EW.npy'):
+            logger.error('PPPC4DMID Spectra at source not found! Please install by typing install PPPC4DMID ') # Break and ask the user to download the Tables       
+            return
+
+        dic =  np.load(PPPCDIR+'/PPPC_Tables_EW.npy').item()
+        misc.sprint('PPPC4DMID Spectra at source loaded')
+        return dic
+
+    # not yet implemented (tables missing) 
+    def load_PPPC_earth(self):
+        return True
+    
+    # this functions combines, for each 'x' value , the value of dn/dlogx multiplied by the proper BR annihilation channel
+    # br_dic must be of the form: d = {'ee': br_ee , 'hh': br_hh , ...} for all the SM channels considered, using the PPPC naming conventions
+    def combine_channels(self, mdm, br_dic = ''):
+        if not self.spec_source: 
+            logger.error('PPPC4DMID Spectra  not found! Please install by typing install PPPC4DMID ') # this should not happen again here       
+        tab = self.spec_source
+        x = tab['x']
+        combined = { 'gammas': [], 'antiprotons':[] , 'positrons':[], 'neutrinos_e':[] , 'neutrinos_mu':[] , 'neutrinos_tau':[] } 
+        for sp in self.spectra:
+            temp_list = [0 for i in range(len(x)) ] # filling a temporarily void list
+            for ch,br in br_dic.iteritems():
+                spec = tab[sp][mdm][ch]
+                for temp, s in zip(temp_list, spec):
+                    temp_list = [ s*br + temp ] # multiply each dn/dlogx for the BR value
+            combined[ch] = temp_list  
+        return combined 
+
+
 
 class bcolors:
     HEADER = '\033[95m'
@@ -405,7 +455,6 @@ class MADDMRunCmd(cmd.CmdShell):
                        'sigmaN_SI_proton', 'sigmaN_SI_neutron', 'sigmaN_SD_proton',
                         'sigmaN_SD_neutron','Nevents', 'smearing']
 
-        print 'FF self.mode', self.mode
         if self.mode['indirect']:
             output_name.append('taacsID')
 
@@ -423,12 +472,11 @@ class MADDMRunCmd(cmd.CmdShell):
                     result.append(float(val))
 
                 else:
-                    #print 'FF the dir_path and the line are' , self.dir_path , ' ' , line 
                     
                     result.append(float(splitline[1]))
                     if self._two2twoLO:
-                        sigv_indirect_error = 0. ## FF: never used anywhere???
-                        if 'sigma*v' in line: # this block never happens
+                        sigv_indirect_error = 0.
+                        if 'sigma*v' in line: 
                             sigv_temp = float(splitline[1])
                             oname =splitline[0].split(':',1)[1]
                             oname2 = oname.split('_')
@@ -459,7 +507,7 @@ class MADDMRunCmd(cmd.CmdShell):
         result = dict(zip(output_name, result))
         result['taacsID'] = sigv_indirect
         self.last_results = result
-        print 'The last result is' , result 
+        #print 'FF The last result is' , result 
         #logger.debug(self.last_results)
 
 #        if self.mode['indirect'] and not self._two2twoLO:
@@ -467,9 +515,6 @@ class MADDMRunCmd(cmd.CmdShell):
 #                self.launch_indirect(force)
 
         if self.mode['indirect']:
-                #print 'FF self.mode: ', self.mode 
-                #print 'FF: I am launchig indirect detection '
-                #print 'FF MDMDIR  ' , MDMDIR
                 self.launch_indirect(force)
 
         #Now that the sigmav values are set, we can compute the fluxes
@@ -613,7 +658,6 @@ class MADDMRunCmd(cmd.CmdShell):
 
     def launch_multinest(self):
 
-
         if self.in_scan_mode:
             logger.error('You can not use scan syntax in the param_card.dat and run multinest!')
             return
@@ -659,7 +703,7 @@ class MADDMRunCmd(cmd.CmdShell):
         elif self.maddm_card['sigmav_method'] == 'simpson':
             self._two2twoLO = True
             return 
-
+        
         if not self.in_scan_mode: 
             logger.info('Running indirect detection')
         if not hasattr(self, 'me_cmd'):
@@ -697,10 +741,14 @@ class MADDMRunCmd(cmd.CmdShell):
         self.me_cmd.do_launch('-f')
 
         # store result
-        for key, value in self.me_cmd.Presults.iteritems():
+        #print 'FF self.me_cmd.Presults.iteritems() ', self.me_cmd.Presults 
 
-            clean_key_list = key.split("_")
-            clean_key = clean_key_list[1]+"_"+clean_key_list[2]
+        for key, value in self.me_cmd.Presults.iteritems():
+            #print 'FF key, value', key, ' ' , value 
+            clean_key_list = key.split("/")
+            clean_key =clean_key_list[len(clean_key_list)-1].split('_')[1] +'_'+  clean_key_list[len(clean_key_list)-1].split('_')[2] # FF is there a better way to identify the tacsID ???
+ 
+            #print 'FF clean_key' , clean_key , ' value ' , value  
             if key.startswith('xsec'):
                 #<------- FIX THIS. GET RID OF VAVE_TEMP. THIS WILL JUST GET INTEGRATED BY MADEVENT
                 self.last_results['taacsID#%s' %(clean_key)] = value* pb2cm3
@@ -716,11 +764,22 @@ class MADDMRunCmd(cmd.CmdShell):
         print 'the card is ', self.maddm_card['indirect_flux_source_method'] , '_'
         if self.maddm_card['indirect_flux_source_method'] == 'pythia8':
             self.run_pythia8_for_flux()
-
+        
  
         if self.maddm_card['indirect_flux_source_method'] == 'PPPC4DMID':
-            self.logger('I am trying to use the Tables')
-            print ' The mother directory is ', MDMDIR 
+            PPPC_Tab = PPPC_Spectra()
+            if PPPC_Tab.check_mass(mdm):
+               PPPC_source_tab = PPPC_Tab.load_PPPC_source()
+
+
+               #print  'FF TEST spectra', PPPC_source_tab['gammas']['6.0']['ee']
+
+                
+
+
+
+        #if self.maddm_card['indirect_flux_earth_method'] == 'PPPC4DMID':
+
         
         #
         #
@@ -812,22 +871,9 @@ class MADDMRunCmd(cmd.CmdShell):
                     ' code %d.\n'%ret_code+\
                     'You can find more information in this log file:\n%s' % pythia_log
 
-    def load_PPPC_source(self,PPPCDIR):
-        if self.maddm_card['indirect_flux_source_method'] == 'PPPC4DMID':
-           if not os.path.isfile(PPPCDIR+'/PPPC_Tables_EW.npy'):
-              logger.info('PPPC4DMID Spectra at source not found! Do you want to donwload them?')
-              ### FF Automatic donwload?
-           sp_dic = np.load(PPPCDIR+'/PPPC_Tables_EW.npy')
-           return sp_dic 
  
-    ## FF FIX path to the correct Earth dictionary when it is there! now use temporarily the _source one
-    def load_PPPC_earth(self,PPPCDIR):
-        if self.maddm_card['indirect_flux_earth_method'] == 'PPPC4DMID':
-           if not os.path.isfile(PPPCDIR+'/PPPC_Tables_EW.npy'):
-                 logger.info('PPPC4DMID Spectra at Earth not found! Do you want to donwload them?')                                                                              
-           sp_dic = np.load(PPPCDIR+'/PPPC_Tables_EW.npy') ## Change here the correct dictionary!
-           return sp_dic
-             
+ 
+
     # FF this function extracts the values of the spectra interpolated linearly between two values mdm_1 and mdm_2
     # mdm is the DM candidate mass, spectrum is gammas, positron etc, channel is the SM annihilation e.g. bbar, hh etc.   
     # FF remeber to CHECK if it works when min and max are the same values, i.e. exactly for a value in the Masses lists!!! 
@@ -848,25 +894,6 @@ class MADDMRunCmd(cmd.CmdShell):
                interpolated.append(value)
            
         return interpolated
-
-    # this function checks if a point is excluded by indirect detection results, with the fast method:
-    # given the sigmav , the channel considered and the BR, it load the experimental results and check if the point is excluded or allowed
-    def fast_limit_check(self, sigmav, channel, br):
-        mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
-        masses = self._id_limit_mdm [channel]
-        lim    = self._id_limit_sigv[channel]
-        interp_function = interp1d(masses,lim)
-        exp_res = interp_function(mdm)
-        if exp_res <= 0: # this should not happen since the exp res must be > 0
-               logger.error('Invalid experimental sigmav for the spectrum ', spectrum , ' from the annihilation channel ', channel)
-               return 0
-        theo    = eval(sigmav) * eval(br)
-        rvalue = exp_res / theo 
-        return rvalue 
-          
-
-    
-
 
 
     def dNdx(self, x, channel=''):
@@ -961,13 +988,14 @@ class MADDMRunCmd(cmd.CmdShell):
             return phi
 
     # FF check if these are already imported somewhere else?
-    import numpy as np
-    import scipy
-    from scipy.interpolate import interp1d
-    from scipy.integrate import quad
-    from scipy.optimize import minimize_scalar
-    from scipy.special import gammainc
-    from math import pi
+    #import numpy as np
+    #import scipy
+    #from scipy.interpolate import interp1d
+    #from scipy.integrate import quad
+    #from scipy.optimize import minimize_scalar
+    #from scipy.special import gammainc
+    #from math import pi
+    
     nBin = 24
     j0 = 3.086e21 # convention spectra
 
@@ -1144,23 +1172,6 @@ class MADDMRunCmd(cmd.CmdShell):
            p_value = result[2]
 
         return [sigmav_ul , p_value]
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         
     def print_results(self):
         """ print the latest results """
@@ -1218,11 +1229,13 @@ class MADDMRunCmd(cmd.CmdShell):
             detailled_keys = [k for k in self.last_results.keys() if k.startswith('ccap')]
             for key in detailled_keys:
                 logger.info(' %s            : %.2e 1/s' % (key, self.last_results[key]))
+
         if self.mode['indirect']:
 
             #detailled_keys = [k.split("#")[1] for k in self.last_results.keys() if k.startswith('taacsID#')]
+            #print 'FF all the keys: ', self.last_results.keys() 
             detailled_keys = [k for k in self.last_results.keys() if k.startswith('taacsID#')]
-
+            #print 'The keys are', self.last_results.keys()
             #logger.info(detailled_keys)
             #logger.info(len(detailled_keys))
 
@@ -1231,9 +1244,8 @@ class MADDMRunCmd(cmd.CmdShell):
             v = self.maddm_card['vave_indirect']
 
             logger.info('\n  indirect detection: ')
-            print 'FF limits._allowed_final_states' , self.limits._allowed_final_states
-            print 'detailled_keys' , detailled_keys
             if len(detailled_keys)>0:
+                misc.sprint('FF  use the generic qq limits for light quarks (u,d,s)' )
 
                 #Print out taacs for each annihilation channel
                 for key in detailled_keys:
@@ -1241,21 +1253,29 @@ class MADDMRunCmd(cmd.CmdShell):
                     clean_key_list = key.split("#")
                     #logger.info(clean_key_list)
                     clean_key = clean_key_list[1] #clean_key_list[0]+"_"+clean_key_list[1]
-                    #logger.info(clean_key)
+                    #print 'FF for the method ', self.mode['indirect'] , ' the clean_key is: ',  clean_key 
                     finalstate = clean_key.split("_")[1]
-
+                    if 'ss' in finalstate or 'uu' in finalstate or 'dd' in finalstate:
+                        finalstate = 'qqx'
+                    ## The simpson method does not give the sigma for the BSM states production
+                    s_theo = self.last_results[key]
+                    if finalstate in self.limits._allowed_final_states : s_ul   = self.limits.ID_max(mdm, finalstate)
+                    else:  s_ul   = 'n.a.'
                     #here check if the cross section is allowed. Do this channel by channel
                     # Make sure that the velocity at which the limit
                     #is evaluated matches the dm velocity in the calculation.
                     #logger.info(clean_key_list[1])
+                    #logger.debug('FF allowed final states' , self.limits._allowed_final_states)
                     if finalstate not in self.limits._allowed_final_states:
-                        
-                        message = '%s No limit %s' % (bcolors.GRAY, bcolors.ENDC)
+                        message = '%s NO LIMIT %s' % (bcolors.GRAY, bcolors.ENDC)
+                        logger.info('     %s \t [v = %.2e] sigmav(th): %.2e \t sigmav(ul): %s \t [cm^3/s] \t  %s' % (clean_key, v, s_theo, s_ul, message))
+
                     else:
+                        # FF I think this is empty unless a scan is being ran, so that you do not print out the partial results
                         if not self.param_card_iterator:
                             if (v == self.limits._id_limit_vel[finalstate]):
                                 if self.last_results[key] < self.limits.ID_max(mdm, finalstate):
-                                    message = pass_message
+                                    message = pass_message 
                                 else:
                                     message = fail_message
                             else:
@@ -1263,14 +1283,12 @@ class MADDMRunCmd(cmd.CmdShell):
                         else:
                             message = ''
 
-                    logger.info('    sigmav %s : %.2e cm^3/s [v = %.2e] %s' % (clean_key,\
-                                    self.last_results['taacsID#%s' %(clean_key)],v, message))
-
+## OLD                   logger.info('    sigmav %s : %.2e cm^3/s [v = %.2e] %s' % (clean_key, self.last_results['taacsID#%s' %(clean_key)],v, message))
+                        logger.info('     %s \t [v = %.2e] sigmav(th): %.2e \t sigmav(ul): %.2g \t [cm^3/s] \t  %s' % (clean_key, v, s_theo, s_ul, message))
                     #tot_taacs = tot_taacs + self.last_results['taacsID#%s' %(clean_key)]
             #self.last_results['taacsID'] = tot_taacs
             #Print out the total taacs.
-            logger.info('    sigmav    DM DM > all [vave = %2.e] : %.2e cm^3/s' % (v,\
-                                    self.last_results['taacsID']))
+            logger.info('\t sigmav \t [vave = %2.e] \t   DM DM > all \t %.2e \t \t [cm^3/s] ' % (v, self.last_results['taacsID']))
 
             if str(self.mode['indirect']).startswith('flux'):
                 logger.info('\n  gamma-ray flux: ')
