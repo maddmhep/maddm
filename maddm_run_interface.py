@@ -475,8 +475,8 @@ class MADDMRunCmd(cmd.CmdShell):
                     
                     result.append(float(splitline[1]))
                     if self._two2twoLO:
-                        sigv_indirect_error = 0.
-                        if 'sigma*v' in line: 
+                        sigv_indirect_error = 0. ## FF: never used anywhere???
+                        if 'sigma*v' in line: # this block never happens
                             sigv_temp = float(splitline[1])
                             oname =splitline[0].split(':',1)[1]
                             oname2 = oname.split('_')
@@ -1315,43 +1315,27 @@ class MADDMRunCmd(cmd.CmdShell):
     def ask_run_configuration(self, mode=None, force=False):
         """ask the question about card edition / Run mode """
         
-        if not force:
-            process_data = self.proc_characteristics
-            self.mode, cmd_quest = self.ask('', '0', mode=mode, 
-                            data=self.proc_characteristics,
-                            ask_class=MadDMSelector, timeout=60, path_msg=' ',
-                            return_instance=True)
-            
-            # automatically switch to keep_wgt option
-            #edit the maddm_card to be consistent with self.mode
-            cmd_quest.get_cardcmd()
 
-            self.maddm_card = cmd_quest.maddm
-            for key, value in self.mode.items():
-                if value == 'ON' or value is True:
-                    self.mode[key] = True
+        process_data = self.proc_characteristics
+        self.mode, cmd_quest = self.ask('', '0', mode=mode, 
+                        data=self.proc_characteristics,
+                        ask_class=MadDMSelector, timeout=60, path_msg=' ',
+                        return_instance=True, force=force)
+        
+        # automatically switch to keep_wgt option
+        #edit the maddm_card to be consistent with self.mode
+        cmd_quest.get_cardcmd()
 
-                elif value == 'OFF':
-                    self.mode[key] = False
-            self.mode['capture'] = False
-            # create the inc file for maddm
-            logger.debug('2to2 in ask_run_configuration: %s' % self._two2twoLO)
+        self.maddm_card = cmd_quest.maddm
+        for key, value in self.mode.items():
+            if value == 'ON' or value is True:
+                self.mode[key] = True
 
-        else:
-            raise Exception, 'Need to check that mode'
-            if not hasattr(self, 'maddm_card'):
-                self.maddm_card = MadDMCard(pjoin(self.dir_path, 'Cards', 'maddm_card.dat'))
-            if not hasattr(self, 'mode'):
-                process_data = self.proc_characteristics
-                self.mode = {'relic': 'ON' if process_data['has_relic_density'] else 'Not available',
-                            'direct': 'ON' if process_data['has_direct_detection'] else 'Not available',
-                            'directional': 'ON' if process_data['has_directional_detection'] else 'Not available',
-                            'capture': 'ON' if process_data['has_capture'] else 'Not available',
-                            'indirect': 'ON' if process_data['has_indirect_detection'] else 'Not available',
-                             'CR_flux': 'ON' if process_data['has_indirect_detection'] else 'Not available',
-                             'run_multinest': 'OFF' if aux.module_exists('pymultinest') else 'Not available'}
-
-
+            elif value == 'OFF':
+                self.mode[key] = False
+        self.mode['capture'] = False
+        # create the inc file for maddm
+        logger.debug('2to2 in ask_run_configuration: %s' % self._two2twoLO)
 
         self.auto_width = set() #ensure to reset auto_width! at the 
         self.check_param_card(pjoin(self.dir_path, 'Cards', 'param_card.dat'))
@@ -1375,7 +1359,6 @@ class MADDMRunCmd(cmd.CmdShell):
 
         #set fortran switch and write include file
         if not self.in_scan_mode:
-            misc.sprint('update madd_card', self.mode)
             # create the inc file for maddm
             self.maddm_card.set('do_relic_density', self.mode['relic'], user=False)
             self.maddm_card.set('do_direct_detection', True if self.mode['direct'] else False, user=False)
@@ -1713,7 +1696,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
             files.cp(self.paths['maddm_default'], self.paths['maddm'])
             self.maddm = MadDMCard(self.paths['maddm'])
             
-        self.maddm_set = self.maddm_def.keys() + self.maddm_def.hidden_param
+        self.maddm_set = list(set(self.maddm_def.keys() + self.maddm_def.hidden_param))
         return self.maddm.keys() 
 
     def get_cardcmd(self):
@@ -1768,7 +1751,6 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         self.paths['multinest_default'] = pjoin(self.me_dir,'Cards','multinest_card_default.dat')
         self.paths['flux'] = pjoin(self.me_dir,'Cards','pythia8_card.dat')
         self.paths['flux_default'] = pjoin(self.me_dir,'Cards','pythia8_card_default.dat')
-                
     
     # TODO HERE!
     def default(self, line):
@@ -1890,7 +1872,6 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         
     def complete_set(self, text, line, begidx, endidx, formatting=True):
         """ Complete the set command"""
-       #try:
         possibilities = super(MadDMSelector,self).complete_set(text, line, begidx, endidx, formatting=False)
         args = self.split_arg(line[0:begidx])
         if len(args)>1 and args[1] == 'maddm_card':
@@ -1905,11 +1886,18 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
             correct = self.maddm_set + ['default']
             possibilities['maddm Card'] = self.list_completion(text, correct, line)   
         elif len(args)==start+1:
-            possibilities['maddm Card'] = ['default']
-            
+            allowed_for_run = []
+            if args[-1].lower() in self.maddm.allowed_value:
+                allowed_for_run = self.maddm.allowed_value[args[-1].lower()]
+                if '*' in allowed_for_run: 
+                    allowed_for_run.remove('*')
+            elif isinstance(self.maddm[args[-1]], bool):
+                allowed_for_run = ['True', 'False']
+            opts = [str(i) for i in  allowed_for_run]
+            possibilities['maddm Card'] = self.list_completion(text, opts)
+        
         return self.deal_multiple_categories(possibilities, formatting)
-       #except Exception, error:
-       #    misc.sprint(error)
+
 
     def do_set(self, line):
         """ edit the value of one parameter in the card"""
@@ -2194,13 +2182,14 @@ class MadDMCard(banner_mod.RunCard):
         
         self.fill_jfactors()
 
-        self.add_param('indirect_flux_source_method', 'pythia8', comment='choose between pythia8 and PPPC4DMID', include=False)
-        self.add_param('indirect_flux_earth_method', 'dragon', comment='choose between dragon and PPPC4DMID', include=False)
-        self.add_param('sigmav_method', 'reshuffling', comment='choose between simpson, madevent, reshuffling', include=False)
+        self.add_param('indirect_flux_source_method', 'pythia8', comment='choose between pythia8 and PPPC4DMID', include=False,
+                       allowed=['pythia8','PPPC4DMID'])
+        self.add_param('indirect_flux_earth_method', 'dragon', comment='choose between dragon and PPPC4DMID', include=False,
+                       allowed=['dragon', 'PPPC4DMID'])
+        self.add_param('sigmav_method', 'reshuffling', comment='choose between inclusive, madevent, reshuffling', include=False,
+                       allowed=['inclusive', 'madevent', 'reshuffling'])
 
 
-
-        
     def write(self, output_file, template=None, python_template=False,
               write_hidden=False):
         """Write the run_card in output_file according to template 
