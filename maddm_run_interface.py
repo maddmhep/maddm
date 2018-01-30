@@ -57,7 +57,7 @@ logger = logging.getLogger('madgraph.plugin.maddm')
 MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
 PPPCDIR = os.getcwd()+'/PPPC4DMID/tables_PPPC4DMID_dictionary'
 
-os.system('rm /home/users/f/a/fambrogi/NEW_MADDM/MadDM_ToPush/maddm_dev2/NEW_ALL/Indirect/RunWeb') ## FF                                                                            
+os.system('rm /home/users/f/a/fambrogi/NEW_MADDM/BZR_DEF_30Jan/maddm_dev2/NN/Indirect/RunWeb') ## FF                                                                            
 
 #Is there a better definition of infinity?
 __infty__ = float('inf')
@@ -389,6 +389,7 @@ class Fermi_bounds:
         np.seterr(divide='ignore', invalid='ignore')   # Keep numpy from complaining about dN/dE = 0...                                                                       
 
         j0 , nBin = self.j0 , self.nBin # convention spectra                                                                                                                     
+        dw_in = self.dw_in
         sigmav0 = 1e-26
 
         emins = [0.5, 0.666760716, 0.8891397050000001, 1.1856868500000002, 1.5811388300000002, 2.10848252, 2.81170663, 3.7494710500000004, 5.0, 6.667607159999999, 
@@ -968,9 +969,8 @@ class MADDMRunCmd(cmd.CmdShell):
         #if not str(self.mode['indirect']).startswith('flux'):
         #    return
                
-        print 'the card is ', self.maddm_card['indirect_flux_source_method'] , '_'
-        if self.maddm_card['indirect_flux_source_method'] == 'pythia8':
-            self.run_pythia8_for_flux()
+        #if self.maddm_card['indirect_flux_source_method'] == 'pythia8':
+        #    self.run_pythia8_for_flux()
         
  
         if self.maddm_card['indirect_flux_source_method'] == 'PPPC4DMID':
