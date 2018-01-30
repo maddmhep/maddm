@@ -1566,6 +1566,7 @@ class MADDMRunCmd(cmd.CmdShell):
             self.maddm_card.set('do_directional_detection', self.mode['direct'] == 'directional', user=False)
             self.maddm_card.set('do_capture', self.mode['capture'], user=False)
             self.maddm_card.set('do_indirect_detection', True if self.mode['indirect'] else False, user=False)
+            self.maddm_card.set('do_flux', True if (self.mode['indirect'] and self.mode['indirect'] != 'sigmav') else False, user=False)
             self.maddm_card.set('only2to2lo', self._two2twoLO, user=False)
             #self.maddm_card.set('run_multinest', self.mode['run_multinest'], user=False)
             self.maddm_card.write_include_file(pjoin(self.dir_path, 'include'))        
@@ -2294,6 +2295,7 @@ class MadDMCard(banner_mod.RunCard):
         self.add_param('do_direct_detection', False, system=True)
         self.add_param('do_directional_detection', False, system=True)
         self.add_param('do_capture', False, system=True)
+        self.add_param('do_flux', False, system=True, include=False)
         
 
         self.add_param('do_indirect_detection', False, system=True)
@@ -2423,10 +2425,12 @@ class MadDMCard(banner_mod.RunCard):
         
         if self['sigmav_method'] == 'inclusive':
             if self['indirect_flux_source_method'] == 'pythia8':
-                logger.warning('since sigmav_method is on inclusive, indirect_flux_source_method has been switch to PPPC4MID')
+                if self['do_flux']:
+                    logger.warning('since sigmav_method is on inclusive, indirect_flux_source_method has been switch to PPPC4MID')
                 self['indirect_flux_source_method'] == 'PPPC4DMID'
             if self['indirect_flux_earth_method'] != 'PPPC4DMID':
-                logger.warning('since sigmav_method is on inclusive, indirect_flux_earth_method has been switch to PPPC4MID')
+                if self['do_flux']:
+                    logger.warning('since sigmav_method is on inclusive, indirect_flux_earth_method has been switch to PPPC4MID')
                 self['indirect_flux_earth_method'] == 'PPPC4DMID'                
         elif self['indirect_flux_earth_method'] == 'PPPC4DMID+dragon':
             if self['indirect_flux_source_method'] != 'PPPC4DMID':
