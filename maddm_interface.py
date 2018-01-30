@@ -799,18 +799,22 @@ class MadDM_interface(master_interface.MasterCmd):
 
         #Check if the argument contains only two particles in the final state
         #if not, force the code to use madevent
+        
         if (len(' '.join(argument).split('/')[0].split())!=2):
             self._force_madevent_for_ID = True
-
+        # Generates events for all the DM annihilation channels (also BSM)
         if argument == []:
             self.exec_cmd('define q_mdm = 1 2 3 4 -1 -2 -3 -4')
-            final_states = ['q_mdm q_mdm','21 21', '5 -5', '6 -6', '22 22', '23 23', '24 -24','25 25', '11 -11', '13 -13', '15 -15', '12 -12', '14 -14', '16 -16']
+            self.exec_cmd('define bsm = all / 1 2 3 4 5 6 -1 -2 -3 -4 -5 -6 21 22 23 24 -24 25 11 12 13 14 15 16 -11 -12 -13 -14 -15 -16')
+            final_states = ['bsm bsm','q_mdm q_mdm','21 21', '5 -5', '6 -6', '22 22', '23 23', '24 -24','25 25', '11 -11', '13 -13', '15 -15', '12 -12', '14 -14', '16 -16']
+
+            
             for final_state in final_states:
-                try:
+                try: 
                     self.exec_cmd('add indirect %s --noloop' % final_state)
                 except diagram_generation.NoDiagramException:
                     continue
-                    logger.info('no diagraom for %s' % final_state)
+                    logger.info('no diagram for %s' % final_state)
 
             return
 #            self.exec_cmd('define sm = all / bsm')

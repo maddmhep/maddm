@@ -9,7 +9,7 @@ import subprocess
 import auxiliary as aux
 import timeit
 import stat
-
+import shutil
 import threading, subprocess
 import json
 
@@ -57,7 +57,7 @@ logger = logging.getLogger('madgraph.plugin.maddm')
 MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
 PPPCDIR = os.getcwd()+'/PPPC4DMID/tables_PPPC4DMID_dictionary'
 
-os.system('rm /home/users/f/a/fambrogi/NEW_MADDM/BZR_DEF_30Jan/maddm_dev2/NN/Indirect/RunWeb') ## FF                                                                            
+os.system('rm /home/users/f/a/fambrogi/NEW_MADDM/BZR_DEF_30Jan/maddm_dev2/TRY/Indirect/RunWeb') ## FF                                                                            
 
 #Is there a better definition of infinity?
 __infty__ = float('inf')
@@ -187,7 +187,7 @@ class ExpConstraints:
         else:
             return np.interp(mdm, self._id_limit_mdm[channel], self._id_limit_sigv[channel])
 
-class PPPC_Spectra:
+class Spectra:
 
     def __init__(self):
         
@@ -401,7 +401,6 @@ class Fermi_bounds:
 
     # Load the spectrum E, dN/dE                                                                                                                                              
     #energy,dnde = np.loadtxt(specfile,unpack=True)                                                                                                                           
-    #Load the spectrum in logx, dN/dlogx -> contained in the dictionary of dictionaries                                                                                       
         logx = np.log10(x)
         mDM = eval(mDM) # must be in GeV                                                                                                                                      
 
@@ -948,15 +947,11 @@ class MADDMRunCmd(cmd.CmdShell):
             
         self.me_cmd.do_launch('-f')
 
-        # store result
-        #print 'FF self.me_cmd.Presults.iteritems() ', self.me_cmd.Presults 
 
         for key, value in self.me_cmd.Presults.iteritems():
-            #print 'FF key, value', key, ' ' , value 
             clean_key_list = key.split("/")
-            clean_key =clean_key_list[len(clean_key_list)-1].split('_')[1] +'_'+  clean_key_list[len(clean_key_list)-1].split('_')[2] # FF is there a better way to identify the tacsID ???
+            clean_key =clean_key_list[len(clean_key_list)-1].split('_')[1] +'_'+  clean_key_list[len(clean_key_list)-1].split('_')[2] 
  
-            #print 'FF clean_key' , clean_key , ' value ' , value  
             if key.startswith('xsec'):
                 #<------- FIX THIS. GET RID OF VAVE_TEMP. THIS WILL JUST GET INTEGRATED BY MADEVENT
                 self.last_results['taacsID#%s' %(clean_key)] = value* pb2cm3
@@ -969,9 +964,11 @@ class MADDMRunCmd(cmd.CmdShell):
         #if not str(self.mode['indirect']).startswith('flux'):
         #    return
                
-        #if self.maddm_card['indirect_flux_source_method'] == 'pythia8':
-        #    self.run_pythia8_for_flux()
-        
+        if self.maddm_card['indirect_flux_source_method'] == 'pythia8':
+            self.run_pythia8_for_flux()
+                   
+
+
  
         if self.maddm_card['indirect_flux_source_method'] == 'PPPC4DMID':
             PPPC_Tab = PPPC_Spectra()
@@ -979,7 +976,7 @@ class MADDMRunCmd(cmd.CmdShell):
                PPPC_source_tab = PPPC_Tab.load_PPPC_source()
 
 
-               #print  'FF TEST spectra', PPPC_source_tab['gammas']['6.0']['ee']
+               print  'FF TEST spectra', PPPC_source_tab['gammas']['6.0']['ee']
 
                 
 
@@ -1001,6 +998,9 @@ class MADDMRunCmd(cmd.CmdShell):
         
         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
         
+        # Spectra produced by Pythia8
+        self.spectra = ['ex','gx','nuex','numux','nutaux','px','restx']  
+
         #compile the pythia8 script
         if not os.path.exists(pjoin(self.dir_path,'bin','internal','main101')):
             if not hasattr(self, 'mg5'):
@@ -1035,8 +1035,7 @@ class MADDMRunCmd(cmd.CmdShell):
             
         run_name = self.me_cmd.run_name
         # launch pythia8
-        pythia_log = pjoin(self.dir_path , 'Indirect', 'Events', run_name,
-                                                     'pythia8.log')
+        pythia_log = pjoin(self.dir_path , 'Indirect', 'Events', run_name, 'pythia8.log')
 
         # Write a bash wrapper to run the shower with custom environment variables
         wrapper_path = pjoin(self.dir_path,'Indirect', 'Events',run_name,'run_shower.sh')
@@ -1073,34 +1072,16 @@ class MADDMRunCmd(cmd.CmdShell):
         else:                
             ret_code = misc.call(wrapper_path, stdout=open(pythia_log,'w'), stderr=subprocess.STDOUT,
                                   cwd=pjoin(self.dir_path,'Indirect','Events',run_name))
-        if ret_code != 0:
-            raise self.InvalidCmd, 'Pythia8 shower interrupted with return'+\
-                    ' code %d.\n'%ret_code+\
-                    'You can find more information in this log file:\n%s' % pythia_log
 
- 
- 
+        ### FF Fix to make it work on cluster!
+        #if ret_code != 0:
+        #    raise self.InvalidCmd, 'Pythia8 shower interrupted with return code %d.\n'%ret_code+ ' You can find more information in this log file:\n%s' % pythia_log
 
-    # FF this function extracts the values of the spectra interpolated linearly between two values mdm_1 and mdm_2
-    # mdm is the DM candidate mass, spectrum is gammas, positron etc, channel is the SM annihilation e.g. bbar, hh etc.   
-    # FF remeber to CHECK if it works when min and max are the same values, i.e. exactly for a value in the Masses lists!!! 
-    def interpolate_spectra(self, sp_dic, spectrum , channel):
-        print 'FF I am interpolating'
-        mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
-        M   = sp_dic['Masses']
-        dm_min =  M[M >= mdm].min()  # extracting lower mass limit to interpolate from
-        dm_max =  M[M <= mdm].max()  # extracting upper mass limit to interpolate from
-        
-        spec_1 = Dic[spectrum][ str(dm_min) ][channel]
-        spec_2 = Dic[spectrum][ str(dm_max) ][channel]
-         
-        interpolated = []
-        for x in range(len(spec_1)): # the spectrum values are ordered as 'x' vaues extracted from the Log[10,x] in the PPPC Tables
-               interp_function = interp1d([dm_min, dm_max], [spec_1[x],spec_2[x]] )
-               value =  interp_function(mdm)
-               interpolated.append(value)
-           
-        return interpolated
+        ### FF I move the spectra at source produced by Pythia8 to the output directory
+        for sp in self.spectra:
+            sp = sp + '_lhe.dat'
+            sp_out = pjoin(self.dir_path , 'Indirect', 'Events', run_name, sp )
+            shutil.move(sp_out , pjoin(self.dir_path,'output', sp) )
 
 
     def dNdx(self, x, channel=''):
