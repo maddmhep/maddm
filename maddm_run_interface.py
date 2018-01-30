@@ -194,11 +194,11 @@ class PPPC_Spectra:
         self.spectra  = ['antiprotons', 'gammas', 'neutrinos_e', 'neutrinos_mu', 'neutrinos_tau', 'positrons']
         self.channels = ['ee', 'mumu', 'tautau', 'qq', 'cc', 'bb', 'tt', 'ZZ', 'WW', 'hh', 'gammagamma', 'gg']
 
-        self.map_allowed_final_state_PPPC : {'qqx':'qq', 'ccx':'cc', 'gg':'gg', 'bbx':'bb', 'ttx':'tt',
-                                             'e+e-':'ee', 'mu+mu-':'mumu', 'ta+ta-':'tautau', 'w+w-':'WW', 'zz':'ZZ', 'hh' }
+        self.map_allowed_final_state_PPPC = {'qqx':'qq', 'ccx':'cc', 'gg':'gg', 'bbx':'bb', 'ttx':'tt',
+                                             'e+e-':'ee', 'mu+mu-':'mumu', 'ta+ta-':'tautau', 'w+w-':'WW', 'zz':'ZZ', 'hh':'hh' }
     def check_mass(self,mdm):
         if (mdm < 5.0 or mdm > 100000):
-            logger.error('DM mass outsie the range of available PPPC spectra. Please run spectra generation with pythia8') # Break and ask the user to download the Tables
+            logger.error('DM mass outside the range of available PPPC spectra. Please run spectra generation with pythia8') # Break and ask the user to download the Tables
             return 
         else: return True 
 
@@ -700,7 +700,7 @@ class MADDMRunCmd(cmd.CmdShell):
         if not os.path.exists(pjoin(self.dir_path, 'Indirect')):
             self._two2twoLO = True
             return
-        elif self.maddm_card['sigmav_method'] == 'simpson':
+        elif self.maddm_card['sigmav_method'] == 'inclusive':
             self._two2twoLO = True
             return 
         
@@ -1257,7 +1257,7 @@ class MADDMRunCmd(cmd.CmdShell):
                     finalstate = clean_key.split("_")[1]
                     if 'ss' in finalstate or 'uu' in finalstate or 'dd' in finalstate:
                         finalstate = 'qqx'
-                    ## The simpson method does not give the sigma for the BSM states production
+                    ## The inclusive method does not give the sigma for the BSM states production
                     s_theo = self.last_results[key]
                     if finalstate in self.limits._allowed_final_states : s_ul   = self.limits.ID_max(mdm, finalstate)
                     else:  s_ul   = 'n.a.'
@@ -1342,10 +1342,10 @@ class MADDMRunCmd(cmd.CmdShell):
         self.param_card = check_param_card.ParamCard(pjoin(self.dir_path, 'Cards', 'param_card.dat'))
         
         
-        #set self._two2twoLO if we need to use simpson method
+        #set self._two2twoLO if we need to use inclusive method
         #If the Indirect subfolder is not created, that means that the code is
         #using the 2to2 at LO which is handled by maddm.f.
-        if self.maddm_card['sigmav_method'] == 'simpson':
+        if self.maddm_card['sigmav_method'] in ['inclusive']:
             self._two2twoLO = True
         elif not self.mode['indirect']:
             self._two2twoLO = False
@@ -1695,7 +1695,10 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
             logger.error('problem detected: %s' % e) 
             files.cp(self.paths['maddm_default'], self.paths['maddm'])
             self.maddm = MadDMCard(self.paths['maddm'])
-            
+        
+        self.special_shortcut.update({'nevents': 'pythia8_card Main:numberOfEvents %(0)s'})
+        self.special_shortcut_help.update({'nevents': 'number of events to generate for indirect detection if sigmav_method is madevent/reshuffling'})
+        
         self.maddm_set = list(set(self.maddm_def.keys() + self.maddm_def.hidden_param))
         return self.maddm.keys() 
 
@@ -2217,12 +2220,12 @@ class MadDMCard(banner_mod.RunCard):
         if self['SNu'] + self['SNs'] + self['SNd'] - self['SNg'] -1 > 1e-3:
             raise InvalidMaddmCard, 'The sum of SM* parameter should be 1.0 get %s' % (self['SNu'] + self['SNs'] + self['SNd'] + self['SNg'])
         
-        if self['sigmav_method'] == 'simpson':
+        if self['sigmav_method'] == 'inclusive':
             if self['indirect_flux_source_method'] == 'pythia8':
-                logger.warning('since sigmav_method is on simpson, indirect_flux_source_method has been switch to PPPC4MID')
+                logger.warning('since sigmav_method is on inclusive, indirect_flux_source_method has been switch to PPPC4MID')
                 self['indirect_flux_source_method'] == 'PPPC4DMID'
             if self['indirect_flux_earth_method'] != 'PPPC4DMID':
-                logger.warning('since sigmav_method is on simpson, indirect_flux_earth_method has been switch to PPPC4MID')
+                logger.warning('since sigmav_method is on inclusive, indirect_flux_earth_method has been switch to PPPC4MID')
                 self['indirect_flux_earth_method'] == 'PPPC4DMID'                
         elif self['indirect_flux_earth_method'] == 'PPPC4DMID+dragon':
             if self['indirect_flux_source_method'] != 'PPPC4DMID':

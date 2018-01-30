@@ -155,7 +155,7 @@
 #
 # For indirect detection
 #
-   %(sigmav_method)s    = sigmav_method ! simpson [fast but no PY8_flux available], madevent, reshuffling
+   %(sigmav_method)s    = sigmav_method ! inclusive [fast but no PY8_flux available], madevent, reshuffling
    %(indirect_flux_source_method)s   = indirect_flux_source_method ! pythia8 or PPPC4DMID
    %(indirect_flux_earth_method)s    =  indirect_flux_earth_method ! dragon or PPPC4DMID_ep
    %(vave_indirect)s   = vave_indirect  ! average velocity of DM particles in halos in natural units (e.g. 1E-3 for our galaxy)
