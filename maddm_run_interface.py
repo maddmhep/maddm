@@ -938,11 +938,13 @@ class MADDMRunCmd(cmd.CmdShell):
         run_card['use_syst'] = False
         run_card.remove_all_cut()
         
+        misc.sprint("check how to set nevents!")
         if os.path.exists(pjoin(self.dir_path, 'Cards', 'pythia8_card.dat')):
             py8card = Indirect_PY8Card(pjoin(self.dir_path, 'Cards', 'pythia8_card.dat'))
             if py8card['Main:NumberOfEvents'] != -1:
-                run_card['nevents'] == py8card['Main:NumberOfEvents']
+                run_card['nevents'] = py8card['Main:NumberOfEvents']
         
+        misc.sprint(run_card['nevents'])
         run_card.write(runcardpath)
             
         self.me_cmd.do_launch('-f')
@@ -1685,7 +1687,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
                       ('indirect', 'Compute indirect detection/flux'),
                       ('nestscan', 'Run Multinest scan'),
                 ]
-    to_init_card = ['param', 'maddm']
+    to_init_card = ['param', 'maddm','pythia8']
     PY8Card_class = Indirect_PY8Card
     
     integer_bias = len(to_control) + 1 # integer corresponding to the first entry in self.cards
@@ -1879,7 +1881,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
             files.cp(self.paths['maddm_default'], self.paths['maddm'])
             self.maddm = MadDMCard(self.paths['maddm'])
         
-        self.special_shortcut.update({'nevents': 'pythia8_card Main:numberOfEvents %(0)s'})
+        self.special_shortcut.update({'nevents': ([int],['Main:numberOfEvents %(0)s'])})
         self.special_shortcut_help.update({'nevents': 'number of events to generate for indirect detection if sigmav_method is madevent/reshuffling'})
         
         self.maddm_set = list(set(self.maddm_def.keys() + self.maddm_def.hidden_param))
@@ -1912,15 +1914,16 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
  /=============================================================================\ 
  |  5. Edit the model parameters    [%(start_underline)sparam%(stop)s]                                    |  
  |  6. Edit the MadDM options       [%(start_underline)smaddm%(stop)s]                                    |
- \=============================================================================/\n"""
+"""
 
         current_val  = self.answer # use that to be secure with conflict -> always propose card
         if current_val['nestscan'] == "ON" or self.switch["nestscan"] ==  "ON":
-            question += """    7. Edit the Multinest options  [%(start_underline)smultinest%(stop)s]\n"""
+            question += """ |  7. Edit the Multinest options  [%(start_underline)smultinest%(stop)s]                                 |\n"""
     
         if current_val['indirect'].startswith('flux') or self.switch["indirect"].startswith('flux'):
-            question += """    8. Edit the Showering Card for flux  [%(start_underline)sflux%(stop)s]\n"""
-    
+            question += """ |  8. Edit the Showering Card for flux  [%(start_underline)sflux%(stop)s]                                |\n"""
+        
+        question+=""" \=============================================================================/\n"""
         self.question =  question % {'start_green' : '\033[92m',
                          'stop':  '\033[0m',
                          'start_underline': '\033[4m',
@@ -1961,7 +1964,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         #  2) go to the line edition
         self.set_switch('nestscan', "ON", user=True) 
         if self.switch['nestscan'] == "ON":
-            return line
+            return '7 %s' % line
         # not valid nestscan - > reask question
         else:
             return 
@@ -1976,14 +1979,27 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
                question (return False)
         """
         
-        #  1) do like the user type "indirect=ON"
-        #  2) go to the line edition
-        self.set_switch('indirect', "ON", user=True) 
-        if self.switch['indirect'] == "ON":
-            return line
-        # not valid indirect - > reask question
-        else:
-            return 
+        #  1) do like the user type "indirect=flux_source" (if not in flux)
+        #  2) forbid sigmav_method = inclusive
+        #  3) forbid PPPC4IDMD
+        #  4) go to the line edition
+        #1.
+        if not self.switch['indirect'].startswith('flux_'):
+            self.set_switch('indirect', "flux_source", user=True) 
+            if not self.switch['indirect'] == 'flux_source':
+                # not valid indirect - > reask question
+                return 
+            logger.warning('switching indirect mode to flux_source since sigmav does not support flux')
+           
+        #2. check that sigmv_method is not inclusive
+        if self.maddm['sigmav_method'] == 'inclusive':
+            self.setDM('sigmav_method', 'reshuffling',loglevel=30)
+            
+        #3. ensure pythia8 is on
+        if self.maddm['indirect_flux_source_method'] != 'pythia8':
+            self.setDM('indirect_flux_source_method', 'pythia8',loglevel=30)
+        
+        return '8 %s' % line
     
     trigger_flux = trigger_8
     
@@ -2192,8 +2208,8 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         # write the new file
         self.maddm.write(self.paths['maddm'])
         
-    def setDM(self, name, value):
-        logger.info('modify parameter %s of the maddm_card.dat to %s' % (name, value))
+    def setDM(self, name, value, loglevel=20):
+        logger.log(loglevel,'modify parameter %s of the maddm_card.dat to %s' % (name, value))
         self.maddm.set(name, value, user=True)
 
 
