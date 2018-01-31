@@ -57,7 +57,7 @@ logger = logging.getLogger('madgraph.plugin.maddm')
 MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
 PPPCDIR = os.getcwd()+'/PPPC4DMID/tables_PPPC4DMID_dictionary'
 
-os.system('rm /home/users/f/a/fambrogi/NEW_MADDM/BZR_DEF_30Jan/maddm_dev2/TRY/Indirect/RunWeb') ## FF                                                                            
+os.system('rm /home/users/f/a/fambrogi/NEW_MADDM/BZR_DEF_30Jan/maddm_dev2/OO/Indirect/RunWeb') ## FF                                                                            
 
 #Is there a better definition of infinity?
 __infty__ = float('inf')
@@ -268,11 +268,11 @@ class Fermi_bounds:
         self.p_value = 0
         self.nBin = 24
         self.j0 = 3.086e21 # convention spectra    
-        self.dw_in = self.dw_dic()
         self.dSph_jfac_file =  pjoin(MDMDIR, 'Fermi_Data', 'Jfactors.dat')
         self.dSph_ll_files_path = pjoin(MDMDIR, 'Fermi_Data', 'likelihoods')
         self.dwarves_list = ['coma_berenices', 'draco', 'segue_1', 'ursa_major_II', 'ursa_minor', 'reticulum_II' ]
         self.dwarveslist_all = self.extract_dwarveslist() 
+        self.dw_in = self.dw_dic()
 
 
 # This function reads the list of dwarves from the Jfactor.dat file
@@ -285,9 +285,9 @@ class Fermi_bounds:
 
     def dw_dic(self):
         
-        dSph_jfac_file, dSph_ll_files_path, nBin = self.dSph_jfac_file , self.dSph_ll_files_path , self.nBin
-        dwarflist_all = extract_dwarveslist(dSph_jfac_file) # create the list of dwarves reading the Jfactor dat file                                                          
-        dwarf_list = self.dwarf_list
+        #dSph_jfac_file, dSph_ll_files_path, nBin = self.dSph_jfac_file , self.dSph_ll_files_path , self.nBin
+        #dwarflist_all = self.extract_dwarveslist(dSph_jfac_file) # create the list of dwarves reading the Jfactor dat file                                                          
+        dwarf_list = self.dwarves_list
 
         dSph_ll_files = [ 'like_' + dwarf + '.txt' for dwarf in dwarflist_all ]
 
@@ -531,7 +531,8 @@ class MADDMRunCmd(cmd.CmdShell):
         self.options = {}
 
         self.Spectra = Spectra()
-    
+        self.Fermi   = Fermi_bounds()
+
     def preloop(self,*args,**opts):
         super(Indirect_Cmd,self).preloop(*args,**opts)
         self.prompt = 'Maddm:%s' % self.prompt 
@@ -972,9 +973,11 @@ class MADDMRunCmd(cmd.CmdShell):
         #    return
                
         if self.maddm_card['indirect_flux_source_method'] == 'pythia8':
-            self.run_pythia8_for_flux()
-                   
-
+#            self.run_pythia8_for_flux()
+            self.read_py8spectra()                  
+            gammas_x , gammas_dndlogx = self.Spectra.spectra['x'] , self.Spectra.spectra['gx'] 
+            sigmav = self.Fermi.Fermi_sigmav_lim(mdm, gammas_x , gammas_dndlogx )
+            print 'FF the limit is ' , gammas_x ,' ',  gammas_dndlogx ,' ' ,  sigmav             
 
  
         if self.maddm_card['indirect_flux_source_method'] == 'PPPC4DMID':
@@ -1079,23 +1082,35 @@ class MADDMRunCmd(cmd.CmdShell):
             ret_code = misc.call(wrapper_path, stdout=open(pythia_log,'w'), stderr=subprocess.STDOUT,
                                   cwd=pjoin(self.dir_path,'Indirect','Events',run_name))
 
+
+
         ### FF Fix to make it work on cluster!
         #if ret_code != 0:
         #    raise self.InvalidCmd, 'Pythia8 shower interrupted with return code %d.\n'%ret_code+ ' You can find more information in this log file:\n%s' % pythia_log
 
-        ### FF I move the spectra at source produced by Pythia8 to the output directory
-        # Save the values of x (same for all spectra) and the values of the spectra from the Pytha file 
+
+        # FF Moving the spectra created by pythia in the output directory                                                                                                                                                           
         for sp,k in self.Spectra.spectra_id.iteritems() :
             sp_name = sp + '_lhe.dat'
             sp_out = pjoin(self.dir_path , 'Indirect', 'Events', run_name, sp_name )
             out_dir = pjoin(self.dir_path,'output', sp_name )
             shutil.move(sp_out , out_dir )
-            if sp == 'gx': 
-                  x = np.loadtxt(out_dir , unpack = True )[0]
-                  self.Spectra.spectra[x] = [ math.pow(10,num) for num in x]     # from log[10,x] to x
-            self.Spectra.spectra[k] = np.loadtxt(out_dir , unpack = True )[1]                                  
 
-        #print 'FF spectra from pythia: ', self.Spectra.spectra                                                                 
+
+
+        ### FF I move the spectra at source produced by Pythia8 to the output directory
+        # Save the values of x (same for all spectra) and the values of the spectra from the Pytha file 
+
+    def read_py8spectra(self):
+
+        for sp,k in self.Spectra.spectra_id.iteritems() :
+            sp_name = sp + '_lhe.dat'
+            out_dir = pjoin(self.dir_path,'output', sp_name )
+            if sp == 'gx': # FF the x values are the same for any spectra
+                  x = np.loadtxt(out_dir , unpack = True )[0]
+                  self.Spectra.spectra['x'] = [ np.power(num,10) for num in x]     # from log[10,x] to x
+            self.Spectra.spectra[k] = np.loadtxt(out_dir , unpack = True )[1].tolist()                                  
+            print 'FF spectra from pythia: ', self.Spectra.spectra                                                                 
 
 
 
