@@ -1,5 +1,5 @@
 #            ====================================================
-#            |                    MadDM v3.0                     |
+#            |                    MadDM v2.0                     |
 #            ====================================================
 #
 #                #########
@@ -21,10 +21,11 @@
 #                 ########
 #
 ###################################################################################
-#
-#   RELIC DENSITY
-#
-###################################################################################
+
+# Controlling some printout of the calculation
+  %(print_out)s      = print_out         # status update
+  %(print_sigmas)s      = print_sigmas      # print out the values of the annihilation 
+                                         #cross section at x_f (s = 4m^2/(1-2/x_f))
 
 #flag to use the canonical calculation or the coupled relic density calculation
   %(relic_canonical)s       = relic_canonical   
@@ -33,24 +34,89 @@
   %(calc_taacs_dm2dm_array)s       = calc_taacs_dm2dm_array
   %(calc_taacs_scattering_array)s       = calc_taacs_scattering_array
 
+#flag to limit the Auto of the param_card to only consider two body decays.
+ %(only_two_body_decays)s = only_two_body_decays
+
 # precision of the ODE integrator which solves for relic density.
   %(eps_ode)s       = eps_ode
 
 # use an approximation for the decoupling temperature in the relic density calc?
-# if xd_approx = .false. use "step back" parameters [x_start,x_end,dx_step] for the ODE integrator
-# (see manual for more details). Slower, but more accurate.
   %(xd_approx)s       = xd_approx
 
-###################################################################################
-#
-# Direct(ional) Detection 
-#
-###################################################################################
+# if xd_approx = .false. use "step back" parameters for the ODE integrator
+# (see manual for more details). Slower, but more accurate.
+   %(x_start)s      = x_start
+   %(x_end)s    = x_end
+   %(dx_step)s       = dx_step
 
-# choose the target material (type "help material" for more target code)
-   %(material)s         = material ! 1: Xenon, 2: Germanium, 3: Silicon, ...
+#
+# integration precision parameters
+#
 
-# galactic halo DM constants (for direct detection & capture rate by sun/earth)
+# Simpson's rule parameters
+#     For the calculation of taacs only (both relic and indirect),
+#     Initial number of points in the grid to integrate over (of dm velocity)
+   %(ngrid_init)s        = ngrid_init
+#     Number of points to add for one width around each resonance peak
+#     (the code will add points which exponentially increase in distance from the pole)
+   %(nres_points)s        = nres_points
+# precision of the romberg integration for Wij (irrelevant if simpson's rule used)
+   %(eps_wij)s      = eps_wij
+# minimum number of iterations in the romberg integration algorithm for both Wij (irrelevant if simpson's rule used)
+   %(iter_wij)s         = iter_wij
+
+#
+# Direct Detection nucleon form factors (fPx - proton, fNx - neutron)
+#
+
+# Scalar FF
+   %(spu)s    = SPu
+   %(spd)s    = SPd
+   %(sps)s    = SPs
+   %(spg)s    = SPg              # 1.d0 - SPu - SPd - SPs
+
+   %(snu)s     = SNu
+   %(snd)s    = SNd
+   %(sns)s    = SNs
+   %(sng)s     = SNg              #1.d0 - SNu - SNd - SNs
+
+# Vector FF
+   %(vpu)s       = VPu
+   %(vpd)s       = VPd
+
+   %(vnu)s       = VNu
+   %(vnd)s       = VNd
+
+# Axial Vector FF
+   %(avpu)s     = AVPu
+   %(avpd)s    = AVPd
+   %(avps)s    = AVPs
+
+   %(avnu)s    = AVNu
+   %(avnd)s     = AVNd
+   %(avns)s    = AVNs
+
+# Sigma(mu,nu) FF
+   %(sigpu)s      = SigPu
+   %(sigpd)s     = SigPd
+   %(sigps)s    = SigPs
+
+   %(signu)s     = SigNu
+   %(signd)s      = SigNd
+   %(signs)s    = SigNs
+
+#
+# For Directional detection and direct detection rates
+#
+
+# choose the target material
+# Xenon = 1, Germanium = 2, Silicon = 3, Argon = 4, Neon = 5
+# Sodium = 6, Iodine = 7, Carbon = 8, Flourine = 9, Sulphur = 10
+# For Compounds: NaI = 11, CF4 = 12, CS2 = 13
+
+   %(material)s         = material
+
+# Setting up the DM constants
    %(vmp)s     = vMP  ! The most probable WIMP velocity v_0 (km/s)
    %(vescape)s     = vescape  ! The escape velocity of WIMPS in the Halo (km/s)
    %(rhodm)s       = rhoDM   ! The density of WIMPs in our local Universe (GeV/c^2/cm^-3)
@@ -59,60 +125,31 @@
    %(detector_size)s    = detector_size  ! For 1 ton = 1000 kg detector
    %(en_threshold)s       = En_threshold     ! in keVnr
 
-# choose the energy resolution coefficient and range 
-   %(lambd)s       = lambd ! lambda (sigma_E = lambda*sqrt(E))
-   %(sig_theta)s       = sig_theta ! angular resolution
+# choose the energy resolution coefficient lambda (sigma_E = lambda*sqrt(E))
+   %(lambd)s       = lambd
+
+# choose the angular resolution sigma_theta
+   %(sig_theta)s       = sig_theta
+
+# choose the range for the Energy, angle and time simulations
    %(en_min)s       = En_min          ! minimum recoil Energy
    %(en_max)s     = En_max          ! maximum recoil energy
-   %(energy_bins)s       = Energy_bins     ! Number of Energy bins
+
    %(cos_min)s      = cos_min         ! Minimum cosine of recoil angle
    %(cos_max)s       = cos_max         ! Maximum cosine of recoil angle
-   %(cos_theta_bins)s        = cos_theta_bins  ! Number of cosine angle bins
 
-# running time of the detector
    %(day_min)s       = day_min         ! 1st day of observation.
    %(day_max)s     = day_max         ! 1 year later.
+
+   %(energy_bins)s       = Energy_bins     ! Number of Energy bins
+   %(cos_theta_bins)s        = cos_theta_bins  ! Number of cosine angle bins
    %(day_bins)s        = day_bins        ! Number of time bins
 
 # Turn on detector smearing or not (both energy and angle)
    %(smearing)s     = smearing
 
-# Nuclear form factor can be customised via parameters:
-#  - scalar: SPu, SPd, SPs, SPg // SNu, SNd, SNs, SNg 
-#  - vector: VPu, VPd // VNu, VNd
-#  - axial vector: AVPu, AVPd, AVPs // AVNu, AVNd, AVNs
-#  - Sigma(mu,nu): SigPu, SigPd, SigPs // SigNu, SigNd, SigNs
-
-###################################################################################
 #
-# InDirect Detection 
+# For indirect detection
 #
-###################################################################################
-
-# Methode of computation (affects speed and precision)
-   %(sigmav_method)s    = sigmav_method ! inclusive [fast but no PY8_flux available], madevent, reshuffling
-   %(indirect_flux_source_method)s   = indirect_flux_source_method ! pythia8 or PPPC4DMID
-   %(indirect_flux_earth_method)s    =  indirect_flux_earth_method ! dragon or PPPC4DMID_ep
-
-# velocity in halo
-   %(vave_indirect)s   = vave_indirect  ! average velocity of DM particles in halos in natural units (e.g. 1E-3 for our galaxy)
-
-###################################################################################
-#
-# GLOBAL PARAMETER
-#
-###################################################################################
-
-#flag to limit the Auto of the param_card to only consider two body decays.
- %(only_two_body_decays)s = only_two_body_decays
-
-# Note that integration precision parameters can be update via
-# ngrid_init, nres_points, eps_wij, iter_wij
-# those impact relic density and indirect detection (for sigmav_method=inclusive)
-
-###################################################################################
-#
-#  Need to have more parameter? You can display all the hidden ones via the command
-#   update to_full
-#
-###################################################################################
+   %(halo_profile)s    = halo_profile   ! determines which jfactor will be used for the flux calculation
+   %(vave_indirect)s   = vave_indirect  ! average velocity of DM halo in natural units (e.g. 1E-3 for our galaxy)

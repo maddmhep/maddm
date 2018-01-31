@@ -1938,6 +1938,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         """ trigger via update to_full LINE"""
         
         logger.info("update the maddm_card by including all the hidden parameter")
+        self.maddm.use_full_template = True
         self.maddm.write(self.paths['maddm'], write_hidden=True)
 
 
@@ -2128,6 +2129,7 @@ class MadDMCard(banner_mod.RunCard):
     default_include_file = 'maddm_card.inc'
     initial_jfactors = {}
     initial_distances = {}
+    full_template = False
     
     def __new__(cls, finput=None):
         """Bypass the standard RunCard one"""
@@ -2323,7 +2325,13 @@ class MadDMCard(banner_mod.RunCard):
         
 
         if not template:
-            template = pjoin(MDMDIR, 'Templates', 'Cards', 'maddm_card.dat')
+            if self.full_template:
+                template = pjoin(MDMDIR, 'Templates', 'Cards', 'maddm_card_full.dat')
+            elif 'spd' in self.user_set and 'print_out' in self.user_set:
+                self.full_template = True
+                template = pjoin(MDMDIR, 'Templates', 'Cards', 'maddm_card_full.dat')
+            else:
+                template = pjoin(MDMDIR, 'Templates', 'Cards', 'maddm_card.dat')
             python_template = True
 
         super(MadDMCard, self).write(output_file, template=template,
@@ -2432,16 +2440,10 @@ class Multinest(object):
     def launch(self, resume=True):
 
         self.param_card_orig = param_card_mod.ParamCard(self.maddm_run.param_card)
-#<<<<<<< TREE
-        ## added by chiara
-        print('wy0 == ',self.param_card_orig.get_value('decay', 5000000))
-        ## end of addition
-#=======
+
         for pdg in self.maddm_run.auto_width:
             self.param_card_orig.get('decay', pdg).value = 'Auto'
         
-#>>>>>>> MERGE-SOURCE
-
         if self.options['loglikelihood'] == {} or self.options['prior'] =='':
             logger.error("You have to set the priors and likelihoods before launching!")
             return False
