@@ -191,11 +191,14 @@ class Spectra:
 
     def __init__(self):
         
-        self.spectra  = ['antiprotons', 'gammas', 'neutrinos_e', 'neutrinos_mu', 'neutrinos_tau', 'positrons']
+        self.spectra_id  = {'px':'antiprotons', 'gx':'gammas', 'nuex':'neutrinos_e', 'numux':'neutrinos_mu', 'nutaux':'neutrinos_tau', 'ex':'positrons'}
+        self.spectra  = {'x':[] , 'antiprotons':[], 'gammas':[], 'neutrinos_e':[], 'neutrinos_mu':[], 'neutrinos_tau':[], 'positrons':[] }
+
         self.channels = ['ee', 'mumu', 'tautau', 'qq', 'cc', 'bb', 'tt', 'ZZ', 'WW', 'hh', 'gammagamma', 'gg']
 
         self.map_allowed_final_state_PPPC = {'qqx':'qq', 'ccx':'cc', 'gg':'gg', 'bbx':'bb', 'ttx':'tt',
                                              'e+e-':'ee', 'mu+mu-':'mumu', 'ta+ta-':'tautau', 'w+w-':'WW', 'zz':'ZZ', 'hh':'hh' }
+
     def check_mass(self,mdm):
         if (mdm < 5.0 or mdm > 100000):
             logger.error('DM mass outside the range of available PPPC spectra. Please run spectra generation with pythia8') # Break and ask the user to download the Tables
@@ -526,6 +529,8 @@ class MADDMRunCmd(cmd.CmdShell):
 
         self.limits = ExpConstraints()
         self.options = {}
+
+        self.Spectra = Spectra()
     
     def preloop(self,*args,**opts):
         super(Indirect_Cmd,self).preloop(*args,**opts)
@@ -899,7 +904,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
     def launch_indirect(self, force):
         """running the indirect detection"""
-        
+
         #If the Indirect subfolder is not created, that means that the code is
         #using the 2to2 at LO which is handled by maddm.f. Then just skip this part
         
@@ -973,12 +978,11 @@ class MADDMRunCmd(cmd.CmdShell):
 
  
         if self.maddm_card['indirect_flux_source_method'] == 'PPPC4DMID':
-            PPPC_Tab = PPPC_Spectra()
-            if PPPC_Tab.check_mass(mdm):
-               PPPC_source_tab = PPPC_Tab.load_PPPC_source()
+            if spec.check_mass(mdm):
+               PPPC_source = spec.load_PPPC_source()
 
 
-               print  'FF TEST spectra', PPPC_source_tab['gammas']['6.0']['ee']
+               print  'FF TEST spectra', PPPC_source['gammas']['6.0']['ee']
 
                 
 
@@ -1080,10 +1084,28 @@ class MADDMRunCmd(cmd.CmdShell):
         #    raise self.InvalidCmd, 'Pythia8 shower interrupted with return code %d.\n'%ret_code+ ' You can find more information in this log file:\n%s' % pythia_log
 
         ### FF I move the spectra at source produced by Pythia8 to the output directory
-        for sp in self.spectra:
-            sp = sp + '_lhe.dat'
-            sp_out = pjoin(self.dir_path , 'Indirect', 'Events', run_name, sp )
-            shutil.move(sp_out , pjoin(self.dir_path,'output', sp) )
+        # Save the values of x (same for all spectra) and the values of the spectra from the Pytha file 
+        for sp,k in self.Spectra.spectra_id.iteritems() :
+            sp_name = sp + '_lhe.dat'
+            sp_out = pjoin(self.dir_path , 'Indirect', 'Events', run_name, sp_name )
+            out_dir = pjoin(self.dir_path,'output', sp_name )
+            shutil.move(sp_out , out_dir )
+            if sp == 'gx': 
+                  x = np.loadtxt(out_dir , unpack = True )[0]
+                  self.Spectra.spectra[x] = [ math.pow(10,num) for num in x]     # from log[10,x] to x
+            self.Spectra.spectra[k] = np.loadtxt(out_dir , unpack = True )[1]                                  
+
+        #print 'FF spectra from pythia: ', self.Spectra.spectra                                                                 
+
+
+
+
+
+
+
+
+
+
 
 
     def dNdx(self, x, channel=''):
