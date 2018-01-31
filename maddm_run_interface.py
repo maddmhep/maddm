@@ -72,7 +72,7 @@ class ExpConstraints:
         self._oh2_planck = 0.1198
         self._oh2_planck_width = 0.0015
 
-        self._dd_si_limit_file = pjoin(MDMDIR, 'ExpData', 'LuxBound2016_si.dat')
+        self._dd_si_limit_file = pjoin(MDMDIR, 'ExpData', 'Xenont1T_data_2017.dat')
         self._dd_sd_proton_limit_file = pjoin(MDMDIR, 'ExpData', 'Pico60_sd_proton.dat') # <---------CHANGE THE FILE!!!
         self._dd_sd_neutron_limit_file = pjoin(MDMDIR, 'ExpData', 'Lux_2017_sd_neutron.dat')
         self._id_limit_file = {'qqx'   :pjoin(MDMDIR, 'ExpData', 'MadDM_FermiLim_qq.dat'),
@@ -87,7 +87,6 @@ class ExpConstraints:
                                'zz'    :pjoin(MDMDIR, 'ExpData', 'MadDM_FermiLim_zz.dat'),
                                'hh'    :pjoin(MDMDIR, 'ExpData', 'MadDM_FermiLim_hh.dat'),
 
-
                                'hess2013': pjoin(MDMDIR,'ExpData', 'hess_I_2013_einasto.dat'),
                                'hess2016': pjoin(MDMDIR,'ExpData', 'hess_2016_einasto.dat'),
 
@@ -96,10 +95,10 @@ class ExpConstraints:
                                'aaNFWcR3':pjoin(MDMDIR,'ExpData', 'Fermi_lines_2015_NFWcontracted_R3.dat'),
                                'aaNFWR41':pjoin(MDMDIR,'ExpData', 'Fermi_lines_2015_NFW_R41.dat')}
 
-        self._id_limit_vel = {'qqx':2.0E-5, 'ccx':2.0E-5, 'gg':2.0E-5,'bbx':2.0E-5,'ttx':2.0E-5,'e+e-':2.0E-5,'mu+mu-':2.0E-5,'ta+ta-':2.0E-5,
-                              'w+w-':2.0E-5, 'zz':2.0E-5,'hh':2.0E-5,
+        self._id_limit_vel = {'qqx':2.0E-5,   'ccx':2.0E-5, 'gg':2.0E-5, 'bbx':2.0E-5,'ttx':2.0E-5,'e+e-':2.0E-5,'mu+mu-':2.0E-5,'ta+ta-':2.0E-5,
+                              'w+w-':2.0E-5,  'zz':2.0E-5,  'hh':2.0E-5,
                               'aaER16':1.0E-3,'aaIR90':1.0E-3,'aaNFWcR3':1.0E-3,'aaNFWR41':1.0E-3 ,
-                              'hess2013': 999 , 'hess2016': 999 } # FF: check these values for Hess
+                              'hess2013': 1.0E-3 , 'hess2016': 1.0E-3 } # FF: check these values for Hess
 
         self._id_limit_mdm = dict()
         self._id_limit_sigv = dict()
@@ -682,7 +681,9 @@ class MADDMRunCmd(cmd.CmdShell):
         sigv_indirect = 0.
         #print 'FF the output is ', output 
         for line in open(pjoin(self.dir_path, output)):
+      
                 splitline = line.split()
+                print 'FF splitline ' , splitline 
                 #logger.info(splitline)
 
                 #If capture rate is calculated.
@@ -697,7 +698,8 @@ class MADDMRunCmd(cmd.CmdShell):
                     result.append(float(splitline[1]))
                     if self._two2twoLO:
                         sigv_indirect_error = 0. ## FF: never used anywhere???
-                        if 'sigma*v' in line: # this block never happens
+                        if 'sigma*v' in line: 
+                         
                             sigv_temp = float(splitline[1])
                             oname =splitline[0].split(':',1)[1]
                             oname2 = oname.split('_')
@@ -991,7 +993,7 @@ class MADDMRunCmd(cmd.CmdShell):
             #print 'FF the limit is ' , gammas_x ,' ',  gammas_dndlogx ,' ' ,  sigmav             
 
 
-
+        '''
         # FF if the method is PPPC, we need to load the 
         if 'PPPC4DMID' in self.maddm_card['indirect_flux_source_method']:
             if spec.check_mass(mdm):
@@ -999,7 +1001,7 @@ class MADDMRunCmd(cmd.CmdShell):
                         PPPC_source = self.Spectra.load_PPPC_source(corr = 'ew')
                   else:
                         PPPC_source = self.Spectra.load_PPPC_source(corr = '')
-
+        '''
 
                 
 
@@ -1289,6 +1291,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
             #detailled_keys = [k.split("#")[1] for k in self.last_results.keys() if k.startswith('taacsID#')]
             #print 'FF all the keys: ', self.last_results.keys() 
+            print 'FF last_results' , self.last_results 
             detailled_keys = [k for k in self.last_results.keys() if k.startswith('taacsID#')]
             #print 'The keys are', self.last_results.keys()
             #logger.info(detailled_keys)
