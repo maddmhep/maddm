@@ -2328,7 +2328,7 @@ class MadDMCard(banner_mod.RunCard):
 
         super(MadDMCard, self).write(output_file, template=template,
                                     python_template=python_template,
-                                    write_hidden=False) 
+                                    write_hidden=write_hidden) 
 
     def check_validity(self):
         """ """
