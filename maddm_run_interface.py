@@ -2050,7 +2050,38 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
             return
         return super(MadDMSelector, self).do_compute_widths(line)
             
+    def do_help(self, line,conflict_raise=False, banner=True):
+        """proxy for do_help"""
         
+        if banner:                      
+            logger.info('*** HELP MESSAGE ***', '$MG:color:BLACK')
+        
+        if line:
+            card = common_run.AskforEditCard.do_help(self, line,conflict_raise=conflict_raise, banner=False)
+        args = self.split_arg(line)
+        
+        start = 0
+        if args[start] in ['maddm', 'maddm_card']:
+            card = 'maddm'
+            start += 1
+            
+        #### MADDM CARD 
+        if args[start] in [l.lower() for l in self.maddm.keys()] and card in ['', 'maddm']:
+            if args[start] not in self.maddm_set:
+                args[start] = [l for l in self.maddm_set if l.lower() == args[start]][0]
+
+            if args[start] in self.conflict and not conflict_raise:
+                conflict_raise = True
+                logger.info('**   AMBIGUOUS NAME: %s **', args[start], '$MG:color:BLACK')
+                if card == '':
+                    logger.info('**   If not explicitely speficy this parameter  will modif the maddm_card file', '$MG:color:BLACK')
+
+            self.maddm.do_help(args[start])
+        if banner:                      
+            logger.info('*** END HELP ***', '$MG:color:BLACK')  
+        return card    
+    
+    
     def do_update(self, line, timer=0):
         """syntax: update dependent: Change the mass/width of particles which are not free parameter for the model.
                     update missing:   add to the current param_card missing blocks/parameters.
@@ -2321,8 +2352,8 @@ class MadDMCard(banner_mod.RunCard):
     def default_setup(self):
         """define the default value"""
 
-        self.add_param('print_out', False)
-        self.add_param('print_sigmas', False)
+        self.add_param('print_out', False, hidden=True, comment="status update" )
+        self.add_param('print_sigmas', False, comment="print out the values of the annihilation cross section at x_f (s = 4m^2/(1-2/x_f))")
         
         self.add_param('relic_canonical', True)
         self.add_param('do_relic_density', True, system=True)
@@ -2344,48 +2375,64 @@ class MadDMCard(banner_mod.RunCard):
         self.add_param('eps_ode', 0.01)
         self.add_param('xd_approx', False)
         
-        self.add_param('x_start', 50.0)
-        self.add_param('x_end', 1000.0)
-        self.add_param('dx_step', 1.0)
+        self.add_param('x_start', 50.0, hidden=True)
+        self.add_param('x_end', 1000.0, hidden=True)
+        self.add_param('dx_step', 1.0, hidden=True)
         
-        self.add_param('ngrid_init', 50)
-        self.add_param('nres_points', 50)
-        self.add_param('eps_wij', 0.01)
-        self.add_param('iter_wij', 2)
+        self.add_param('ngrid_init', 50, hidden=True, comment="Initial number of points in the grid to integrate over (of dm velocity)")
+        self.add_param('nres_points', 50, hidden=True, comment="Number of points to add for one width around each resonance peak. (the code will add points which exponentially increase in distance from the pole)")
+        self.add_param('eps_wij', 0.01, hidden=True, comment="precision of the romberg integration for Wij (irrelevant if simpson's rule used)")
+        self.add_param('iter_wij', 2, hidden=True, comment="minimum number of iterations in the romberg integration algorithm for both Wij (irrelevant if simpson's rule used)")
         
         # Direct Detection nucleon form factors (fPx - proton, fNx - neutron)
         #Scalar FF
-        self.add_param('SPu', 0.0153)
-        self.add_param('SPd',0.0191)
-        self.add_param('SPs', 0.0447)
-        self.add_param('SPg', 1 - 0.0153 - 0.0191 - 0.0447)
-        self.add_param('SNu', 0.0110)
-        self.add_param('SNd', 0.0273)
-        self.add_param('SNs', 0.0447)
-        self.add_param('SNg', 1 - 0.0110 - 0.0273 - 0.0447)
+        self.add_param('SPu', 0.0153, hidden=True)
+        self.add_param('SPd',0.0191, hidden=True)
+        self.add_param('SPs', 0.0447, hidden=True)
+        self.add_param('SPg', 1 - 0.0153 - 0.0191 - 0.0447, hidden=True)
+        self.add_param('SNu', 0.0110, hidden=True)
+        self.add_param('SNd', 0.0273, hidden=True)
+        self.add_param('SNs', 0.0447, hidden=True)
+        self.add_param('SNg', 1 - 0.0110 - 0.0273 - 0.0447, hidden=True)
         # Vector FF
-        self.add_param('VPu', 2.0)
-        self.add_param('VPd', 1.0)
-        self.add_param('VNu', 1.0)
-        self.add_param('Vnd', 2.0)
+        self.add_param('VPu', 2.0, hidden=True)
+        self.add_param('VPd', 1.0, hidden=True)
+        self.add_param('VNu', 1.0, hidden=True)
+        self.add_param('Vnd', 2.0, hidden=True)
         # Axial Vector FF
-        self.add_param('AVPu',0.842)
-        self.add_param('AVPd',-0.427)
-        self.add_param('AVPs',-0.085)
-        self.add_param('AVNu',-0.427)
-        self.add_param('AVNd',0.842)
-        self.add_param('AVNs',-0.085)
+        self.add_param('AVPu',0.842, hidden=True)
+        self.add_param('AVPd',-0.427, hidden=True)
+        self.add_param('AVPs',-0.085, hidden=True)
+        self.add_param('AVNu',-0.427, hidden=True)
+        self.add_param('AVNd',0.842, hidden=True)
+        self.add_param('AVNs',-0.085, hidden=True)
         # Sigma(mu,nu) FF
-        self.add_param('SigPu',0.84)
-        self.add_param('SigPd',-0.23)
-        self.add_param('SigPs',-0.046)
-        self.add_param('SigNu',-0.23)
-        self.add_param('SigNd',0.84)
-        self.add_param('SigNs',-0.046)
+        self.add_param('SigPu',0.84, hidden=True)
+        self.add_param('SigPd',-0.23, hidden=True)
+        self.add_param('SigPs',-0.046, hidden=True)
+        self.add_param('SigNu',-0.23, hidden=True)
+        self.add_param('SigNd',0.84, hidden=True)
+        self.add_param('SigNs',-0.046, hidden=True)
         #
         # For Directional detection and direct detection rates
         #
-        self.add_param('material', 1)
+        self.add_param('material', 1, allowed = range(1,14),
+                        comment="""Choose the target material
+    - 1: Xenon
+    - 2: Germanium 
+    - 3: Silicon
+    - 4: Argon
+    - 5: Neon
+    - 6: Sodium
+    - 7: Iodine
+    - 8: Carbon
+    - 9: Flourine
+    - 10: Sulphur
+    For Compounds:
+    - 11: NaI 
+    - 12: CF4
+    - 13: CS2""")
+        
         #Setting up the DM constants
         self.add_param('vMP', 220.0)
         self.add_param('vescape', 650.0)
@@ -2411,7 +2458,7 @@ class MadDMCard(banner_mod.RunCard):
 
         #indirect detection
         self.add_param('vave_indirect', 0.00002, include=True)
-        self.add_param('halo_profile', 'Draco', include=True)   ##### this naming doesn't make sense fix it!!!!!!!!
+        self.add_param('halo_profile', 'Draco', include=True, legacy=True)   ##### this naming doesn't make sense fix it!!!!!!!!
 
         self.add_param('jfactors', {'__type__':1.0}, include=False, hidden=True)
         self.add_param('distances', {'__type__':1.0}, include=False, hidden=True)
