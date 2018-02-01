@@ -960,10 +960,20 @@ class MADDMRunCmd(cmd.CmdShell):
             if py8card['Main:NumberOfEvents'] != -1:
                 run_card['nevents'] = py8card['Main:NumberOfEvents']
         
-        misc.sprint(run_card['nevents'])
         run_card.write(runcardpath)
+        
+        if self.maddm_card['sigmav_method'] == 'madevent':
+            self.me_cmd.do_launch('-f')
+        else: 
+            cmd = ['launch',
+                   'reweight=indirect',
+                   'edit reweight --before_line="launch" change velocity %s' % vave_temp]
+            misc.sprint("using reshuffling")
+            self.me_cmd.import_command_file(cmd)
             
-        self.me_cmd.do_launch('-f')
+            
+            
+            
 
 
         for key, value in self.me_cmd.Presults.iteritems():

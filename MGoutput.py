@@ -932,3 +932,73 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         
         writer.write(open(pjoin(MDMDIR, 'python_templates', 'direct_detection.f')).read() % to_replace)
         
+
+
+
+class Indirect_Reweight(rwgt_interface.ReweightInterface):
+    
+    def __init__(self, *args, **opts):
+        
+        self.velocity = 1e-3
+        self.shuffling_mode = 'reweight'
+        super(Indirect_Reweight, self).__init__(*args, **opts)
+        self.output_type = '2.0'
+            
+    def change_kinematics(self, event):
+        
+        old_sqrts = event.sqrts
+        m = event[0].mass
+        new_sqrts = self.maddm_get_sqrts(m, self.velocity)
+        jac =  event.change_sqrts(new_sqrts)
+        
+        def flux(S, M1, M2):
+            return S**2 + M1**4 + M2**4 - 2.*S*M1**2 - 20*M1**2*M2**2 - 2.*S*M2**2
+    
+        jac *= flux(old_sqrts**2, m,m)/flux(new_sqrts**2, m,m)
+        
+        
+        if self.output_type != 'default':
+            mode = self.run_card['dynamical_scale_choice']
+            if mode == -1:
+                if self.dynamical_scale_warning:
+                    logger.warning('dynamical_scale is set to -1. New sample will be with HT/2 dynamical scale for renormalisation scale')
+                mode = 3
+            event.scale = event.get_scale(mode)
+            event.aqcd = self.lhe_input.get_alphas(event.scale, lhapdf_config=self.mother.options['lhapdf'])
+         
+        return jac,event
+        
+    def calculate_matrix_element(self,*args, **opts):
+        if self.shuffling_mode == 'shuffle':
+            return 1.0
+        else:
+            return super(Indirect_Reweight, self).calculate_matrix_element(*args,**opts)
+    
+    def create_standalone_directory(self, *args, **opts):
+        if self.shuffling_mode == 'shuffle':
+            return
+        return super(Indirect_Reweight, self).create_standalone_directory(*args, **opts)
+    
+    @staticmethod
+    def maddm_get_sqrts(m, ve):
+
+        R = random.random()
+        f = lambda v: (-1/ve**2 * math.exp(-v**2/ve**2) * (ve**2+v**2) +1) - R
+        df = lambda v: 2. * v**3/ve**4 *math.exp(-v**2/ve**2)
+        v = misc.newtonmethod(f, df, ve, error=1e-7, maxiter=250)
+
+        return 2* math.sqrt(m**2 / (1-v/2.)**2)    
+        
+    def do_change(self, line):    
+        
+        args = self.split_arg(line)
+        if len(args)>1:
+            if args[0] == 'velocity':
+                self.velocity = bannermod.ConfigFile.format_variable(args[1], float, 'velocity')
+                return 
+            elif args[0] == 'shuffling_mode':
+                if args[1].lower() in ['reweight', 'shuffle']:
+                    self.shuffling_mode = args[1]
+                return
+        return super(Indirect_Reweight, self).do_change(line)
+            
