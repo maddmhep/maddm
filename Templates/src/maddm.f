@@ -18,6 +18,7 @@ c parameters used in this routine only
       double precision sigmawnSD, sigmawpSD
       double precision vID_natural
       character(len=32) outfilename
+c      double precision total_cross
 
 c include files generated my the python side that contains necessary information
       include 'maddm_card.inc'
@@ -136,23 +137,14 @@ C      Here write the output.
       endif
 
       if (do_indirect_detection.and.only2to2lo) then
-       if (.not.do_relic_density) then
-           call set_up_grid(0.d0,1.d0)
-       endif
-c      here natural just signals that it's in natural units.
-        vID_natural = vave_indirect !/299792.d0
-
-c           Here construct the integration grid in the same way as with relic density
-c           use the grid initialized by the relic density calculation (grid_ID) but add the
-c           peak of the velocity distribution
-
-        call set_up_grid_ID(vID_natural)
+       vID_natural = vave_indirect !/299792.d0  here natural just signals that it's in natural units.
 
         do k=1, ANN_NUM_PROCESSES
-c   here sigv is in units of 'pb' so convert it to cm^3/s
-            sigv =  taacs_ID(k,vID_natural)*pbtocm3 ! the last thing is the size of the integration grid. Leave at 10000.
-            write(33,fmt='(A8,A12,A4,ES14.7,A7)') 'sigma*v:',PROCESS_NAMES(k),' ',sigv, ' cm^3/s'
+           sigv =  taacs_ID(k,vID_natural)*pbtocm3
+           write(33,fmt='(A8,A12,A4,ES14.7,A7)') 'sigma*v:',PROCESS_NAMES(k),' ',sigv, ' cm^3/s'
         enddo
+c        print*,'total:', total_cross * gevtopb * pbtocm3
+c        write(33,fmt='(A8,A12,A4,ES14.7,A7)') 'DM --> all:' 
       endif
 
       close(33)
