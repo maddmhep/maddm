@@ -406,7 +406,6 @@ class Fermi_bounds:
 
     def Fermi_sigmav_lim(self, mDM, x = '' , dndlogx = '' , marginalize = True, calc_p_value = True):
         np.seterr(divide='ignore', invalid='ignore')   # Keep numpy from complaining about dN/dE = 0...                                                                       
-        print 'FF x ', x
         j0 , nBin = self.j0 , self.nBin # convention spectra                                                                                                                     
         dw_in = self.dw_in
         sigmav0 = 1e-26
@@ -672,45 +671,49 @@ class MADDMRunCmd(cmd.CmdShell):
         #called 'maddm.out'. The format is such that the first line is always relic density
         # , second line is the nucleon scattering cross section (SI) for proton, third is SI
         # nucleon cross section for the neutron etc. If a quantity was not calculated, we output -1
-        result = []
+        result = {}
         #for line in process.stdout:
 
-        output_name = ['omegah2', 'x_freezeout', 'wimp_mass', 'sigmav_xf' ,
-                       'sigmaN_SI_proton', 'sigmaN_SI_neutron', 'sigmaN_SD_proton',
-                        'sigmaN_SD_neutron','Nevents', 'smearing']
+        #output_name = ['omegah2', 'x_freezeout', 'wimp_mass', 'sigmav_xf' ,
+                       #'sigmaN_SI_proton', 'sigmaN_SI_neutron', 'sigmaN_SD_proton',
+                        #'sigmaN_SD_neutron','Nevents', 'smearing']
 
-        if self.mode['indirect']:
-            output_name.append('taacsID')
+        #for name in output_name:
+        #    result[name] = ''
+
 
         sigv_indirect = 0.
         #print 'FF the output is ', output 
         for line in open(pjoin(self.dir_path, output)):
       
                 splitline = line.split()
-
                 #If capture rate is calculated.
                 if 'ccap' in line:
                     oname = splitline[0].strip(':')+'_'+splitline[1]
-                    output_name.append(oname)
+                    #output_name.append(oname)
                     val = splitline[2]
-                    result.append(float(val))
+                    result[oname.split(':')[0] ] = val
+                    #result.append(float(val))
 
                 else:
-                    
-                    result.append(float(splitline[1]))
+                    #result[splitline[0]] = float(splitline[1]) 
+                    #result[append(float(splitline[1]))
                     if self._two2twoLO:
                         sigv_indirect_error = 0. ## FF: never used anywhere???
                         if 'sigma*v' in line: 
                          
                             sigv_temp = float(splitline[1])
-                            oname =splitline[0].split(':',1)[1]
-                            oname2 = oname.split('_')
-                            oname = oname2[0]+'_'+oname2[1] #To eliminate the annoying suffix coming from the '/' notation
-                            output_name.append('taacsID#%s' % oname)
+                            oname = splitline[0].split(':',1)[1] .split('_')
+                            #oname2 = oname.split('_')
+                            oname = oname[0]+'_'+oname[1] #To eliminate the annoying suffix coming from the '/' notation
+                            result['taacsID#'     + oname] = sigv_temp 
+                            result['err_taacsID#' + oname] = 0 
+#                            output_name.append('taacsID#%s' % oname)
                             sigv_indirect += sigv_temp
-                            output_name.append('err_taacsID#%s' % oname)
-                            result.append(sigv_temp) #the value of cross section
-                            result.append(0.e0) #put 0 for the error.
+ #                           output_name.append('err_taacsID#%s' % oname)
+ #                           result.append(sigv_temp) #the value of cross section
+#                            result.append(0.e0) #put 0 for the error.
+                    result[splitline[0].split(':')[0]] = float(splitline[1])
 
 
 
@@ -725,11 +728,12 @@ class MADDMRunCmd(cmd.CmdShell):
 
         if str(self.mode['indirect']).startswith('flux'):
             for chan in np_names:
-                output_name.append('flux_%s' % chan)
-                result.append(-1.0)
+                result['flux_%s' % chan] = -1.0
           
-        result = dict(zip(output_name, result))
-        result['taacsID'] = sigv_indirect
+        
+ #       result = dict(zip(output_name, result))
+        if self.mode['indirect']: 
+               result['taacsID'] = sigv_indirect
         self.last_results = result
         #logger.debug(self.last_results)
 
@@ -760,15 +764,17 @@ class MADDMRunCmd(cmd.CmdShell):
                elif 'PPPC4DMID' in self.maddm_card['indirect_flux_source_method']: self.read_PPPCspectra()
 
         
-        elif self.mode['indirect'].startswith('flux'):
+        if self.mode['indirect'].startswith('flux'):
+             # this if might be redundant
              if   self.maddm_card['indirect_flux_source_method'] == 'pythia8' : 
                   self.read_py8spectra()
                   x, gammas = self.Spectra.spectra['x'] , self.Spectra.spectra['gammas']
-                  sigmav = self.Fermi.Fermi_sigmav_lim(mdm, gammas_x , gammas_dndlogx )[0] # FF the funct. return2 a 2d array with [sigmav,pvalue]                        
+ 
+                  sigmav = self.Fermi.Fermi_sigmav_lim(mdm, x , gammas )[0] # FF the funct. return2 a 2d array with [sigmav,pvalue]
+                  logger.info('Calculating Fermi limit using pythia8 gamma rays spectrum')                        
                   self.last_results['Fermi_sigmav'] = sigmav # FF store the results from the Fermi limit calculation                          
                   # FF up to here, everytihng we need for sigmav         
                   self.calculate_fluxes()             
-  
 
         #if sigv_indirect:
         #    result['taacsID'] = sigv_indirect
@@ -1137,9 +1143,12 @@ class MADDMRunCmd(cmd.CmdShell):
 
 
     def calculate_fluxes(self):
+        np_names = ['g','nue','numu','nutau']
 
         # FF Fluxes from pythia 8 files
         if self.maddm_card['sigmav_method'] != 'inclusive':
+           logger.info('Calculating the CR fluxes')
+           '''
            #Here we need to skip this part if the scan is being conducted because                                                                                              
            #the value of dark matter mass could be 'scan: ...'                                                                                                                                
            if not self.param_card_iterator:
@@ -1163,7 +1172,7 @@ class MADDMRunCmd(cmd.CmdShell):
                        Espectrum.append(self.dNdx(energy, channel=chan))
                    dNde_filename = pjoin(self.dir_path,'Indirect', 'Events', run_name, 'dNdE_%s.txt' %chan)
                    aux.write_data_to_file(energies, Espectrum, filename=dNde_filename, header='# E_kin [GeV]   dNdE [GeV^-1]')
-
+             '''      
         elif str(self.mode['indirect']).startswith('flux') and self.maddm_card['sigmav_method'] == 'inclusive':
             logger.debug('Calculating the fluxes by combining the PPPC spectra for gammas and neutrinos')
             
@@ -1278,16 +1287,18 @@ class MADDMRunCmd(cmd.CmdShell):
 
         mdm= self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
 
-        pass_message = '%s ALLOWED  %s' % (bcolors.OKGREEN, bcolors.ENDC)
-        fail_message = ' %s EXCLUDED %s' % (bcolors.FAIL, bcolors.ENDC)
+        pass_message = '%s ALLOWED    %s' % (bcolors.OKGREEN, bcolors.ENDC)
+        fail_message = ' %s EXCLUDED  %s' % (bcolors.FAIL, bcolors.ENDC)
+        nolim_message = ' %s NO LIMIT %s' % (bcolors.GRAY, bcolors.ENDC)
+
 
         #skip this if there is a sequential scan going on.
         if not self.param_card_iterator:
-            pass_relic = pass_message if self.last_results['omegah2'] < self.limits._oh2_planck else fail_message
-            pass_dd_si_proton = pass_message if self.last_results['sigmaN_SI_proton']*GeV2pb*pb2cm2 < self.limits.SI_max(mdm) else fail_message
-            pass_dd_si_neutron = pass_message if self.last_results['sigmaN_SI_neutron']*GeV2pb*pb2cm2 < self.limits.SI_max(mdm) else fail_message
-            pass_dd_sd_proton = pass_message if self.last_results['sigmaN_SI_proton']*GeV2pb*pb2cm2 < self.limits.SD_max(mdm, 'p') else fail_message
-            pass_dd_si_neutron = pass_message if self.last_results['sigmaN_SI_neutron']*GeV2pb*pb2cm2 < self.limits.SD_max(mdm, 'n') else fail_message
+            pass_relic = pass_message if self.last_results['Omegah^2'] < self.limits._oh2_planck else fail_message
+            pass_dd_si_proton = pass_message if self.last_results['sigmaN_SI_p']*GeV2pb*pb2cm2 < self.limits.SI_max(mdm) else fail_message
+            pass_dd_si_neutron = pass_message if self.last_results['sigmaN_SI_n']*GeV2pb*pb2cm2 < self.limits.SI_max(mdm) else fail_message
+            pass_dd_sd_proton = pass_message if self.last_results['sigmaN_SI_p']*GeV2pb*pb2cm2 < self.limits.SD_max(mdm, 'p') else fail_message
+            pass_dd_si_neutron = pass_message if self.last_results['sigmaN_SI_n']*GeV2pb*pb2cm2 < self.limits.SD_max(mdm, 'n') else fail_message
         else:
             pass_relic = ''
             pass_dd_si_proton = ''
@@ -1305,17 +1316,17 @@ class MADDMRunCmd(cmd.CmdShell):
         
         logger.info("*** RESULTS ***", '$MG:color:BLACK')
         if self.mode['relic']:
-            logger.info('  relic density  : %.2e %s', self.last_results['omegah2'],pass_relic)
+            logger.info('  relic density  : %.2e %s', self.last_results['Omegah^2'],pass_relic)
                         
-            logger.info('   x_f            : %.2f', self.last_results['x_freezeout'])
-            logger.info('   sigmav(xf)     : %.2e GeV^-2 = %.2e cm^3/s', self.last_results['sigmav_xf'],self.last_results['sigmav_xf']*GeV2pb*pb2cm3)
+            logger.info('   x_f            : %.2f', self.last_results['x_f'])
+            logger.info('   sigmav(xf)     : %.2e GeV^-2 = %.2e cm^3/s', self.last_results['sigmav(xf)'],self.last_results['sigmav(xf)']*GeV2pb*pb2cm3)
             
         if self.mode['direct']:
             logger.info('\n direct detection: ')
-            logger.info(' sigmaN_SI_p      : %.2e GeV^-2 = %.2e cm^2  %s',self.last_results['sigmaN_SI_proton'],self.last_results['sigmaN_SI_proton']*GeV2pb*pb2cm2, pass_dd_si_proton)
-            logger.info(' sigmaN_SI_n      : %.2e GeV^-2 = %.2e cm^2  %s',self.last_results['sigmaN_SI_neutron'],self.last_results['sigmaN_SI_neutron']*GeV2pb*pb2cm2,pass_dd_si_proton)
-            logger.info(' sigmaN_SD_p      : %.2e GeV^-2 = %.2e cm^2  %s',self.last_results['sigmaN_SD_proton'],self.last_results['sigmaN_SD_proton']*GeV2pb*pb2cm2, pass_dd_sd_proton)
-            logger.info(' sigmaN_SD_n      : %.2e GeV^-2 = %.2e cm^2  %s',self.last_results['sigmaN_SD_neutron'],self.last_results['sigmaN_SD_neutron']*GeV2pb*pb2cm2, pass_dd_si_neutron)
+            logger.info(' sigmaN_SI_p      : %.2e GeV^-2 = %.2e cm^2  %s',self.last_results['sigmaN_SI_p'],self.last_results['sigmaN_SI_p']*GeV2pb*pb2cm2, pass_dd_si_proton)
+            logger.info(' sigmaN_SI_n      : %.2e GeV^-2 = %.2e cm^2  %s',self.last_results['sigmaN_SI_n'],self.last_results['sigmaN_SI_n']*GeV2pb*pb2cm2,pass_dd_si_proton)
+            logger.info(' sigmaN_SD_p      : %.2e GeV^-2 = %.2e cm^2  %s',self.last_results['sigmaN_SD_p'],self.last_results['sigmaN_SD_p']*GeV2pb*pb2cm2, pass_dd_sd_proton)
+            logger.info(' sigmaN_SD_n      : %.2e GeV^-2 = %.2e cm^2  %s',self.last_results['sigmaN_SD_n'],self.last_results['sigmaN_SD_n']*GeV2pb*pb2cm2, pass_dd_si_neutron)
         if self.mode['direct'] == 'directional':
             logger.info(' Nevents          : %i', self.last_results['Nevents'])
             logger.info(' smearing         : %.2e', self.last_results['smearing'])
@@ -1360,9 +1371,9 @@ class MADDMRunCmd(cmd.CmdShell):
                     #is evaluated matches the dm velocity in the calculation.
                     #logger.info(clean_key_list[1])
                     #logger.debug('FF allowed final states' , self.limits._allowed_final_states)
-                    if finalstate not in self.limits._allowed_final_states:
-                        message = '%s NO LIMIT %s' % (bcolors.GRAY, bcolors.ENDC)
-                        logger.info('     %s \t sigmav(th): %.2e \t sigmav(ul): %s \t [cm^3/s] \t  %s' % (clean_key, s_theo, s_ul, message))
+                    if finalstate not in self.limits._allowed_final_states or s_ul == 'inf':
+                        message = nolim_message
+                        logger.info('     %s \t sigmav(th): %.3e \t sigmav(ul): %s \t [cm^3/s] \t  %s' % (clean_key, s_theo, s_ul, message))
 
                     else:
                         # FF I think this is empty unless a scan is being ran, so that you do not print out the partial results
@@ -1379,18 +1390,20 @@ class MADDMRunCmd(cmd.CmdShell):
                             message = ''
 
 ## OLD                   logger.info('    sigmav %s : %.2e cm^3/s [v = %.2e] %s' % (clean_key, self.last_results['taacsID#%s' %(clean_key)],v, message))
-                        logger.info('     %s \t  sigmav(th): %.2e \t sigmav(ul): %.2g \t [cm^3/s] \t  %s' % (clean_key, s_theo, s_ul, message))
+                        logger.info('     %s \t  sigmav(th): %.2e \t sigmav(ul): %.3g \t [cm^3/s] \t  %s' % (clean_key, s_theo, s_ul, message))
                     #tot_taacs = tot_taacs + self.last_results['taacsID#%s' %(clean_key)]
             #self.last_results['taacsID'] = tot_taacs
             #Print out the total taacs.
-            logger.info('\t sigmav  \t   DM DM > all \t %.2e \t \t [cm^3/s] ' % ( self.last_results['taacsID']))
+            if self.maddm_card['indirect_flux_source_method'] == 'pythia8':
+                logger.info('     %s\t sigmav(th): %.2e  \t sigmav(ul): %.3g \t [cm^3/s] ' % ('DM DM > all',  self.last_results['taacsID'] ,  self.last_results['Fermi_sigmav']))
 
             if str(self.mode['indirect']).startswith('flux'):
                 logger.info('\n  gamma-ray flux: ')
-                np_names = ['g','nue', 'numu', 'nutau'] #,  'p', 'e', ]
+                # FF nutau does not work np_names = ['g','nue', 'numu', 'nutau'] #,  'p', 'e', ]
                 #cr_names = ['gamma',  'pbar', 'e+', 'neue', 'neumu', 'neutau']
-                for chan in np_names:
-                    logger.info('%10s : %.3e particles/(cm^2 s sr)' %(chan, self.last_results['flux_%s' % chan] ))
+                #cr_names = ['gamma',  'pbar', 'e+', 'neue', 'neumu', 'neutau']                                                                                                  
+                #for chan in np_names:
+                #    logger.info('%10s : %.3e particles/(cm^2 s sr)' %(chan, self.last_results['flux_%s' % chan] ))
                 logger.info('Differential fluxes written in output/flux_<cr species>.txt')
     
     def is_excluded_relic(self, relic, omega_min = 0., omega_max = 0.1):
