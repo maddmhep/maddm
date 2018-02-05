@@ -763,10 +763,10 @@ class MADDMRunCmd(cmd.CmdShell):
                if 'pythia'      in self.maddm_card['indirect_flux_source_method']: self.read_py8spectra()
                elif 'PPPC4DMID' in self.maddm_card['indirect_flux_source_method']: self.read_PPPCspectra()
 
-        
+        self.last_results['Fermi_sigmav'] = -1        
         if self.mode['indirect'].startswith('flux'):
              # this if might be redundant
-             if   self.maddm_card['indirect_flux_source_method'] == 'pythia8' : 
+             if   'pythia' in self.maddm_card['indirect_flux_source_method'] : 
                   self.read_py8spectra()
                   x, gammas = self.Spectra.spectra['x'] , self.Spectra.spectra['gammas']
  
@@ -973,10 +973,6 @@ class MADDMRunCmd(cmd.CmdShell):
             self.me_cmd.import_command_file(cmd)
             
             
-            
-            
-
-
         for key, value in self.me_cmd.Presults.iteritems():
             clean_key_list = key.split("/")
             clean_key =clean_key_list[len(clean_key_list)-1].split('_')[1] +'_'+  clean_key_list[len(clean_key_list)-1].split('_')[2] 
@@ -1125,7 +1121,7 @@ class MADDMRunCmd(cmd.CmdShell):
          # FF here I combine the spectra: multiply each channel by the BR 
          # I create a temporary list that at each loop in the channel, retains the partial sum of each x value multiplied by the channel BR
          # At the end of the loop over the channels, this is the combine spectrum (do it for all the spectra - gammas, nue, positron etc. )
-         print 'FF last results:', self.last_results
+         #print 'FF last results:', self.last_results
 
          available_channels = [ x for x in self.last_results.keys() if 'err' not in x and 'taacsID#' in x ] # list of available SM channel xsections
 
