@@ -805,11 +805,19 @@ class MadDM_interface(master_interface.MasterCmd):
         # Generates events for all the DM annihilation channels (also BSM)
         if argument == []:
             # for QUICK testing
-            #self.exec_cmd('define q_mdm = 1 2 3 4 -1 -2 -3 -4')
-            #self.exec_cmd('define bsm = all / 1 2 3 4 5 6 -1 -2 -3 -4 -5 -6 21 22 23 24 -24 25 11 12 13 14 15 16 -11 -12 -13 -14 -15 -16')
-            #final_states = ['bsm bsm','q_mdm q_mdm','21 21', '5 -5', '6 -6', '22 22', '23 23', '24 -24','25 25', '11 -11', '13 -13', '15 -15', '12 -12', '14 -14', '16 -16']
 
-            final_states = ['1 -1', '5 -5' ] 
+            self.exec_cmd('define q_mdm = 1 -1 ')
+
+            #self.exec_cmd('define q_mdm = 1 2 3 4 -1 -2 -3 -4')
+            self.exec_cmd('define bsm = all / 1 2 3 4 5 6 -1 -2 -3 -4 -5 -6 21 22 23 24 -24 25 11 12 13 14 15 16 -11 -12 -13 -14 -15 -16')
+            final_states = ['bsm bsm','q_mdm q_mdm','21 21', '5 -5', '6 -6', '22 22', '23 23', '24 -24','25 25', '11 -11', '13 -13', '15 -15', '12 -12', '14 -14', '16 -16']
+
+
+
+            #final_states = ['1 -1', '5 -5' ] 
+
+
+
             for final_state in final_states:
                 try: 
                     self.exec_cmd('add indirect %s --noloop' % final_state)
