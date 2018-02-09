@@ -20,6 +20,7 @@ from scipy.integrate import quad
 from scipy.optimize import minimize_scalar
 from scipy.special import gammainc
 
+import shutil
 import MGoutput
 from madgraph import MadGraph5Error
 from models import check_param_card
@@ -792,6 +793,8 @@ class MADDMRunCmd(cmd.CmdShell):
         if not self.in_scan_mode and not self.multinest_running:
             self.print_results()
 
+
+
         # --------------------------------------------------------------------#
         #   THIS PART IS FOR MULTINEST SCANS
         # --------------------------------------------------------------------#
@@ -1471,7 +1474,20 @@ class MADDMRunCmd(cmd.CmdShell):
                 #for chan in np_names:
                 #    logger.info('%10s : %.3e particles/(cm^2 s sr)' %(chan, self.last_results['flux_%s' % chan] ))
                 logger.info('Differential fluxes written in output/flux_<cr species>.txt')
-    
+        
+        # FF renaming output folders 
+        if self.maddm_card['indirect_flux_source_method'] == 'pythia8' and self.maddm_card['sigmav_method'] != 'inclusive':
+           run_name   = self.me_cmd.run_name
+           output     = pjoin(self.dir_path, 'output')
+           shutil.copytree( pjoin(self.dir_path, 'output') , pjoin(self.dir_path, 'output_'+ run_name ) )
+        elif self.maddm_card['sigmav_method'] == 'inclusive':
+           from datetime import datetime
+           time = str(datetime.now().strftime("%Y-%m-%d_%H:%M:%S")).replace(':','-')
+           #print 'FF time', time 
+           shutil.copytree( pjoin(self.dir_path, 'output') , pjoin(self.dir_path, 'output_'+ time ) )
+
+
+
     def is_excluded_relic(self, relic, omega_min = 0., omega_max = 0.1):
         """  This function determines whether a model point is excluded or not
              based on the resulting relic density, spin independent and spin
