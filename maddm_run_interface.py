@@ -1349,6 +1349,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
         #logger.debug(self.last_results)
 
+
         mdm= self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
 
         pass_message  = '%s ALLOWED  %s' % (bcolors.OKGREEN, bcolors.ENDC)
@@ -1475,6 +1476,10 @@ class MADDMRunCmd(cmd.CmdShell):
                 #    logger.info('%10s : %.3e particles/(cm^2 s sr)' %(chan, self.last_results['flux_%s' % chan] ))
                 logger.info('Differential fluxes written in output/flux_<cr species>.txt')
         
+
+        #FF Saving the results dictionary
+        np.save(pjoin(self.dir_path, 'output','Results'), self.last_results)
+
         # FF renaming output folders 
         if self.maddm_card['indirect_flux_source_method'] == 'pythia8' and self.maddm_card['sigmav_method'] != 'inclusive':
            run_name   = self.me_cmd.run_name
