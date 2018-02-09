@@ -54,7 +54,7 @@ logger = logging.getLogger('madgraph.plugin.maddm')
 MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
 PPPCDIR = os.getcwd()+'/PPPC4DMID/tables_PPPC4DMID_dictionary'
 
-os.system('rm /home/users/f/a/fambrogi/NEW_MADDM/BZR_DEF_30Jan/maddm_dev2/OO/Indirect/RunWeb') ## FF                                                                            
+os.system('rm /home/users/f/a/fambrogi/NEW_MADDM/BZR_DEF_30Jan/maddm_dev2/DDD/Indirect/RunWeb') ## FF                                                                            
 
 #Is there a better definition of infinity?
 __infty__ = float('inf')
@@ -250,12 +250,14 @@ class Spectra:
 
         # FF if the MD requested is exactly one of the values in the table, returns the values with no interpolation                                                   
         if dm_min == dm_max :
+               #print 'FF spec_1 ' , sp_dic[spectrum][ str(dm_min) ][channel] , ' channel ', channel
                return sp_dic[spectrum][ str(dm_min) ][channel]
 
         spec_1 = sp_dic[spectrum][ str(dm_min) ][channel]
         spec_2 = sp_dic[spectrum][ str(dm_max) ][channel]
 
-        #print 'FF spec_1 ' , spec_1
+
+        print 'FF spec_1 ' , spec_1 , ' channel ', channel 
         #print 'FF spec_2 ' , spec_2
         #print 'FF dm_min , dm_max ' , dm_min , dm_max
             
@@ -768,30 +770,24 @@ class MADDMRunCmd(cmd.CmdShell):
                if   'pythia' in self.maddm_card['indirect_flux_source_method'] : self.read_py8spectra()
                elif 'PPPC'   in self.maddm_card['indirect_flux_source_method'] : self.read_PPPCspectra()
 
-        print 'FF spectra' , self.Spectra.spectra['x'] , self.Spectra.spectra['gammas']
+        #print 'FF spectra' , self.Spectra.spectra['x'] , self.Spectra.spectra['gammas']
 
         self.last_results['Fermi_sigmav'] = -1        
 
         if self.mode['indirect'].startswith('flux'):
-             # this if might be redundant
              if   'pythia' in self.maddm_card['indirect_flux_source_method'] : 
-                  #self.read_py8spectra()
                   x, gammas = self.Spectra.spectra['x'] , self.Spectra.spectra['gammas']
- 
                   sigmav = self.Fermi.Fermi_sigmav_lim(mdm, x , gammas )[0] # FF the funct. return2 a 2d array with [sigmav,pvalue]
+                  print 'FF ', sigmav
                   logger.info('Calculating Fermi limit using pythia8 gamma rays spectrum')                        
                   self.last_results['Fermi_sigmav'] = sigmav # FF store the results from the Fermi limit calculation                          
-                  # FF up to here, everytihng we need for sigmav         
-                  #self.calculate_fluxes()             
              elif 'PPPC' in self.maddm_card['indirect_flux_source_method']:
                   print 'FF doing the flux calculation' 
-                  #self.calculate_fluxes()
+             self.calculate_fluxes()
 
         #if sigv_indirect:
         #    result['taacsID'] = sigv_indirect
         #    result['err_taacsID'] = math.sqrt(sigv_indirect_error)
-
-
 
         if not self.in_scan_mode and not self.multinest_running:
             self.print_results()
@@ -815,7 +811,6 @@ class MADDMRunCmd(cmd.CmdShell):
             param_card_iterator = self.param_card_iterator
             self.param_card_iterator = []
             param_card_iterator.store_entry(nb_output, result)
-
 
             order = []
 
@@ -853,14 +848,20 @@ class MADDMRunCmd(cmd.CmdShell):
 
             ### fix here below because i have distinguished charged and neutral particle, for now loop only on neutral particles
             ## nothing to do for now for cr_names (save the spectra?)
+
             if self.mode['CR_flux']:
                 for channel in np_names:
                     order.append('flux_%s' % channel)
 
             #logger.info(order)
 
+
+            
+            # FF to be fixed!
             #<=-------------- Mihailo commented out max_col = 10
+
             to_print = param_card_iterator.write_summary(None, order,nbcol=10)#, max_col=10)
+
             for line in to_print.split('\n'):
                 if line:
                     logger.info(line)
@@ -1005,8 +1006,7 @@ class MADDMRunCmd(cmd.CmdShell):
         #
         #
             
-            
-            
+                        
     def run_pythia8_for_flux(self):
         """ compile and run pythia8 for the flux"""
         
@@ -1088,12 +1088,9 @@ class MADDMRunCmd(cmd.CmdShell):
             ret_code = misc.call(wrapper_path, stdout=open(pythia_log,'w'), stderr=subprocess.STDOUT,
                                   cwd=pjoin(self.dir_path,'Indirect','Events',run_name))
 
-
-
         ### FF Fix to make it work on cluster!
         #if ret_code != 0:
         #    raise self.InvalidCmd, 'Pythia8 shower interrupted with return code %d.\n'%ret_code+ ' You can find more information in this log file:\n%s' % pythia_log
-
 
         # FF Moving the spectra created by pythia in the output directory                                                                                                                                                           
         for sp,k in self.Spectra.spectra_id.iteritems() :
@@ -1128,53 +1125,84 @@ class MADDMRunCmd(cmd.CmdShell):
                     PPPC_source = self.Spectra.load_PPPC_source(corr = 'ew')
                else:
                     PPPC_source = self.Spectra.load_PPPC_source(corr = '')
-         x = PPPC_source['x']
+
+         self.Spectra.spectra['x'] = PPPC_source['x']
          # FF here I combine the spectra: multiply each channel by the BR 
          # I create a temporary list that at each loop in the channel, retains the partial sum of each x value multiplied by the channel BR
          # At the end of the loop over the channels, this is the combine spectrum (do it for all the spectra - gammas, nue, positron etc. )
          #print 'FF last results:', self.last_results
 
-         available_channels = [ x for x in self.last_results.keys() if 'err' not in x and 'taacsID#' in x ] # list of available SM channel xsections
-         #print 'FF the available channels are' , available_channels
+         available_channels = {}
+         for x in self.last_results.keys():
+              if 'err' not in x and 'taacsID#' in x:
+                  available_channels[x] = x.split('_')[1] # list of available SM channel xsections
+
+
+         print 'FF the available channels are' , available_channels
          # self.Spectra.spectra_id = {'px':'antiprotons', 'gx':'gammas', 'nuex':'neutrinos_e', 'numux':'neutrinos_mu', 'nutaux':'neutrinos_tau', 'ex':'positrons'}
+
+         # FF Check that at lest one SM channel is available
+         if not any(i in self.Spectra.map_allowed_final_state_PPPC.keys() for i in available_channels.values()):
+                  logger.error('No SM annihilation channel available!')
+                  
          for sp, sp_t in self.Spectra.spectra_id.iteritems():
-              spec_temp = [ 0 for i in range(len(x)) ]
+              #print 'FF sp sp_t' , sp , sp_t , raw_input(' ')
+              #spec_temp = [ 0 for i in range(len(x)) ] 
+              self.last_results['tot_SM_xsec'] = 0
               # self.Spectra.map_allowed_final_state_PPPC = {'qqx':'qq', 'ccx':'cc', 'gg':'gg', 'bbx':'bb', 'ttx':'tt',
-              #                                             'e+e-':'ee', 'mu+mu-':'mumu', 'ta+ta-':'tautau', 'w+w-':'WW', 'zz':'ZZ', 'hh':'hh' }
-              
-              for ch,ch_t in self.Spectra.map_allowed_final_state_PPPC.iteritems() :
+              #                                             'e+e-':'ee', 'mu+mu-':'mumu', 'ta+ta-':'tautau', 'w+w-':'WW', 'zz':'ZZ', 'hh':'hh' }              
+
+              temp_dic = {}
+              for ch in self.Spectra.map_allowed_final_state_PPPC.keys() :
+                  
+                  if ch not in available_channels.values(): continue
+                  key = [ k for k in  available_channels.keys() if available_channels[k] == ch ][0]
+                  #print 'FF key ', key 
 #                  print 'FF ch , ch_t ' , ch , ch_t 
                   # FF fix light quarks !!!
-                  if not any( ch in c for c in available_channels): 
-                        #print ' FF ch is not in any c', ch , available_channels 
-                        continue # if the channel is not available, do nothing                                                                                                    
-
-             
                   #print ' FF this channels is present ',  ch , ch_t 
                   #print 'FF lista' , [ self.last_results[i] for i in available_channels if ch in i  ] 
-                  tot_SM_xsec = sum([ self.last_results[i] for i in available_channels if ch in i  ])
-                  for i in available_channels:
-                      if ch in i:
-                          print 'FF self.last_results[i] ', self.last_results[i] 
                   
-                  print 'FF tot SM XSec' , tot_SM_xsec 
-                  if ( tot_SM_xsec <= 0 ): 
-                     logger.error('Invalid total SM cross section!')
-                     continue 
+                  ch_BR       =  self.last_results[key]
+                  self.last_results['tot_SM_xsec'] +=  ch_BR
 
-                  ch_BR       =    [ self.last_results[x] for x in self.last_results.keys() if 'err' not in x and ch in x ][0] / tot_SM_xsec 
-                  interp_spec = self.Spectra.interpolate_spectra(PPPC_source , mdm = mdm, spectrum = sp_t , channel = ch_t )
-                  #print 'FF interp_spec ', interp_spec 
-                  spec_temp = [ ch_BR * interp + temp for interp,temp in zip (interp_spec , spec_temp) ]
+                  if ch_BR > 0:
+                      temp_dic[ch] = {}
+                      #print 'FF non zero XSec ' , ch   
+                      self.last_results['tot_SM_xsec'] +=  ch_BR
+                      interp_spec = self.Spectra.interpolate_spectra(PPPC_source , mdm = mdm, spectrum = sp_t , channel = self.Spectra.map_allowed_final_state_PPPC[ch] )
+                      temp_dic[ch]['spec'] = interp_spec
+                      temp_dic[ch]['xsec'] = ch_BR 
+                  #print 'FF interp_spec ', interp_spec , ' BR  ' , ch_BR , ' ch ' , key 
+                  #spec_temp = [ elem + ch_BR * interp for elem,interp in zip(spec_temp,interp_spec) ]
                   #print 'FF spec_temp' , spec_temp 
-              self.Spectra.spectra[sp] = spec_temp   
+              # if there is at least one SM channel, the XSec cannot be zero
+              #print 'FF ', sp  , ' ' , spec_temp 
+              
+              #print temp_dic
+              # FF here, adding up the specta weighthed by the BR (i.e. cross section of each channel / total SM cross section )
+              sum_spec = []
+              for num in range(0,len(temp_dic[temp_dic.keys()[0]]['spec']) ):
+                  #print 'FF len' , len(temp_dic[temp_dic.keys()[0]]['spec']) , num 
+                  val = 0
+                  for k in temp_dic.keys():
+                       
+                      #print 'FF dic[k][spec]',  temp_dic[k]['spec']
+
+                      val = val + temp_dic[k]['spec'][num] * ( temp_dic[k]['xsec'] / self.last_results['tot_SM_xsec'] )
+                      #print 'FF val ', val , ' ' , temp_dic[k]['xsec'] / self.last_results['tot_SM_xsec']  
+                  sum_spec.append(val)
+
+              #self.Spectra.spectra[sp_t] = [ val/ self.last_results['tot_SM_xsec'] for val in spec_temp ]   
+              self.Spectra.spectra[sp_t] = sum_spec 
+
          #print self.Spectra.spectra
 
 
 
     def calculate_fluxes(self):
-        np_names = {'gammas':'g'     ,'neutrinos_e':'nue' , 'neutrinos_mu':'numu' , 'neutrinos_tau':'nutau'}
-        cr_names = {'antiprotons':'p','positrons':'e'}
+        np_names = {'gammas':'g'      , 'neutrinos_e':'nue' , 'neutrinos_mu':'numu' , 'neutrinos_tau':'nutau'}
+        cr_names = {'antiprotons':'p' , 'positrons':'e'}
         # FF Fluxes 
         if self.maddm_card['indirect_flux_source_method']:
            logger.info('Calculating the CR fluxes')
@@ -1212,7 +1240,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
 
     def dNdx(self, x, channel=''):
-        print 'FF channel', channel 
+        #print 'FF channel', channel 
         #self.Spectra.spectra['x']
         #self.Spectra.spectra[channel]
         # FF channels = gammas, neutrinos_e, neutrinos_mu, neutrinos_tau, antiprotons, positrons  
@@ -1320,9 +1348,9 @@ class MADDMRunCmd(cmd.CmdShell):
 
         mdm= self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
 
-        pass_message = '%s ALLOWED    %s' % (bcolors.OKGREEN, bcolors.ENDC)
-        fail_message = ' %s EXCLUDED  %s' % (bcolors.FAIL, bcolors.ENDC)
-        nolim_message = ' %s NO LIMIT %s' % (bcolors.GRAY, bcolors.ENDC)
+        pass_message  = '%s ALLOWED  %s' % (bcolors.OKGREEN, bcolors.ENDC)
+        fail_message  = '%s EXCLUDED %s' % (bcolors.FAIL, bcolors.ENDC)
+        nolim_message = '%s NO LIMIT %s' % (bcolors.GRAY, bcolors.ENDC)
 
 
         #skip this if there is a sequential scan going on.
@@ -1397,6 +1425,9 @@ class MADDMRunCmd(cmd.CmdShell):
                         finalstate = 'qqx'
                     ## The inclusive method does not give the sigma for the BSM states production
                     s_theo = self.last_results[key]
+                    if s_theo <= 10**(-100): 
+                        logger.info('Skipping zero cross section processes for ' + finalstate )
+                        continue 
                     if finalstate in self.limits._allowed_final_states : s_ul   = self.limits.ID_max(mdm, finalstate)
                     else:  s_ul   = 'n.a.'
                     #here check if the cross section is allowed. Do this channel by channel
@@ -1404,12 +1435,11 @@ class MADDMRunCmd(cmd.CmdShell):
                     #is evaluated matches the dm velocity in the calculation.
                     #logger.info(clean_key_list[1])
                     #logger.debug('FF allowed final states' , self.limits._allowed_final_states)
-                    if finalstate not in self.limits._allowed_final_states or s_ul == 'inf':
+                    if finalstate not in self.limits._allowed_final_states :
                         message = nolim_message
                         logger.info('     %s \t sigmav(th): %.3e \t sigmav(ul): %s \t [cm^3/s] \t  %s' % (clean_key, s_theo, s_ul, message))
 
                     else:
-                        # FF I think this is empty unless a scan is being ran, so that you do not print out the partial results
                         if not self.param_card_iterator:
                             if (v == self.limits._id_limit_vel[finalstate]):
                                 if self.last_results[key] < self.limits.ID_max(mdm, finalstate):
@@ -1428,10 +1458,13 @@ class MADDMRunCmd(cmd.CmdShell):
             #self.last_results['taacsID'] = tot_taacs
             #Print out the total taacs.
             if self.maddm_card['indirect_flux_source_method'] == 'pythia8':
-                logger.info('     %s\t sigmav(th): %.2e  \t sigmav(ul): %.3g \t [cm^3/s] ' % ('DM DM > all',  self.last_results['taacsID'] ,  self.last_results['Fermi_sigmav']))
+                if self.last_results['taacsID'] > self.last_results['Fermi_sigmav'] and self.last_results['Fermi_sigmav'] > 0:   message = fail_message
+                elif self.last_results['taacsID'] < self.last_results['Fermi_sigmav']: message = pass_message
+                elif self.last_results['Fermi_sigmav'] < 0: message = nolim_message
+                logger.info('     %s\t sigmav(th): %.2e  \t sigmav(ul): %.3g \t [cm^3/s] \t %s ' % ('DM DM > all',  self.last_results['taacsID'] ,  self.last_results['Fermi_sigmav'], message))
 
             if str(self.mode['indirect']).startswith('flux'):
-                logger.info('\n  gamma-ray flux: ')
+                #logger.info('\n  gamma-ray flux: ')
                 # FF nutau does not work np_names = ['g','nue', 'numu', 'nutau'] #,  'p', 'e', ]
                 #cr_names = ['gamma',  'pbar', 'e+', 'neue', 'neumu', 'neutau']
                 #cr_names = ['gamma',  'pbar', 'e+', 'neue', 'neumu', 'neutau']                                                                                                  
