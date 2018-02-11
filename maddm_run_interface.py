@@ -688,7 +688,6 @@ class MADDMRunCmd(cmd.CmdShell):
         #for name in output_name:
         #    result[name] = ''
 
-
         sigv_indirect = 0.
         #print 'FF the output is ', output 
         for line in open(pjoin(self.dir_path, output)):
@@ -736,12 +735,17 @@ class MADDMRunCmd(cmd.CmdShell):
         if str(self.mode['indirect']).startswith('flux'):
             for chan in np_names:
                 result['flux_%s' % chan] = -1.0
+        # xsi factor                                                                                                                                                                
+        if result['Omegah^2'] < self.limits._oh2_planck:
+           result['xsi'] = result['Omegah^2'] / self.limits._oh2_planck
+        else: result['xsi'] = 1.0
           
         
  #       result = dict(zip(output_name, result))
         if self.mode['indirect']: 
                result['taacsID'] = sigv_indirect
         self.last_results = result
+        print 'FF last res', self.last_results
         #logger.debug(self.last_results)
 
 #        if self.mode['indirect'] and not self._two2twoLO:
