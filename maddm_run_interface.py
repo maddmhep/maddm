@@ -1434,6 +1434,7 @@ class MADDMRunCmd(cmd.CmdShell):
                         continue 
                     if finalstate in self.limits._allowed_final_states : s_ul   = self.limits.ID_max(mdm, finalstate)
                     else:  s_ul   = 'n.a.'
+                    self.last_results['Fermi_lim_'+key] = self.limits.ID_max(mdm, finalstate)  
                     #here check if the cross section is allowed. Do this channel by channel
                     # Make sure that the velocity at which the limit
                     #is evaluated matches the dm velocity in the calculation.
@@ -1461,6 +1462,7 @@ class MADDMRunCmd(cmd.CmdShell):
                     #tot_taacs = tot_taacs + self.last_results['taacsID#%s' %(clean_key)]
             #self.last_results['taacsID'] = tot_taacs
             #Print out the total taacs.
+            #print 'FF last results ' , self.last_results 
             if self.maddm_card['indirect_flux_source_method'] == 'pythia8':
                 if self.last_results['taacsID'] > self.last_results['Fermi_sigmav'] and self.last_results['Fermi_sigmav'] > 0:   message = fail_message
                 elif self.last_results['taacsID'] < self.last_results['Fermi_sigmav']: message = pass_message
