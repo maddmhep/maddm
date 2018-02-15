@@ -814,7 +814,7 @@ class MadDM_interface(master_interface.MasterCmd):
 
 
 
-            final_states = ['1 -1', '5 -5' ] 
+            final_states = ['1 -1', '5 -5' , '21 21' ] 
 
 
 

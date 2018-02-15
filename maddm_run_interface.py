@@ -735,8 +735,9 @@ class MADDMRunCmd(cmd.CmdShell):
         if str(self.mode['indirect']).startswith('flux'):
             for chan in np_names:
                 result['flux_%s' % chan] = -1.0
-        # xsi factor                                                                                                                                                                
-        if result['Omegah^2'] < self.limits._oh2_planck:
+        # xsi factor
+        if result['Omegah^2'] < 0:                                                                                                                                                             result['xsi'] = 1.0   
+        elif result['Omegah^2'] < self.limits._oh2_planck and result['Omegah^2'] > 0:
            result['xsi'] = result['Omegah^2'] / self.limits._oh2_planck
         else: result['xsi'] = 1.0
           
@@ -753,46 +754,60 @@ class MADDMRunCmd(cmd.CmdShell):
         
 
         if self.mode['indirect']:
+                print "FF self.mode['indirect'] ", self.mode['indirect'] 
                 self.launch_indirect(force)
+                if self.maddm_card['sigmav_method'] == 'inclusive': 
+                   logger.info('Calculating Fermi limit using the spectra from the PPPC4DMID Tables')
+                   self.read_PPPCspectra()
+
+                elif self.maddm_card['sigmav_method'] != 'inclusive' and 'pythia' in self.maddm_card['indirect_flux_source_method']:
+                   logger.info('Calculating Fermi limit using using pythia8 gamma rays spectrum')
+                   self.read_py8spectra()
+
+                elif self.maddm_card['sigmav_method'] != 'inclusive' and 'pythia' not in self.maddm_card['indirect_flux_source_method']:
+                   logger.warning('Since pyhtia8 is run, using pythia8 gamma rays spectrum (not PPPC4DMID Tables)')
+                   self.read_py8spectra()
 
 
         # FF if the method is sigmav, there is nothing else to do apart from checking the exclusion (this is checked in the output part)
         # From here the <sigmav> are calculated and the spectra produced by pythia8 if asked; 
         # You can access the spectra with self.Spectra.spectra[<spectra>]
-
          
         # FF here calculating the fluxes:
         # - either run DRAGON extracting the fluxes from  pythia8 files
         # - or run DRAGON with PPPC spectra if 'indirect_flux_source_method' == PPPC and 'indirect_flux_earth_method' == DRAGON
         # - or extract (positron,antiproton) from PPPC_earth and (neutrinos,gamas) from PPPC_source and ~oscillate neutrinos  
 
+#        if self.mode['indirect'] != 'sigmav':
+#               if   'pythia' in self.maddm_card['indirect_flux_source_method'] and self.maddm_card['sigmav_method'] != 'inclusive'  : self.read_py8spectra()
+#               elif self.maddm_card['sigmav_method'] != 'inclusive' and 'pythia' not in self.maddm_card['indirect_flux_source_method']:
+#                   logger.warning('Since pyhtia8 is run, using pythia8 spectra instead of PPPC4DMID Tables')
+#                   self.read_py8spectra()
 
-        # FF here we load the spectra, to be hold in  self.Spectra.spectra[k]
-        # after one has loaded the spectra, maddm does not care about the surce anymore
-        if self.mode['indirect'] != 'sigmav':
-               if   'pythia' in self.maddm_card['indirect_flux_source_method'] and self.maddm_card['sigmav_method'] != 'inclusive'  : self.read_py8spectra()
-               elif self.maddm_card['sigmav_method'] != 'inclusive' and 'pythia' not in self.maddm_card['indirect_flux_source_method']:
-                   logger.warning('Since pyhtia8 is run, using pythia8 spectra isnetad of PPPC4DMID')
-                   self.read_py8spectra()
-
-               elif self.maddm_card['sigmav_method'] == 'inclusive'  : 
-                   logger.warning('Since the sigmav_method is set to inclusive, the PPPC4DMID Tables will be used to calculate the fluxes')
-                   self.read_PPPCspectra()
+#               elif self.maddm_card['sigmav_method'] == 'inclusive'  : 
+#                   logger.warning('Since the sigmav_method is set to inclusive, will use the PPPC4DMID Tables to calculate the fluxes')
+#                   self.read_PPPCspectra()
                
         #print 'FF spectra' , self.Spectra.spectra['x'] , self.Spectra.spectra['gammas']
 
-        self.last_results['Fermi_sigmav'] = -1        
+        # FF Calculating Fermi limits 
 
-        if self.mode['indirect'].startswith('flux') :
-             if   'pythia' in self.maddm_card['indirect_flux_source_method'] and self.maddm_card['sigmav_method'] != 'inclusive'  : 
-                  x, gammas = self.Spectra.spectra['x'] , self.Spectra.spectra['gammas']
-                  sigmav = self.Fermi.Fermi_sigmav_lim(mdm, x , gammas )[0] # FF the funct. return2 a 2d array with [sigmav,pvalue]
+                self.last_results['Fermi_sigmav'] = -1        
+                x, gammas = self.Spectra.spectra['x'] , self.Spectra.spectra['gammas']
+        #print ' FF spectra', x , '' , gammas
+                sigmav = self.Fermi.Fermi_sigmav_lim(mdm, x , gammas )[0] # FF the funct. return2 a 2d array with [sigmav,pvalue]                                                  
+                self.last_results['Fermi_sigmav'] = sigmav # FF store the results from the Fermi limit calculation 
+
+                if self.mode['indirect'].startswith('flux') :
+                       if   'pythia' in self.maddm_card['indirect_flux_source_method'] and self.maddm_card['sigmav_method'] != 'inclusive'  : 
+                  #x, gammas = self.Spectra.spectra['x'] , self.Spectra.spectra['gammas']
+                  #sigmav = self.Fermi.Fermi_sigmav_lim(mdm, x , gammas )[0] # FF the funct. return2 a 2d array with [sigmav,pvalue]
                   #print 'FF ', sigmav
-                  logger.info('Calculating Fermi limit using pythia8 gamma rays spectrum')                        
-                  self.last_results['Fermi_sigmav'] = sigmav # FF store the results from the Fermi limit calculation                          
-             elif 'PPPC' in self.maddm_card['indirect_flux_source_method'] and self.maddm_card['sigmav_method'] == 'inclusive':
-                  logger.info('Extracting fluxes from the PPPC4DMID Tables')
-             self.calculate_fluxes()
+                           logger.info('Calculating cosmic rays fluxes using pythia8 gamma rays spectrum')                        
+                  #self.last_results['Fermi_sigmav'] = sigmav # FF store the results from the Fermi limit calculation                          
+                       elif 'PPPC' in self.maddm_card['indirect_flux_source_method'] and self.maddm_card['sigmav_method'] == 'inclusive':
+                           logger.info('Calculating cosmic rays fluxes using the spectra from the PPPC4DMID Tables')
+                       self.calculate_fluxes()
 
 
 
@@ -1134,7 +1149,6 @@ class MADDMRunCmd(cmd.CmdShell):
     def read_PPPCspectra(self):
          mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
 
-         # FF loading the tables IF PPPC is in the flux_method or if sigmav is inclusive
          if 'PPPC4DMID' in self.maddm_card['indirect_flux_source_method'] or self.maddm_card['sigmav_method'] == 'inclusive':
             if self.Spectra.check_mass(mdm):
                if '_ew' in self.maddm_card['indirect_flux_source_method']:
@@ -1142,19 +1156,19 @@ class MADDMRunCmd(cmd.CmdShell):
                else:
                     PPPC_source = self.Spectra.load_PPPC_source(corr = '')
 
-         self.Spectra.spectra['x'] = PPPC_source['x']
-         # FF here I combine the spectra: multiply each channel by the BR 
-         # I create a temporary list that at each loop in the channel, retains the partial sum of each x value multiplied by the channel BR
-         # At the end of the loop over the channels, this is the combine spectrum (do it for all the spectra - gammas, nue, positron etc. )
-         #print 'FF last results:', self.last_results
+         # FF here I combine the spectra: multiply each channel by the BR                                                                                                          
+         # I create a temporary list that at each loop in the channel, retains the partial sum of each x value multiplied by the channel BR                                         
+         # At the end of the loop over the channels, this is the combine spectrum (do it for all the spectra - gammas, nue, positron etc. ) 
 
+         self.Spectra.spectra['x'] = PPPC_source['x']
+
+         # print 'FF last results:', self.last_results
          available_channels = {}
-         #print 'FF self.last_results.keys() ', self.last_results.keys() 
          for x in self.last_results.keys():
               if 'err' not in x and 'taacsID#' in x:
                   available_channels[x] = x.split('_')[1] # list of available SM channel xsections
-         #print 'FF the available channels are' , available_channels
 
+         #print 'FF the available channels are' , available_channels
          # {'taacsID#xxdxxdb_ccx': 'ccx', 'taacsID#xxdxxdb_y0y0': 'y0y0', 'taacsID#xxdxxdb_ttx': 'ttx', 'taacsID#xxdxxdb_ssx': 'ssx', 'taacsID#xxdxxdb_uux': 'uux', 'taacsID#xxdxxdb_ddx': 'ddx', 'taacsID#xxdxxdb_bbx': 'bbx'}
 
          # self.Spectra.spectra_id = {'px':'antiprotons', 'gx':'gammas', 'nuex':'neutrinos_e', 'numux':'neutrinos_mu', 'nutaux':'neutrinos_tau', 'ex':'positrons'}
@@ -1163,9 +1177,6 @@ class MADDMRunCmd(cmd.CmdShell):
          if not any(i in self.Spectra.map_allowed_final_state_PPPC.keys() for i in available_channels.values()):
                   logger.error('No SM annihilation channel available!')
                   
-
-         ### FF CHANGE HERE! Not correct, only includes one light quark family!
-
          for sp, sp_t in self.Spectra.spectra_id.iteritems():
               #print 'FF sp sp_t' , sp , sp_t , raw_input(' ')
               #spec_temp = [ 0 for i in range(len(x)) ] 
@@ -1173,30 +1184,49 @@ class MADDMRunCmd(cmd.CmdShell):
               # self.Spectra.map_allowed_final_state_PPPC = {'qqx':'qq', 'ccx':'cc', 'gg':'gg', 'bbx':'bb', 'ttx':'tt',
               #                                             'e+e-':'ee', 'mu+mu-':'mumu', 'ta+ta-':'tautau', 'w+w-':'WW', 'zz':'ZZ', 'hh':'hh' }              
               temp_dic = {}
+
+              '''
               for ch in self.Spectra.map_allowed_final_state_PPPC.keys() :
-                  #print 'FF self.Spectra.map_allowed_final_state_PPPC.keys() ', self.Spectra.map_allowed_final_state_PPPC.keys() # ['ttx', 'gg', 'e+e-', 'zz', 'mu+mu-', 'qqx', 'ccx', 'ta+ta-', 'hh', 'bbx', 'w+w-'] 
                   #print 'FF available_channels.values()', available_channels.values() # ['ccx', 'y0y0', 'ttx', 'ssx', 'uux', 'ddx', 'bbx']
-                  
                   #quarks = ['ddx','uux','ssx']
                   #if ch not in available_channels.values() and ch not in quarks: continue
-
                   if ch not in available_channels.values() : continue                                                                                         
-
                   key = [ k for k in  available_channels.keys() if available_channels[k] == ch ][0]
-                  #print 'FF key ', key 
-#                  print 'FF ch , ch_t ' , ch , ch_t 
-                  # FF fix light quarks !!!
-                  #print ' FF this channels is present ',  ch , ch_t 
+                  #print 'FF key-ch-ch_t ', key , ' ' , ch , ' ' , ch_t 
                   #print 'FF lista' , [ self.last_results[i] for i in available_channels if ch in i  ] 
+                  
                   ch_BR       =  self.last_results[key]
-                  self.last_results['tot_SM_xsec'] +=  ch_BR # adding up each channel cross section 
                   if ch_BR > 0:
                       temp_dic[ch] = {}
                       #print 'FF non zero XSec ' , ch   
                       self.last_results['tot_SM_xsec'] +=  ch_BR
+                      print 'FF the total SM Xsec is ' , self.last_results['tot_SM_xsec']
+
                       interp_spec = self.Spectra.interpolate_spectra(PPPC_source , mdm = mdm, spectrum = sp_t , channel = self.Spectra.map_allowed_final_state_PPPC[ch] )
                       temp_dic[ch]['spec'] = interp_spec
                       temp_dic[ch]['xsec'] = ch_BR 
+
+              '''
+              for CH_k in available_channels.keys():
+                  CH = available_channels[CH_k]
+                  if CH in self.Spectra.map_allowed_final_state_PPPC.keys():
+                     ch = self.Spectra.map_allowed_final_state_PPPC[CH] # ch is the name of the channels in the Tables
+                  # Mapping liht quarks to qq in the Tables
+                  elif CH == 'ssx' : ch = 'qq'
+                  elif CH == 'uux' : ch = 'qq' 
+                  elif CH == 'ddx' : ch = 'qq'
+                  else: continue
+                  ch_BR       =  self.last_results[CH_k]                                                                                                                           
+                
+                  if ch_BR > 0:                                                                                                                                                   
+                      temp_dic[ch] = {}                                                                                                                                            
+                      #print 'FF non zero XSec ' , ch                                                                                                                           
+                      self.last_results['tot_SM_xsec'] +=  ch_BR                                                                                                                    
+                      #print 'FF the total SM Xsec is ' , self.last_results['tot_SM_xsec']                                                                                          
+                      interp_spec = self.Spectra.interpolate_spectra(PPPC_source , mdm = mdm, spectrum = sp_t , channel = ch )        
+                      temp_dic[ch]['spec'] = interp_spec                                                                                                                           
+                      temp_dic[ch]['xsec'] = ch_BR
+
                   #print 'FF interp_spec ', interp_spec , ' BR  ' , ch_BR , ' ch ' , key 
                   #spec_temp = [ elem + ch_BR * interp for elem,interp in zip(spec_temp,interp_spec) ]
                   #print 'FF spec_temp' , spec_temp 
@@ -1216,7 +1246,8 @@ class MADDMRunCmd(cmd.CmdShell):
                   sum_spec.append(val)
 
               #self.Spectra.spectra[sp_t] = [ val/ self.last_results['tot_SM_xsec'] for val in spec_temp ]   
-              self.Spectra.spectra[sp_t] = sum_spec 
+              self.Spectra.spectra[sp_t] = sum_spec
+              #print 'FF self.Spectra.spectra[sp_t]' , self.Spectra.spectra[sp_t] 
 
          #print self.Spectra.spectra
 
@@ -1383,7 +1414,6 @@ class MADDMRunCmd(cmd.CmdShell):
             #logger.debug('sigmav: %.5e' % sigv)                                                                                                                                 
             #logger.debug('mdm: %.5e' % mdm)                                                                                                                                     
             #logger.debug(jfact)                                                                                                                                                 
-            # FF is it ok to put twice the Dirac-Majorana factor ??? It is already included in the dNdX caculation                                                               
             phi = 1.0/(self.norm_Majorana_Dirac() *math.pi*mdm*mdm)*sigv*jfact*integrate_dNdE
             return phi
 
@@ -1533,22 +1563,25 @@ class MADDMRunCmd(cmd.CmdShell):
                 logger.info('Differential spectrum [GeV^-1]  written in output/dNdE_<>.txt for antiprotons and positrons')
 
 
+        #print 'FF the value pf y0 is', self.param_card.get_value('mass', 54) 
 
+        self.last_results['y0'] = self.param_card.get_value('mass', 54)
         #FF Saving the results dictionary
         np.save(pjoin(self.dir_path, 'output','Results'), self.last_results)
         print '\n \n FF Results.npy = ' , self.last_results 
        
 
         # FF renaming output folders 
-        if self.maddm_card['indirect_flux_source_method'] == 'pythia8' and self.maddm_card['sigmav_method'] != 'inclusive':
-           run_name   = self.me_cmd.run_name
-           output     = pjoin(self.dir_path, 'output')
-           shutil.copytree( pjoin(self.dir_path, 'output') , pjoin(self.dir_path, 'output_'+ run_name ) )
-        elif self.maddm_card['sigmav_method'] == 'inclusive':
-           from datetime import datetime
-           time = str(datetime.now().strftime("%Y-%m-%d_%H:%M:%S")).replace(':','-')
-           #print 'FF time', time 
-           shutil.copytree( pjoin(self.dir_path, 'output') , pjoin(self.dir_path, 'output_'+ time ) )
+        if self.mode['indirect']:
+            if self.maddm_card['indirect_flux_source_method'] == 'pythia8' and self.maddm_card['sigmav_method'] != 'inclusive':
+                run_name   = self.me_cmd.run_name
+                output     = pjoin(self.dir_path, 'output')
+                shutil.copytree( pjoin(self.dir_path, 'output') , pjoin(self.dir_path, 'output_'+ run_name ) )
+            elif self.maddm_card['sigmav_method'] == 'inclusive':
+                from datetime import datetime
+                time = str(datetime.now().strftime("%Y-%m-%d_%H:%M:%S")).replace(':','-')
+                #print 'FF time', time 
+                shutil.copytree( pjoin(self.dir_path, 'output') , pjoin(self.dir_path, 'output_'+ time ) )
 
 
 
