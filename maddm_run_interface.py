@@ -65,7 +65,8 @@ class ExpConstraints:
 
     def __init__(self):
 
-        self._allowed_final_states = ['qqx', 'ccx', 'gg', 'bbx', 'ttx', 'e+e-', 'mu+mu-', 'ta+ta-', 'w+w-', 'zz', 'hh', 'hess2013','hess2016', 'aaER16','aaIR90','aaNFWcR3','aaNFWR41']
+        self._allowed_final_states = ['qqx', 'ccx', 'gg', 'bbx', 'ttx', 'e+e-', 'mu+mu-', 'ta+ta-', 'w+w-', 'zz', 'hh', 
+                                      'hess2013','hess2016', 'aaER16','aaIR90','aaNFWcR3','aaNFWR41']
 
         self._oh2_planck = 0.1198
         self._oh2_planck_width = 0.0015
@@ -96,7 +97,7 @@ class ExpConstraints:
         self._id_limit_vel = {'qqx':2.0E-5,   'ccx':2.0E-5, 'gg':2.0E-5, 'bbx':2.0E-5,'ttx':2.0E-5,'e+e-':2.0E-5,'mu+mu-':2.0E-5,'ta+ta-':2.0E-5,
                               'w+w-':2.0E-5,  'zz':2.0E-5,  'hh':2.0E-5,
                               'aaER16':1.0E-3,'aaIR90':1.0E-3,'aaNFWcR3':1.0E-3,'aaNFWR41':1.0E-3 ,
-                              'hess2013': 1.0E-3 , 'hess2016': 1.0E-3 } # FF: check these values for Hess
+                              'hess2013': 1.0E-3 , 'hess2016': 1.0E-3 } 
 
         self._id_limit_mdm = dict()
         self._id_limit_sigv = dict()
@@ -258,7 +259,7 @@ class Spectra:
         spec_2 = sp_dic[spectrum][ str(dm_max) ][channel]
 
 
-        print 'FF spec_1 ' , spec_1 , ' channel ', channel 
+        #print 'FF spec_1 ' , spec_1 , ' channel ', channel 
         #print 'FF spec_2 ' , spec_2
         #print 'FF dm_min , dm_max ' , dm_min , dm_max
             
@@ -754,7 +755,7 @@ class MADDMRunCmd(cmd.CmdShell):
         
 
         if self.mode['indirect']:
-                print "FF self.mode['indirect'] ", self.mode['indirect'] 
+                # print "FF self.mode['indirect'] ", self.mode['indirect'] 
                 self.launch_indirect(force)
                 if self.maddm_card['sigmav_method'] == 'inclusive': 
                    logger.info('Calculating Fermi limit using the spectra from the PPPC4DMID Tables')
@@ -843,10 +844,14 @@ class MADDMRunCmd(cmd.CmdShell):
             order = []
 
             if self.mode['relic']:
-                order += ['omegah2', 'x_freezeout', 'sigmav_xf']
+                # OLD order += ['omegah2', 'x_freezeout', 'sigmav_xf']
+                order += ['Omegah^2','x_f', 'sigmav(xf)']
+
             if self.mode['direct'] :
-                order += ['sigmaN_SI_proton', 'sigmaN_SI_neutron', 'sigmaN_SD_proton',
-                        'sigmaN_SD_neutron']
+                # OLD order += ['sigmaN_SI_proton', 'sigmaN_SI_neutron', 'sigmaN_SD_proton',
+                #        'sigmaN_SD_neutron']
+                order += ['sigmaN_SI_p', 'sigmaN_SI_n', 'sigmaN_SD_p', 'sigmaN_SD_n']
+
             if self.mode['direct'] == 'directional':
                 order += ['Nevents', 'smearing']
             if self.mode['capture']:
@@ -877,10 +882,11 @@ class MADDMRunCmd(cmd.CmdShell):
             ### fix here below because i have distinguished charged and neutral particle, for now loop only on neutral particles
             ## nothing to do for now for cr_names (save the spectra?)
 
+            '''
             if self.mode['CR_flux']:
                 for channel in np_names:
                     order.append('flux_%s' % channel)
-
+            '''
             #logger.info(order)
 
 
@@ -888,15 +894,16 @@ class MADDMRunCmd(cmd.CmdShell):
             # FF to be fixed!
             #<=-------------- Mihailo commented out max_col = 10
 
+            # print 'FF the order is', order
             to_print = param_card_iterator.write_summary(None, order,nbcol=10)#, max_col=10)
 
             for line in to_print.split('\n'):
                 if line:
                     logger.info(line)
                     ## added by chiara to check the width (next three lines)
-                    self._param_card = param_card_mod.ParamCard('/Users/arina/Documents/physics/software/maddm_dev2/test_width/Cards/param_card.dat')
-                    width = self.param_card.get_value('width', 5000000)
-                    logger.warning('--> WY0: %.2e' % width)
+                    # self._param_card = param_card_mod.ParamCard('/Users/arina/Documents/physics/software/maddm_dev2/test_width/Cards/param_card.dat')
+                    # width = self.param_card.get_value('width', 5000000)
+                    # logger.warning('--> WY0: %.2e' % width)
 
             #check if the param_card defines a scan.
             with misc.TMP_variable(self, 'in_scan_mode', True):
@@ -907,9 +914,9 @@ class MADDMRunCmd(cmd.CmdShell):
                                                    errorhandling=False)
                         param_card_iterator.store_entry(nb_output+i, self.last_results)
                         ### the following three lines are added by chiara to check the widht = auto function 
-                        self._param_card = param_card_mod.ParamCard('/Users/arina/Documents/physics/software/maddm_dev2/test_width/Cards/param_card.dat')
-                        width = self.param_card.get_value('width', 5000000)
-                        logger.warning('--> try again WY0: %.2e' % width)
+                        # self._param_card = param_card_mod.ParamCard('/Users/arina/Documents/physics/software/maddm_dev2/test_width/Cards/param_card.dat')
+                        # width = self.param_card.get_value('width', 5000000)
+                        # logger.warning('--> try again WY0: %.2e' % width)
                         #<=-------------- Mihailo commented out max_col = 10
                         logger.info(param_card_iterator.write_summary(None, order, lastline=True,nbcol=10)[:-1])#, max_col=10)[:-1])
             param_card_iterator.write(pjoin(self.dir_path,'Cards','param_card.dat'))
@@ -1424,7 +1431,8 @@ class MADDMRunCmd(cmd.CmdShell):
         #omega_max = 0.12
 
         #logger.debug(self.last_results)
-
+        xsi  = self.last_results['xsi']
+        xsi2 = xsi**2
 
         mdm= self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
 
@@ -1436,10 +1444,10 @@ class MADDMRunCmd(cmd.CmdShell):
         #skip this if there is a sequential scan going on.
         if not self.param_card_iterator:
             pass_relic = pass_message if self.last_results['Omegah^2'] < self.limits._oh2_planck else fail_message
-            pass_dd_si_proton = pass_message if self.last_results['sigmaN_SI_p']*GeV2pb*pb2cm2 < self.limits.SI_max(mdm) else fail_message
-            pass_dd_si_neutron = pass_message if self.last_results['sigmaN_SI_n']*GeV2pb*pb2cm2 < self.limits.SI_max(mdm) else fail_message
-            pass_dd_sd_proton = pass_message if self.last_results['sigmaN_SI_p']*GeV2pb*pb2cm2 < self.limits.SD_max(mdm, 'p') else fail_message
-            pass_dd_si_neutron = pass_message if self.last_results['sigmaN_SI_n']*GeV2pb*pb2cm2 < self.limits.SD_max(mdm, 'n') else fail_message
+            pass_dd_si_proton  = pass_message if xsi*self.last_results['sigmaN_SI_p']*GeV2pb*pb2cm2 < self.limits.SI_max(mdm)      else fail_message
+            pass_dd_si_neutron = pass_message if xsi*self.last_results['sigmaN_SI_n']*GeV2pb*pb2cm2 < self.limits.SI_max(mdm)      else fail_message
+            pass_dd_sd_proton  = pass_message if xsi*self.last_results['sigmaN_SD_p']*GeV2pb*pb2cm2 < self.limits.SD_max(mdm, 'p') else fail_message
+            pass_dd_sd_neutron = pass_message if xsi*self.last_results['sigmaN_SD_n']*GeV2pb*pb2cm2 < self.limits.SD_max(mdm, 'n') else fail_message
         else:
             pass_relic = ''
             pass_dd_si_proton = ''
@@ -1454,26 +1462,29 @@ class MADDMRunCmd(cmd.CmdShell):
         #    fail_relic_msg = '%s Model excluded (relic not in range [%s,%s])%s' %\
         #                      (bcolors.FAIL, omega_min, omega_max,bcolors.ENDC)
         
-        
+        ## FF aggiungere limiti SD e SI a schermo!
         logger.info("*** RESULTS ***", '$MG:color:BLACK')
+        logger.info("Theory cross section rescaled by xsi (direct det.) and xsi^2 (indirect)")
         if self.mode['relic']:
             logger.info('  relic density  : %.2e %s', self.last_results['Omegah^2'],pass_relic)
                         
             logger.info('   x_f            : %.2f', self.last_results['x_f'])
             logger.info('   sigmav(xf)     : %.2e GeV^-2 = %.2e cm^3/s', self.last_results['sigmav(xf)'],self.last_results['sigmav(xf)']*GeV2pb*pb2cm3)
-            
         if self.mode['direct']:
+            sigmaN_SI_p , sigmaN_SI_n =self.last_results['sigmaN_SI_p'] , self.last_results['sigmaN_SI_n']
+            sigmaN_SD_p , sigmaN_SD_n = self.last_results['sigmaN_SD_p'] , self.last_results['sigmaN_SD_n']
+
             logger.info('\n direct detection: ')
-            logger.info(' sigmaN_SI_p      : %.2e GeV^-2 = %.2e cm^2  %s',self.last_results['sigmaN_SI_p'],self.last_results['sigmaN_SI_p']*GeV2pb*pb2cm2, pass_dd_si_proton)
-            logger.info(' sigmaN_SI_n      : %.2e GeV^-2 = %.2e cm^2  %s',self.last_results['sigmaN_SI_n'],self.last_results['sigmaN_SI_n']*GeV2pb*pb2cm2,pass_dd_si_proton)
-            logger.info(' sigmaN_SD_p      : %.2e GeV^-2 = %.2e cm^2  %s',self.last_results['sigmaN_SD_p'],self.last_results['sigmaN_SD_p']*GeV2pb*pb2cm2, pass_dd_sd_proton)
-            logger.info(' sigmaN_SD_n      : %.2e GeV^-2 = %.2e cm^2  %s',self.last_results['sigmaN_SD_n'],self.last_results['sigmaN_SD_n']*GeV2pb*pb2cm2, pass_dd_si_neutron)
+            logger.info(' sigmaN_SI_p    th: %.2e GeV^-2 = %.2e cm^2   \t ul: %.2e cm^2 %s',xsi*sigmaN_SI_p, xsi*sigmaN_SI_p*GeV2pb*pb2cm2,self.limits.SI_max(mdm), pass_dd_si_proton)
+            logger.info(' sigmaN_SI_n    th: %.2e GeV^-2 = %.2e cm^2   \t ul: %.2e cm^2 %s',xsi*sigmaN_SI_n, xsi*sigmaN_SI_n*GeV2pb*pb2cm2,self.limits.SI_max(mdm), pass_dd_si_neutron)
+            logger.info(' sigmaN_SD_p    th: %.2e GeV^-2 = %.2e cm^2   \t ul: %.2e cm^2 %s',xsi*sigmaN_SD_p, xsi*sigmaN_SD_p*GeV2pb*pb2cm2,self.limits.SD_max(mdm,'p'),pass_dd_sd_proton)
+            logger.info(' sigmaN_SD_n    th: %.2e GeV^-2 = %.2e cm^2   \t ul: %.2e cm^2 %s',xsi*sigmaN_SD_n, xsi*sigmaN_SD_n*GeV2pb*pb2cm2,self.limits.SD_max(mdm,'n'),pass_dd_sd_neutron)
         if self.mode['direct'] == 'directional':
             logger.info(' Nevents          : %i', self.last_results['Nevents'])
             logger.info(' smearing         : %.2e', self.last_results['smearing'])
+        
         if self.mode['capture']:
             logger.info('\n capture coefficients: ')
-            #logger.info(self.last_results.keys())
             detailled_keys = [k for k in self.last_results.keys() if k.startswith('ccap')]
             for key in detailled_keys:
                 logger.info(' %s            : %.2e 1/s' % (key, self.last_results[key]))
@@ -1539,12 +1550,11 @@ class MADDMRunCmd(cmd.CmdShell):
                         logger.info('     %s \t  sigmav(th): %.2e \t sigmav(ul): %.3g \t [cm^3/s] \t  %s' % (clean_key, s_theo, s_ul, message))
 
             #print 'FF last results ' , self.last_results 
-
             if self.maddm_card['indirect_flux_source_method'] == 'pythia8':
-                if self.last_results['taacsID'] > (xsi**2 * self.last_results['Fermi_sigmav']) and self.last_results['Fermi_sigmav'] > 0:   message = fail_message
-                elif self.last_results['taacsID'] < (xsi**2 * self.last_results['Fermi_sigmav'] ): message = pass_message
+                if self.last_results['taacsID']*xsi2 > self.last_results['Fermi_sigmav'] and self.last_results['Fermi_sigmav'] > 0:   message = fail_message
+                elif self.last_results['taacsID']*xsi2 < self.last_results['Fermi_sigmav'] : message = pass_message
                 elif self.last_results['Fermi_sigmav'] < 0: message = nolim_message
-                logger.info('     %s\t sigmav(th): %.2e  \t sigmav(ul): %.3g \t [cm^3/s] \t %s ' % ('DM DM > all',  self.last_results['taacsID'] ,  xsi**2 * self.last_results['Fermi_sigmav'], message))
+                logger.info('     %s\t sigmav(th): %.2e  \t sigmav(ul): %.3g \t [cm^3/s] \t %s ' % ('DM DM > all',  self.last_results['taacsID']*xsi2 ,  self.last_results['Fermi_sigmav'], message))
 
 
 
@@ -1568,7 +1578,7 @@ class MADDMRunCmd(cmd.CmdShell):
         self.last_results['y0'] = self.param_card.get_value('mass', 54)
         #FF Saving the results dictionary
         np.save(pjoin(self.dir_path, 'output','Results'), self.last_results)
-        print '\n \n FF Results.npy = ' , self.last_results 
+        ##print '\n \n FF Results.npy = ' , self.last_results 
        
 
         # FF renaming output folders 
@@ -1585,6 +1595,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
 
 
+    '''
     def is_excluded_relic(self, relic, omega_min = 0., omega_max = 0.1):
         """  This function determines whether a model point is excluded or not
              based on the resulting relic density, spin independent and spin
@@ -1592,7 +1603,7 @@ class MADDMRunCmd(cmd.CmdShell):
             relic density
         """
         
-        
+    '''    
 
 
         
