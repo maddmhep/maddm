@@ -55,7 +55,7 @@ logger = logging.getLogger('madgraph.plugin.maddm')
 MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
 PPPCDIR = os.getcwd()+'/PPPC4DMID/tables_PPPC4DMID_dictionary'
 
-os.system('rm /home/users/f/a/fambrogi/NEW_MADDM/BZR_DEF_30Jan/maddm_dev2/BBB/Indirect/RunWeb') ## FF                                                                            
+os.system('rm /home/users/f/a/fambrogi/NEW_MADDM/BZR_DEF_30Jan/maddm_dev2/Global/Indirect/RunWeb') ## FF                                                                            
 
 #Is there a better definition of infinity?
 __infty__ = float('inf')
@@ -137,8 +137,7 @@ class ExpConstraints:
             self._dd_sd_p_limit_mDM, self._dd_sd_p_limit_sigma = np.loadtxt(self._dd_sd_proton_limit_file, unpack=True, comments='#')
         if self._dd_sd_neutron_limit_file!='':
             self._dd_sd_n_limit_mDM, self._dd_sd_n_limit_sigma = np.loadtxt(self._dd_sd_neutron_limit_file, unpack=True, comments='#')
-
-        # FF Load in indirect detection constraints                                                                                                            
+                                                                                                            
         for channel, limit_file in self._id_limit_file.iteritems():
             if limit_file != '': # FF : need to redo the limit files as two columns                                                                             
              if 'MadDM_FermiLim' in limit_file:
@@ -654,6 +653,14 @@ class MADDMRunCmd(cmd.CmdShell):
         param_path  = pjoin(self.dir_path,'Cards', 'param_card.dat')
         self.param_card = param_card_mod.ParamCard(param_path)
 
+        ### FF Access the BLOCK param card 
+
+        #print 'DM candidate', self.proc_characteristics['dm_candidate'][0]
+        #print 'FF caparm card', self.param_card
+        #print 'GG qnumbers 52 \n', self.param_card['qnumbers 52']
+
+        #print 'FF selfcon',  self.param_card.get_value('qnumbers 52', 4)
+
 
         args = line.split()
         if '-f' in args or '--force' in args:
@@ -689,6 +696,8 @@ class MADDMRunCmd(cmd.CmdShell):
         #for name in output_name:
         #    result[name] = ''
 
+        mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
+
         sigv_indirect = 0.
         #print 'FF the output is ', output 
         for line in open(pjoin(self.dir_path, output)):
@@ -709,21 +718,34 @@ class MADDMRunCmd(cmd.CmdShell):
                         sigv_indirect_error = 0. ## FF: never used anywhere???
                         if 'sigma*v' in line: 
                          
+                            '''
+FF oname  xdxdx_y0y0
+FF oname  xdxdx_gg
+FF oname  xdxdx_ddx
+FF oname  xdxdx_uux
+FF oname  xdxdx_ssx
+FF oname  xdxdx_ccx
+FF oname  xdxdx_bbx
+FF oname  xdxdx_ttx
+'''
                             sigv_temp = float(splitline[1])
                             oname = splitline[0].split(':',1)[1] .split('_')
                             #oname2 = oname.split('_')
                             oname = oname[0]+'_'+oname[1] #To eliminate the annoying suffix coming from the '/' notation
                             result['taacsID#'     + oname] = sigv_temp 
                             result['err_taacsID#' + oname] = 0 
+                            if oname.split('xdxdx_')[1] in self.limits._allowed_final_states:
+                               result['lim_'+oname] = self.limits.ID_max(mdm, oname.split('xdxdx_')[1]) 
+
+                               print oname.split('xdxdx_')[1]
+                            #self.limits.ID_max(mdm, finalstate)
+
 #                            output_name.append('taacsID#%s' % oname)
                             sigv_indirect += sigv_temp
  #                           output_name.append('err_taacsID#%s' % oname)
  #                           result.append(sigv_temp) #the value of cross section
 #                            result.append(0.e0) #put 0 for the error.
                     result[splitline[0].split(':')[0]] = float(splitline[1])
-
-
-
                             
         #cr_names = ['gamma',  'pbar', 'e+', 'neue', 'neumu', 'neutau']
         #cr_names = ['g',  'p', 'e', 'nue', 'numu', 'nutau']
@@ -746,13 +768,22 @@ class MADDMRunCmd(cmd.CmdShell):
  #       result = dict(zip(output_name, result))
         if self.mode['indirect']: 
                result['taacsID'] = sigv_indirect
-        self.last_results = result
 
 #        if self.mode['indirect'] and not self._two2twoLO:
 #            with misc.MuteLogger(names=['madevent','madgraph'],levels=[50,50]):
 #                self.launch_indirect(force)
-        mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
-        
+
+        if self.mode['direct']:
+           result['lim_sigmaN_SI_n'] = self.limits.SI_max(mdm)
+           result['lim_sigmaN_SI_p'] = self.limits.SI_max(mdm)    
+           result['lim_sigmaN_SD_p'] = self.limits.SD_max(mdm, 'p')
+           result['lim_sigmaN_SD_n'] = self.limits.SD_max(mdm, 'n')
+           result['GeV2pb*pb2cm2']   = GeV2pb*pb2cm2 # conversion factor
+
+
+
+        # Adding the results 
+        self.last_results = result
 
         if self.mode['indirect']:
                 # print "FF self.mode['indirect'] ", self.mode['indirect'] 
@@ -791,7 +822,6 @@ class MADDMRunCmd(cmd.CmdShell):
                
         #print 'FF spectra' , self.Spectra.spectra['x'] , self.Spectra.spectra['gammas']
 
-        # FF Calculating Fermi limits 
 
                 self.last_results['Fermi_sigmav'] = -1        
                 x, gammas = self.Spectra.spectra['x'] , self.Spectra.spectra['gammas']
@@ -809,6 +839,8 @@ class MADDMRunCmd(cmd.CmdShell):
                        elif 'PPPC' in self.maddm_card['indirect_flux_source_method'] and self.maddm_card['sigmav_method'] == 'inclusive':
                            logger.info('Calculating cosmic rays fluxes using the spectra from the PPPC4DMID Tables')
                        self.calculate_fluxes()
+
+
 
 
 
@@ -854,47 +886,46 @@ class MADDMRunCmd(cmd.CmdShell):
 
             if self.mode['direct'] == 'directional':
                 order += ['Nevents', 'smearing']
+
             if self.mode['capture']:
-                detailled_keys = [k for k in self.last_results
-                                  if k.startswith('ccap_') and '#' not in k]
+                detailled_keys = [k for k in self.last_results if k.startswith('ccap_') and '#' not in k]
                 for key in detailled_keys:
                     order += [key]
-
 
             if self.mode['indirect']:
 
                 #if not self._two2twoLO:
                 #order +=['halo_velocity']#,'indirect', 'indirect_error']
                 detailled_keys = [k for k in self.last_results if k.startswith('taacsID#') ]
-
+          
                 #logger.info(detailled_keys)
-                #logger.info(self.last_results)
 
+        # FF Implement switch for pythia/PPPC since for pythia8 you do not have the single channels limits !!!
+                #print 'FF keys', self.last_results.keys()
+                #print 'FF detailed keys', detailled_keys
                 if len(detailled_keys)>1:
                     for key in detailled_keys:
                         #reformat the key so that it only takes the initial and final states
                         #Useful is there is "/" syntax, because "no" suffix is added.
+                       
                         clean_key_list = key.split("_")
                         clean_key = clean_key_list[0]+"_"+clean_key_list[1]
                         order +=[clean_key]
-
+                        # FF ADD LIMITS HERE
 
             ### fix here below because i have distinguished charged and neutral particle, for now loop only on neutral particles
             ## nothing to do for now for cr_names (save the spectra?)
-
-            '''
-            if self.mode['CR_flux']:
+            
+            if self.mode['indirect'].startswith('flux'):
                 for channel in np_names:
                     order.append('flux_%s' % channel)
-            '''
-            #logger.info(order)
-
-
             
+            #logger.info(order)            
             # FF to be fixed!
             #<=-------------- Mihailo commented out max_col = 10
 
-            # print 'FF the order is', order
+#            print 'FF the order is', order
+#            print 'FF last results', self.last_results 
             to_print = param_card_iterator.write_summary(None, order,nbcol=10)#, max_col=10)
 
             for line in to_print.split('\n'):
@@ -910,20 +941,24 @@ class MADDMRunCmd(cmd.CmdShell):
                 with misc.MuteLogger(names=['cmdprint','madevent','madgraph','madgraph.plugin'],levels=[50,50,50,20]):
                     for i,card in enumerate(param_card_iterator):
                         card.write(pjoin(self.dir_path,'Cards','param_card.dat'))
-                        self.exec_cmd("launch -f", precmd=True, postcmd=True,
-                                                   errorhandling=False)
+                        self.exec_cmd("launch -f", precmd=True, postcmd=True, errorhandling=False)
+                        print 'FF last results in lop' , self.last_results
                         param_card_iterator.store_entry(nb_output+i, self.last_results)
                         ### the following three lines are added by chiara to check the widht = auto function 
                         # self._param_card = param_card_mod.ParamCard('/Users/arina/Documents/physics/software/maddm_dev2/test_width/Cards/param_card.dat')
                         # width = self.param_card.get_value('width', 5000000)
                         # logger.warning('--> try again WY0: %.2e' % width)
                         #<=-------------- Mihailo commented out max_col = 10
-                        logger.info(param_card_iterator.write_summary(None, order, lastline=True,nbcol=10)[:-1])#, max_col=10)[:-1])
+                        logger.info('Results for the first point \n' + param_card_iterator.write_summary(None, order, lastline=True,nbcol=10)[:-1])#, max_col=10)[:-1])
+            
             param_card_iterator.write(pjoin(self.dir_path,'Cards','param_card.dat'))
             name = misc.get_scan_name('maddm_%s' % (nb_output), 'maddm_%s' % (nb_output+i))
             path = pjoin(self.dir_path, 'output','scan_%s.txt' % name)
             logger.info("write all results in %s" % path ,'$MG:color:BLACK')
 
+            #print 'FF the order is', order
+            #print 'FF last results', self.last_results
+            #print 'FF param card iterator ' , param_card_iterator 
             param_card_iterator.write_summary(path, order)
             
 
@@ -1488,6 +1523,7 @@ class MADDMRunCmd(cmd.CmdShell):
             detailled_keys = [k for k in self.last_results.keys() if k.startswith('ccap')]
             for key in detailled_keys:
                 logger.info(' %s            : %.2e 1/s' % (key, self.last_results[key]))
+
 
         if self.mode['indirect']:
             xsi = self.last_results['xsi']
