@@ -1611,7 +1611,7 @@ FF oname  xdxdx_ttx
 
         #print 'FF the value pf y0 is', self.param_card.get_value('mass', 54) 
 
-        self.last_results['y0'] = self.param_card.get_value('mass', 54)
+        #self.last_results['y0'] = self.param_card.get_value('mass', 54)
         #FF Saving the results dictionary
         np.save(pjoin(self.dir_path, 'output','Results'), self.last_results)
         ##print '\n \n FF Results.npy = ' , self.last_results 
