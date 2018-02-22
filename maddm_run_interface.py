@@ -204,16 +204,18 @@ class Spectra:
             return 
         else: return True 
 
-    def load_PPPC_source(self,corr = ''):
-        if (not os.path.isfile(PPPCDIR+'/PPPC_Tables_EW.npy') and not os.path.isfile(PPPCDIR+'/PPPC_Tables_noEW.npy')):
+    def load_PPPC_source(self,corr = '',load = True):
+        if load: 
+          if (not os.path.isfile(PPPCDIR+'/PPPC_Tables_EW.npy') and not os.path.isfile(PPPCDIR+'/PPPC_Tables_noEW.npy')):
             logger.error('PPPC4DMID Spectra at source not found! Please install by typing install PPPC4DMID') # Break and ask the user to download the Tables       
             return
-        if not corr:
+
+          if not corr:
              dic =  np.load(PPPCDIR+'/PPPC_Tables_noEW.npy').item()
              misc.sprint('PPPC4DMID Spectra at source loaded')
              return dic
 
-        elif corr == 'ew':
+          elif corr == 'ew':
              dic =  np.load(PPPCDIR+'/PPPC_Tables_noEW.npy').item()
              misc.sprint('PPPC4DMID Spectra at source (with EW corrections) loaded')
              return dic
@@ -222,24 +224,6 @@ class Spectra:
     def load_PPPC_earth(self):
         return True
 
-    ''' FF OLD not needed anymore    
-    # this functions combines, for each 'x' value , the value of dn/dlogx multiplied by the proper BR annihilation channel
-    # br_dic must be of the form: d = {'ee': br_ee , 'hh': br_hh , ...} for all the SM channels considered, using the PPPC naming conventions
-    def combine_channels(self, mdm, br_dic = ''):
-        if not self.spec_source: 
-            logger.error('PPPC4DMID Spectra  not found! Please install by typing install PPPC4DMID ') # this should not happen again here       
-        tab = self.spec_source
-        x = tab['x']
-        combined = { 'gammas': [], 'antiprotons':[] , 'positrons':[], 'neutrinos_e':[] , 'neutrinos_mu':[] , 'neutrinos_tau':[] } 
-        for sp in self.spectra:
-            temp_list = [0 for i in range(len(x)) ] # filling a temporarily void list
-            for ch,br in br_dic.iteritems():
-                spec = tab[sp][mdm][ch]
-                for temp, s in zip(temp_list, spec):
-                    temp_list = [ s*br + temp ] # multiply each dn/dlogx for the BR value
-            combined[ch] = temp_list  
-        return combined 
-    '''
 
     # FF this function extracts the values of the spectra interpolated linearly between two values mdm_1 and mdm_2                                              
     # mdm is the DM candidate mass, spectrum is gammas, positron etc, channel is the SM annihilation e.g. bbar, hh etc.                        
@@ -270,7 +254,6 @@ class Spectra:
                interpolated.append(value)
         #print 'FF inteprolated ', interpolated
         return interpolated
-
 
 class Fermi_bounds:
 
@@ -549,6 +532,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
         self.Spectra = Spectra()
         self.Fermi   = Fermi_bounds()
+        self.MadDM_version = '3.0'
 
     def preloop(self,*args,**opts):
         super(Indirect_Cmd,self).preloop(*args,**opts)
@@ -655,11 +639,12 @@ class MADDMRunCmd(cmd.CmdShell):
 
         ### FF Access the BLOCK param card 
 
-        #print 'DM candidate', self.proc_characteristics['dm_candidate'][0]
-        #print 'FF caparm card', self.param_card
+        #print '*********************  DM candidate', self.proc_characteristics['dm_candidate'][0]
+        #print 'DM ' , self.proc_characteristics['dm_candidate']
+        #print 'FF param card', self.param_card
         #print 'GG qnumbers 52 \n', self.param_card['qnumbers 52']
 
-        #print 'FF selfcon',  self.param_card.get_value('qnumbers 52', 4)
+        #print 'FF selfcon',  self.param_card.get_value('qnumbers ' + self.proc_characteristics['dm_candidate'][0], 4)
 
 
         args = line.split()
@@ -698,6 +683,10 @@ class MADDMRunCmd(cmd.CmdShell):
 
         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
 
+
+        #print 'FF param crd', self.param_card
+        #print 'FF properties', self.proc_characteristics['dm_candidate']
+
         sigv_indirect = 0.
         #print 'FF the output is ', output 
         for line in open(pjoin(self.dir_path, output)):
@@ -717,28 +706,19 @@ class MADDMRunCmd(cmd.CmdShell):
                     if self._two2twoLO:
                         sigv_indirect_error = 0. ## FF: never used anywhere???
                         if 'sigma*v' in line: 
-                         
-                            '''
-FF oname  xdxdx_y0y0
-FF oname  xdxdx_gg
-FF oname  xdxdx_ddx
-FF oname  xdxdx_uux
-FF oname  xdxdx_ssx
-FF oname  xdxdx_ccx
-FF oname  xdxdx_bbx
-FF oname  xdxdx_ttx
-'''
                             sigv_temp = float(splitline[1])
                             oname = splitline[0].split(':',1)[1] .split('_')
                             #oname2 = oname.split('_')
                             oname = oname[0]+'_'+oname[1] #To eliminate the annoying suffix coming from the '/' notation
                             result['taacsID#'     + oname] = sigv_temp 
                             result['err_taacsID#' + oname] = 0 
-                            if oname.split('xdxdx_')[1] in self.limits._allowed_final_states:
-                               result['lim_'+oname] = self.limits.ID_max(mdm, oname.split('xdxdx_')[1]) 
-
-                               print oname.split('xdxdx_')[1]
-                            #self.limits.ID_max(mdm, finalstate)
+                            if oname.split('_')[1] in ['uux','ddx','ssx']:
+                               #logger.debug('FF using generic qq limits!') 
+                               result['lim_taacsID#'+oname] = self.limits.ID_max(mdm, 'qqx')
+                            elif oname.split('_')[1] in self.limits._allowed_final_states:
+                               result['lim_taacsID#'+oname] = self.limits.ID_max(mdm, oname.split('_')[1]) 
+                            elif oname.split('_')[1] not in self.limits._allowed_final_states:
+                               result['lim_taacsID#'+oname] = -1
 
 #                            output_name.append('taacsID#%s' % oname)
                             sigv_indirect += sigv_temp
@@ -758,6 +738,7 @@ FF oname  xdxdx_ttx
         if str(self.mode['indirect']).startswith('flux'):
             for chan in np_names:
                 result['flux_%s' % chan] = -1.0
+
         # xsi factor
         if result['Omegah^2'] < 0:                                                                                                                                                             result['xsi'] = 1.0   
         elif result['Omegah^2'] < self.limits._oh2_planck and result['Omegah^2'] > 0:
@@ -765,10 +746,6 @@ FF oname  xdxdx_ttx
         else: result['xsi'] = 1.0
           
         
- #       result = dict(zip(output_name, result))
-        if self.mode['indirect']: 
-               result['taacsID'] = sigv_indirect
-
 #        if self.mode['indirect'] and not self._two2twoLO:
 #            with misc.MuteLogger(names=['madevent','madgraph'],levels=[50,50]):
 #                self.launch_indirect(force)
@@ -781,11 +758,12 @@ FF oname  xdxdx_ttx
            result['GeV2pb*pb2cm2']   = GeV2pb*pb2cm2 # conversion factor
 
 
-
         # Adding the results 
         self.last_results = result
-
+     
+        #print 'FF ' , self.last_results
         if self.mode['indirect']:
+                result['taacsID'] = sigv_indirect
                 # print "FF self.mode['indirect'] ", self.mode['indirect'] 
                 self.launch_indirect(force)
                 if self.maddm_card['sigmav_method'] == 'inclusive': 
@@ -825,9 +803,14 @@ FF oname  xdxdx_ttx
 
                 self.last_results['Fermi_sigmav'] = -1        
                 x, gammas = self.Spectra.spectra['x'] , self.Spectra.spectra['gammas']
-        #print ' FF spectra', x , '' , gammas
-                sigmav = self.Fermi.Fermi_sigmav_lim(mdm, x , gammas )[0] # FF the funct. return2 a 2d array with [sigmav,pvalue]                                                  
+                #print ' FF spectra', x , '' , gammas
+                if not gammas:
+                   logger.error('The gamma spectrum is empty!Will not calculate Fermi limit')
+                   sigmav = -1
+
+                elif gammas: sigmav = self.Fermi.Fermi_sigmav_lim(mdm, x , gammas )[0] # FF the funct. return2 a 2d array with [sigmav,pvalue]                                                  
                 self.last_results['Fermi_sigmav'] = sigmav # FF store the results from the Fermi limit calculation 
+                print "self.mode['indirect'] ***************  " + self.mode['indirect'] 
 
                 if self.mode['indirect'].startswith('flux') :
                        if   'pythia' in self.maddm_card['indirect_flux_source_method'] and self.maddm_card['sigmav_method'] != 'inclusive'  : 
@@ -843,7 +826,7 @@ FF oname  xdxdx_ttx
 
 
 
-
+        print 'FF last' , self.last_results
         #if sigv_indirect:
         #    result['taacsID'] = sigv_indirect
         #    result['err_taacsID'] = math.sqrt(sigv_indirect_error)
@@ -870,6 +853,7 @@ FF oname  xdxdx_ttx
         #    logger.info("relic density  : %.2e ", self.last_results['omegah2'])
         if self.param_card_iterator:
             param_card_iterator = self.param_card_iterator
+
             self.param_card_iterator = []
             param_card_iterator.store_entry(nb_output, result)
 
@@ -882,7 +866,10 @@ FF oname  xdxdx_ttx
             if self.mode['direct'] :
                 # OLD order += ['sigmaN_SI_proton', 'sigmaN_SI_neutron', 'sigmaN_SD_proton',
                 #        'sigmaN_SD_neutron']
-                order += ['sigmaN_SI_p', 'sigmaN_SI_n', 'sigmaN_SD_p', 'sigmaN_SD_n']
+                order += ['sigmaN_SI_p', 'lim_sigmaN_SI_p', 
+                          'sigmaN_SI_n', 'lim_sigmaN_SI_n',
+                          'sigmaN_SD_p', 'lim_sigmaN_SD_p',
+                          'sigmaN_SD_n', 'lim_sigmaN_SD_n']
 
             if self.mode['direct'] == 'directional':
                 order += ['Nevents', 'smearing']
@@ -893,16 +880,12 @@ FF oname  xdxdx_ttx
                     order += [key]
 
             if self.mode['indirect']:
-
+                
                 #if not self._two2twoLO:
                 #order +=['halo_velocity']#,'indirect', 'indirect_error']
                 detailled_keys = [k for k in self.last_results if k.startswith('taacsID#') ]
-          
-                #logger.info(detailled_keys)
 
         # FF Implement switch for pythia/PPPC since for pythia8 you do not have the single channels limits !!!
-                #print 'FF keys', self.last_results.keys()
-                #print 'FF detailed keys', detailled_keys
                 if len(detailled_keys)>1:
                     for key in detailled_keys:
                         #reformat the key so that it only takes the initial and final states
@@ -911,23 +894,23 @@ FF oname  xdxdx_ttx
                         clean_key_list = key.split("_")
                         clean_key = clean_key_list[0]+"_"+clean_key_list[1]
                         order +=[clean_key]
-                        # FF ADD LIMITS HERE
-
+                        order +=['lim_'+clean_key]
+                order.append('Fermi_sigmav')
             ### fix here below because i have distinguished charged and neutral particle, for now loop only on neutral particles
             ## nothing to do for now for cr_names (save the spectra?)
-            
-            if self.mode['indirect'].startswith('flux'):
-                for channel in np_names:
-                    order.append('flux_%s' % channel)
-            
+                if self.mode['indirect'].startswith('flux'):
+                    for channel in np_names:
+                        order.append('flux_%s' % channel)
+                #print 'FF order', order 
+
             #logger.info(order)            
             # FF to be fixed!
             #<=-------------- Mihailo commented out max_col = 10
 
 #            print 'FF the order is', order
 #            print 'FF last results', self.last_results 
-            to_print = param_card_iterator.write_summary(None, order,nbcol=10)#, max_col=10)
-
+            to_print = param_card_iterator.write_summary(None, order, nbcol=10)#, max_col=10)
+            '''
             for line in to_print.split('\n'):
                 if line:
                     logger.info(line)
@@ -935,21 +918,21 @@ FF oname  xdxdx_ttx
                     # self._param_card = param_card_mod.ParamCard('/Users/arina/Documents/physics/software/maddm_dev2/test_width/Cards/param_card.dat')
                     # width = self.param_card.get_value('width', 5000000)
                     # logger.warning('--> WY0: %.2e' % width)
-
+            '''
             #check if the param_card defines a scan.
             with misc.TMP_variable(self, 'in_scan_mode', True):
                 with misc.MuteLogger(names=['cmdprint','madevent','madgraph','madgraph.plugin'],levels=[50,50,50,20]):
                     for i,card in enumerate(param_card_iterator):
                         card.write(pjoin(self.dir_path,'Cards','param_card.dat'))
                         self.exec_cmd("launch -f", precmd=True, postcmd=True, errorhandling=False)
-                        print 'FF last results in lop' , self.last_results
+                        #print 'FF last results in lop' , self.last_results
                         param_card_iterator.store_entry(nb_output+i, self.last_results)
                         ### the following three lines are added by chiara to check the widht = auto function 
                         # self._param_card = param_card_mod.ParamCard('/Users/arina/Documents/physics/software/maddm_dev2/test_width/Cards/param_card.dat')
                         # width = self.param_card.get_value('width', 5000000)
                         # logger.warning('--> try again WY0: %.2e' % width)
                         #<=-------------- Mihailo commented out max_col = 10
-                        logger.info('Results for the first point \n' + param_card_iterator.write_summary(None, order, lastline=True,nbcol=10)[:-1])#, max_col=10)[:-1])
+                        logger.info('Results for the point \n' + param_card_iterator.write_summary(None, order, lastline=True,nbcol=10)[:-1])#, max_col=10)[:-1])
             
             param_card_iterator.write(pjoin(self.dir_path,'Cards','param_card.dat'))
             name = misc.get_scan_name('maddm_%s' % (nb_output), 'maddm_%s' % (nb_output+i))
@@ -1099,7 +1082,7 @@ FF oname  xdxdx_ttx
                 misc.compile(['main101'], cwd=pjoin(self.dir_path,'bin','internal'))
             except MadGraph5Error,e:
                 print e
-                logger.critical('Indirect detection, py8 script can not be compiled. Skip flux at earth')
+                logger.critical('Indirect detection, py8 script can not be compiled. Skip flux claculation')
                 return
         
         # Now write the card.
@@ -1198,26 +1181,26 @@ FF oname  xdxdx_ttx
                else:
                     PPPC_source = self.Spectra.load_PPPC_source(corr = '')
 
-         # FF here I combine the spectra: multiply each channel by the BR                                                                                                          
-         # I create a temporary list that at each loop in the channel, retains the partial sum of each x value multiplied by the channel BR                                         
-         # At the end of the loop over the channels, this is the combine spectrum (do it for all the spectra - gammas, nue, positron etc. ) 
+         # FF here I combine the spectra: multiply each channel by the BR                                                                                                  
+         # I create a temporary list that at each loop in the channel, retains the partial sum of each x value multiplied by the channel BR                                      
+         # At the end of the loop over the channels, this is the combine spectrum (do it for all the spectra - gammas, nue, positron etc. )
 
          self.Spectra.spectra['x'] = PPPC_source['x']
 
          # print 'FF last results:', self.last_results
          available_channels = {}
          for x in self.last_results.keys():
-              if 'err' not in x and 'taacsID#' in x:
+              if 'err' not in x and 'taacsID#' in x and 'lim_' not in x:
                   available_channels[x] = x.split('_')[1] # list of available SM channel xsections
 
-         #print 'FF the available channels are' , available_channels
+         #print 'FF the available channels are' , available_channels.keys()
          # {'taacsID#xxdxxdb_ccx': 'ccx', 'taacsID#xxdxxdb_y0y0': 'y0y0', 'taacsID#xxdxxdb_ttx': 'ttx', 'taacsID#xxdxxdb_ssx': 'ssx', 'taacsID#xxdxxdb_uux': 'uux', 'taacsID#xxdxxdb_ddx': 'ddx', 'taacsID#xxdxxdb_bbx': 'bbx'}
 
          # self.Spectra.spectra_id = {'px':'antiprotons', 'gx':'gammas', 'nuex':'neutrinos_e', 'numux':'neutrinos_mu', 'nutaux':'neutrinos_tau', 'ex':'positrons'}
 
          # FF Check that at lest one SM channel is available
          if not any(i in self.Spectra.map_allowed_final_state_PPPC.keys() for i in available_channels.values()):
-                  logger.error('No SM annihilation channel available!')
+                  logger.error('No SM annihilation channel available, cannot use PPPC4DMID Tables!')
                   
          for sp, sp_t in self.Spectra.spectra_id.iteritems():
               #print 'FF sp sp_t' , sp , sp_t , raw_input(' ')
@@ -1251,6 +1234,7 @@ FF oname  xdxdx_ttx
               '''
               for CH_k in available_channels.keys():
                   CH = available_channels[CH_k]
+                  #print 'FF available ' , CH 
                   if CH in self.Spectra.map_allowed_final_state_PPPC.keys():
                      ch = self.Spectra.map_allowed_final_state_PPPC[CH] # ch is the name of the channels in the Tables
                   # Mapping liht quarks to qq in the Tables
@@ -1278,6 +1262,10 @@ FF oname  xdxdx_ttx
               #print temp_dic
               # FF here, adding up the specta weighthed by the BR (i.e. cross section of each channel / total SM cross section )
               sum_spec = []
+              #print 'FF temp_dic', temp_dic
+              if not bool(temp_dic): 
+                 logger.error('There is no annihilation process into SM with cross section > 0!')
+                 return 
               for num in range(0,len(temp_dic[temp_dic.keys()[0]]['spec']) ):
                   #print 'FF len' , len(temp_dic[temp_dic.keys()[0]]['spec']) , num 
                   val = 0
@@ -1293,38 +1281,41 @@ FF oname  xdxdx_ttx
 
          #print self.Spectra.spectra
 
+
     def calculate_fluxes(self):
         #print 'FF the spectra are', self.Spectra.spectra 
         np_names = {'gammas':'g'      , 'neutrinos_e':'nue' , 'neutrinos_mu':'numu' , 'neutrinos_tau':'nutau'}
         cr_names = {'antiprotons':'p' , 'positrons':'e'}
         # FF Fluxes 
-        if self.maddm_card['indirect_flux_source_method']:
-           #logger.info('Calculating the CR fluxes')
+        if self.mode['indirect'].startswith('flux'):
            
            #Here we need to skip this part if the scan is being conducted because                                                                                              
            #the value of dark matter mass could be 'scan: ...'                                                                                                                                
-           if not self.param_card_iterator:
-               mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
+             mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
                #run_name = self.me_cmd.run_name
-               npts = self.maddm_card['npts_for_flux']
-               energies = [1.0*(mdm)/ npts * n for n in range(npts)] ##  logscale is better, to be changed...                                                                               
-               for chan,chan_n in np_names.iteritems():
+             npts = self.maddm_card['npts_for_flux']
+             energies = [1.0*(mdm)/ npts * n for n in range(npts)] ##  logscale is better, to be changed...                                                                               
+             for chan,chan_n in np_names.iteritems():
                    phis= []
                    for energy in energies:
                        phis.append(self.dPhidE(energy, channel=chan))
+                   #print 'FF appending flux' 
+                   self.last_results['flux_%s' % chan_n] = self.Phi(chan=chan)
+
+             if not self.param_card_iterator:
+
                    flux_filename = pjoin(self.dir_path,'output', 'dPhidE_dSphName_%s.txt' %chan_n)
                     #flux_filename = pjoin(self.dir_path, 'output', 'dPhidE_%s.txt' %chan)                                                                                        
                    aux.write_data_to_file(energies, phis, filename=flux_filename, header='# Energy [GeV]    Differential Flux [GeV^-1 cm^-2 s^-1 sr^-1]')
                    logger.debug('FF must do the neutrino oscillations still!')
                    ## FF This is the total integrated flux for neutral particles
-                   self.last_results['flux_%s' % chan_n] = self.Phi(chan=chan)
                     #output_name.append('flux_%s' % chan)                                                                                                                
-               for chan,chan_n in cr_names.iteritems():
-                   Espectrum= []
-                   for energy in energies:
-                       Espectrum.append(self.dNdx(energy, channel=chan))
-                   dNde_filename = pjoin(self.dir_path,'output', 'dNdE_%s.txt' %chan_n)
-                   aux.write_data_to_file(energies, Espectrum, filename=dNde_filename, header='# E_kin [GeV]   dNdE [GeV^-1]')
+                   for chan,chan_n in cr_names.iteritems():
+                      Espectrum= []
+                      for energy in energies:
+                          Espectrum.append(self.dNdx(energy, channel=chan))
+                      dNde_filename = pjoin(self.dir_path,'output', 'dNdE_%s.txt' %chan_n)
+                      aux.write_data_to_file(energies, Espectrum, filename=dNde_filename, header='# E_kin [GeV]   dNdE [GeV^-1]')
 
 
         '''      
@@ -1389,10 +1380,15 @@ FF oname  xdxdx_ttx
     '''
 
     def norm_Majorana_Dirac(self):
-        #print 'FF current DM candidate'    , self.proc_characteristics['dm_candidate']
-        #print 'FF current DM candidate[0]' , self.proc_characteristics['dm_candidate'][0]
-        #print 'FF still to calculate the Dirac-Majorana factor'
-        return float(8)
+        # (0=own anti)
+        dirac_maj = self.param_card.get_value('qnumbers ' + str (self.proc_characteristics['dm_candidate'][0] ), 4) 
+        if   dirac_maj == 0:
+            logger.debug('FF DM is a Majorana particle')
+            return 4
+        elif dirac_maj == 1: 
+            logger.debug('FF DM is a Dirac particle')
+            return 8 
+        
 
     def dPhidE(self,  energy, channel=''):
         """generic differential flux from dSPhs, channel can be photons or neutrinos"""
@@ -1549,12 +1545,13 @@ FF oname  xdxdx_ttx
                     clean_key = clean_key_list[1] #clean_key_list[0]+"_"+clean_key_list[1]
                     #print 'FF for the method ', self.mode['indirect'] , ' the clean_key is: ',  clean_key 
                     finalstate = clean_key.split("_")[1]
+                    f_original = clean_key.split("_")[1]
                     if 'ss' in finalstate or 'uu' in finalstate or 'dd' in finalstate:
                         finalstate = 'qqx'
                     ## The inclusive method does not give the sigma for the BSM states production
                     s_theo = self.last_results[key]
                     if s_theo <= 10**(-100): 
-                        logger.info('Skipping zero cross section processes for ' + finalstate )
+                        logger.info('Skipping zero cross section processes for ' + f_original )
                         continue 
                     if finalstate in self.limits._allowed_final_states :
                         ## FF rescale the UL read from the lines by the xsi factor for multi components DM  
@@ -1616,6 +1613,8 @@ FF oname  xdxdx_ttx
         np.save(pjoin(self.dir_path, 'output','Results'), self.last_results)
         ##print '\n \n FF Results.npy = ' , self.last_results 
        
+        self.save_output(relic = True , direct = True )
+
 
         # FF renaming output folders 
         if self.mode['indirect']:
@@ -1641,13 +1640,64 @@ FF oname  xdxdx_ttx
         
     '''    
 
+    def save_output(self, relic = True , direct = False , indirect = False , fluxes = False):
+        out = open(pjoin(self.dir_path, 'output','MadDM_results.txt'),'w')
+        out.write('#################### \n')
+        out.write('### MadDM v. ' + str(self.MadDM_version) + ' ###\n' )
+        out.write('#################### \n#\n#\n')
+ 
+        if relic:
+           out.write('########   Relic Density  \n#\n')
+           
+           relic, planck , message = self.last_results['Omegah^2'] , self.limits._oh2_planck , self.det_message(self.last_results['Omegah^2'], self.limits._oh2_planck) 
+    
+           out.write('Omegah^2: \t'     + str(str(relic) + '\t  Omega^h_Planck: ' + str( planck ) ) + '\t' + message + '\n')
+           out.write('x_f: \t\t'          + str(self.last_results['x_f'])        + '\n' ) 
+           out.write('sigmav(xf): \t'    + str(self.last_results['sigmav(xf)']) + '\n' ) 
 
+        if direct:
+
+           fact = self.last_results['GeV2pb*pb2cm2']
+
+           xsec_SI_n, xsec_SI_p = fact*self.last_results['sigmaN_SI_n'], fact*self.last_results['sigmaN_SI_p'] 
+           xsec_SD_n, xsec_SD_p = fact*self.last_results['sigmaN_SD_n'], fact*self.last_results['sigmaN_SD_p']
+
+           lim_SI_n, lim_SI_p = self.last_results['lim_sigmaN_SI_n'], self.last_results['lim_sigmaN_SI_p']
+           lim_SD_n, lim_SD_p = self.last_results['lim_sigmaN_SD_n'], self.last_results['lim_sigmaN_SD_p']
+           
+           out.write('#\n########   Direct Detection  [cm^2]  \n#\n')
+
+           message = self.det_message(xsec_SI_n, lim_SI_n)
+           out.write('Sigma SI neutron= \t ' + str(xsec_SI_n) + '\t Exp_ul= ' + str(lim_SI_n) + ' (Xenon 1T)\t' + message + '\n')
+
+           message = self.det_message(xsec_SI_p, lim_SI_p)
+           out.write('Sigma SI proton = \t ' + str(xsec_SI_p) + '\t Exp_ul= ' + str(lim_SI_p) +' (Xenon 1T)\t' + message + '\n')
+
+           message = self.det_message(xsec_SD_n, lim_SD_n)
+           out.write('Sigma SD neutron= \t ' + str(xsec_SD_n) + '\t Exp_ul= ' + str(lim_SD_n) +' (Lux 2017)\t' + message + '\n')
+
+           message = self.det_message(xsec_SD_p, lim_SD_p)
+           out.write('Sigma SD proton = \t ' + str(xsec_SD_p) + '\t Exp_ul= ' + str(lim_SD_p) +' (Pico60)\t' + message + '\n')
+
+        if indirect:
+           out.write('\n#\n########   Indirect Detection  [cm^3/s]  \n')
+
+
+
+
+
+
+
+
+    def det_message(self,n1,n2):
+        if n2 < 0 :                 return 'NO LIMIT'
+        elif   n1 > n2 and n2 > 0 : return 'EXCLUDED'
+        elif   n2 > n1            : return 'ALLOWED'  
         
     
     def ask_run_configuration(self, mode=None, force=False):
         """ask the question about card edition / Run mode """
         
-
         process_data = self.proc_characteristics
         self.mode, cmd_quest = self.ask('', '0', mode=mode, 
                         data=self.proc_characteristics,
