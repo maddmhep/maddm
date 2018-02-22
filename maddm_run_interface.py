@@ -1646,11 +1646,8 @@ class MADDMRunCmd(cmd.CmdShell):
 
     def save_output(self, relic = True , direct = False , indirect = False , fluxes_source = False , fluxes_earth = False):
         def form_s(stringa):
-
                formatted = '{:20}'.format(stringa)
                return  formatted
-
-
         def form_n(num):
             formatted = '{:3.2e}'.format(num)
             return formatted
@@ -1738,9 +1735,6 @@ class MADDMRunCmd(cmd.CmdShell):
            out.write('############################################\n')
            out.write('# CR Flux at Earth [particles/(cm^2 s sr)] #\n')
            out.write('############################################\n')
-
-
-
 
     def det_message(self,n1,n2):
         if n2 < 0 :                 return 'NO LIMIT'
@@ -2685,10 +2679,10 @@ class MadDMCard(banner_mod.RunCard):
         
         self.fill_jfactors()
 
-        self.add_param('indirect_flux_source_method', 'pythia8', comment='choose between pythia8 and PPPC4DMID', include=False,
-                       allowed=['pythia8','PPPC4DMID'])
-        self.add_param('indirect_flux_earth_method', 'dragon', comment='choose between dragon and PPPC4DMID', include=False,
-                       allowed=['dragon', 'PPPC4DMID'])
+        self.add_param('indirect_flux_source_method', 'pythia8', comment='choose between pythia8,PPPC4DMID and PPPC4DMID_ew', include=False,
+                       allowed=['pythia8','PPPC4DMID','PPPC4DMID_ew'])
+        self.add_param('indirect_flux_earth_method', 'dragon', comment='choose between dragon and PPPC4DMID_ep', include=False,
+                       allowed=['dragon', 'PPPC4DMID_ep'])
         self.add_param('sigmav_method', 'reshuffling', comment='choose between inclusive, madevent, reshuffling', include=False,
                        allowed=['inclusive', 'madevent', 'reshuffling'])
 
@@ -2734,7 +2728,8 @@ class MadDMCard(banner_mod.RunCard):
             if self['indirect_flux_earth_method'] != 'PPPC4DMID':
                 if self['do_flux']:
                     logger.warning('since sigmav_method is on inclusive, indirect_flux_earth_method has been switch to PPPC4MID')
-                self['indirect_flux_earth_method'] == 'PPPC4DMID'                
+                self['indirect_flux_earth_method'] == 'PPPC4DMID' 
+               
         elif self['indirect_flux_earth_method'] == 'PPPC4DMID+dragon':
             if self['indirect_flux_source_method'] != 'PPPC4DMID':
                 logger.warning('since indirect_flux_earth_method is on PPPC4DMID+dragon, indirect_flux_source_method has been switch to PPPC4DMID')
