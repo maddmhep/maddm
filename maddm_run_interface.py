@@ -643,7 +643,6 @@ class MADDMRunCmd(cmd.CmdShell):
         #print 'DM ' , self.proc_characteristics['dm_candidate']
         #print 'FF param card', self.param_card
         #print 'GG qnumbers 52 \n', self.param_card['qnumbers 52']
-
         #print 'FF selfcon',  self.param_card.get_value('qnumbers ' + self.proc_characteristics['dm_candidate'][0], 4)
 
 
@@ -1613,9 +1612,13 @@ class MADDMRunCmd(cmd.CmdShell):
         np.save(pjoin(self.dir_path, 'output','Results'), self.last_results)
         ##print '\n \n FF Results.npy = ' , self.last_results 
  
+
+
+#        print self['do_relic_density']
+
  
-#        self.save_output(relic = True , direct = True, indirect = True, fluxes_source= True )
-        self.save_output(relic = True , direct = True, indirect = True, fluxes_source= True )                                                                    
+        self.save_output(relic = True, direct = self.mode['direct'], \
+                         indirect = self.mode['indirect'], fluxes_source= self.mode['indirect'].startswith('flux') , fluxes_earth = False )                  
 
         logger.info('Results written in ' +pjoin(self.dir_path, 'output', 'MadDM_results.txt') )
 
@@ -1633,17 +1636,6 @@ class MADDMRunCmd(cmd.CmdShell):
                 shutil.copytree( pjoin(self.dir_path, 'output') , pjoin(self.dir_path, 'output_'+ time ) )
 
 
-
-    '''
-    def is_excluded_relic(self, relic, omega_min = 0., omega_max = 0.1):
-        """  This function determines whether a model point is excluded or not
-             based on the resulting relic density, spin independent and spin
-            dependent cross sections. The user can supply min/max values for
-            relic density
-        """
-        
-    '''    
-
     def save_output(self, relic = True , direct = False , indirect = False , fluxes_source = False , fluxes_earth = False):
         def form_s(stringa):
                formatted = '{:20}'.format(stringa)
@@ -1653,27 +1645,28 @@ class MADDMRunCmd(cmd.CmdShell):
             return formatted
 
         out = open(pjoin(self.dir_path, 'output','MadDM_results.txt'),'w')
-        out.write('#################### \n')
-        out.write('### MadDM v. ' + str(self.MadDM_version) + ' ###\n' )
-        out.write('#################### \n#\n#\n')
-  
+        out.write('#############################################\n')
+        out.write('#                MadDM v. ' + str(self.MadDM_version) +'                #\n' )
+        out.write('#############################################\n#\n#\n#\n')
+
         if relic:
-           out.write('#################\n')
-           out.write('# Relic Density #\n')
-           out.write('#################\n')
+           out.write('#############################################\n')
+           out.write('# Relic Density                             #\n')
+           out.write('#############################################\n')
+
 
            relic, planck , message = self.last_results['Omegah^2'] , self.limits._oh2_planck , self.det_message(self.last_results['Omegah^2'], self.limits._oh2_planck) 
     
-           out.write(form_s('Omegah^2')   + '= ' + form_n(relic)  + '\t ' + form_s('Omega^h_Planck') + '= ' + form_n(planck)  + '   ' + message + '\n')
-           if self.last_results['xsi'] > 0: out.write(form_s('xsi=Om/Om_Planck') + '= ' + form_n(self.last_results['xsi']) )
+           out.write(form_s('Omegah^2')   + '= ' + form_n(relic)  + '\t' + form_s('Omega^h_Planck') + '= ' + form_n(planck)  + '   ' + message + '\n')
+           if self.last_results['xsi'] > 0: out.write(form_s('xsi=Om/Om_Planck') + '= ' + '\t'+ form_n(self.last_results['xsi']) )
            out.write(form_s('x_f')        + '= ' + form_n(self.last_results['x_f'])        + '\n' ) 
            out.write(form_s('sigmav(xf)') + '= ' + form_n(self.last_results['sigmav(xf)']) + '\n' ) 
 
         if direct:
 
-           out.write('###########################\n')
-           out.write('# Direct Detection [cm^2] #\n')
-           out.write('###########################\n')
+           out.write('#############################################\n')
+           out.write('# Direct Detection [cm^2]                   #\n')
+           out.write('#############################################\n')
 
            fact = self.last_results['GeV2pb*pb2cm2']
 
@@ -1698,9 +1691,10 @@ class MADDMRunCmd(cmd.CmdShell):
         if indirect:      
            sigmav_meth = self.maddm_card['sigmav_method']
 
-           out.write('###############################\n')
-           out.write('# Indirect Detection [cm^3/s] #\n')
-           out.write('###############################\n')
+           out.write('#############################################\n')
+           out.write('# Indirect Detection [cm^3/s]               #\n')
+           out.write('#############################################\n')
+
            out.write('# Annihilation cross section computed with the method: ' + sigmav_meth +' \n')
 
            tot_th , tot_ul = self.last_results['taacsID'] , self.last_results['Fermi_sigmav']
@@ -1711,7 +1705,7 @@ class MADDMRunCmd(cmd.CmdShell):
                out.write('# Fermi Limit for DM annihilation computed with Pythia8 spectra  \n#\n')
                out.write(form_s('Total Xsec') +'= '+form_n(tot_th) + form_s('Fermi_ul') + '= ' + form_n(tot_ul) +'   '+ fermi_mess+ '\n') 
            else:
-               out.write('# Fermi Limit computed with ' + self.maddm_card['indirect_flux_source_method'] + ' spectra *** FIX THIS \n#\n')
+               out.write('# Fermi Limit computed with ' + self.maddm_card['indirect_flux_source_method'] + ' spectra\n#\n')
                lista = [ proc for proc in self.last_results.keys() if 'taacsID#' in proc and 'lim_' not in proc and 'err' not in proc ]
                for name in lista:
                    proc = name.replace('taacsID#','')
@@ -2722,14 +2716,16 @@ class MadDMCard(banner_mod.RunCard):
         
         if self['sigmav_method'] == 'inclusive':
             if self['indirect_flux_source_method'] == 'pythia8':
-                if self['do_flux']:
+                if self['do_indirect_detection']:
                     logger.warning('since sigmav_method is on inclusive, indirect_flux_source_method has been switch to PPPC4MID')
+                #if self['do_flux']:
+                    #logger.warning('since sigmav_method is on inclusive, indirect_flux_source_method has been switch to PPPC4MID')
                 self['indirect_flux_source_method'] == 'PPPC4DMID'
             if self['indirect_flux_earth_method'] != 'PPPC4DMID':
                 if self['do_flux']:
                     logger.warning('since sigmav_method is on inclusive, indirect_flux_earth_method has been switch to PPPC4MID')
                 self['indirect_flux_earth_method'] == 'PPPC4DMID' 
-               
+        ## FF must be fixed       
         elif self['indirect_flux_earth_method'] == 'PPPC4DMID+dragon':
             if self['indirect_flux_source_method'] != 'PPPC4DMID':
                 logger.warning('since indirect_flux_earth_method is on PPPC4DMID+dragon, indirect_flux_source_method has been switch to PPPC4DMID')
@@ -3023,7 +3019,6 @@ class Multinest(object):
 
         results = self.maddm_run.last_results
         results = collections.OrderedDict(sorted(results.items()))
-
 
         try:
 #            if self.output_observables != []:
