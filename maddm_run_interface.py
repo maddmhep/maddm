@@ -672,7 +672,9 @@ class MADDMRunCmd(cmd.CmdShell):
         # , second line is the nucleon scattering cross section (SI) for proton, third is SI
         # nucleon cross section for the neutron etc. If a quantity was not calculated, we output -1
         result = {}
-        #for line in process.stdout:
+        result['GeV2pb*pb2cm2']   = GeV2pb*pb2cm2 # conversion factor                                                                                                           
+
+        sigv_indirect = 0.
 
         #output_name = ['omegah2', 'x_freezeout', 'wimp_mass', 'sigmav_xf' ,
                        #'sigmaN_SI_proton', 'sigmaN_SI_neutron', 'sigmaN_SD_proton',
@@ -722,8 +724,8 @@ class MADDMRunCmd(cmd.CmdShell):
 
 #                            output_name.append('taacsID#%s' % oname)
                             sigv_indirect += sigv_temp
- #                           output_name.append('err_taacsID#%s' % oname)
- #                           result.append(sigv_temp) #the value of cross section
+#                           output_name.append('err_taacsID#%s' % oname)
+#                           result.append(sigv_temp) #the value of cross section
 #                            result.append(0.e0) #put 0 for the error.
                     result[splitline[0].split(':')[0]] = float(splitline[1])
                             
@@ -758,12 +760,10 @@ class MADDMRunCmd(cmd.CmdShell):
            result['GeV2pb*pb2cm2']   = GeV2pb*pb2cm2 # conversion factor
 
 
-        # Adding the results 
+        result['taacsID'] = sigv_indirect
         self.last_results = result
-     
         #print 'FF ' , self.last_results
         if self.mode['indirect']:
-                result['taacsID'] = sigv_indirect
                 # print "FF self.mode['indirect'] ", self.mode['indirect'] 
                 self.launch_indirect(force)
                 if self.maddm_card['sigmav_method'] == 'inclusive': 
@@ -1600,20 +1600,24 @@ class MADDMRunCmd(cmd.CmdShell):
 
                 logger.info('\n Energy integrated flux for neutral particles:')
                 for chan in np_names.values():
-                    logger.info('%10s : %.3e particles/[cm^2 s sr]' %(chan, self.last_results['flux_%s' % chan] ))
+                    logger.info('%10s : %.3e \t particles/[cm^2 s sr]' %(chan, self.last_results['flux_%s' % chan] ))
                 print '\n'
                 logger.info('Differential fluxes [GeV^-1 cm^-2 s^-1 sr^-1]  written in output/dPhidE_dSphName_<>.txt for gamma and neutrinos')
                 logger.info('Differential spectrum [GeV^-1]  written in output/dNdE_<>.txt for antiprotons and positrons')
 
-
+ 
         #print 'FF the value pf y0 is', self.param_card.get_value('mass', 54) 
 
         #self.last_results['y0'] = self.param_card.get_value('mass', 54)
         #FF Saving the results dictionary
         np.save(pjoin(self.dir_path, 'output','Results'), self.last_results)
         ##print '\n \n FF Results.npy = ' , self.last_results 
-       
-        self.save_output(relic = True , direct = True )
+ 
+ 
+#        self.save_output(relic = True , direct = True, indirect = True, fluxes_source= True )
+        self.save_output(relic = True , direct = True, indirect = True, fluxes_source= True )                                                                    
+
+        logger.info('Results written in ' +pjoin(self.dir_path, 'output', 'MadDM_results.txt') )
 
 
         # FF renaming output folders 
@@ -1640,22 +1644,39 @@ class MADDMRunCmd(cmd.CmdShell):
         
     '''    
 
-    def save_output(self, relic = True , direct = False , indirect = False , fluxes = False):
+    def save_output(self, relic = True , direct = False , indirect = False , fluxes_source = False , fluxes_earth = False):
+        def form_s(stringa):
+
+               formatted = '{:20}'.format(stringa)
+               return  formatted
+
+
+        def form_n(num):
+            formatted = '{:3.2e}'.format(num)
+            return formatted
+
         out = open(pjoin(self.dir_path, 'output','MadDM_results.txt'),'w')
         out.write('#################### \n')
         out.write('### MadDM v. ' + str(self.MadDM_version) + ' ###\n' )
         out.write('#################### \n#\n#\n')
- 
+  
         if relic:
-           out.write('########   Relic Density  \n#\n')
-           
+           out.write('#################\n')
+           out.write('# Relic Density #\n')
+           out.write('#################\n')
+
            relic, planck , message = self.last_results['Omegah^2'] , self.limits._oh2_planck , self.det_message(self.last_results['Omegah^2'], self.limits._oh2_planck) 
     
-           out.write('Omegah^2: \t'     + str(str(relic) + '\t  Omega^h_Planck: ' + str( planck ) ) + '\t' + message + '\n')
-           out.write('x_f: \t\t'          + str(self.last_results['x_f'])        + '\n' ) 
-           out.write('sigmav(xf): \t'    + str(self.last_results['sigmav(xf)']) + '\n' ) 
+           out.write(form_s('Omegah^2')   + '= ' + form_n(relic)  + '\t ' + form_s('Omega^h_Planck') + '= ' + form_n(planck)  + '   ' + message + '\n')
+           if self.last_results['xsi'] > 0: out.write(form_s('xsi=Om/Om_Planck') + '= ' + form_n(self.last_results['xsi']) )
+           out.write(form_s('x_f')        + '= ' + form_n(self.last_results['x_f'])        + '\n' ) 
+           out.write(form_s('sigmav(xf)') + '= ' + form_n(self.last_results['sigmav(xf)']) + '\n' ) 
 
         if direct:
+
+           out.write('###########################\n')
+           out.write('# Direct Detection [cm^2] #\n')
+           out.write('###########################\n')
 
            fact = self.last_results['GeV2pb*pb2cm2']
 
@@ -1664,27 +1685,59 @@ class MADDMRunCmd(cmd.CmdShell):
 
            lim_SI_n, lim_SI_p = self.last_results['lim_sigmaN_SI_n'], self.last_results['lim_sigmaN_SI_p']
            lim_SD_n, lim_SD_p = self.last_results['lim_sigmaN_SD_n'], self.last_results['lim_sigmaN_SD_p']
-           
-           out.write('#\n########   Direct Detection  [cm^2]  \n#\n')
 
            message = self.det_message(xsec_SI_n, lim_SI_n)
-           out.write('Sigma SI neutron= \t ' + str(xsec_SI_n) + '\t Exp_ul= ' + str(lim_SI_n) + ' (Xenon 1T)\t' + message + '\n')
+           out.write(form_s('Xsec SI neutron')+'= '+form_n(xsec_SI_n)+ '\t '+form_s('Xenon1T_ul')+ '= ' + form_n(lim_SI_n) + '   ' + message + '\n')
 
            message = self.det_message(xsec_SI_p, lim_SI_p)
-           out.write('Sigma SI proton = \t ' + str(xsec_SI_p) + '\t Exp_ul= ' + str(lim_SI_p) +' (Xenon 1T)\t' + message + '\n')
+           out.write(form_s('Xsec SI proton') +'= '+form_n(xsec_SI_p)+ '\t '+form_s('Xenon1T_ul')+ '= ' + form_n(lim_SI_p) + '   ' + message + '\n')
 
            message = self.det_message(xsec_SD_n, lim_SD_n)
-           out.write('Sigma SD neutron= \t ' + str(xsec_SD_n) + '\t Exp_ul= ' + str(lim_SD_n) +' (Lux 2017)\t' + message + '\n')
+           out.write(form_s('Xsec SD neutron')+'= '+form_n(xsec_SD_n)+ '\t '+form_s('Lux2017_ul')    + '= ' + form_n(lim_SD_n) + '   ' + message + '\n')
 
            message = self.det_message(xsec_SD_p, lim_SD_p)
-           out.write('Sigma SD proton = \t ' + str(xsec_SD_p) + '\t Exp_ul= ' + str(lim_SD_p) +' (Pico60)\t' + message + '\n')
+           out.write(form_s('Xsec SD proton' )+'= '+form_n(xsec_SD_p)+ '\t '+form_s('Pico60_ul') + '= ' + form_n(lim_SD_p) + '   ' + message + '\n')
 
-        if indirect:
-           out.write('\n#\n########   Indirect Detection  [cm^3/s]  \n')
+        if indirect:      
+           sigmav_meth = self.maddm_card['sigmav_method']
+
+           out.write('###############################\n')
+           out.write('# Indirect Detection [cm^3/s] #\n')
+           out.write('###############################\n')
+           out.write('# Annihilation cross section computed with the method: ' + sigmav_meth +' \n')
+
+           tot_th , tot_ul = self.last_results['taacsID'] , self.last_results['Fermi_sigmav']
+           fermi_mess = self.det_message(tot_th , tot_ul )
 
 
+           if sigmav_meth !='inclusive':
+               out.write('# Fermi Limit for DM annihilation computed with Pythia8 spectra  \n#\n')
+               out.write(form_s('Total Xsec') +'= '+form_n(tot_th) + form_s('Fermi_ul') + '= ' + form_n(tot_ul) +'   '+ fermi_mess+ '\n') 
+           else:
+               out.write('# Fermi Limit computed with ' + self.maddm_card['indirect_flux_source_method'] + ' spectra *** FIX THIS \n#\n')
+               lista = [ proc for proc in self.last_results.keys() if 'taacsID#' in proc and 'lim_' not in proc and 'err' not in proc ]
+               for name in lista:
+                   proc = name.replace('taacsID#','')
+                   proc_th , proc_ul = self.last_results[name] , self.last_results['lim_'+name]
+                   message = self.det_message( proc_th,  proc_ul)
+                   out.write(form_s(proc) +'= '+form_n(proc_th)+'\t'+form_s('Fermi_ul')    + '= ' + form_n(proc_ul)+'   ' + message + '\n')
+           
+               out.write(form_s('Total Xsec')+ '= '+form_n(tot_th)+'\t'+form_s('Fermi_ul') + '= ' + form_n(tot_ul) +'   '+ fermi_mess + '\n')
 
+        if fluxes_source:
+           out.write('#############################################\n')
+           out.write('# CR Flux at source [particles/(cm^2 s sr)] #\n')
+           out.write('#############################################\n')
+           out.write('# Fluxes calculated using the spectra from ' + self.maddm_card['indirect_flux_source_method'] + '\n' )
+           for name in ['nue','numu','nutau','g']:
+                gamma = name.replace('g','gamma')
+                out.write(form_s('Flux_'+gamma)+'= '+ form_n(self.last_results['flux_'+name] ) + '\n' )
 
+ 
+        if fluxes_earth:
+           out.write('############################################\n')
+           out.write('# CR Flux at Earth [particles/(cm^2 s sr)] #\n')
+           out.write('############################################\n')
 
 
 
@@ -1693,8 +1746,8 @@ class MADDMRunCmd(cmd.CmdShell):
         if n2 < 0 :                 return 'NO LIMIT'
         elif   n1 > n2 and n2 > 0 : return 'EXCLUDED'
         elif   n2 > n1            : return 'ALLOWED'  
+        elif   n1 <= 0            : return 'No Theory Prediction'        
         
-    
     def ask_run_configuration(self, mode=None, force=False):
         """ask the question about card edition / Run mode """
         
