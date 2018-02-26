@@ -823,7 +823,7 @@ class MadDM_interface(master_interface.MasterCmd):
             final_states = ['bsm bsm','q_mdm q_mdm','21 21', '5 -5', '6 -6', '22 22', '23 23', '24 -24','25 25', '11 -11', '13 -13', '15 -15', '12 -12', '14 -14', '16 -16']
 
 
-            #final_states = ['1 -1', '5 -5' , '21 21' ] 
+            final_states = ['1 -1', '5 -5' , '21 21' ] 
 
             for final_state in final_states:
                 try: 
