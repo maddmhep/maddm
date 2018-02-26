@@ -255,6 +255,8 @@ class Spectra:
         #print 'FF inteprolated ', interpolated
         return interpolated
 
+      
+
 class Fermi_bounds:
 
     def __init__(self):
@@ -1036,7 +1038,7 @@ class MADDMRunCmd(cmd.CmdShell):
         if 'PPPC' in self.maddm_card['indirect_flux_source_method']:
             self.save_PPPC_spectra()
 
-
+        self.neu_oscillations()
 
         #
         #
@@ -1230,17 +1232,16 @@ class MADDMRunCmd(cmd.CmdShell):
                   elif CH == 'uux' : ch = 'qq' 
                   elif CH == 'ddx' : ch = 'qq'
                   else: continue
-                  ch_BR       =  self.last_results[CH_k]                                                                                                                           
+                  ch_BR       =  self.last_results[CH_k]                                                                                                           
                 
-                  if ch_BR > 0:                                                                                                                                                   
-                      temp_dic[ch] = {}                                                                                                                                            
-                      #print 'FF non zero XSec ' , ch                                                                                                                           
-                      self.last_results['tot_SM_xsec'] +=  ch_BR                                                                                                                    
-                      #print 'FF the total SM Xsec is ' , self.last_results['tot_SM_xsec']                                                                                          
+                  if ch_BR > 0:                                                                                                                                              
+                      temp_dic[ch] = {}                                                                                                                                      
+                      #print 'FF non zero XSec ' , ch                                                                                                                      
+                      self.last_results['tot_SM_xsec'] +=  ch_BR                                                                                                          
+                      #print 'FF the total SM Xsec is ' , self.last_results['tot_SM_xsec']                                                                              
                       interp_spec = self.Spectra.interpolate_spectra(PPPC_source , mdm = mdm, spectrum = sp_t , channel = ch )        
-                      temp_dic[ch]['spec'] = interp_spec                                                                                                                           
+                      temp_dic[ch]['spec'] = interp_spec                                                                                                                
                       temp_dic[ch]['xsec'] = ch_BR
-
                   #print 'FF interp_spec ', interp_spec , ' BR  ' , ch_BR , ' ch ' , key 
                   #spec_temp = [ elem + ch_BR * interp for elem,interp in zip(spec_temp,interp_spec) ]
                   #print 'FF spec_temp' , spec_temp 
@@ -1268,6 +1269,32 @@ class MADDMRunCmd(cmd.CmdShell):
               #print 'FF self.Spectra.spectra[sp_t]' , self.Spectra.spectra[sp_t] 
 
          #print self.Spectra.spectra
+
+    def neu_oscillations(self):
+        nue   = self.Spectra.spectra['neutrinos_e']
+        numu  = self.Spectra.spectra['neutrinos_mu']
+        nutau = self.Spectra.spectra['neutrinos_tau']
+        P_e_mu   = 0.199
+        P_e_tau  = 0.221
+        P_mu_tau = 0.368
+
+        nue_earth , numu_earth , nutau_earth = [] , [] , []
+
+        for x_e, x_mu, x_tau in zip(nue,numu,nutau):
+            nue_earth  .append( (1-P_e_mu-P_e_tau)  * x_e   + (P_e_mu) * x_mu + (P_e_tau)  * x_tau )
+            numu_earth .append( (1-P_e_mu-P_mu_tau) * x_mu  + (P_e_mu) * x_e  + (P_mu_tau) * x_tau )
+            nutau_earth.append( (1-P_e_tau-P_mu_tau)* x_tau + (P_e_tau)* x_e  + (P_mu_tau) * x_mu  )
+
+        self.Spectra.spectra['neutrinos_e_earth'  ] = nue_earth
+        self.Spectra.spectra['neutrinos_mu_earth' ] = numu_earth
+        self.Spectra.spectra['neutrinos_tau_earth'] = nutau_earth
+
+        #print 'FF these are the oscillated neutrinos: e , mu , tau'
+        #for e,mu,tau in zip(nue_earth, numu_earth, nutau_earth):
+        #    print 'FF e , mu , tau ' , e , mu , tau 
+        # 'neutrinos_mu', 'x', 'neutrinos_e', 'neutrinos_tau'
+        #print 'FF neutrinos', self.Spectra.spectra.keys()
+        #raw_input('FF ')
 
 
     def save_PPPC_spectra(self, PPPC = False):
@@ -1525,24 +1552,26 @@ class MADDMRunCmd(cmd.CmdShell):
             sigN_SI_p , sigN_SI_n = self.last_results['sigmaN_SI_p'] , self.last_results['sigmaN_SI_n']
             sigN_SD_p , sigN_SD_n = self.last_results['sigmaN_SD_p'] , self.last_results['sigmaN_SD_n']
 
-            direct_names = [ { 'n':'SigmaN_SI_p','sig':sigN_SI_p , 'lim':self.limits.SI_max(mdm)     , 'mess':pass_dd_si_proton , 'exp':'(Xenon1ton)' },
-                             { 'n':'SigmaN_SI_n','sig':sigN_SI_n , 'lim':self.limits.SI_max(mdm)     , 'mess':pass_dd_si_neutron, 'exp':'(Xenon1ton)' },
-                             { 'n':'SigmaN_SI_n','sig':sigN_SD_p , 'lim':self.limits.SD_max(mdm,'p') , 'mess':pass_dd_sd_proton , 'exp':'(Pico60)' },
-                             { 'n':'SigmaN_SI_n','sig':sigN_SD_n , 'lim':self.limits.SD_max(mdm,'p') , 'mess':pass_dd_sd_neutron, 'exp':'(Lux2017)' } ]
+            direct_names = [ { 'n':'SigmaN_SI_p','sig':sigN_SI_p , 'lim':self.limits.SI_max(mdm)     , 'mess':pass_dd_si_proton , 'exp':'Xenon1ton' },
+                             { 'n':'SigmaN_SI_n','sig':sigN_SI_n , 'lim':self.limits.SI_max(mdm)     , 'mess':pass_dd_si_neutron, 'exp':'Xenon1ton' },
+                             { 'n':'SigmaN_SI_n','sig':sigN_SD_p , 'lim':self.limits.SD_max(mdm,'p') , 'mess':pass_dd_sd_proton , 'exp':'Pico60' },
+                             { 'n':'SigmaN_SI_n','sig':sigN_SD_n , 'lim':self.limits.SD_max(mdm,'p') , 'mess':pass_dd_sd_neutron, 'exp':'Lux2017' } ]
 
-            logger.info('\n*** Direct detection: ')
-  
+            logger.info('\n*** Direct detection: ')  
             for D in direct_names:
                 
                     th_cross = D['sig']* xsi 
+                    ul = D['lim']
                     mess_th       = self.det_message_screen(th_cross, D['lim'] )
                     mess_alldm    = self.det_message_screen(D['sig'], D['lim'] )
-                    if dm_scen: # thermal scenario 
-                          logger.info(self.form_s(D['n']+' (Thermal)') +'= '+'\t'+ self.form_n(th_cross)+' GeV^-2 = '+self.form_n(th_cross*GeV2pb*pb2cm2)+ \
-                                     ' cm^2'+'\t'+ mess_th    + '\t'      + self.form_s(' (All DM)')        +'= '+'\t'+ self.form_n(D['sig'])+' GeV^-2 = '+self.form_n(D['sig']                                     *GeV2pb*pb2cm2)+' cm^2'+'\t'+ mess_alldm + '\t'      +'ul ='+ self.form_n(D['lim']) + ' cm^2'+ '\t'+ self.form_s(D['exp']) )
-                    else: 
-                          logger.info(self.form_s(D['n']+' All DM') +'= '+'\t'+ self.form_n(D['sig'])+' GeV^-2 = '+self.form_n(D['sig']*GeV2pb*pb2cm2)+' cm^2'+'\t'+ mess_alldm  +\
-                          '\t'      +'ul= '+ self.form_n(D['lim']) + ' cm^2'+ '\t'+ self.form_s(D['exp']) )
+                    self.print_ind(D['n'],th_cross , D['sig'], ul,  thermal=dm_scen ,direc = True , exp=D['exp'])
+
+                    #if dm_scen: # thermal scenario 
+                    #      logger.info(self.form_s(D['n']+' (Thermal)') +'= '+'\t'+ self.form_n(th_cross)+' GeV^-2 = '+self.form_n(th_cross*GeV2pb*pb2cm2)+ \
+                    #                 ' cm^2'+'\t'+ mess_th    + '\t'      + self.form_s(' (All DM)')        +'= '+'\t'+ self.form_n(D['sig'])+' GeV^-2 = '+self.form_n(D['sig']                  #                   *GeV2pb*pb2cm2)+' cm^2'+'\t'+ mess_alldm + '\t'      +'ul ='+ self.form_n(D['lim']) + ' cm^2'+ '\t'+ self.form_s(D['exp']) )
+                    #else: 
+                    #      logger.info(self.form_s(D['n']+' All DM') +'= '+'\t'+ self.form_n(D['sig'])+' GeV^-2 = '+self.form_n(D['sig']*GeV2pb*pb2cm2)+' cm^2'+'\t'+ mess_alldm  +\
+                    #      '\t'      +'ul= '+ self.form_n(D['lim']) + ' cm^2'+ '\t'+ self.form_s(D['exp']) )
      
             '''
             logger.info(' sigmaN_SI_p    th: %.2e GeV^-2 = %.2e cm^2   \t ul: %.2e cm^2 %s',xsi*sigN_SI_p, xsi*sigN_SI_p*GeV2pb*pb2cm2,self.limits.SI_max(mdm), pass_dd_si_proton)
@@ -1561,11 +1590,10 @@ class MADDMRunCmd(cmd.CmdShell):
 
 
         if self.mode['indirect']:
-            detailled_keys = [k for k in self.last_results.keys() if k.startswith('taacsID#')]
-
-            v = self.maddm_card['vave_indirect']
-
             logger.info('\n**** Indirect detection: ')
+
+            detailled_keys = [k for k in self.last_results.keys() if k.startswith('taacsID#')]
+            v = self.maddm_card['vave_indirect']
             logger.info('<sigma v> method: %s ' % self.maddm_card['sigmav_method'] ) 
             logger.info('DM particle halo velocity: %s ' % self.limits._id_limit_vel['ttx']) # the velocity should be the same
             if len(detailled_keys)>0:
@@ -1619,10 +1647,6 @@ class MADDMRunCmd(cmd.CmdShell):
                           else:
                                 message = '%s Sigmav/limit velocity mismatch %s' %(bcolors.GRAY, bcolors.ENDC)
 
-                           #s_thermal  = s_alldm*xsi2
-                           
-
-
                         #self.print_ind(self, clean_key, s_thermal, sig_alldm, s_ul,  thermal= dm_scen)
                         #logger.info('     %s \t  sigmav(th): %.2e \t sigmav(ul): %.3g \t [cm^3/s] \t  %s' % (clean_key, s_theo, s_ul, message))
 
@@ -1643,24 +1667,20 @@ class MADDMRunCmd(cmd.CmdShell):
 
 
             if str(self.mode['indirect']).startswith('flux'):
+                logger.info('*** Fluxes at source:')
                 #logger.info('\n  gamma-ray flux: ')
                 # FF nutau does not work np_names = ['g','nue', 'numu', 'nutau'] #,  'p', 'e', ]
                 #cr_names = ['gamma',  'pbar', 'e+', 'neue', 'neumu', 'neutau']
                 #cr_names = ['gamma',  'pbar', 'e+', 'neue', 'neumu', 'neutau']                                                                                                  
                 np_names = {'gammas':'g'      , 'neutrinos_e':'nue' , 'neutrinos_mu':'numu' , 'neutrinos_tau':'nutau'}
 
-                logger.info('\n Energy integrated flux for neutral particles:')
+                logger.info('*** Total flux for neutral particles at source:')
                 for chan in np_names.values():
                     logger.info('%10s : %.3e \t particles/[cm^2 s sr]' %(chan, self.last_results['flux_%s' % chan] ))
                 print '\n'
                 logger.info('Differential fluxes [GeV^-1 cm^-2 s^-1 sr^-1]  written in output/dPhidE_dSphName_<>.txt for gamma and neutrinos')
                 logger.info('Differential spectrum [GeV^-1]  written in output/dNdE_<>.txt for antiprotons and positrons')
 
- 
-        #print 'FF the value pf y0 is', self.param_card.get_value('mass', 54) 
-
-        #self.last_results['y0'] = self.param_card.get_value('mass', 54)
-        #FF Saving the results dictionary
         np.save(pjoin(self.dir_path, 'output','Results'), self.last_results)
         ##print '\n \n FF Results.npy = ' , self.last_results 
  
@@ -1689,27 +1709,44 @@ class MADDMRunCmd(cmd.CmdShell):
 
 
     
-    def print_ind(self,what, sig_th, sig_alldm, ul,  thermal=False ):
+    def print_ind(self,what, sig_th, sig_alldm, ul,  thermal=False ,direc = False , exp=''):
         alldm_mess = self.det_message_screen(sig_alldm , ul)
+
+        if not direc:
         #if thermal:
         #   th_mess    = self.det_message_screen(sig_th    , ul)
         #   line = self.form_s( what +' (Thermal)= ') + '\t' + self.form_n(sig_th) + '\t' + self.form_s(th_mess) 
         #   line = line + '\t' + self.form_s('(All DM)= ') + self.form_n(sig_alldm) + '\t' + self.form_s(alldm_mess)
         #   line = line + '\t' + self.form_s('Fermi ul= ') + self.form_n(ul)
 
-        if thermal:
-           th_mess    = self.det_message_screen(sig_th    , ul)
-           line = self.form_s(what) + '\t' + self.form_s('(Thermal)= ' + self.form_n(sig_th))     + '  ' + self.form_s(th_mess)
-           line = line +              '\t' + self.form_s('(All DM)= '  + self.form_n(sig_alldm) ) + '  ' + self.form_s(alldm_mess)
-           line = line + '\t' + self.form_s('Fermi ul= ' + self.form_n(ul) )
+           if thermal:
+              th_mess    = self.det_message_screen(sig_th    , ul)
+              line = self.form_s(what) + '\t' + self.form_s('(Thermal)= ' + self.form_n(sig_th))     + '  ' + self.form_s(th_mess)
+              line = line +              '\t' + self.form_s('(All DM)= '  + self.form_n(sig_alldm) ) + '  ' + self.form_s(alldm_mess)
+              line = line + '\t' + self.form_s('Fermi ul= ' + self.form_n(ul) )
 
+           else:
+              line = self.form_s( what+'(All DM)=') + '\t' + self.form_n(sig_alldm) + '\t' + self.form_s(th_mess) 
+              line = line + '\t' + self.form_s('Fermi ul= ') + self.form_n(ul)
+   
+        elif direc:
+           un = self.last_results['GeV2pb*pb2cm2']
+           if thermal:
+              th_mess    = self.det_message_screen(sig_th    , ul)
+              line = self.form_s(what) + '\t' + self.form_s('(Thermal)= '+ self.form_n(sig_th)    +'GeV^-2')+' = '+self.form_s(self.form_n(sig_th*un)+'cm^2')
+              line = line + '  ' + self.form_s(th_mess)
 
+              line = line +              '\t' + self.form_s('(All DM)= '  + self.form_n(sig_alldm)+'GeV^-2')+' = '+ self.form_s(self.form_n(sig_alldm*un) +'cm^2')
+              line = line + '  ' + self.form_s(alldm_mess) + '\t' + self.form_s(exp+' ul= ') +  self.form_n(ul)
+           else:
+              line = self.form_s(what) + '\t' + self.form_s('(All DM)= '  + self.form_n(sig_alldm)+'GeV^-2')+' = '+ self.form_s(self.form_n(sig_alldm*un) +'cm^2')
+              line = line + '  ' + self.form_s(alldm_mess) + '\t'+  self.form_s(exp+' ul= ') +  self.form_n(ul)
 
-        else:
-           line = self.form_s( what+'(All DM)=') + '\t' + self.form_n(sig_alldm) + '\t' + self.form_s(th_mess) 
-           line = line + '\t' +self.form_s('Fermi ul= ') + self.form_n(ul)
         logger.info(line)
           
+
+
+
 
     def save_output(self, relic = True , direct = False , indirect = False , fluxes_source = False , fluxes_earth = False):
         def form_s(stringa):
@@ -1728,7 +1765,6 @@ class MADDMRunCmd(cmd.CmdShell):
            out.write('#############################################\n')
            out.write('# Relic Density                             #\n')
            out.write('#############################################\n')
-
 
            relic, planck , message = self.last_results['Omegah^2'] , self.limits._oh2_planck , self.det_message(self.last_results['Omegah^2'], self.limits._oh2_planck) 
     
@@ -1798,7 +1834,6 @@ class MADDMRunCmd(cmd.CmdShell):
            for name in ['nue','numu','nutau','g']:
                 gamma = name.replace('g','gamma')
                 out.write(form_s('Flux_'+gamma)+'= '+ form_n(self.last_results['flux_'+name] ) + '\n' )
-
  
         if fluxes_earth:
            out.write('############################################\n')
@@ -1825,7 +1860,7 @@ class MADDMRunCmd(cmd.CmdShell):
         elif   n1 <= 0            : return 'No Theory Prediction'        
     
     def form_s(self,stringa):
-        formatted = '{:25}'.format(stringa)
+        formatted = '{:20}'.format(stringa)
         return  formatted
     def form_n(self,num):
         formatted = '{:3.2e}'.format(num)
