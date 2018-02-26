@@ -1417,6 +1417,7 @@ class MADDMRunCmd(cmd.CmdShell):
             return 8 
         
 
+
     def dPhidE(self,  energy, channel=''):
         """generic differential flux from dSPhs, channel can be photons or neutrinos"""
 
@@ -1689,8 +1690,8 @@ class MADDMRunCmd(cmd.CmdShell):
 #        print self['do_relic_density']
 
  
-      #  self.save_output(relic = True, direct = self.mode['direct'], \
-      #                   indirect = self.mode['indirect'], fluxes_source= self.mode['indirect'].startswith('flux') , fluxes_earth = False )                  
+        self.save_output(relic = True, direct = self.mode['direct'], \
+                         indirect = self.mode['indirect'], fluxes_source= self.mode['indirect'].startswith('flux') , fluxes_earth = False )                  
 
         logger.info('Results written in ' +pjoin(self.dir_path, 'output', 'MadDM_results.txt') )
 
@@ -1726,7 +1727,7 @@ class MADDMRunCmd(cmd.CmdShell):
               line = line + '\t' + self.form_s('Fermi ul= ' + self.form_n(ul) )
 
            else:
-              line = self.form_s( what+'(All DM)=') + '\t' + self.form_n(sig_alldm) + '\t' + self.form_s(th_mess) 
+              line = self.form_s( what+'(All DM)=') + '\t' + self.form_n(sig_alldm) + '\t' + self.form_s(alldm_mess) 
               line = line + '\t' + self.form_s('Fermi ul= ') + self.form_n(ul)
    
         elif direc:
