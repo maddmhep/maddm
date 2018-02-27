@@ -55,7 +55,7 @@ logger = logging.getLogger('madgraph.plugin.maddm')
 #logger.setLevel(10) #level 20 = INFO
 
 MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
-PPPCDIR = os.getcwd()+'/PPPC4DMID/tables_PPPC4DMID_dictionary'
+PPPCDIR = os.getcwd()+'/PPPC4DMID/'
 
 os.system('rm /home/users/f/a/fambrogi/NEW_MADDM/BZR_DEF_30Jan/maddm_dev2/ALL_PROC/Indirect/RunWeb') ## FF                                                                            
 
@@ -1077,15 +1077,15 @@ class MADDMRunCmd(cmd.CmdShell):
         # FF saving PPPC spectra in the output folder (py8 spectra are copied from the Indirect fodler already)                                                                                                                                
         if 'PPPC' in self.maddm_card['indirect_flux_source_method']:
             self.save_PPPC_spectra()
-
+            
+       
+      
         self.neu_oscillations()
 
-        #
-        #
-        #  ADD HERE HANDLING FOR CIRIELLI/DRAGON fluxes at earth
-        #
-        #
-            
+    # ***** DRAGON
+
+        self.run_Dragon()
+        
                         
     def run_pythia8_for_flux(self):
         """ compile and run pythia8 for the flux"""
@@ -1522,6 +1522,41 @@ class MADDMRunCmd(cmd.CmdShell):
             #logger.debug(jfact)                                                                                                                                                 
             phi = 1.0/(self.norm_Majorana_Dirac()*2*math.pi*mdm*mdm)*sigv*jfact*integrate_dNdE
             return phi
+
+    def run_Dragon(self):
+        
+        template_card = pjoin(MDMDIR,'Templates','Cards','dragon_card.xml')
+        dr_path = 'path to Dragon installation - read from where?'
+        mDM = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
+        sigv = 999
+        def write_dragon_input(template= template_card , mdm = mDM , sigmav = sigv ):
+            # convert spectra in dndx in dnde
+            x , positrons, antiprotons = self.Spectra.spectra['x'] , self.Spectra.spectra['positrons'] , self.Spectra.spectra['antiprotons']
+            logx  = np.log10(x)            
+            energy = mdm*10**logx
+            dnde_pos  = (positrons/(mdm*10**logx*2.30259))     
+            dnde_anti = (antiprotons/(mdm*10**logx*2.30259))
+      
+            out_pos  = open(pjoin(self.dir_path, 'output','positrons_dndne.txt') , 'w')
+            out_anti = open(pjoin(self.dir_path, 'output','antiprotons_dndne.txt') ,'w')
+
+            for en, pos, anti in zip (energy,dnde_pos,dnde_anti):
+                out_pos .write(str(en)+ ' ' + str(pos)  +'\n')
+                out_anti.write(str(en)+ ' ' + str(anti) +'\n')
+            out_pos .close()
+            out_anti.close()
+
+
+            out = open(pjoin(self.dir_path, 'output','dragon_input.xml'),'w')
+            inp = open(template,'r')
+            for line in inp.readlines():
+                line = line.replace('MadDM_dm_mass'    , str(mdm)    )
+                line = line.replace('MadDM_sigmav'     , str(sigmav) )
+                line = line.replace('MadDM_Positrons'  , pjoin(self.dir_path, 'output', 'positrons_dndne.txt'  ) )
+                line = line.replace('MadDM_Antiprotons', pjoin(self.dir_path, 'output', 'antiprotons_dndne.txt') )
+                out.write(line)
+            out.close()
+        write_dragon_input(template= template_card , mdm = mDM , sigmav = sigv )
 
     
     def print_results(self):
@@ -2876,6 +2911,8 @@ class MadDMCard(banner_mod.RunCard):
                        allowed=['dragon', 'PPPC4DMID_ep'])
         self.add_param('sigmav_method', 'reshuffling', comment='choose between inclusive, madevent, reshuffling', include=False,
                        allowed=['inclusive', 'madevent', 'reshuffling'])
+
+
 
 
     def write(self, output_file, template=None, python_template=False,
