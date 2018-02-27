@@ -18,6 +18,8 @@ import scipy
 from scipy.interpolate import interp1d
 from scipy.integrate import quad
 from scipy.optimize import minimize_scalar
+from scipy.optimize import brute
+from scipy.optimize import fmin
 from scipy.special import gammainc
 
 import shutil
@@ -268,6 +270,7 @@ class Fermi_bounds:
         self.dwarves_list = ['coma_berenices', 'draco', 'segue_1', 'ursa_major_II', 'ursa_minor', 'reticulum_II' ] # 6 highest J
         self.dwarveslist_all = self.extract_dwarveslist() 
         self.dw_in = self.dw_dic()
+        self.ll_tot = ''
 
 # This function reads the list of dwarves from the Jfactor.dat file
     def extract_dwarveslist(self):
@@ -354,7 +357,8 @@ class Fermi_bounds:
             return -2.0*(flux_like+jfac_like)
 
         if marginalize:
-           res = minimize_scalar(chi2min)
+           res = minimize_scalar(chi2min,method='bounded',bounds=(-5.0,5.0))
+
            jsigma = res.x
            ll_max = -0.5*res.fun
         else:
@@ -378,7 +382,9 @@ class Fermi_bounds:
             j_factors[k] = marg_like[1]
 
         pval = self.compute_pvalue(ll_tot,ll_null)
+        self.ll_tot = ll_tot
         return ll_tot, ll_null, pval, j_factors
+       
 
     def compute_pvalue(self,ll_tot,ll_null):
     
@@ -396,7 +402,7 @@ class Fermi_bounds:
 
         return 1-pval
 
-    def Fermi_sigmav_lim(self, mDM, x = '' , dndlogx = '' , marginalize = True, calc_p_value = True):
+    def Fermi_sigmav_lim(self, mDM, x = '' , dndlogx = '' , marginalize = True, sigmavmin=1e-35, sigmavmax=1e-15, step_size_scaling=1.0, cl_val = 0.95, maj_dirac=1):
         np.seterr(divide='ignore', invalid='ignore')   # Keep numpy from complaining about dN/dE = 0...                                                                       
         j0 , nBin = self.j0 , self.nBin # convention spectra                                                                                                                     
         dw_in = self.dw_in
@@ -421,31 +427,45 @@ class Fermi_bounds:
         log_interp = interp1d(log_energy,log_dnde)
         spectrum = lambda e: np.nan_to_num(10**( log_interp(np.log10(e)) )) if (e <= energy.max() and e >= energy.min()) else 0.0
 
-        pred = np.array([self.eflux(spectrum,e1,e2)/mDM**2*sigmav0*j0/(8.*math.pi) for e1,e2 in zip(emins,emaxs)])
-
-        CL_VAL= 0.95
+        pred = np.array([self.eflux(spectrum,e1,e2)/mDM**2*sigmav0*j0/(2.*maj_dirac*math.pi) for e1,e2 in zip(emins,emaxs)])
 
         def find_sigmav(x,pred,dw_in,marginalize):
 
-            pred_sigma = pred*np.power(10, (-28.0+2.0*x))/sigmav0                                 
+            pred_sigma = pred*10**(-x)/sigmav0
             pvalue = self.res_tot_dw(pred_sigma,marginalize)[2]
 
-            pvalue=np.sqrt(pvalue**2+(x**2)**0.01/0.001) if pvalue==1 else pvalue
-            return (pvalue-CL_VAL)**2
+            atanhpval = np.arctanh(pvalue - 1e-9)
+            atanclval = np.arctanh(cl_val - 1e-9)
+            return (atanhpval-atanclval)**2
 
         find_sig = lambda x: find_sigmav(x,pred,dw_in,marginalize)
-        res  = minimize_scalar(find_sig, method='brent'  ,  bounds = (0,1) )                                                                                       
+       
+        # brute methode:
+        brute_range_min = -np.log10(sigmavmax)
+        brute_range_max = -np.log10(sigmavmin)
+        if marginalize:
+            num_steps = int(step_size_scaling*2.0*(brute_range_max-brute_range_min))
+        else:
+            num_steps = int(step_size_scaling*5.0*(brute_range_max-brute_range_min))
 
-        sigmav_ul   = 10**(-28+2.0*res.x)
+        res = brute(find_sig,[(brute_range_min,brute_range_max)], Ns=num_steps, full_output=False, finish=fmin)
+        sigmav_ul = 10**(-res[0])
+    
         p_value = -1
 
-        if calc_p_value == True:
-           pred_sigma = pred*sigmav_ul/sigmav0
-           result  = self.res_tot_dw(pred_sigma,marginalize)
-           p_value = result[2]
+        pred_sigma = pred*sigmav_ul/sigmav0
+        result  = self.res_tot_dw(pred_sigma,marginalize)
+        p_value = result[2]     
 
-        return sigmav_ul , p_value
-    
+        if p_value <= cl_val*0.98 or p_value >= cl_val*1.02:
+           sigmav_ul= -1
+           print " WARNING: increase range (sigmavmin,sigmavmax) and/or step_size_scaling!"
+
+        return [sigmav_ul , p_value , self.ll_tot]    
+
+
+
+
 class bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -848,6 +868,9 @@ class MADDMRunCmd(cmd.CmdShell):
 
                 order.append('taacsID')
                 order.append('Fermi_sigmav')
+                order.append('pvalue')
+                order.append('like_tot')
+
             ### fix here below because i have distinguished charged and neutral particle, for now loop only on neutral particles
             ## nothing to do for now for cr_names (save the spectra?)
                 if self.mode['indirect'].startswith('flux'):
@@ -1034,9 +1057,12 @@ class MADDMRunCmd(cmd.CmdShell):
             logger.error('The gamma spectrum is empty!Will not calculate Fermi limit')
             sigmav = -1
         elif gammas: 
-            sigmav = self.Fermi.Fermi_sigmav_lim(mdm, x , gammas )[0] # FF the funct. return2 a 2d array with [sigmav,pvalue]                                     \
-        self.last_results['Fermi_sigmav'] = sigmav # FF store the results from the Fermi limit calculation                                                                  
-        print "FF self.mode['indirect'] ***************  " + self.mode['indirect']
+            sigmav = self.Fermi.Fermi_sigmav_lim(mdm, x , gammas ) # FF the funct. return2 a 2d array with [sigmav,pvalue]                                     \
+        self.last_results['Fermi_sigmav'] = sigmav[0] # FF store the results from the Fermi limit calculation                                                                  
+        self.last_results['pvalue']       = sigmav[1]
+        self.last_results['like_tot']     = sigmav[2]
+        #print 'FF sigmav , value , likeli ' , sigmav[0] , sigmav[1] , sigmav[2]
+        #print "FF self.mode['indirect'] ***************  " + self.mode['indirect']
 
         # ****** Calculating Fluxes
 
@@ -1583,8 +1609,8 @@ class MADDMRunCmd(cmd.CmdShell):
             units = self.last_results['GeV2pb*pb2cm2']
             direct_names = [ { 'n':'SigmaN_SI_p','sig':sigN_SI_p*units , 'lim':self.limits.SI_max(mdm)     , 'exp':'Xenon1ton' },
                              { 'n':'SigmaN_SI_n','sig':sigN_SI_n*units , 'lim':self.limits.SI_max(mdm)     , 'exp':'Xenon1ton' },
-                             { 'n':'SigmaN_SI_n','sig':sigN_SD_p*units , 'lim':self.limits.SD_max(mdm,'p') , 'exp':'Pico60' },
-                             { 'n':'SigmaN_SI_n','sig':sigN_SD_n*units , 'lim':self.limits.SD_max(mdm,'p') , 'exp':'Lux2017' } ]
+                             { 'n':'SigmaN_SD_p','sig':sigN_SD_p*units , 'lim':self.limits.SD_max(mdm,'p') , 'exp':'Pico60' },
+                             { 'n':'SigmaN_SD_n','sig':sigN_SD_n*units , 'lim':self.limits.SD_max(mdm,'n') , 'exp':'Lux2017' } ]
 
             logger.info('\n***** Direct detection [cm^2]: ')  
             for D in direct_names:
