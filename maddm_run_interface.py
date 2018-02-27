@@ -402,7 +402,7 @@ class Fermi_bounds:
 
         return 1-pval
 
-    def Fermi_sigmav_lim(self, mDM, x = '' , dndlogx = '' , marginalize = True, sigmavmin=1e-35, sigmavmax=1e-15, step_size_scaling=1.0, cl_val = 0.95, maj_dirac=1):
+    def Fermi_sigmav_lim(self, mDM, x = '' , dndlogx = '' , marginalize = True, sigmavmin=1e-35, sigmavmax=1e-15, step_size_scaling=1.0, cl_val = 0.95, maj_dirac=''):
         np.seterr(divide='ignore', invalid='ignore')   # Keep numpy from complaining about dN/dE = 0...                                                                       
         j0 , nBin = self.j0 , self.nBin # convention spectra                                                                                                                     
         dw_in = self.dw_in
@@ -1057,7 +1057,8 @@ class MADDMRunCmd(cmd.CmdShell):
             logger.error('The gamma spectrum is empty!Will not calculate Fermi limit')
             sigmav = -1
         elif gammas: 
-            sigmav = self.Fermi.Fermi_sigmav_lim(mdm, x , gammas ) # FF the funct. return2 a 2d array with [sigmav,pvalue]                                     \
+            print 'FF majorana dirac' , self.norm_Majorana_Dirac() 
+            sigmav = self.Fermi.Fermi_sigmav_lim(mdm, x , gammas ,maj_dirac= self.norm_Majorana_Dirac() ) # Returns a 3d array with [sigmav,pvalue,likel.]
         self.last_results['Fermi_sigmav'] = sigmav[0] # FF store the results from the Fermi limit calculation                                                                  
         self.last_results['pvalue']       = sigmav[1]
         self.last_results['like_tot']     = sigmav[2]
