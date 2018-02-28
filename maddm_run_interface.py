@@ -57,7 +57,7 @@ logger = logging.getLogger('madgraph.plugin.maddm')
 MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
 PPPCDIR = os.getcwd()+'/PPPC4DMID/'
 
-os.system('rm /home/users/f/a/fambrogi/NEW_MADDM/BZR_DEF_30Jan/maddm_dev2/ALL_PROC/Indirect/RunWeb') ## FF                                                                            
+os.system('rm /home/users/f/a/fambrogi/NEW_MADDM/BZR_DEF_30Jan/maddm_dev2/SERA_2/Indirect/RunWeb') ## FF                                                                            
 
 #Is there a better definition of infinity?
 __infty__ = float('inf')
@@ -690,12 +690,17 @@ class MADDMRunCmd(cmd.CmdShell):
             self.compile()
 
         nb_output = 1
+ 
+        # FF Does this do anything ?
         output = pjoin(self.dir_path, 'output', 'maddm_%s.out') 
         while os.path.exists(output % nb_output):
             nb_output +=1
         else:
             output = pjoin('output', 'maddm.out')
 
+
+
+ 
         misc.call(['./maddm.x', output], cwd =self.dir_path)
         #process = subprocess.Popen(['./maddm.x'], cwd =self.dir_path, stdout=subprocess.PIPE)
         #Here we read out the results which the FORTRAN module dumped into a file
@@ -881,12 +886,9 @@ class MADDMRunCmd(cmd.CmdShell):
                 order.append('pvalue')
                 order.append('like_tot')
 
-            ### fix here below because i have distinguished charged and neutral particle, for now loop only on neutral particles
-            ## nothing to do for now for cr_names (save the spectra?)
                 if self.mode['indirect'].startswith('flux'):
                     for channel in np_names:
                         order.append('flux_%s' % channel)
-                #print 'FF order', order 
 
                 if self.maddm_card['sigmav_method'] == 'inclusive':
                         order.append('tot_SM_xsec')
@@ -909,14 +911,17 @@ class MADDMRunCmd(cmd.CmdShell):
                     # width = self.param_card.get_value('width', 5000000)
                     # logger.warning('--> WY0: %.2e' % width)
             '''
+            print 'FF nb_output' , nb_output
             #check if the param_card defines a scan.
             with misc.TMP_variable(self, 'in_scan_mode', True):
                 with misc.MuteLogger(names=['cmdprint','madevent','madgraph','madgraph.plugin'],levels=[50,50,50,20]):
+                    
                     for i,card in enumerate(param_card_iterator):
+                        print 'FF iteratori i', i 
                         card.write(pjoin(self.dir_path,'Cards','param_card.dat'))
                         self.exec_cmd("launch -f", precmd=True, postcmd=True, errorhandling=False)
                         #print 'FF last results in lop' , self.last_results
-                        param_card_iterator.store_entry(nb_output+i, self.last_results)
+                        param_card_iterator.store_entry(nb_output+i+1, self.last_results)
                         ### the following three lines are added by chiara to check the widht = auto function 
                         # self._param_card = param_card_mod.ParamCard('/Users/arina/Documents/physics/software/maddm_dev2/test_width/Cards/param_card.dat')
                         # width = self.param_card.get_value('width', 5000000)
@@ -1092,7 +1097,12 @@ class MADDMRunCmd(cmd.CmdShell):
         if 'PPPC' in self.maddm_card['indirect_flux_source_method']:
             self.save_PPPC_spectra()
             
-       
+
+        print 'FF save?' , self.maddm_card['save_output']
+        print 'FF new: profile, method, function', self.maddm_card['dm_profile'] , self.maddm_card['prop_method'] , self.maddm_card['halo_funct']       
+
+
+
     # ***** neutrino oscillation
       
         #self.neu_oscillations()
@@ -1334,14 +1344,14 @@ class MADDMRunCmd(cmd.CmdShell):
 
     
     def read_PPPC_positrons_earth(self):
-         ### FF extract prof , prop e halo_func from MadDM card !!!
 
-         PROF = 'Ein'
-         PROP = 'MED'
-         HALO = 'MF1'    
+         PROF = self.maddm_card['dm_profile']
+         PROP = self.maddm_card['prop_method']
+         HALO = self.maddm_card['halo_funct']
+         logger.debug('FF profile,prop,halo ***  ' + PROF + ' ' + PROP + ' ' + HALO ) 
 
          mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
-         #  'aa_Ein_MAX_MF3']
+
          if 'PPPC4DMID' in self.maddm_card['indirect_flux_earth_method'] or self.maddm_card['sigmav_method'] == 'inclusive':
             if self.Spectra.check_mass(mdm):
                PPPC_earth = self.Spectra.load_PPPC_earth(prof = PROF)
@@ -1358,7 +1368,7 @@ class MADDMRunCmd(cmd.CmdShell):
             C = CH.split('_')[1]
             if C in self.Spectra.map_allowed_final_state_PPPC.keys():
                ch = self.Spectra.map_allowed_final_state_PPPC[C]  # ch is the name of the channels in the Tables                                                           
-                  # Mapping liht quarks to qq in the Tables                                                                                                                      
+                  # Mapping light quarks to qq in the Tables                                                                                                                      
             elif C == 'ssx' : ch = 'qq'
             elif C == 'uux' : ch = 'qq'
             elif C == 'ddx' : ch = 'qq'
@@ -1371,7 +1381,6 @@ class MADDMRunCmd(cmd.CmdShell):
                 #interp_spec = self.Spectra.interpolate_spectra(PPPC_earth , mdm = mdm, spectrum = 'positrons' , channel = ch )
                 interp_spec = self.Spectra.interpolate_spectra(PPPC_earth, mdm = mdm, spectrum = 'positrons' , channel = ch , \
                                     earth = True , prof = PROF , prop = PROP , halo_func = HALO)
-
                 
                 temp_dic[C]['spec'] = interp_spec
                 temp_dic[C]['xsec'] = ch_BR
@@ -1379,7 +1388,6 @@ class MADDMRunCmd(cmd.CmdShell):
          sum_spec = []
  
          #print 'FF temp dic', temp_dic
-
          for num in range(0,len(temp_dic[temp_dic.keys()[0]]['spec']) ):
             val = 0
             for k in temp_dic.keys():
@@ -1387,19 +1395,6 @@ class MADDMRunCmd(cmd.CmdShell):
             sum_spec.append(val)
 
          self.Spectra.spectra_earth['positrons'] = sum_spec
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     def neu_oscillations(self):
         nue   = self.Spectra.spectra['neutrinos_e']
@@ -1425,10 +1420,10 @@ class MADDMRunCmd(cmd.CmdShell):
         #    print 'FF e , mu , tau ' , e , mu , tau 
         # 'neutrinos_mu', 'x', 'neutrinos_e', 'neutrinos_tau'
         #print 'FF neutrinos', self.Spectra.spectra.keys()
-        #raw_input('FF ')
+ 
 
-
-    def save_PPPC_spectra(self, PPPC = False):
+    '''
+    def save_PPPC_spectra(self, PPPC = False, out_dir = pjoin(self.dir_path,'output') ):
       if PPPC:
         #        ['positrons', 'gammas', 'neutrinos_mu', 'antiprotons', 'x', 'neutrinos_e', 'neutrinos_tau']
         for spec in self.Spectra.spectra.keys(): 
@@ -1438,6 +1433,21 @@ class MADDMRunCmd(cmd.CmdShell):
                 #print '%.3g  %.3e' % ( np.log10(x) , s )
                 out_spec.write( ' %.4e  %.4e \n' % ( np.log10(x) , s ) )
             out_spec.close()
+    '''
+
+    def save_PPPC_spectra(self, PPPC = False, out_dir = '' ):
+
+      if not out_dir: out_dir = pjoin(self.dir_path,'output')
+                                                                                                                         
+      if PPPC:                                                                                                                                                                                                   
+        #        ['positrons', 'gammas', 'neutrinos_mu', 'antiprotons', 'x', 'neutrinos_e', 'neutrinos_tau']                                                                                                    
+        for spec in self.Spectra.spectra.keys():                                                                                                                                                                  
+            name = spec.replace('antiprotons','p').replace('gammas','g').replace('neutrinos_','nu')                                                                                                               
+            out_spec = open( pjoin(out_dir, name+'_PPPC4DMID.dat') , 'w' )                                                                                                                        
+            for x,s in zip(self.Spectra.spectra['x'], self.Spectra.spectra[spec] ):                                                                                                                               
+                #print '%.3g  %.3e' % ( np.log10(x) , s )                                                                                                                                                       
+                out_spec.write( ' %.4e  %.4e \n' % ( np.log10(x) , s ) )                                                                                                                                         
+            out_spec.close() 
 
 
     def calculate_fluxes_source(self):
@@ -1619,7 +1629,7 @@ class MADDMRunCmd(cmd.CmdShell):
         template_card = pjoin(MDMDIR,'Templates','Cards','dragon_card.xml')
         dr_path = 'path to Dragon installation - read from where?'
         mDM = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
-        sigv = 999
+        sigv = self.last_results['taacsID']
         def write_dragon_input(template= template_card , mdm = mDM , sigmav = sigv ):
             # convert spectra in dndx in dnde
             #print 'FF self.Spectra.spectra keys', self.Spectra.spectra.keys()
@@ -1658,15 +1668,11 @@ class MADDMRunCmd(cmd.CmdShell):
         #omega_min = 0
         #omega_max = 0.12
 
-        #logger.debug(self.last_results)
-
         # Determine xsi for thermal scenarios with DM < DM tot.                
-
         dm_scen = 0
         if self.last_results['xsi'] > 0 and self.last_results['xsi'] < 1:
              xsi  = self.last_results['xsi']
              dm_scen = True
-
         else: 
              xsi = 1
              dm_scen = False
@@ -1694,7 +1700,6 @@ class MADDMRunCmd(cmd.CmdShell):
             #pass_dd_sd_proton  = ''
             #pass_dd_sd_neutron = ''
         
-
         #if omega_min < self.last_results['omegah2'] < omega_max:
         #    fail_relic_msg = ''
         #else:
@@ -1705,8 +1710,6 @@ class MADDMRunCmd(cmd.CmdShell):
         x_f      = self.last_results['x_f']
         sigma_xf = self.last_results['sigmav(xf)']
         xsi      = self.last_results['xsi']        
-
-       #        '{:20}'.format(stringa)
 
         logger.info("MadDM Results", '$MG:color:BLACK')
         if dm_scen: 
@@ -1727,7 +1730,6 @@ class MADDMRunCmd(cmd.CmdShell):
 #            logger.info(self.form_s('sigma(xf)')     +'= '+ '\t' + '%.2e GeV^-2 = %.2e cm^3/s', self.last_results['sigmav(xf)'],self.last_results['sigmav(xf)']*GeV2pb*pb2cm3 )
 #            logger.info(self.form_s('sigma(xf)')     +'= '+ '\t' + ' = %.2e cm^3/s', self.last_results['sigmav(xf)']*GeV2pb*pb2cm3 )
 
-
             #logger.info('   x_f            : %.2f', self.last_results['x_f'])
             #logger.info('   sigmav(xf)     : %.2e GeV^-2 = %.2e cm^3/s', self.last_results['sigmav(xf)'],self.last_results['sigmav(xf)']*GeV2pb*pb2cm3)
 
@@ -1740,6 +1742,8 @@ class MADDMRunCmd(cmd.CmdShell):
                              { 'n':'SigmaN_SI_n','sig':sigN_SI_n*units , 'lim':self.limits.SI_max(mdm)     , 'exp':'Xenon1ton' },
                              { 'n':'SigmaN_SD_p','sig':sigN_SD_p*units , 'lim':self.limits.SD_max(mdm,'p') , 'exp':'Pico60' },
                              { 'n':'SigmaN_SD_n','sig':sigN_SD_n*units , 'lim':self.limits.SD_max(mdm,'n') , 'exp':'Lux2017' } ]
+
+            self.last_results['direct_results'] = direct_names
 
             logger.info('\n***** Direct detection [cm^2]: ')  
             for D in direct_names:
@@ -1873,10 +1877,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
         np.save(pjoin(self.dir_path, 'output','Results'), self.last_results)
         ##print '\n \n FF Results.npy = ' , self.last_results 
- 
 
-
-#        print self['do_relic_density']
 
         if not self.param_card_iterator:
 
@@ -1923,6 +1924,8 @@ class MADDMRunCmd(cmd.CmdShell):
               line = self.form_s(what+ '(All DM)')+'=\t' + self.form_n(sig_alldm) + '   ' + self.form_s(alldm_mess)                                                           
               line = line + '\t' + self.form_s(exp+' ul = ' + self.form_n(ul) )    
 
+           #{ 'n':'SigmaN_SD_n','sig':sigN_SD_n*units , 'lim':self.limits.SD_max(mdm,'n') , 'exp':'Lux2017' } ]
+
         elif direc:
            un = self.last_results['GeV2pb*pb2cm2']
            if thermal:
@@ -1953,81 +1956,76 @@ class MADDMRunCmd(cmd.CmdShell):
         out = open(pjoin(self.dir_path, 'output','MadDM_results.txt'),'w')
         out.write('#############################################\n')
         out.write('#                MadDM v. ' + str(self.MadDM_version) +'                #\n' )
-        out.write('#############################################\n#\n#\n#\n')
+        out.write('#############################################\n\n\n')
 
         if relic:
            out.write('#############################################\n')
            out.write('# Relic Density                             #\n')
-           out.write('#############################################\n')
+           out.write('#############################################\n\n')
 
            relic, planck , message = self.last_results['Omegah^2'] , self.limits._oh2_planck , self.det_message(self.last_results['Omegah^2'], self.limits._oh2_planck) 
     
-           out.write(form_s('Omegah^2')   + '= ' + form_n(relic)  + '\t' + form_s('Omega^h_Planck') + '= ' + form_n(planck)  + '   ' + message + '\n')
-           if self.last_results['xsi'] > 0: out.write(form_s('xsi=Om/Om_Planck') + '= ' + '\t'+ form_n(self.last_results['xsi']) )
-           out.write(form_s('x_f')        + '= ' + form_n(self.last_results['x_f'])        + '\n' ) 
-           out.write(form_s('sigmav(xf)') + '= ' + form_n(self.last_results['sigmav(xf)']) + '\n' ) 
+           out.write(form_s('Omegah2')             + '= ' + form_n(relic)  + '\n')
+           out.write(form_s('Omegah_Planck')       + '= ' + form_n(planck)  + '\n')
+           if self.last_results['xsi'] > 0: 
+               out.write(form_s('xsi') + '= ' + form_n(self.last_results['xsi']) +'# xsi = (Omega/Omega_Planck)\n' )
+           out.write(form_s('x_f')                  + '= ' + form_n(self.last_results['x_f'])        + '\n' ) 
+           out.write(form_s('sigmav_xf')           + '= ' + form_n(self.last_results['sigmav(xf)']) + '\n' ) 
 
         if direct:
 
-           out.write('#############################################\n')
+           out.write('\n#############################################\n')
            out.write('# Direct Detection [cm^2]                   #\n')
-           out.write('#############################################\n')
+           out.write('#############################################\n\n')
 
-           fact = self.last_results['GeV2pb*pb2cm2']
 
-           xsec_SI_n, xsec_SI_p = fact*self.last_results['sigmaN_SI_n'], fact*self.last_results['sigmaN_SI_p'] 
-           xsec_SD_n, xsec_SD_p = fact*self.last_results['sigmaN_SD_n'], fact*self.last_results['sigmaN_SD_p']
+           for D in self.last_results['direct_results']:
+               cross = D['sig']
+               ul = D['lim']
+               exp = D['exp']
+               out.write(form_s(D['n']) + '= ' + form_s('['+ form_n(cross) + ',' + form_n(ul) + ']' ) + '# '+exp + '\n')
 
-           lim_SI_n, lim_SI_p = self.last_results['lim_sigmaN_SI_n'], self.last_results['lim_sigmaN_SI_p']
-           lim_SD_n, lim_SD_p = self.last_results['lim_sigmaN_SD_n'], self.last_results['lim_sigmaN_SD_p']
-
-           message = self.det_message(xsec_SI_n, lim_SI_n)
-           out.write(form_s('Xsec SI neutron')+'= '+form_n(xsec_SI_n)+ '\t '+form_s('Xenon1T_ul')+ '= ' + form_n(lim_SI_n) + '   ' + message + '\n')
-
-           message = self.det_message(xsec_SI_p, lim_SI_p)
-           out.write(form_s('Xsec SI proton') +'= '+form_n(xsec_SI_p)+ '\t '+form_s('Xenon1T_ul')+ '= ' + form_n(lim_SI_p) + '   ' + message + '\n')
-
-           message = self.det_message(xsec_SD_n, lim_SD_n)
-           out.write(form_s('Xsec SD neutron')+'= '+form_n(xsec_SD_n)+ '\t '+form_s('Lux2017_ul')    + '= ' + form_n(lim_SD_n) + '   ' + message + '\n')
-
-           message = self.det_message(xsec_SD_p, lim_SD_p)
-           out.write(form_s('Xsec SD proton' )+'= '+form_n(xsec_SD_p)+ '\t '+form_s('Pico60_ul') + '= ' + form_n(lim_SD_p) + '   ' + message + '\n')
 
         if indirect:      
            sigmav_meth = self.maddm_card['sigmav_method']
 
-           out.write('#############################################\n')
+           out.write('\n#############################################\n')
            out.write('# Indirect Detection [cm^3/s]               #\n')
-           out.write('#############################################\n')
+           out.write('#############################################\n\n')
 
            out.write('# Annihilation cross section computed with the method: ' + sigmav_meth +' \n')
 
-           tot_th , tot_ul = self.last_results['taacsID'] , self.last_results['Fermi_sigmav']
-           fermi_mess = self.det_message(tot_th , tot_ul )
-
-
+           tot_th , tot_ul , tot_sm = self.last_results['taacsID'] , self.last_results['Fermi_sigmav'] , self.last_results['tot_SM_xsec']
+           #pvalue     = self.last_results['pvalue']
+           #likelihood = self.last_results['likelihood'] 
+           pvalue , likelihood = 1, 2 
            if sigmav_meth !='inclusive':
-               out.write('# Fermi Limit for DM annihilation computed with Pythia8 spectra  \n#\n')
-               out.write(form_s('Total Xsec') +'= '+form_n(tot_th) + '\t'+  form_s('Fermi_ul') + '= ' + form_n(tot_ul) +'   '+ fermi_mess+ '\n') 
+               out.write('# Fermi Limit for DM annihilation computed with Pythia8 spectra  \n\n')
+               out.write(form_s('Total_xsec') +'= ' + form_s('['+ form_n(tot_th) +','+ form_n(tot_ul) +']') + '\n') 
+
            else:
-               out.write('# Fermi Limit computed with ' + self.maddm_card['indirect_flux_source_method'] + ' spectra\n#\n')
+               if 'PPPC' in  self.maddm_card['indirect_flux_source_method']: method =  self.maddm_card['indirect_flux_source_method'] 
+               else: method = 'PPPC4DMID'
+               out.write('# Fermi Limit computed with ' + method + ' spectra\n\n')
                lista = [ proc for proc in self.last_results.keys() if 'taacsID#' in proc and 'lim_' not in proc and 'err' not in proc ]
                for name in lista:
                    proc = name.replace('taacsID#','')
                    proc_th , proc_ul = self.last_results[name] , self.last_results['lim_'+name]
-                   message = self.det_message( proc_th,  proc_ul)
-                   out.write(form_s(proc) +'= '+form_n(proc_th)+'\t'+form_s('Fermi_ul')    + '= ' + form_n(proc_ul)+'   ' + message + '\n')
+                   out.write(form_s(proc)      + '= '+ form_s('['+ form_n(proc_th)+',' + form_n(proc_ul)+']') + '\n')
            
-               out.write(form_s('Total Xsec')+ '= '+form_n(tot_th)+'\t'+form_s('Fermi_ul') + '= ' + form_n(tot_ul) +'   '+ fermi_mess + '\n')
+               out.write(form_s('TotalSM_xsec')+ '= '+ form_s('['+ form_n(tot_sm)+ ',' + form_n(tot_ul) +']') + '\n')
+
+           out.write( form_s('Fermi_Likelihood')+ '= '+ form_s(form_n(likelihood))  +'\n' )
+           out.write( form_s('Fermi_pvalue'    )+ '= '+ form_s(form_n(pvalue    ))  +'\n ')
 
         if fluxes_source:
-           out.write('#############################################\n')
+           out.write('\n#############################################\n')
            out.write('# CR Flux at source [particles/(cm^2 s sr)] #\n')
-           out.write('#############################################\n')
-           out.write('# Fluxes calculated using the spectra from ' + self.maddm_card['indirect_flux_source_method'] + '\n' )
+           out.write('#############################################\n\n')
+           out.write('# Fluxes calculated using the spectra from ' + self.maddm_card['indirect_flux_source_method'] + '\n\n' )
            for name in ['nue','numu','nutau','g']:
                 gamma = name.replace('g','gamma')
-                out.write(form_s('Flux_'+gamma)+'= '+ form_n(self.last_results['flux_'+name] ) + '\n' )
+                out.write(form_s('Flux_'+gamma)+'= '+ form_s(form_n(self.last_results['flux_'+name] )) + '\n' )
  
         if fluxes_earth:
            out.write('############################################\n')
@@ -3004,6 +3002,18 @@ class MadDMCard(banner_mod.RunCard):
                        allowed=['dragon', 'PPPC4DMID_ep'])
         self.add_param('sigmav_method', 'reshuffling', comment='choose between inclusive, madevent, reshuffling', include=False,
                        allowed=['inclusive', 'madevent', 'reshuffling'])
+
+
+        self.add_param('save_output', 'off', comment='choose between off, spectra or all to save scan output', include=False,
+                       allowed=['spectra', 'all', 'off'])
+
+        self.add_param('dm_profile', 'Ein', comment='choose the halo density profile: Ein, Moo, NFW, Iso', include = False, \
+                           hidden = True, allowed = ['Ein','Iso','NFW','Moo'])
+        self.add_param('prop_method', 'MED', comment='choose the propagation method: MIN, MED, MAX'        , include = False, \
+                           hidden = True, allowed = ['MIN','MED','MAX'])
+        self.add_param('halo_funct' , 'MF1', comment='choose the halo function: MF1, MF2, MF3'             , include = False, \
+                           hidden = True , allowed = ['MF1','MF2','MF3'])
+
 
 
 

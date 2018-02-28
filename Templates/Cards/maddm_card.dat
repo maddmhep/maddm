@@ -106,6 +106,7 @@
 #flag to limit the Auto of the param_card to only consider two body decays.
  %(only_two_body_decays)s = only_two_body_decays
 
+ %(save_output)s       = save_output ! choose off , all , spectra to store output in scan mode
 # Note that integration precision parameters can be update via
 # ngrid_init, nres_points, eps_wij, iter_wij
 # those impact relic density and indirect detection (for sigmav_method=inclusive)

@@ -141,6 +141,11 @@
 # velocity in halo
    %(vave_indirect)s   = vave_indirect  ! average velocity of DM particles in halos in natural units (e.g. 1E-3 for our galaxy)
 
+# PPPC4DMID_ep settings for dm halo profile, propagation method and halo function
+   %(dm_profile)s    = dm_profile ! NFW, Moo , Iso , Ein 
+   %(prop_method)s     = prop_method ! MIN, MED, MAX
+   %(halo_funct)s      = halo_funct ! MF1, MF2, MF3
+
 ###################################################################################
 #
 # GLOBAL PARAMETER
