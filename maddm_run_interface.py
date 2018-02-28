@@ -720,6 +720,7 @@ class MADDMRunCmd(cmd.CmdShell):
         #print 'FF param crd', self.param_card
         #print 'FF properties', self.proc_characteristics['dm_candidate']
 
+        results['tot_SM_xsec'] = -1
         sigv_indirect = 0.
         #print 'FF the output is ', output 
         for line in open(pjoin(self.dir_path, output)):
@@ -787,6 +788,7 @@ class MADDMRunCmd(cmd.CmdShell):
            result['lim_sigmaN_SD_n'] = self.limits.SD_max(mdm, 'n')
            result['GeV2pb*pb2cm2']   = GeV2pb*pb2cm2 # conversion factor 
 
+        
         # F Saving the results in self.last_results 
         self.last_results = result
         print 'FF LAST RESULTS' , self.last_results
