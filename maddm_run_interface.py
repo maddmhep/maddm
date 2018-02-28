@@ -720,7 +720,7 @@ class MADDMRunCmd(cmd.CmdShell):
         #print 'FF param crd', self.param_card
         #print 'FF properties', self.proc_characteristics['dm_candidate']
 
-        results['tot_SM_xsec'] = -1
+        result['tot_SM_xsec'] = -1
         sigv_indirect = 0.
         #print 'FF the output is ', output 
         for line in open(pjoin(self.dir_path, output)):
