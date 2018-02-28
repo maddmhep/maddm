@@ -791,7 +791,7 @@ class MADDMRunCmd(cmd.CmdShell):
         
         # F Saving the results in self.last_results 
         self.last_results = result
-        print 'FF LAST RESULTS' , self.last_results
+        #print 'FF LAST RESULTS' , self.last_results
 
                   
 #        if self.mode['indirect'] and not self._two2twoLO:
@@ -1093,13 +1093,14 @@ class MADDMRunCmd(cmd.CmdShell):
             self.save_PPPC_spectra()
             
        
+    # ***** neutrino oscillation
       
-        self.neu_oscillations()
+        #self.neu_oscillations()
 
     # ***** DRAGON
 
-        self.read_PPPC_positrons_earth()
-        self.run_Dragon()
+        #self.read_PPPC_positrons_earth()
+        #self.run_Dragon()
         
                         
     def run_pythia8_for_flux(self):
