@@ -134,7 +134,7 @@
 ###################################################################################
 
 # Methode of computation (affects speed and precision)
-   %(sigmav_method)s    = sigmav_method ! inclusive [fast but no PY8_flux available], madevent, reshuffling
+   %(sigmav_method)s    = sigmav_method ! inclusive, madevent, reshuffling
    %(indirect_flux_source_method)s   = indirect_flux_source_method ! pythia8, PPPC4DMID or PPPC4DMID_ew
    %(indirect_flux_earth_method)s    =  indirect_flux_earth_method ! dragon or PPPC4DMID_ep
 
