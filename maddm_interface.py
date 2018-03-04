@@ -825,6 +825,7 @@ class MadDM_interface(master_interface.MasterCmd):
 
             final_states = ['1 -1', '5 -5' , '21 21' ] 
 
+            final_state = ['1, -1']
             for final_state in final_states:
                 try: 
                     self.exec_cmd('add indirect %s --noloop' % final_state)
