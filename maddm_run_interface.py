@@ -2015,11 +2015,11 @@ class MADDMRunCmd(cmd.CmdShell):
 
 
         if not self.param_card_iterator:
-               self.save_summary_single(relic = True, direct = self.mode['direct'], \
+            self.save_summary_single(relic = True, direct = self.mode['direct'], \
                                 indirect = self.mode['indirect'], 
                                 fluxes_source=self.mode['indirect'].startswith('flux') if isinstance(self.mode['indirect'],str) else self.mode['indirect'], 
                                 fluxes_earth = False )                  
-               logger.info('Results written in ' +pjoin(self.dir_path, 'output', 'MadDM_results.txt') )
+            logger.info('Results written in ' +pjoin(self.dir_path, 'output', 'MadDM_results.txt') )
 
 
 
@@ -2033,53 +2033,50 @@ class MADDMRunCmd(cmd.CmdShell):
        
         if scan and save_switch != 'off':
 
-             source_indirect = pjoin(self.dir_path,    'Indirect'      )
-             events          = pjoin(source_indirect, 'Events'        )
-             dir_point       = pjoin(events, 'run_'+ str(point_number) )
+            source_indirect = pjoin(self.dir_path,    'Indirect'      )
+            events          = pjoin(source_indirect, 'Events'        )
+            dir_point       = pjoin(events, 'run_'+ str(point_number) )
 
-             if not os.path.exists(source_indirect) : os.makedirs(source_indirect)
-             if not os.path.exists(events)          : os.makedirs(events)
-             if not os.path.exists(dir_point)       : os.makedirs(dir_point)
+            if not os.path.exists(source_indirect) : os.makedirs(source_indirect)
+            if not os.path.exists(events)          : os.makedirs(events)
+            if not os.path.exists(dir_point)       : os.makedirs(dir_point)
 
-             out_dir = dir_point # all the various output must be saved here             
+            out_dir = dir_point # all the various output must be saved here             
 
         else: out_dir = pjoin(self.dir_path, 'output')
 
         if save_switch == 'off':
             if self.maddm_card['sigmav_method'] != 'inclusive': # here, need to remove everyhting i.e. the whole run_xx folder
-               shutil.rmtree(path)
+                shutil.rmtree(dir_point)
                     
         elif save_switch == 'all':
-              if self.maddm_card['sigmav_method'] == 'inclusive': # saving spectra onyl in inclusive mode since madevent/resh have their own pythia8 spectra             
-                  for spec in self.Spectra.spectra.keys():
-                      if 'earth' in spec or 'x' in spec: continue
-                      out_spec = pjoin(out_dir, spec + '_spectrum_source_'+spectrum_method+'.txt')
-                      x = self.Spectra.spectra['x']
-                      aux.write_data_to_file(x , self.Spectra.spectra[spec] , filename = out_spec , header = '# x=Ekin/mDM      dn/dlogx' )
-
-                      if 'flux' in self.maddm_card['sigmav_method']:
+            if self.maddm_card['sigmav_method'] == 'inclusive': # saving spectra onyl in inclusive mode since madevent/resh have their own pythia8 spectra             
+                for spec in self.Spectra.spectra.keys():
+                    if 'earth' in spec or 'x' in spec: 
+                        continue
+                    out_spec = pjoin(out_dir, spec + '_spectrum_source_'+spectrum_method+'.txt')
+                    x = self.Spectra.spectra['x']
+                    aux.write_data_to_file(x , self.Spectra.spectra[spec] , filename = out_spec , header = '# x=Ekin/mDM      dn/dlogx' )
+                    
+                    if 'flux' in self.maddm_card['sigmav_method']:
             #if self.madd_card['sigmav_method'] == 'inclusive':                                   
-                          print 'FF saving spectra at source PPPC'
+                        print 'FF saving spectra at source PPPC'
                     # self.Spectra.spectra
-                          for spec in self.Spectra.spectra.keys():
-                              x = self.CR_fluxes['Energies']
-                              flux = self.CR_fluxes['dPhidE_'+  spec]
-                              out_flux = pjoin(out_dir, spec + '_flux_source_'+spectrum_method+'.txt')
-                              aux.write_data_to_file(x , flux  , filename = out_flux ,  header= f_flux)
+                        for spec in self.Spectra.spectra.keys():
+                            x = self.CR_fluxes['Energies']
+                            flux = self.CR_fluxes['dPhidE_'+  spec]
+                            out_flux = pjoin(out_dir, spec + '_flux_source_'+spectrum_method+'.txt')
+                            aux.write_data_to_file(x , flux  , filename = out_flux , header= h_flux)
 
-                      if 'earth' in self.maddm_card['sigmav_method']:
-                          for spec in self.Spectra.spectra_earth.keys():
-                              if 'x' in spec: continue
-                              if 'neutrino' in spec:
-                                  out_spec = pjoin(out_dir, spec + '_flux_earth_'+spectrum_method+'.txt')
-                                  x = self.Spectra.spectra['x'] # !!! the x for oscillated neutrinos is the same for the spectra but not the same for positrons!!!
-                                  aux.write_data_to_file(x , self.Spectra.spectra_earth[spec] , filename = out_spec , header = f_flux )
-
-
-
-
-
-
+                    if 'earth' in self.maddm_card['sigmav_method']:
+                        for spec in self.Spectra.spectra_earth.keys():
+                            if 'x' in spec: 
+                                continue
+                            
+                            if 'neutrino' in spec:
+                                out_spec = pjoin(out_dir, spec + '_flux_earth_'+spectrum_method+'.txt')
+                                x = self.Spectra.spectra['x'] # !!! the x for oscillated neutrinos is the same for the spectra but not the same for positrons!!!
+                                aux.write_data_to_file(x , self.Spectra.spectra_earth[spec] , filename = out_spec , header = h_flux )
 
     
     def print_ind(self,what, sig_th, sig_alldm, ul,  thermal=False ,direc = False , exp='Fermi'):
@@ -2092,33 +2089,33 @@ class MADDMRunCmd(cmd.CmdShell):
         #   line = line + '\t' + self.form_s('(All DM)= ') + self.form_n(sig_alldm) + '\t' + self.form_s(alldm_mess)
         #   line = line + '\t' + self.form_s('Fermi ul= ') + self.form_n(ul)
 
-           if thermal:
-              th_mess    = self.det_message_screen(sig_th    , ul)
-              line = self.form_s(what+ '(Thermal)') + '=\t'+ self.form_n(sig_th)  + '   ' + self.form_s(th_mess)
-              line = line +              '\t' + self.form_s('(All DM)= '  + self.form_n(sig_alldm) ) + '   ' + self.form_s(alldm_mess)
-              line = line + '\t' + self.form_s(exp+' ul = '+ self.form_n(ul) )
-
-#           else:
-#              line = self.form_s( what+'(All DM)=') + '\t' + self.form_n(sig_alldm) + '\t' + self.form_s(alldm_mess) 
-#              line = line + '\t' + self.form_s(exp+'= ') + self.form_n(ul)
-           else:                                                                                                                                                           
-              line = self.form_s(what+ '(All DM)')+'=\t' + self.form_n(sig_alldm) + '   ' + self.form_s(alldm_mess)                                                           
-              line = line + '\t' + self.form_s(exp+' ul = ' + self.form_n(ul) )    
-
-           #{ 'n':'SigmaN_SD_n','sig':sigN_SD_n*units , 'lim':self.limits.SD_max(mdm,'n') , 'exp':'Lux2017' } ]
+            if thermal:
+                th_mess    = self.det_message_screen(sig_th    , ul)
+                line = self.form_s(what+ '(Thermal)') + '=\t'+ self.form_n(sig_th)  + '   ' + self.form_s(th_mess)
+                line = line +              '\t' + self.form_s('(All DM)= '  + self.form_n(sig_alldm) ) + '   ' + self.form_s(alldm_mess)
+                line = line + '\t' + self.form_s(exp+' ul = '+ self.form_n(ul) )
+    
+    #           else:
+    #              line = self.form_s( what+'(All DM)=') + '\t' + self.form_n(sig_alldm) + '\t' + self.form_s(alldm_mess) 
+    #              line = line + '\t' + self.form_s(exp+'= ') + self.form_n(ul)
+            else:                                                                                                                                                           
+                line = self.form_s(what+ '(All DM)')+'=\t' + self.form_n(sig_alldm) + '   ' + self.form_s(alldm_mess)                                                           
+                line = line + '\t' + self.form_s(exp+' ul = ' + self.form_n(ul) )    
+    
+            #{ 'n':'SigmaN_SD_n','sig':sigN_SD_n*units , 'lim':self.limits.SD_max(mdm,'n') , 'exp':'Lux2017' } ]
 
         elif direc:
-           un = self.last_results['GeV2pb*pb2cm2']
-           if thermal:
-              th_mess    = self.det_message_screen(sig_th    , ul)
-              line = self.form_s(what) + '\t' + self.form_s('(Thermal)= '+ self.form_n(sig_th)    +'GeV^-2')+' = '+self.form_s(self.form_n(sig_th*un)+'cm^2')
-              line = line + '  ' + self.form_s(th_mess)
+            un = self.last_results['GeV2pb*pb2cm2']
+            if thermal:
+                th_mess    = self.det_message_screen(sig_th    , ul)
+                line = self.form_s(what) + '\t' + self.form_s('(Thermal)= '+ self.form_n(sig_th)    +'GeV^-2')+' = '+self.form_s(self.form_n(sig_th*un)+'cm^2')
+                line = line + '  ' + self.form_s(th_mess)
 
-              line = line +              '\t' + self.form_s('(All DM)= '  + self.form_n(sig_alldm)+'GeV^-2')+' = '+ self.form_s(self.form_n(sig_alldm*un) +'cm^2')
-              line = line + '  ' + self.form_s(alldm_mess) + '\t' + self.form_s(exp+' ul= ') +  self.form_n(ul)
-           else:
-              line = self.form_s(what) + '\t' + self.form_s('(All DM)= '  + self.form_n(sig_alldm)+'GeV^-2')+' = '+ self.form_s(self.form_n(sig_alldm*un) +'cm^2')
-              line = line + '  ' + self.form_s(alldm_mess) + '\t'+  self.form_s(exp+' ul= ') +  self.form_n(ul)
+                line = line +              '\t' + self.form_s('(All DM)= '  + self.form_n(sig_alldm)+'GeV^-2')+' = '+ self.form_s(self.form_n(sig_alldm*un) +'cm^2')
+                line = line + '  ' + self.form_s(alldm_mess) + '\t' + self.form_s(exp+' ul= ') +  self.form_n(ul)
+            else:
+                line = self.form_s(what) + '\t' + self.form_s('(All DM)= '  + self.form_n(sig_alldm)+'GeV^-2')+' = '+ self.form_s(self.form_n(sig_alldm*un) +'cm^2')
+                line = line + '  ' + self.form_s(alldm_mess) + '\t'+  self.form_s(exp+' ul= ') +  self.form_n(ul)
 
         logger.info(line)
           
@@ -2127,9 +2124,11 @@ class MADDMRunCmd(cmd.CmdShell):
 
 
     def save_summary_single(self, relic = True , direct = False , indirect = False , fluxes_source = False , fluxes_earth = False):
+        
         def form_s(stringa):
-               formatted = '{:22}'.format(stringa)
-               return  formatted
+            formatted = '{:22}'.format(stringa)
+            return  formatted
+        
         def form_n(num):
             formatted = '{:3.2e}'.format(num)
             return formatted
@@ -2140,85 +2139,87 @@ class MADDMRunCmd(cmd.CmdShell):
         out.write('#############################################\n\n\n')
 
         if relic:
-           out.write('#############################################\n')
-           out.write('# Relic Density                             #\n')
-           out.write('#############################################\n\n')
+            out.write('#############################################\n')
+            out.write('# Relic Density                             #\n')
+            out.write('#############################################\n\n')
 
-           relic, planck , message = self.last_results['Omegah^2'] , self.limits._oh2_planck , self.det_message(self.last_results['Omegah^2'], self.limits._oh2_planck) 
+            relic, planck , message = self.last_results['Omegah^2'] , self.limits._oh2_planck , self.det_message(self.last_results['Omegah^2'], self.limits._oh2_planck) 
     
-           out.write(form_s('Omegah2')             + '= ' + form_n(relic)  + '\n')
-           out.write(form_s('Omegah_Planck')       + '= ' + form_n(planck)  + '\n')
-           if self.last_results['xsi'] > 0: 
-               out.write(form_s('xsi') + '= ' + form_n(self.last_results['xsi']) +' \t # xsi = (Omega/Omega_Planck)\n' )
-           out.write(form_s('x_f')                  + '= ' + form_n(self.last_results['x_f'])        + '\n' ) 
-           out.write(form_s('sigmav_xf')           + '= ' + form_n(self.last_results['sigmav(xf)']) + '\n' ) 
+            out.write(form_s('Omegah2')             + '= ' + form_n(relic)  + '\n')
+            out.write(form_s('Omegah_Planck')       + '= ' + form_n(planck)  + '\n')
+            if self.last_results['xsi'] > 0: 
+                out.write(form_s('xsi') + '= ' + form_n(self.last_results['xsi']) +' \t # xsi = (Omega/Omega_Planck)\n' )
+            out.write(form_s('x_f')                  + '= ' + form_n(self.last_results['x_f'])        + '\n' ) 
+            out.write(form_s('sigmav_xf')           + '= ' + form_n(self.last_results['sigmav(xf)']) + '\n' ) 
 
         if direct:
 
-           out.write('\n#############################################\n')
-           out.write('# Direct Detection [cm^2]                   #\n')
-           out.write('#############################################\n\n')
+            out.write('\n#############################################\n')
+            out.write('# Direct Detection [cm^2]                   #\n')
+            out.write('#############################################\n\n')
 
 
-           for D in self.last_results['direct_results']:
-               cross = D['sig']
-               ul = D['lim']
-               exp = D['exp']
-               out.write(form_s(D['n']) + '= ' + form_s('['+ form_n(cross) + ',' + form_n(ul) + ']' ) + '# '+exp + '\n')
+            for D in self.last_results['direct_results']:
+                cross = D['sig']
+                ul = D['lim']
+                exp = D['exp']
+                out.write(form_s(D['n']) + '= ' + form_s('['+ form_n(cross) + ',' + form_n(ul) + ']' ) + '# '+exp + '\n')
 
 
         if indirect:      
-           sigmav_meth = self.maddm_card['sigmav_method']
+            sigmav_meth = self.maddm_card['sigmav_method']
 
-           out.write('\n#############################################\n')
-           out.write('# Indirect Detection [cm^3/s]               #\n')
-           out.write('#############################################\n\n')
+            out.write('\n#############################################\n')
+            out.write('# Indirect Detection [cm^3/s]               #\n')
+            out.write('#############################################\n\n')
 
-           out.write('# Annihilation cross section computed with the method: ' + sigmav_meth +' \n')
+            out.write('# Annihilation cross section computed with the method: ' + sigmav_meth +' \n')
 
-           tot_th , tot_ul , tot_sm = self.last_results['taacsID'] , self.last_results['Fermi_sigmav'] , self.last_results['tot_SM_xsec']
-           #pvalue     = self.last_results['pvalue']
-           #likelihood = self.last_results['likelihood'] 
-           pvalue , likelihood = 1, 2 
-           if sigmav_meth !='inclusive':
-               out.write('# Fermi Limit for DM annihilation computed with Pythia8 spectra  \n\n')
-               out.write(form_s('Total_xsec') +'= ' + form_s('['+ form_n(tot_th) +','+ form_n(tot_ul) +']') + '\n') 
+            tot_th , tot_ul , tot_sm = self.last_results['taacsID'] , self.last_results['Fermi_sigmav'] , self.last_results['tot_SM_xsec']
+            #pvalue     = self.last_results['pvalue']
+            #likelihood = self.last_results['likelihood'] 
+            pvalue , likelihood = 1, 2 
+            if sigmav_meth !='inclusive':
+                out.write('# Fermi Limit for DM annihilation computed with Pythia8 spectra  \n\n')
+                out.write(form_s('Total_xsec') +'= ' + form_s('['+ form_n(tot_th) +','+ form_n(tot_ul) +']') + '\n') 
 
-           else:
-               if 'PPPC' in  self.maddm_card['indirect_flux_source_method']: method =  self.maddm_card['indirect_flux_source_method'] 
-               else: method = 'PPPC4DMID'
-               out.write('# Fermi Limit computed with ' + method + ' spectra\n\n')
-               lista = [ proc for proc in self.last_results.keys() if 'taacsID#' in proc and 'lim_' not in proc and 'err' not in proc ]
-               for name in lista:
-                   proc = name.replace('taacsID#','')
-                   proc_th , proc_ul = self.last_results[name] , self.last_results['lim_'+name]
-                   out.write(form_s(proc)      + '= '+ form_s('['+ form_n(proc_th)+',' + form_n(proc_ul)+']') + '\n')
+            else:
+                if 'PPPC' in  self.maddm_card['indirect_flux_source_method']: 
+                    method =  self.maddm_card['indirect_flux_source_method'] 
+                else: 
+                    method = 'PPPC4DMID'
+                out.write('# Fermi Limit computed with ' + method + ' spectra\n\n')
+                lista = [ proc for proc in self.last_results.keys() if 'taacsID#' in proc and 'lim_' not in proc and 'err' not in proc ]
+                for name in lista:
+                    proc = name.replace('taacsID#','')
+                    proc_th , proc_ul = self.last_results[name] , self.last_results['lim_'+name]
+                    out.write(form_s(proc)      + '= '+ form_s('['+ form_n(proc_th)+',' + form_n(proc_ul)+']') + '\n')
            
-               out.write(form_s('TotalSM_xsec')+ '= '+ form_s('['+ form_n(tot_sm)+ ',' + form_n(tot_ul) +']') + '\n')
+                out.write(form_s('TotalSM_xsec')+ '= '+ form_s('['+ form_n(tot_sm)+ ',' + form_n(tot_ul) +']') + '\n')
 
-           out.write( form_s('Fermi_Likelihood')+ '= '+ form_s(form_n(likelihood))  +'\n' )
-           out.write( form_s('Fermi_pvalue'    )+ '= '+ form_s(form_n(pvalue    ))  +'\n ')
+            out.write( form_s('Fermi_Likelihood')+ '= '+ form_s(form_n(likelihood))  +'\n' )
+            out.write( form_s('Fermi_pvalue'    )+ '= '+ form_s(form_n(pvalue    ))  +'\n ')
 
         if fluxes_source:
-           out.write('\n#############################################\n')
-           out.write('# CR Flux at source [particles/(cm^2 s sr)] #\n')
-           out.write('#############################################\n\n')
-           out.write('# Fluxes calculated using the spectra from ' + self.maddm_card['indirect_flux_source_method'] + '\n\n' )
-           for name in ['nue','numu','nutau','g']:
+            out.write('\n#############################################\n')
+            out.write('# CR Flux at source [particles/(cm^2 s sr)] #\n')
+            out.write('#############################################\n\n')
+            out.write('# Fluxes calculated using the spectra from ' + self.maddm_card['indirect_flux_source_method'] + '\n\n' )
+            for name in ['nue','numu','nutau','g']:
                 gamma = name.replace('g','gamma')
                 out.write(form_s('Flux_'+gamma)+'= '+ form_s(form_n(self.last_results['flux_'+name] )) + '\n' )
  
         if fluxes_earth:
-           out.write('############################################\n')
-           out.write('# CR Flux at Earth [particles/(cm^2 s sr)] #\n')
-           out.write('############################################\n')
+            out.write('############################################\n')
+            out.write('# CR Flux at Earth [particles/(cm^2 s sr)] #\n')
+            out.write('############################################\n')
 
 
-        '''
-        pass_message  = '%s ALLOWED  %s' % (bcolors.OKGREEN, bcolors.ENDC)
-        fail_message  = '%s EXCLUDED %s' % (bcolors.FAIL, bcolors.ENDC)
-        nolim_message = '%s NO LIMIT %s' % (bcolors.GRAY, bcolors.ENDC)
-        '''
+        #'''
+        #pass_message  = '%s ALLOWED  %s' % (bcolors.OKGREEN, bcolors.ENDC)
+        #fail_message  = '%s EXCLUDED %s' % (bcolors.FAIL, bcolors.ENDC)
+        #nolim_message = '%s NO LIMIT %s' % (bcolors.GRAY, bcolors.ENDC)
+        #'''
 
     def det_message_screen(self,n1,n2):
         if n2 <= 0 :                 return '%s NO LIMIT %s' % (bcolors.GRAY, bcolors.ENDC)
