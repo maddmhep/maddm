@@ -1001,4 +1001,131 @@ class Indirect_Reweight(rwgt_interface.ReweightInterface):
                     self.shuffling_mode = args[1]
                 return
         return super(Indirect_Reweight, self).do_change(line)
+
+
+class ProcessExporterIndirectD(object):
+    """_________________________________________________________________________#
+    #                                                                         #
+    #  This class is used to export the matrix elements generated from        #
+    #  MadGraph into a format that can be used by MadDM                       #
+    #                                                                         #
+    #  This is basically a standard MadEvent output with some special trick   #
+    #                                                                         #
+    #_______________________________________________________________________"""
+ 
+    check = True
+    exporter = 'v4'
+    output = 'Template'
+    sa_symmetry = False
+     
+    def __new__(cls, path, options):
+        if cls is ProcessExporterIndirectD:
+            if 'compute_color_flows' in options:
+                return loop_exporters.LoopInducedExporterMEGroup.__new__(ProcessExporterIndirectDLI, path, options) 
+            else:
+                return export_v4.ProcessExporterFortranMEGroup.__new__(ProcessExporterIndirectDLO, path, options)
+        
+    #===========================================================================
+    # link symbolic link
+    #===========================================================================
+    def finalize(self, matrix_elements, history, mg5options, flaglist):
+        """Finalize Standalone MG4 directory"""
+        
+        super(ProcessExporterIndirectD, self).finalize(matrix_elements, history, mg5options, flaglist)
+        
+        path = pjoin(self.dir_path, 'Cards', 'param_card.dat')
+        if os.path.exists(pjoin('..','..', 'Cards', 'param_card.dat')):
+            try:
+                os.remove(path)
+            except Exception:
+                pass
             
+            files.ln('../../Cards/param_card.dat', starting_dir=os.path.dirname(path),
+                     cwd=os.path.dirname(path))   
+        
+        filename = os.path.join(self.dir_path, 'Cards', 'me5_configuration.txt')
+        self.cmd.do_save('options %s' % filename.replace(' ', '\ '), check=False,
+                         to_keep={'mg5_path':MG5DIR})
+        
+        self.write_procdef_mg5( pjoin(self.dir_path, 'SubProcesses', \
+                                     'procdef_mg5.dat'),
+                                self.cmd._curr_model['name'],
+                                self.cmd._generate_info)
+        
+        # Need to overwrite the proc_card_mg5.dat if that one correspond to 
+        # "add indirect"  [99% of the case]
+        text = open(pjoin(self.dir_path, 'Cards', 'proc_card_mg5.dat')).read()
+        if 'add indirect' in text:
+            to_replace = "add process " + "\n add process ".join(
+                [p.get('process').nice_string(prefix=False) for p in self.cmd._curr_amps])
+            text = text.replace('add indirect_detection', to_replace)
+            open(pjoin(self.dir_path, 'Cards', 'proc_card_mg5.dat'),'w').write(text)
+            
+                
+        
+        
+        
+    #def copy_template(self, model):
+    #    
+    #    out = super(ProcessExporterIndirectD,self).copy_template(model)        
+    #    self.modify_dummy()
+    #
+    #   return out
+    #===========================================================================
+    # write_source_makefile
+    #===========================================================================
+    #def write_source_makefile(self, writer):
+    #    """Write the nexternal.inc file for MG4"""
+    #
+    #    replace_dict = super(ProcessExporterIndirectD, self).write_source_makefile(None)
+    #
+    #    path = pjoin(MG5DIR,'madgraph','iolibs','template_files','madevent_makefile_source')
+
+
+        
+    #    if writer:
+    #        text = open(path).read() % replace_dict
+    #        writer.write(text)
+    #        
+    #    return replace_dict
+        
+        
+    def pass_information_from_cmd(self, cmd):
+        """pass information from the command interface to the exporter.
+           Please do not modify any object of the interface from the exporter.
+        """
+        
+        self.cmd=cmd
+        return super(ProcessExporterIndirectD, self).pass_information_from_cmd(cmd)
+             
+    #===========================================================================
+    # create the run_card
+    #=========================================================================== 
+    def create_run_card(self, matrix_elements, history):
+        """ """
+ 
+        run_card = banner_mod.RunCard()
+    
+        # pass to new default
+        run_card["run_tag"] = "\'DM\'"
+        run_card['dynamical_scale_choice'] = 4
+        run_card['lpp1'] = 0
+        run_card['lpp2'] = 0
+        run_card['use_syst'] = False
+        run_card.remove_all_cut()
+                  
+        run_card.write(pjoin(self.dir_path, 'Cards', 'run_card_default.dat'),
+                       template=pjoin(MG5DIR, 'Template', 'LO', 'Cards', 'run_card.dat'),
+                       python_template=True)
+        run_card.write(pjoin(self.dir_path, 'Cards', 'run_card.dat'),
+                       template=pjoin(MG5DIR, 'Template', 'LO', 'Cards', 'run_card.dat'),
+                       python_template=True)
+    
+        
+         
+class ProcessExporterIndirectDLO(ProcessExporterIndirectD,export_v4.ProcessExporterFortranMEGroup):
+    pass
+
+class ProcessExporterIndirectDLI(ProcessExporterIndirectD,loop_exporters.LoopInducedExporterMEGroup):
+    pass
+  
