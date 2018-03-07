@@ -2016,7 +2016,9 @@ class MADDMRunCmd(cmd.CmdShell):
 
         if not self.param_card_iterator:
                self.save_summary_single(relic = True, direct = self.mode['direct'], \
-                                indirect = self.mode['indirect'], fluxes_source= self.mode['indirect'].startswith('flux') , fluxes_earth = False )                  
+                                indirect = self.mode['indirect'], 
+                                fluxes_source=self.mode['indirect'].startswith('flux') if isinstance(self.mode['indirect'],str) else self.mode['indirect'], 
+                                fluxes_earth = False )                  
                logger.info('Results written in ' +pjoin(self.dir_path, 'output', 'MadDM_results.txt') )
 
 
