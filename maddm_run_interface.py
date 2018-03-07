@@ -1133,7 +1133,7 @@ class MADDMRunCmd(cmd.CmdShell):
     # ***** DRAGON
 
         #self.read_PPPC_positrons_earth()
-        self.run_Dragon()
+        #self.run_Dragon()
         
                     
     def run_pythia8_for_flux(self):
@@ -1519,7 +1519,7 @@ class MADDMRunCmd(cmd.CmdShell):
                        self.dNdE_dPhidE( energy,  x=x, dndlogx=dndlogx)
                        dNdE   = self.dNdE_int
                        dPhidE = self.dPhidE
-                       print 'FF res dNdE', dNdE , dPhidE
+                       #print 'FF res dNdE', dNdE , dPhidE
                        dNdE_a  .append(dNdE)
                        dPhidE_a.append(dPhidE)
 
