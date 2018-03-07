@@ -11,7 +11,8 @@ new_interface = maddm_interface.MadDM_interface
 
  
 ## Does it define a new output mode. Need to be define
-new_output = {'maddm': MGoutput.ProcessExporterMadDM}
+new_output = {'maddm': MGoutput.ProcessExporterMadDM,
+              'indirect': MGoutput.ProcessExporterIndirectD}
 new_reweight = {'indirect': MGoutput.Indirect_Reweight}
 
 ## The test/code have been validated up to this version

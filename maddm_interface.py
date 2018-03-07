@@ -478,7 +478,7 @@ class MadDM_interface(master_interface.MasterCmd):
                 with misc.TMP_variable(self,
                     ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps', '_done_export'],
                     [self._ID_procs, self._ID_matrix_elements, self._ID_amps, None]):
-                    super(MadDM_interface, self).do_output('madevent %s/Indirect' % path)
+                    super(MadDM_interface, self).do_output('indirect %s/Indirect' % path)
                 #ensure to sync the param_card
                 os.remove(pjoin(path, 'Indirect', 'Cards', 'param_card.dat'))
                 files.ln(pjoin(path, 'Cards', 'param_card.dat'), 
@@ -820,12 +820,9 @@ class MadDM_interface(master_interface.MasterCmd):
 
             self.exec_cmd('define q_mdm = 1 2 3 4 -1 -2 -3 -4')
             self.exec_cmd('define bsm = %s'  % bsm)
+
             final_states = ['bsm bsm','q_mdm q_mdm','21 21', '5 -5', '6 -6', '22 22', '23 23', '24 -24','25 25', '11 -11', '13 -13', '15 -15', '12 -12', '14 -14', '16 -16']
 
-
-            final_states = ['1 -1', '5 -5' , '21 21' ] 
-
-            final_state = ['1, -1']
             for final_state in final_states:
                 try: 
                     self.exec_cmd('add indirect %s --noloop' % final_state)
