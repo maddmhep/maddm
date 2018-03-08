@@ -57,7 +57,10 @@ logger = logging.getLogger('madgraph.plugin.maddm')
 MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
 PPPCDIR = os.getcwd()+'/PPPC4DMID/'
 
-os.system('rm /home/users/f/a/fambrogi/NEW_MADDM/BZR_DEF_30Jan/maddm_dev2/Test/Indirect/RunWeb') ## FF                                                                            
+#os.system('rm /home/users/f/a/fambrogi/NEW_MADDM/BZR_DEF_30Jan/maddm_dev2/Test/Indirect/RunWeb') ## FF                                                                       
+#os.system('rm /home/users/f/a/fambrogi/NEW_MADDM/BZR_DEF_30Jan/maddm_dev2/Test/output/Output_Indirect')
+#os.system('rm -r /home/users/f/a/fambrogi/NEW_MADDM/BZR_DEF_30Jan/maddm_dev2/Test/Indirect/Events')
+#os.system('mkdir /home/users/f/a/fambrogi/NEW_MADDM/BZR_DEF_30Jan/maddm_dev2/Test/Indirect/Events')
 
 #Is there a better definition of infinity?
 __infty__ = float('inf')
@@ -738,7 +741,6 @@ class MADDMRunCmd(cmd.CmdShell):
 
         result['tot_SM_xsec'] = -1
         sigv_indirect = 0.
-        #print 'FF the output is ', output 
         for line in open(pjoin(self.dir_path, output)):
       
                 splitline = line.split()
@@ -748,11 +750,8 @@ class MADDMRunCmd(cmd.CmdShell):
                     #output_name.append(oname)
                     val = splitline[2]
                     result[oname.split(':')[0] ] = val
-                    #result.append(float(val))
 
                 else:
-                    #result[splitline[0]] = float(splitline[1]) 
-                    #result[append(float(splitline[1]))
                     if self._two2twoLO:
                         sigv_indirect_error = 0. ## FF: never used anywhere???
                         if 'sigma*v' in line: 
@@ -772,9 +771,6 @@ class MADDMRunCmd(cmd.CmdShell):
 
 #                            output_name.append('taacsID#%s' % oname)
                             sigv_indirect += sigv_temp
-#                           output_name.append('err_taacsID#%s' % oname)
-#                           result.append(sigv_temp) #the value of cross section
-#                            result.append(0.e0) #put 0 for the error.
                     result[splitline[0].split(':')[0]] = float(splitline[1])
 
         result['taacsID'] = sigv_indirect
@@ -802,13 +798,15 @@ class MADDMRunCmd(cmd.CmdShell):
         
         # F Saving the results in self.last_results 
         self.last_results = result
-
+ 
+        print 'FF last result', result 
                   
 #        if self.mode['indirect'] and not self._two2twoLO:
 #            with misc.MuteLogger(names=['madevent','madgraph'],levels=[50,50]):
 #                self.launch_indirect(force)
 
         if self.mode['indirect']:
+            ### FF TO_DO ADD HERE the loading of the PPPC tables !!!
             with misc.MuteLogger(names=['madevent','madgraph'],levels=[50,50]):
                 self.launch_indirect(force)
 
@@ -831,6 +829,8 @@ class MADDMRunCmd(cmd.CmdShell):
             self.launch_multinest()
             self.multinest_running = False
 
+
+
         # --------------------------------------------------------------------#
         #   THIS PART IS FOR SEQUENTIAL SCANS
         # --------------------------------------------------------------------#
@@ -841,7 +841,11 @@ class MADDMRunCmd(cmd.CmdShell):
 
             self.param_card_iterator = []
             param_card_iterator.store_entry(nb_output, result)
-            self.save_remove_output(scan = True, point_number= nb_output )
+
+            print 'FF result ', result
+            print 'FF self.param_card_iterator ', self.param_card_iterator
+
+            self.save_remove_indirect_output(scan = True, point_number= nb_output ) ## this is to remove or save spectra, not the scan summary file!
 
             order = []
 
@@ -941,7 +945,7 @@ class MADDMRunCmd(cmd.CmdShell):
                         # logger.warning('--> try again WY0: %.2e' % width)
                         #<=-------------- Mihailo commented out max_col = 10
                         logger.info('Results for the point \n' + param_card_iterator.write_summary(None, order, lastline=True,nbcol=10)[:-1])#, max_col=10)[:-1])
-                        self.save_remove_output(scan = True, point_number= nb_output+1+i )
+                        self.save_remove_indirect_output(scan = True, point_number= nb_output+1+i )
 
 
 
@@ -955,6 +959,8 @@ class MADDMRunCmd(cmd.CmdShell):
             #print 'FF last results', self.last_results
             #print 'FF param card iterator ' , param_card_iterator 
             param_card_iterator.write_summary(path, order)
+
+
 
 
     def launch_multinest(self):
@@ -1100,7 +1106,7 @@ class MADDMRunCmd(cmd.CmdShell):
             #print 'FF sigmav , value , likeli ' , sigmav[0] , sigmav[1] , sigmav[2]
         #print "FF self.mode['indirect'] ***************  " + self.mode['indirect']
 
-        # ****** Calculating Fluxes
+        # ****** Calculating Fluxes Source
 
         if self.mode['indirect'].startswith('flux') :
             if 'pythia' in self.maddm_card['indirect_flux_source_method'] or self.maddm_card['sigmav_method'] != 'inclusive'  :
@@ -1116,14 +1122,19 @@ class MADDMRunCmd(cmd.CmdShell):
         #print 'FF save?' , self.maddm_card['save_output']
         #print 'FF new: profile, method, function', self.maddm_card['dm_profile'] , self.maddm_card['prop_method'] , self.maddm_card['halo_funct']       
 
-        # ***** neutrino oscillation      
-        if 'earth' in self.mode['indirect']: self.neu_oscillations()
 
-    # ***** DRAGON
+        # ****** Calculating Fluxes Earth                                                                                                                                        
+            if 'earth' in self.mode['indirect']: 
+                 self.neu_oscillations() # neutrinos oscillations
+                  
+                 if 'PPPC' in self.maddm_card['indirect_flux_earth_method']:
+                     self.read_PPPC_positrons_earth()
+                 elif 'dragon' in self.mode['flux_earth']:
+                     logger.info('Calling DRAGON for positrons and antiprotons propagation')
+                     self.read_PPPC_positrons_earth()
+                     #self.run_Dragon()                                                                                                                                     
 
-        #self.read_PPPC_positrons_earth()
-        #self.run_Dragon()
-        
+              
                     
     def run_pythia8_for_flux(self):
         """ compile and run pythia8 for the flux"""
@@ -1149,6 +1160,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 print e
                 logger.critical('Indirect detection, py8 script can not be compiled. Skip flux calculation')
                 return
+
         
         # Now write the card.
         if not self.in_scan_mode: 
@@ -1165,6 +1177,7 @@ class MADDMRunCmd(cmd.CmdShell):
             PY8_Card.write(pythia_cmd_card, 
                            pjoin(self.dir_path, 'Cards', 'pythia8_card_default.dat'),
                             direct_pythia_input=True)
+
             
         run_name = self.me_cmd.run_name
         # launch pythia8
@@ -1366,10 +1379,12 @@ class MADDMRunCmd(cmd.CmdShell):
 
          if 'PPPC4DMID' in self.maddm_card['indirect_flux_earth_method'] or self.maddm_card['sigmav_method'] == 'inclusive':
             if self.Spectra.check_mass(mdm):
-               PPPC_earth = self.Spectra.load_PPPC_earth(prof = PROF)
+               PPPC_earth = self.Spectra.load_PPPC_earth(prof = PROF) 
 
-         E = 10**PPPC_earth['x'] # converting Log10(E) in E ; will save fluxes as E vs dN/dE
+         E = 10**np.array(PPPC_earth['x']) # converting Log10(E) in E ; will save fluxes as E vs dN/dE
          self.Spectra.flux_earth_positrons['e'] = E
+
+         print 'FF arrays' , PPPC_earth['x'] ,E
 
          channels = self.last_results['available_channels']
          #print 'FF channels earth' , channels
@@ -1406,7 +1421,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 val = val + temp_dic[k]['spec'][num] * ( temp_dic[k]['xsec'] / self.last_results['tot_SM_xsec'] )
             sum_spec.append(val)
 
-         self.Spectra.flux_positrons_earth['positrons']['dPhidlogE'] = sum_spec
+         self.Spectra.flux_earth_positrons['positrons']['dPhidlogE'] = sum_spec
 
 
 
@@ -2023,6 +2038,9 @@ class MADDMRunCmd(cmd.CmdShell):
     # point number must be e.g. run_xx for madevent , or 1,2, ecc. for PPPC 
     def save_remove_indirect_output(self, scan = False, point_number= -1):
 
+        if point_number < 10: # to uniform incusive vs madevent/reshuffling naming convention
+           point_number = '0'+ str(point_number)
+
         ind_mode = self.mode['indirect']      
         save_switch = self.maddm_card['save_output']
 
@@ -2046,7 +2064,7 @@ class MADDMRunCmd(cmd.CmdShell):
         if save_switch == 'off':
            spec_source, flux_source , flux_earth  = False, False, False
 
-        print 'FF ind_mode , spec_source , flux_source , flux_earth ' , ind_mode , spec_source , flux_source , flux_earth 
+        #print 'FF ind_mode , spec_source , flux_source , flux_earth ' , ind_mode , spec_source , flux_source , flux_earth 
 
         # Saving the output in the general output directory for a single point        
         if not scan: 
@@ -2060,8 +2078,11 @@ class MADDMRunCmd(cmd.CmdShell):
              if not os.path.exists(pjoin(self.dir_path, 'output' , 'Output_Indirect')) :
                     os.symlink(events, pjoin(self.dir_path, 'output' , 'Output_Indirect') ) # Creating the symbolic link to the Events directory (inside Indirect)
              if not os.path.exists(dir_point)       : os.makedirs(dir_point)
-        
+
              out_dir = dir_point # all the various output must be saved here             
+
+
+             print 'FF out_dir to be removed **************** ', out_dir
 
    
              if save_switch == 'off':
@@ -2070,14 +2091,14 @@ class MADDMRunCmd(cmd.CmdShell):
                                       
              elif save_switch == 'all':
                  if self.maddm_card['sigmav_method'] == 'inclusive': # saving spectra onyl in inclusive mode since madevent/resh have their own pythia8 spectra             
-                    self.save_spec_flux(self, out_dir = out_dir, spec_source = spec_source, flux_source = flux_source, flux_earth = flux_earth)
+                    self.save_spec_flux(out_dir = out_dir, spec_source = spec_source, flux_source = flux_source, flux_earth = flux_earth)
                  
                  elif self.maddm_card['sigmav_method'] != 'inclusive':
-                    self.save_spec_flux(self, out_dir = out_dir, spec_source = False, flux_source = flux_source, flux_earth = flux_earth)
+                    self.save_spec_flux(out_dir = out_dir, spec_source = False, flux_source = flux_source, flux_earth = flux_earth)
 
              elif save_switch == 'spectra':
                   if self.maddm_card['sigmav_method'] == 'inclusive':
-                       self.save_spec_flux(self, out_dir = out_dir, spec_source = spec_source, flux_source = flux_source, flux_earth = flux_earth)
+                       self.save_spec_flux(out_dir = out_dir, spec_source = spec_source, flux_source = flux_source, flux_earth = flux_earth)
                   else:
                        print 'FF removing extra pythia files'
                        if os.path.isfile( pjoin(out_dir,'unweighted_events.lhe.gz') ):
@@ -2125,10 +2146,11 @@ class MADDMRunCmd(cmd.CmdShell):
                    print 'FF the neutrino earth flux is ', out_dir + '/' + flux + '_flux_source.txt'
 
 
-           if 'PPPC' in spec_method: # for PPPC4DMID, I save also the positron at earth
+           if 'PPPC' in self.maddm_card['indirect_flux_earth_method']: # for PPPC4DMID, I save also the positron at earth
                e = self.Spectra.flux_earth_positrons['e']
                header = '# E[GeV]   dPhi/dlogE [particles/(cm2 s sr)]  positrons \t PPPC4DMID flux at earth'
-               dPhidlogE = self.Spectra.flux_earth_positrons['positrons']
+               dPhidlogE = self.Spectra.flux_earth_positrons['positrons']['dPhidlogE']
+               print 'FF e , dPhidloge', e , dPhidlogE 
                aux.write_data_to_file(e , dPhidlogE  , filename = out_dir + '/positrons_flux_earth.txt' , header = header )
 
         '''
