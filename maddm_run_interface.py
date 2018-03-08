@@ -57,7 +57,7 @@ logger = logging.getLogger('madgraph.plugin.maddm')
 MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
 PPPCDIR = os.getcwd()+'/PPPC4DMID/'
 
-os.system('rm /home/users/f/a/fambrogi/NEW_MADDM/BZR_DEF_30Jan/maddm_dev2/Casina/Indirect/RunWeb') ## FF                                                                            
+os.system('rm /home/users/f/a/fambrogi/NEW_MADDM/BZR_DEF_30Jan/maddm_dev2/Test/Indirect/RunWeb') ## FF                                                                            
 
 #Is there a better definition of infinity?
 __infty__ = float('inf')
@@ -204,8 +204,9 @@ class Spectra:
 
 
         # fluxes_earth only filled if using PPPC4DMID method (no reading from Dragon output)
-        self.flux_earth_positrons    = {'e':[] , 'positrons':[] } 
-        self.flux_earth_neutrinos    = {'e':[] , 'neutrinos_tau':[],'neutrinos_mu':[], 'neutrinos_e':[]  }
+        self.flux_earth_positrons    = {'e':[] , 'positrons': { 'dPhidlogE':[] } } 
+        self.flux_earth_neutrinos    = {'e':[] , 'neutrinos_tau':{'dNdE':[]}, 'neutrinos_mu':{'dNdE':[]}, 'neutrinos_e':{'dNdE':[] } }
+
         self.channels      = ['ee', 'mumu', 'tautau', 'qq', 'cc', 'bb', 'tt', 'ZZ', 'WW', 'hh', 'gammagamma', 'gg']
 
         self.map_allowed_final_state_PPPC = {'qqx':'qq', 'ccx':'cc', 'gg':'gg', 'bbx':'bb', 'ttx':'tt',
@@ -778,19 +779,14 @@ class MADDMRunCmd(cmd.CmdShell):
 
         result['taacsID'] = sigv_indirect
                             
-        #cr_names = ['gamma',  'pbar', 'e+', 'neue', 'neumu', 'neutau']
-        #cr_names = ['g',  'p', 'e', 'nue', 'numu', 'nutau']
         cr_names = ['p', 'e']
         np_names = ['g','nue','numu','nutau']
-
-        #Here we need to add the Cr flux output into the order and zip the results before
-        #extracting numbers for fluxes because dPhidE needs results['taacsID..'] to be present.
 
         if str(self.mode['indirect']).startswith('flux'):
             for chan in np_names:
                 result['flux_%s' % chan] = -1.0
 
-        # xsi factor
+        # Calculating the xsi factor
         if result['Omegah^2'] < 0:                                                                                                                                                             result['xsi'] = 1.0   
         elif result['Omegah^2'] < self.limits._oh2_planck and result['Omegah^2'] > 0:
            result['xsi'] = result['Omegah^2'] / self.limits._oh2_planck
@@ -806,7 +802,6 @@ class MADDMRunCmd(cmd.CmdShell):
         
         # F Saving the results in self.last_results 
         self.last_results = result
-        #print 'FF LAST RESULTS' , self.last_results
 
                   
 #        if self.mode['indirect'] and not self._two2twoLO:
@@ -999,10 +994,8 @@ class MADDMRunCmd(cmd.CmdShell):
     def launch_indirect(self, force):
         """running the indirect detection"""
 
-        #If the Indirect subfolder is not created, that means that the code is
-        #using the 2to2 at LO which is handled by maddm.f. Then just skip this part
-        
-        # what if the directory is there from before and I want to change the method for the next run?
+        print "FF self.mode['indirect'] ", self.mode['indirect']
+
         if not os.path.exists(pjoin(self.dir_path, 'Indirect')):
             self._two2twoLO = True
             #return
@@ -1101,7 +1094,7 @@ class MADDMRunCmd(cmd.CmdShell):
         elif gammas: 
             #print 'FF majorana dirac' , self.norm_Majorana_Dirac() 
             sigmav = self.Fermi.Fermi_sigmav_lim(mdm, x , gammas ,maj_dirac= self.norm_Majorana_Dirac() ) # Returns a 3d array with [sigmav,pvalue,likel.]
-            self.last_results['Fermi_sigmav'] = sigmav[0] # FF store the results from the Fermi limit calculation                                                                  
+            self.last_results['Fermi_sigmav'] = sigmav[0] # FF store the results from the Fermi limit calculation                                    
             self.last_results['pvalue']       = sigmav[1]
             self.last_results['like_tot']     = sigmav[2]
             #print 'FF sigmav , value , likeli ' , sigmav[0] , sigmav[1] , sigmav[2]
@@ -1115,20 +1108,16 @@ class MADDMRunCmd(cmd.CmdShell):
             elif 'PPPC' in self.maddm_card['indirect_flux_source_method'] and self.maddm_card['sigmav_method'] == 'inclusive':
                 logger.info('Calculating cosmic rays fluxes using the spectra from the PPPC4DMID Tables')
             self.calculate_fluxes_source_n()
-        # FF saving PPPC spectra in the output folder (py8 spectra are copied from the Indirect fodler already)                                                                                                         
-        #if 'PPPC' in self.maddm_card['indirect_flux_source_method']:
+        # FF saving PPPC spectra in the output folder (py8 spectra are copied from the Indirect fodler already)                                                  
+        # if 'PPPC' in self.maddm_card['indirect_flux_source_method']:
         #    self.save_PPPC_spectra()
             
 
-        print 'FF save?' , self.maddm_card['save_output']
+        #print 'FF save?' , self.maddm_card['save_output']
+        #print 'FF new: profile, method, function', self.maddm_card['dm_profile'] , self.maddm_card['prop_method'] , self.maddm_card['halo_funct']       
 
-        print 'FF new: profile, method, function', self.maddm_card['dm_profile'] , self.maddm_card['prop_method'] , self.maddm_card['halo_funct']       
-
-    
-
-    # ***** neutrino oscillation
-      
-        self.neu_oscillations()
+        # ***** neutrino oscillation      
+        if 'earth' in self.mode['indirect']: self.neu_oscillations()
 
     # ***** DRAGON
 
@@ -1223,7 +1212,7 @@ class MADDMRunCmd(cmd.CmdShell):
         #if ret_code != 0:
         #    raise self.InvalidCmd, 'Pythia8 shower interrupted with return code %d.\n'%ret_code+ ' You can find more information in this log file:\n%s' % pythia_log
 
-                                                   
+        '''                                           
         for sp,k in self.Spectra.spectra_id.iteritems() :
             sp_name = sp + '_lhe.dat'
         
@@ -1232,7 +1221,7 @@ class MADDMRunCmd(cmd.CmdShell):
             out_dir = pjoin(self.dir_path,'output', sp_name.replace('lhe','pythia8') )
             print 'FF copying pythia spectra'
             shutil.copyfile(sp_out , out_dir )
-
+        '''
 
 
         ### FF I move the spectra at source produced by Pythia8 to the output directory
@@ -1380,7 +1369,7 @@ class MADDMRunCmd(cmd.CmdShell):
                PPPC_earth = self.Spectra.load_PPPC_earth(prof = PROF)
 
          E = 10**PPPC_earth['x'] # converting Log10(E) in E ; will save fluxes as E vs dN/dE
-         self.Spectra.flux_earth_positrons['e_p'] = E
+         self.Spectra.flux_earth_positrons['e'] = E
 
          channels = self.last_results['available_channels']
          #print 'FF channels earth' , channels
@@ -1417,7 +1406,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 val = val + temp_dic[k]['spec'][num] * ( temp_dic[k]['xsec'] / self.last_results['tot_SM_xsec'] )
             sum_spec.append(val)
 
-         self.Spectra.flux_positrons_earth['positrons'] = sum_spec
+         self.Spectra.flux_positrons_earth['positrons']['dPhidlogE'] = sum_spec
 
 
 
@@ -1438,11 +1427,10 @@ class MADDMRunCmd(cmd.CmdShell):
 
         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
 
-        
         self.Spectra.flux_earth_neutrinos['e'  ]           =  self.Spectra.flux_source['e']
-        self.Spectra.flux_earth_neutrinos['neutrinos_e'  ] = nue_earth
-        self.Spectra.flux_earth_neutrinos['neutrinos_mu' ] = numu_earth
-        self.Spectra.flux_earth_neutrinos['neutrinos_tau'] = nutau_earth
+        self.Spectra.flux_earth_neutrinos['neutrinos_e'  ]['dNdE'] = nue_earth
+        self.Spectra.flux_earth_neutrinos['neutrinos_mu' ]['dNdE'] = numu_earth
+        self.Spectra.flux_earth_neutrinos['neutrinos_tau']['dNdE'] = nutau_earth
         
         
 
@@ -1484,8 +1472,8 @@ class MADDMRunCmd(cmd.CmdShell):
                  else: method = 'PPPC4DMID' 
                  out_spec.write ('# Spectra from ' + method + ' Tables \n')
                  out_spec.write ('# x=Ekin/mDM      dn/dlogx   ')
-                 for x,s in zip(self.Spectra.spectra['x'], self.Spectra.spectra[spec] ):
-                      #print '%.3g  %.3e' % ( np.log10(x) , s )                                                                                                                 
+                 for x,s in zip(self.Spectra.spectra['x'], self.Spectra.spectra[spec] )
+                      #print '%.3g  %.3e' % ( np.log10(x) , s )                                                                                                             
                      out_spec.write( ' %.4e     %.4e \n' % ( np.log10(x) , s ) )
                  out_spec.close()
         
@@ -1493,28 +1481,26 @@ class MADDMRunCmd(cmd.CmdShell):
         
         if earth:
      ''' 
-
     def calculate_fluxes_source_n(self):
-
-        #print 'FF the spectra are', self.Spectra.spectra                                                                                                                           
-        CR = {'gammas':'g'      , 'neutrinos_e':'nue' , 'neutrinos_mu':'numu' , 'neutrinos_tau':'nutau' , 'antiprotons':'p' , 'positrons':'e' }
-
-        self.CR_fluxes_source = { 'Energies':'', 'dPhidE_g':'', 'dPhidE_nue':'', 'dPhidE_numu':'' , 'dPhidE_nutau':'', 'dPhidE_e':'', 'dPhidE_p':'' }
-
+        #print 'FF the spectra are', self.Spectra.spectra                                                                                                                     
+        # self.Spectra.spectra = = {'x':[] , 'antiprotons':[], 'gammas':[], 'neutrinos_e':[], 'neutrinos_mu':[], 'neutrinos_tau':[], 'positrons':[] }
+        cr_spectra = self.Spectra.spectra.keys()
+        mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
         if self.mode['indirect'].startswith('flux'):
-             mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
-             npts = self.maddm_card['npts_for_flux']
-             energies = [1.0*(mdm)/ npts * n for n in range(npts)] ##  logscale is better, to be changed...                                                                    
-    
-             #self.CR_fluxes['Energies'] = energies
 
-             x = self.Spectra.spectra['x']
+             x = np.array (self.Spectra.spectra['x'] )
+             E = x*mdm
+             self.Spectra.flux_source['e'] = E
 
-             for chan,chan_n in CR.iteritems():
-                   dndlogx = self.Spectra.spectra[chan]
-                   # storing the arrays of results
-                   dNdE_a, dPhidE_a = [] , []
+             for spec in cr_spectra:
+                   if spec == 'x': continue
+                   dNdlogx = self.Spectra.spectra[spec] # as it is saved from PPPC or Pythia
+                   dNdE = dNdlogx / (E*2.30259)          
+                   self.Spectra.flux_source[spec]['dNdE'] = dNdE 
+                   Phi = self.Phi(chan= spec)
 
+                   '''
+                   Only needed for dPhidE
                    for energy in energies:
                        self.dNdE_dPhidE( energy,  x=x, dndlogx=dndlogx)
                        dNdE   = self.dNdE_int
@@ -1522,13 +1508,11 @@ class MADDMRunCmd(cmd.CmdShell):
                        #print 'FF res dNdE', dNdE , dPhidE
                        dNdE_a  .append(dNdE)
                        dPhidE_a.append(dPhidE)
-
                    self.Spectra.flux_source[chan]['dNdE']   = dNdE_a
                    self.Spectra.flux_source[chan]['dPhidE'] = dPhidE_a
+                   '''
 
-                   
-                   # saving energy-integrated flux                                                                                                                              
-                   self.last_results['flux_%s' % chan_n] = self.Phi(x, dndlogx)
+                   self.last_results['flux_%s' % spec] = Phi 
 
 
 
@@ -1580,38 +1564,53 @@ class MADDMRunCmd(cmd.CmdShell):
 #                        aux.write_data_to_file(energies, Espectrum, filename=dNde_filename, header='# E_kin [GeV]   dNdE [GeV^-1]')
     '''
 
-
-    def dNdE_dPhidE(self, interp, x='', dndlogx=''):
+    # dndlogx for each differen channel
+    def dNdE_dPhidE(self, energy, channel='' ):
         # input: values of x=Ekin/mDM and dn/dlogx (as PPPC tables)
         # - transforms into E and dN/dE
         # - gives the differential flux dPhi/dE averaged over the opening angle
-
-        ## changes by chiara below (i.e. changed name of variables and corrected a typo dNdx instead of dNdE and changed path to files)                                      
-        x, dndlogx = np.array(x) , np.array(dndlogx)
-        #print 'FF x , dndlogx', X , dndlogx                                                                                                                                     
         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
 
-        E        = x*mdm 
-        dNdE     = dndlogx /(E*2.30259)  
-        dNdE_int = np.interp(interp, E, dNdE ) # interpolated value for an energy of value = interp.
+        E = self.Spectra.flux_source['e']
+        dndlogx = np.array( self.Spectra.spectra[channel] )
+        dNdE    = dndlogx /(E*2.30259)
+ 
+        # up to here only conversion from dN/dlogx to dN/dE
 
-        #print 'FF dNdE_int', dNdE_int 
-        # *** generic differential flux dPhi/dE
         sigv = self.last_results['taacsID']
         halo_profile = self.maddm_card['halo_profile']
         jfact = self.maddm_card['jfactors'][halo_profile]
-        dPhidE = 1.0/(self.norm_Majorana_Dirac() *2* math.pi*mdm*mdm)*sigv*jfact * dNdE_int # diff.flux for the energy == interp. 
-        #print 'FF dPhidE', dPhidE
 
-        #npts =  self.maddm_card['npts_for_flux']
-        #grid = [de*2*mdm/npts for de in range(0, npts+1)]
+        dNdE_int = np.interp(energy, E, dNdE ) # interpolated value for an energy of value = interp.
 
-        #integrate_dPhidE = aux.integrate(dNdE_int, grid)  # 1/mdm                                                                                                           
-        #Phi = 1.0/(self.norm_Majorana_Dirac *math.pi*mdm*mdm)*sigv*jfact*integrate_dNdE
-        self.dNdE_int = dNdE_int
-        #print 'FF self.dNdE_int', self.dNdE_int
-        self.dPhidE   = dPhidE
+        # *** generic differential flux dPhi/dE
+        #dPhidE = 1.0/(self.norm_Majorana_Dirac() *2* math.pi*mdm*mdm)*sigv*jfact * dNdE_int # diff.flux for the energy == interp. 
+        
         return dNdE_int
+
+
+    def Phi(self, chan= ''):
+
+        mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
+        sigv = self.last_results['taacsID']
+        halo_profile = self.maddm_card['halo_profile']
+        jfact = self.maddm_card['jfactors'][halo_profile]
+
+        npts =  self.maddm_card['npts_for_flux']
+        grid = [de*2*mdm/npts for de in range(0, npts+1)]
+            #CHECK HERE THAT THE JACOBIAN FROM X TO E IS CORRECT                                                                                                                
+        #dNdE, dPhidE = self.dNdE_dPhidE(interp, x=x, dndlogx=dndlogx)                                                                                                         
+        integrate_dNdE = aux.integrate( self.dNdE_dPhidE  , grid , channel = chan ) # the last are the arguments of the function                                         
+        #print 'FF integrate_dNdE' , integrate_dNdE                                                                                                                             
+        phi = 1.0/(self.norm_Majorana_Dirac()*2*math.pi*mdm*mdm)*sigv*jfact*integrate_dNdE                                                                                     
+        #print 'FF phi is', phi                                                                                                                                               
+        return phi
+
+
+
+
+
+
 
     
     '''
@@ -1672,7 +1671,7 @@ class MADDMRunCmd(cmd.CmdShell):
          
         return dphi
     '''
-
+    '''
     def Phi(self, x, dndlogx):                                                                                                                     
         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])                                                                            
         sigv = self.last_results['taacsID']                                                                                                                                  
@@ -1690,7 +1689,7 @@ class MADDMRunCmd(cmd.CmdShell):
      
         #print 'FF phi is', phi 
         return phi 
-
+    '''
 
 
     '''
@@ -1901,9 +1900,10 @@ class MADDMRunCmd(cmd.CmdShell):
             logger.info(' sigmaN_SD_p    th: %.2e GeV^-2 = %.2e cm^2   \t ul: %.2e cm^2 %s',xsi*sigN_SD_p, xsi*sigN_SD_p*GeV2pb*pb2cm2,self.limits.SD_max(mdm,'p'),pass_dd_sd_proton
             logger.info(' sigmaN_SD_n    th: %.2e GeV^-2 = %.2e cm^2   \t ul: %.2e cm^2 %s',xsi*sigN_SD_n, xsi*sigN_SD_n*GeV2pb*pb2cm2,self.limits.SD_max(mdm,'n'),pass_dd_sd_neutron)          '''
 
-        if self.mode['direct'] == 'directional':
-            logger.info(' Nevents          : %i', self.last_results['Nevents'])
-            logger.info(' smearing         : %.2e', self.last_results['smearing'])
+         
+#        if self.mode['direct'] == 'directional':
+#            logger.info(' Nevents          : %i', self.last_results['Nevents'])
+#            logger.info(' smearing         : %.2e', self.last_results['smearing'])
         
         if self.mode['capture']:
             logger.info('\n capture coefficients: ')
@@ -1997,52 +1997,141 @@ class MADDMRunCmd(cmd.CmdShell):
 
             if str(self.mode['indirect']).startswith('flux'):
                 logger.info('*** Fluxes at source:')
-                #logger.info('\n  gamma-ray flux: ')
-                # FF nutau does not work np_names = ['g','nue', 'numu', 'nutau'] #,  'p', 'e', ]
-                #cr_names = ['gamma',  'pbar', 'e+', 'neue', 'neumu', 'neutau']
-                #cr_names = ['gamma',  'pbar', 'e+', 'neue', 'neumu', 'neutau']                                                                                                  
+  
                 np_names = {'gammas':'g'      , 'neutrinos_e':'nue' , 'neutrinos_mu':'numu' , 'neutrinos_tau':'nutau'}
 
                 logger.info('*** Total flux for neutral particles at source:')
-                for chan in np_names.values():
+                for chan in np_names.keys():
                     logger.info('%10s : %.3e \t particles/[cm^2 s sr]' %(chan, self.last_results['flux_%s' % chan] ))
                 print '\n'
-                logger.info('Differential fluxes [GeV^-1 cm^-2 s^-1 sr^-1]  written in output/dPhidE_dSphName_<>.txt for gamma and neutrinos')
-                logger.info('Differential spectrum [GeV^-1]  written in output/dNdE_<>.txt for antiprotons and positrons')
 
-        np.save(pjoin(self.dir_path, 'output','Results'), self.last_results)
-        ##print '\n \n FF Results.npy = ' , self.last_results 
+
+        # Internal: save the results as a numpy dictionary
+        # np.save(pjoin(self.dir_path, 'output','Results'), self.last_results)
 
 
         if not self.param_card_iterator:
             self.save_summary_single(relic = True, direct = self.mode['direct'], \
                                 indirect = self.mode['indirect'], 
-                                fluxes_source=self.mode['indirect'].startswith('flux') if isinstance(self.mode['indirect'],str) else self.mode['indirect'], 
+                                fluxes_source= self.mode['indirect'].startswith('flux') if isinstance(self.mode['indirect'],str) else self.mode['indirect'], 
                                 fluxes_earth = False )                  
             logger.info('Results written in ' +pjoin(self.dir_path, 'output', 'MadDM_results.txt') )
 
+        self.save_remove_indirect_output(scan = False)
 
 
     # point number must be e.g. run_xx for madevent , or 1,2, ecc. for PPPC 
-    def save_remove_output(self, scan = False, point_number= -1):
-      
-        h_flux = '# Energy [GeV]    Differential Flux [GeV^-1 cm^-2 s^-1 sr^-1]'
+    def save_remove_indirect_output(self, scan = False, point_number= -1):
+
+        ind_mode = self.mode['indirect']      
         save_switch = self.maddm_card['save_output']
-        if self.maddm_card['indirect_flux_source_method']== 'sigmav': return 0
+
         spectrum_method = self.maddm_card['indirect_flux_source_method']
+
+        # Setting the various paths
+        source_indirect = pjoin(self.dir_path,    'Indirect'      )
+        events          = pjoin(source_indirect,  'Events'        )
+        dir_point       = pjoin(events, 'run_'+ str(point_number) )
+
+        # If indirect is called, then spectra_source == True by def. The other two options depends on the user choice (sigmav, flux_source, flux_earth)
+        spec_source, flux_source , flux_earth = '','',''
+   
+        if ind_mode:
+           spec_source = True
+        if 'source' in ind_mode:
+           flux_source = True
+        elif 'earth' in ind_mode  and 'inclusive' in  self.maddm_card['sigmav_method']:
+           flux_source , flux_earth = True , True
+
+        if save_switch == 'off':
+           spec_source, flux_source , flux_earth  = False, False, False
+
+        print 'FF ind_mode , spec_source , flux_source , flux_earth ' , ind_mode , spec_source , flux_source , flux_earth 
+
+        # Saving the output in the general output directory for a single point        
+        if not scan: 
+               out_dir = pjoin(self.dir_path, 'output')
+               self.save_spec_flux(out_dir = out_dir, spec_source = spec_source, flux_source = flux_source, flux_earth = flux_earth)    
+               logger.info('Output files saved in ' + pjoin(self.dir_path, 'output') )
+
+        elif   scan:
+             if not os.path.exists(source_indirect) : os.makedirs(source_indirect)
+             if not os.path.exists(events)          : os.makedirs(events)
+             if not os.path.exists(pjoin(self.dir_path, 'output' , 'Output_Indirect')) :
+                    os.symlink(events, pjoin(self.dir_path, 'output' , 'Output_Indirect') ) # Creating the symbolic link to the Events directory (inside Indirect)
+             if not os.path.exists(dir_point)       : os.makedirs(dir_point)
+        
+             out_dir = dir_point # all the various output must be saved here             
+
+   
+             if save_switch == 'off':
+                 if self.maddm_card['sigmav_method'] != 'inclusive': # here, need to remove everyhting i.e. the whole run_xx folder
+                    shutil.rmtree(out_dir)
+                                      
+             elif save_switch == 'all':
+                 if self.maddm_card['sigmav_method'] == 'inclusive': # saving spectra onyl in inclusive mode since madevent/resh have their own pythia8 spectra             
+                    self.save_spec_flux(self, out_dir = out_dir, spec_source = spec_source, flux_source = flux_source, flux_earth = flux_earth)
+                 
+                 elif self.maddm_card['sigmav_method'] != 'inclusive':
+                    self.save_spec_flux(self, out_dir = out_dir, spec_source = False, flux_source = flux_source, flux_earth = flux_earth)
+
+             elif save_switch == 'spectra':
+                  if self.maddm_card['sigmav_method'] == 'inclusive':
+                       self.save_spec_flux(self, out_dir = out_dir, spec_source = spec_source, flux_source = flux_source, flux_earth = flux_earth)
+                  else:
+                       print 'FF removing extra pythia files'
+                       if os.path.isfile( pjoin(out_dir,'unweighted_events.lhe.gz') ):
+                          os.remove( pjoin(out_dir,'unweighted_events.lhe.gz') )
+                          os.remove( pjoin(out_dir,'run_shower.sh') )
        
-        if scan and save_switch != 'off':
 
-            source_indirect = pjoin(self.dir_path,    'Indirect'      )
-            events          = pjoin(source_indirect, 'Events'        )
-            dir_point       = pjoin(events, 'run_'+ str(point_number) )
 
-            if not os.path.exists(source_indirect) : os.makedirs(source_indirect)
-            if not os.path.exists(events)          : os.makedirs(events)
-            if not os.path.exists(dir_point)       : os.makedirs(dir_point)
+              
 
-            out_dir = dir_point # all the various output must be saved here             
+    # This aux function saves the spectra/fluxes in the given directory out_dir
+    def save_spec_flux(self, out_dir = '' , spec_source = False, flux_source = False, flux_earth = False):
+        if not out_dir: out_dir = pjoin(self.dir_path, 'output') # default output directory if not defined
 
+        spec_method = self.maddm_card['indirect_flux_source_method']
+
+        if spec_source:
+           x = self.Spectra.spectra['x']
+           for spec in self.Spectra.spectra.keys():
+               header = '# x=Ekin/mDM     dn/dlogx   ' + spec + '\t' + self.maddm_card['indirect_flux_source_method'] + ' spectra at source'
+               if 'x' not in spec:
+                   dndlogx = self.Spectra.spectra[spec]
+                   aux.write_data_to_file(x , dndlogx  , filename = out_dir + '/' + spec + '_spectrum_source.txt' , header = header )
+                     
+        if flux_source:
+           logger.debug('FF saving flux source')
+           e = self.Spectra.flux_source['e']
+           for flux in self.Spectra.flux_source.keys():
+               header = '# E[GeV]   dN/dE ' + flux + '\t' + self.maddm_card['indirect_flux_source_method'] +' flux at source'
+               if flux != 'e':
+                   dNdE = self.Spectra.flux_source[flux]['dNdE']
+
+                   aux.write_data_to_file(e , dNdE  , filename = out_dir + '/' + flux + '_flux_source.txt' , header = header )
+                   print 'FF the flux is ', out_dir + '/' + flux + '_flux_source.txt' 
+
+
+        if flux_earth:
+           logger.debug('FF saving flux earth')
+           e = self.Spectra.flux_earth_neutrinos['e']
+           for flux in self.Spectra.flux_earth_neutrinos.keys():
+               header = '# E[GeV]   dN/dE ' + flux + '\t' + self.maddm_card['indirect_flux_source_method'] +' flux at earth'
+               if flux != 'e':
+                   dNdE = self.Spectra.flux_earth_neutrinos[flux]['dNdE']
+                   aux.write_data_to_file(e , dNdE  , filename = out_dir + '/' + flux + '_flux_earth.txt' , header = header )
+                   print 'FF the neutrino earth flux is ', out_dir + '/' + flux + '_flux_source.txt'
+
+
+           if 'PPPC' in spec_method: # for PPPC4DMID, I save also the positron at earth
+               e = self.Spectra.flux_earth_positrons['e']
+               header = '# E[GeV]   dPhi/dlogE [particles/(cm2 s sr)]  positrons \t PPPC4DMID flux at earth'
+               dPhidlogE = self.Spectra.flux_earth_positrons['positrons']
+               aux.write_data_to_file(e , dPhidlogE  , filename = out_dir + '/positrons_flux_earth.txt' , header = header )
+
+        '''
         else: out_dir = pjoin(self.dir_path, 'output')
 
         if save_switch == 'off':
@@ -2077,7 +2166,8 @@ class MADDMRunCmd(cmd.CmdShell):
                                 out_spec = pjoin(out_dir, spec + '_flux_earth_'+spectrum_method+'.txt')
                                 x = self.Spectra.spectra['x'] # !!! the x for oscillated neutrinos is the same for the spectra but not the same for positrons!!!
                                 aux.write_data_to_file(x , self.Spectra.spectra_earth[spec] , filename = out_spec , header = h_flux )
-
+     >>>>>>> MERGE-SOURCE
+    '''
     
     def print_ind(self,what, sig_th, sig_alldm, ul,  thermal=False ,direc = False , exp='Fermi'):
         alldm_mess = self.det_message_screen(sig_alldm , ul)
@@ -2201,13 +2291,12 @@ class MADDMRunCmd(cmd.CmdShell):
             out.write( form_s('Fermi_pvalue'    )+ '= '+ form_s(form_n(pvalue    ))  +'\n ')
 
         if fluxes_source:
-            out.write('\n#############################################\n')
-            out.write('# CR Flux at source [particles/(cm^2 s sr)] #\n')
-            out.write('#############################################\n\n')
-            out.write('# Fluxes calculated using the spectra from ' + self.maddm_card['indirect_flux_source_method'] + '\n\n' )
-            for name in ['nue','numu','nutau','g']:
-                gamma = name.replace('g','gamma')
-                out.write(form_s('Flux_'+gamma)+'= '+ form_s(form_n(self.last_results['flux_'+name] )) + '\n' )
+           out.write('\n#############################################\n')
+           out.write('# CR Flux at source [particles/(cm^2 s sr)] #\n')
+           out.write('#############################################\n\n')
+           out.write('# Fluxes calculated using the spectra from ' + self.maddm_card['indirect_flux_source_method'] + '\n\n' )
+           for name in ['neutrinos_e','neutrinos_mu','neutrinos_tau','gammas']:
+                out.write(form_s('Flux_'+name)+ '= '+ form_s(form_n(self.last_results['flux_'+name] )) + '\n' )
  
         if fluxes_earth:
             out.write('############################################\n')
