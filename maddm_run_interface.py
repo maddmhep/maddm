@@ -57,7 +57,9 @@ logger = logging.getLogger('madgraph.plugin.maddm')
 MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
 PPPCDIR = os.getcwd()+'/PPPC4DMID/'
 
-#os.system('rm /home/users/f/a/fambrogi/NEW_MADDM/BZR_DEF_30Jan/maddm_dev2/Test/Indirect/RunWeb') ## FF                                                                       
+
+os.system('rm /scratch/federico/MadDM/maddm_dev2/DRAGON/Indirect/RunWeb')
+#os.system('rm /home/users/f/a/fambrogi/NEW_MADDM/BZR_DEF_30Jan/maddm_dev2/DRAGON/Indirect/RunWeb') ## FF                                                                       
 #os.system('rm /home/users/f/a/fambrogi/NEW_MADDM/BZR_DEF_30Jan/maddm_dev2/Test/output/Output_Indirect')
 #os.system('rm -r /home/users/f/a/fambrogi/NEW_MADDM/BZR_DEF_30Jan/maddm_dev2/Test/Indirect/Events')
 #os.system('mkdir /home/users/f/a/fambrogi/NEW_MADDM/BZR_DEF_30Jan/maddm_dev2/Test/Indirect/Events')
@@ -798,7 +800,9 @@ class MADDMRunCmd(cmd.CmdShell):
         
         # F Saving the results in self.last_results 
         self.last_results = result
- 
+        self.last_results['point_number'] = nb_output
+        
+        
         #print 'FF last result', result 
                   
 #        if self.mode['indirect'] and not self._two2twoLO:
@@ -814,10 +818,16 @@ class MADDMRunCmd(cmd.CmdShell):
         #    result['taacsID'] = sigv_indirect
         #    result['err_taacsID'] = math.sqrt(sigv_indirect_error)
 
+
+        
         if not self.in_scan_mode and not self.multinest_running:
             self.print_results()
 
+        # Saving or removing output    
+        # self.save_remove_indirect_output(scan = False, point_number= nb_output )
 
+
+        
 
         # --------------------------------------------------------------------#
         #   THIS PART IS FOR MULTINEST SCANS
@@ -937,11 +947,14 @@ class MADDMRunCmd(cmd.CmdShell):
                     
                     for i,card in enumerate(param_card_iterator):
 
+                        point_number = nb_output+i+1
+                        self.last_results['point_number'] = point_number
+                        
                         card.write(pjoin(self.dir_path,'Cards','param_card.dat'))
                         self.exec_cmd("launch -f", precmd=True, postcmd=True, errorhandling=False)
                         #print 'FF last results in lop' , self.last_results
                         #param_card_iterator.store_entry(nb_output+i+1, self.last_results)
-                        param_card_iterator.write_summary_new(out_path = summary_file , keys = order , point = nb_output+i+1 , \
+                        param_card_iterator.write_summary_new(out_path = summary_file , keys = order , point = point_number , \
                                                                   header = False, last_results = self.last_results)
 
                         ### the following three lines are added by chiara to check the widht = auto function 
@@ -1087,7 +1100,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
 #        else self.maddm_card['sigmav_method'] == 'inclusive':
         else:
-            logger.info('Calculating Fermi limit using the spectra from the PPPC4DMID Tables')
+            logger.info('Calculating Fermi limit using PPPC4DMID spectra')
             self.read_PPPCspectra()
 
 
@@ -1134,10 +1147,9 @@ class MADDMRunCmd(cmd.CmdShell):
                   
                  if 'PPPC' in self.maddm_card['indirect_flux_earth_method']:
                      self.read_PPPC_positrons_earth()
-                 elif 'dragon' in self.mode['flux_earth']:
+                 elif 'dragon' in self.maddm_card['indirect_flux_earth_method']:
                      logger.info('Calling DRAGON for positrons and antiprotons propagation')
-                     self.read_PPPC_positrons_earth()
-                     #self.run_Dragon()                                                                                                                                     
+                     self.run_Dragon()                                                                                                  
 
               
                     
@@ -1263,7 +1275,7 @@ class MADDMRunCmd(cmd.CmdShell):
     def read_PPPCspectra(self):
          mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
 
-         if 'PPPC4DMID' in self.maddm_card['indirect_flux_source_method'] or self.maddm_card['sigmav_method'] == 'inclusive':
+         if 'PPPC4DMID' in self.maddm_card['indirect_flux_source_method'] or 'inclusive' in self.maddm_card['sigmav_method']:
             if self.Spectra.check_mass(mdm):
                if '_ew' in self.maddm_card['indirect_flux_source_method']:
                     PPPC_source = self.Spectra.load_PPPC_source(corr = 'ew')
@@ -1758,8 +1770,7 @@ class MADDMRunCmd(cmd.CmdShell):
             npts =  self.maddm_card['npts_for_flux']
             grid = [de*2*mdm/npts for de in range(0, npts+1)]
             #CHECK HERE THAT THE JACOBIAN FROM X TO E IS CORRECT                                                                                                                 
-            #integrate_dNdE = aux.integrate(self.dNdx, grid, channel=chan)  # 1/mdm                                                                                            
-            integrate_dNdE = aux.integrate(self.dNdx, grid, channel = chan)  # 1/mdm                                                                                                             
+            integrate_dNdE = aux.integrate(self.dNdx, grid, channel = chan)  # 1/mdm                                                            
             #logger.debug('sigmav: %.5e' % sigv)                                                                                                                                 
             #logger.debug('mdm: %.5e' % mdm)                                                                                                                                     
             #logger.debug(jfact)                                                                                                                                                 
@@ -1768,10 +1779,16 @@ class MADDMRunCmd(cmd.CmdShell):
     '''
     # add output directory as input!
 
-    def run_Dragon(self, point_name='', out_dir = ''):
+    def run_Dragon(self, out_dir = ''):
+ 
+        point_name = self.last_results['point_number']
         
-        dragon_dir = 'SET_DRAGON_DIRECTORY'
-        
+        dragon_dir = '/scratch/federico/MadDM/DRAGON/DRAGON-master/'
+
+        if not os.path.exists(pjoin(dragon_dir,'DRAGON') ):
+           logger.error('The DRAGON executable cannot be find! Will not run positrons and antiprotons propagation!')
+           return
+       
         template_card = pjoin(MDMDIR,'Templates','Cards','dragon_card.xml')
         dr_path = 'path to Dragon installation - read from where?'
         mDM = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
@@ -1779,9 +1796,10 @@ class MADDMRunCmd(cmd.CmdShell):
         else:                                              sigv = self.last_results['taacsID']
 
         # !!! Fix this when calling the function in the loop (scan mode) !!!
-        out_dir = pjoin(self.dir_path, 'output')
+        if not out_dir:
+           out_dir = pjoin(self.dir_path, 'output')
 
-        dragon_input = pjoin(out_dir, 'dragon_input.xml')
+        dragon_input = pjoin( self.dir_path, 'output' , str(point_name) + '_DRAGON.xml')
 
         def write_dragon_input(template= template_card , mdm = mDM , sigmav = sigv , dragon_input = dragon_input ):
             # convert spectra in dndx in dnde
@@ -1799,21 +1817,24 @@ class MADDMRunCmd(cmd.CmdShell):
             out_pos .close()
             out_anti.close()
 
-            dragon_input = open(dragon_input, 'w') 
+            xml_in = open(dragon_input, 'w') 
             inp = open(template,'r') # read template cardq
             for line in inp.readlines():
                 line = line.replace('MadDM_dm_mass'    , str(mdm)    )
                 line = line.replace('MadDM_sigmav'     , str(sigmav) )
                 line = line.replace('MadDM_Positrons'  , pjoin(self.dir_path, 'output', 'positrons_dndne.txt'  ) )
                 line = line.replace('MadDM_Antiprotons', pjoin(self.dir_path, 'output', 'antiprotons_dndne.txt') )
-                dragon_input.write(line)
+                xml_in.write(line)
             print 'FF written Dragon input card in ' , dragon_input
-            dragon_input.close()
+            xml_in.close()
             
 
         write_dragon_input(template= template_card , mdm = mDM , sigmav = sigv )
-        os.system(dragon_dir + ' ' + dragon_input )
-    
+        os.remove(pjoin(self.dir_path, 'output','positrons_dndne.txt') )
+        os.remove(pjoin(self.dir_path, 'output','antiprotons_dndne.txt') )
+        os.chdir(dragon_dir)
+        os.system('./DRAGON ' + dragon_input )
+        os.chdir(self.dir_path)
 
     
     def print_results(self):
@@ -1840,20 +1861,15 @@ class MADDMRunCmd(cmd.CmdShell):
         nolim_message = '%s NO LIMIT %s' % (bcolors.GRAY, bcolors.ENDC)
 
         #skip this if there is a sequential scan going on.
-        
+
+        '''
         if not self.param_card_iterator:
             pass_relic = pass_message if self.last_results['Omegah^2'] < self.limits._oh2_planck else fail_message
-            #pass_dd_si_proton  = pass_message if xsi*self.last_results['sigmaN_SI_p']*GeV2pb*pb2cm2 < self.limits.SI_max(mdm)      else fail_message
-            #pass_dd_si_neutron = pass_message if xsi*self.last_results['sigmaN_SI_n']*GeV2pb*pb2cm2 < self.limits.SI_max(mdm)      else fail_message
-            #pass_dd_sd_proton  = pass_message if xsi*self.last_results['sigmaN_SD_p']*GeV2pb*pb2cm2 < self.limits.SD_max(mdm, 'p') else fail_message
-            #pass_dd_sd_neutron = pass_message if xsi*self.last_results['sigmaN_SD_n']*GeV2pb*pb2cm2 < self.limits.SD_max(mdm, 'n') else fail_message
         else:
             pass_relic         = ''
-            #pass_dd_si_proton  = ''
-            #pass_dd_si_neutron = ''
-            #pass_dd_sd_proton  = ''
-            #pass_dd_sd_neutron = ''
-        
+        '''
+        pass_relic = pass_message if self.last_results['Omegah^2'] < self.limits._oh2_planck else fail_message                                                                 
+
         #if omega_min < self.last_results['omegah2'] < omega_max:
         #    fail_relic_msg = ''
         #else:
@@ -2017,12 +2033,12 @@ class MADDMRunCmd(cmd.CmdShell):
 
             if str(self.mode['indirect']).startswith('flux'):
                 logger.info('*** Fluxes at source:')
-  
                 np_names = {'gammas':'g'      , 'neutrinos_e':'nue' , 'neutrinos_mu':'numu' , 'neutrinos_tau':'nutau'}
-
-                logger.info('*** Total flux for neutral particles at source:')
                 for chan in np_names.keys():
-                    logger.info('%10s : %.3e \t particles/[cm^2 s sr]' %(chan, self.last_results['flux_%s' % chan] ))
+                    logger.info( self.form_s(chan + ' Flux') + '=\t' + self.form_s(self.form_n (self.last_results['flux_%s' % chan]) ))
+
+                    
+                    #logger.info('%10s : %.3e \t particles/[cm^2 s sr]' %(chan, self.last_results['flux_%s' % chan] ))
                 print '\n'
 
 
@@ -2066,9 +2082,9 @@ class MADDMRunCmd(cmd.CmdShell):
            elif 'earth' in ind_mode  and 'inclusive' in  self.maddm_card['sigmav_method']:
               flux_source , flux_earth = True , True
 
-        if save_switch == 'off':
+        if save_switch == 'off' and 'dragon' not in self.mode['indirect']:
            spec_source, flux_source , flux_earth  = False, False, False
-
+            
         #print 'FF ind_mode , spec_source , flux_source , flux_earth ' , ind_mode , spec_source , flux_source , flux_earth 
 
         # Saving the output in the general output directory for a single point        
@@ -2350,7 +2366,7 @@ class MADDMRunCmd(cmd.CmdShell):
         elif   n1 <= 0            : return 'No Theory Prediction'        
     
     def form_s(self,stringa):
-        formatted = '{:20}'.format(stringa)
+        formatted = '{:25}'.format(stringa)
         return  formatted
     def form_n(self,num):
         formatted = '{:3.2e}'.format(num)
