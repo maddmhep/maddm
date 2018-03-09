@@ -799,7 +799,7 @@ class MADDMRunCmd(cmd.CmdShell):
         # F Saving the results in self.last_results 
         self.last_results = result
  
-        print 'FF last result', result 
+        #print 'FF last result', result 
                   
 #        if self.mode['indirect'] and not self._two2twoLO:
 #            with misc.MuteLogger(names=['madevent','madgraph'],levels=[50,50]):
@@ -839,11 +839,11 @@ class MADDMRunCmd(cmd.CmdShell):
         if self.param_card_iterator:
             param_card_iterator = self.param_card_iterator
 
+
             self.param_card_iterator = []
             param_card_iterator.store_entry(nb_output, result)
 
-            print 'FF result ', result
-            print 'FF self.param_card_iterator ', self.param_card_iterator
+            #print 'FF result ', result
 
             self.save_remove_indirect_output(scan = True, point_number= nb_output ) ## this is to remove or save spectra, not the scan summary file!
 
@@ -879,19 +879,17 @@ class MADDMRunCmd(cmd.CmdShell):
                 #if not self._two2twoLO:
                 #order +=['halo_velocity']#,'indirect', 'indirect_error']
                 detailled_keys = [k for k in self.last_results if k.startswith('taacsID#') ]
-
-        # FF Implement switch for pythia/PPPC since for pythia8 you do not have the single channels limits !!!
                 if len(detailled_keys)>1:
                     for key in detailled_keys:
-                        #reformat the key so that it only takes the initial and final states
-                        #Useful is there is "/" syntax, because "no" suffix is added.
-                       
+                        #Useful is there is "/" syntax, because "no" suffix is added.                       
                         clean_key_list = key.split("_")
                         clean_key = clean_key_list[0]+"_"+clean_key_list[1]
+
                         order +=[clean_key]
                         order +=['lim_'+clean_key]
 
                 order.append('taacsID')
+                order.append('tot_SM_xsec')
                 order.append('Fermi_sigmav')
                 order.append('pvalue')
                 order.append('like_tot')
@@ -900,8 +898,8 @@ class MADDMRunCmd(cmd.CmdShell):
                     for channel in np_names:
                         order.append('flux_%s' % channel)
 
-                if self.maddm_card['sigmav_method'] == 'inclusive':
-                        order.append('tot_SM_xsec')
+                #if self.maddm_card['sigmav_method'] == 'inclusive':
+                #        order.append('tot_SM_xsec')
             #logger.info(order)            
             # FF to be fixed!
             #<=-------------- Mihailo commented out max_col = 10
@@ -915,10 +913,9 @@ class MADDMRunCmd(cmd.CmdShell):
             for elem in order:
                 if elem not in self.last_results.keys():
                    order.remove(elem)
-            #print 'FF the order removed is' , order
 
 
-            to_print = param_card_iterator.write_summary(None, order, nbcol=10)#, max_col=10)
+            #to_print = param_card_iterator.write_summary(None, order, nbcol=10)#, max_col=10)
             '''
             for line in to_print.split('\n'):
                 if line:
@@ -928,37 +925,45 @@ class MADDMRunCmd(cmd.CmdShell):
                     # width = self.param_card.get_value('width', 5000000)
                     # logger.warning('--> WY0: %.2e' % width)
             '''
-            print 'FF nb_output' , nb_output
+            #print 'FF testing writer'
+            summary_file = pjoin(self.dir_path, 'output','PROVA_SUMMARY.txt')
+            param_card_iterator.write_summary_new(out_path = summary_file , keys = order, header = True )
+            param_card_iterator.write_summary_new(out_path = summary_file , keys = order , point = nb_output , \
+                                                                  header = False, last_results = self.last_results)
+            #print 'FF nb_output' , nb_output
             #check if the param_card defines a scan.
             with misc.TMP_variable(self, 'in_scan_mode', True):
                 with misc.MuteLogger(names=['cmdprint','madevent','madgraph','madgraph.plugin'],levels=[50,50,50,20]):
                     
                     for i,card in enumerate(param_card_iterator):
-                        print 'FF iteratori i', i 
+
                         card.write(pjoin(self.dir_path,'Cards','param_card.dat'))
                         self.exec_cmd("launch -f", precmd=True, postcmd=True, errorhandling=False)
                         #print 'FF last results in lop' , self.last_results
-                        param_card_iterator.store_entry(nb_output+i+1, self.last_results)
+                        #param_card_iterator.store_entry(nb_output+i+1, self.last_results)
+                        param_card_iterator.write_summary_new(out_path = summary_file , keys = order , point = nb_output+i+1 , \
+                                                                  header = False, last_results = self.last_results)
+
                         ### the following three lines are added by chiara to check the widht = auto function 
                         # self._param_card = param_card_mod.ParamCard('/Users/arina/Documents/physics/software/maddm_dev2/test_width/Cards/param_card.dat')
                         # width = self.param_card.get_value('width', 5000000)
                         # logger.warning('--> try again WY0: %.2e' % width)
                         #<=-------------- Mihailo commented out max_col = 10
-                        logger.info('Results for the point \n' + param_card_iterator.write_summary(None, order, lastline=True,nbcol=10)[:-1])#, max_col=10)[:-1])
+                        #logger.info('Results for the point \n' + param_card_iterator.write_summary(None, order, lastline=True,nbcol=10)[:-1])#, max_col=10)[:-1])
                         self.save_remove_indirect_output(scan = True, point_number= nb_output+1+i )
 
 
 
             param_card_iterator.write(pjoin(self.dir_path,'Cards','param_card.dat'))
             #name = misc.get_scan_name('maddm_%s' % (nb_output), 'maddm_%s' % (nb_output+i))
-            name = misc.get_scan_name('maddm_%s' % (nb_output), 'maddm_%s' % (nb_output+1))                                                                                         
-            path = pjoin(self.dir_path, 'output','scan_%s.txt' % name)
-            logger.info("write all results in %s" % path ,'$MG:color:BLACK')
+            #name = misc.get_scan_name('maddm_%s' % (nb_output), 'maddm_%s' % (nb_output+1))                                                                                         
+            #path = pjoin(self.dir_path, 'output','scan_%s.txt' % name)
+            #logger.info("write all results in %s" % path ,'$MG:color:BLACK')
 
             #print 'FF the order is', order
             #print 'FF last results', self.last_results
             #print 'FF param card iterator ' , param_card_iterator 
-            param_card_iterator.write_summary(path, order)
+            #param_card_iterator.write_summary(path, order)
 
 
 
@@ -2056,10 +2061,10 @@ class MADDMRunCmd(cmd.CmdShell):
    
         if ind_mode:
            spec_source = True
-        if 'source' in ind_mode:
-           flux_source = True
-        elif 'earth' in ind_mode  and 'inclusive' in  self.maddm_card['sigmav_method']:
-           flux_source , flux_earth = True , True
+           if 'source' in ind_mode:
+              flux_source = True
+           elif 'earth' in ind_mode  and 'inclusive' in  self.maddm_card['sigmav_method']:
+              flux_source , flux_earth = True , True
 
         if save_switch == 'off':
            spec_source, flux_source , flux_earth  = False, False, False
