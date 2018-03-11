@@ -6,6 +6,7 @@ import sys
 import collections
 import random
 from StringIO import StringIO
+import re
 
 import maddm_run_interface
 
@@ -1031,7 +1032,12 @@ class ProcessExporterIndirectD(object):
     def finalize(self, matrix_elements, history, mg5options, flaglist):
         """Finalize Standalone MG4 directory"""
         
-        super(ProcessExporterIndirectD, self).finalize(matrix_elements, history, mg5options, flaglist)
+        # modify history to make an proc_card_mg5 more similar to the real process
+        # hidden specific MadDM flag and or replace them by equivalent
+
+        new_history = self.modify_history(history)
+        
+        super(ProcessExporterIndirectD, self).finalize(matrix_elements, new_history, mg5options, flaglist)
         
         path = pjoin(self.dir_path, 'Cards', 'param_card.dat')
         if os.path.exists(pjoin('..','..', 'Cards', 'param_card.dat')):
@@ -1052,19 +1058,62 @@ class ProcessExporterIndirectD(object):
                                 self.cmd._curr_model['name'],
                                 self.cmd._generate_info)
         
-        # Need to overwrite the proc_card_mg5.dat if that one correspond to 
-        # "add indirect"  [99% of the case]
-        text = open(pjoin(self.dir_path, 'Cards', 'proc_card_mg5.dat')).read()
-        if 'add indirect' in text:
-            to_replace = "add process " + "\n add process ".join(
-                [p.get('process').nice_string(prefix=False) for p in self.cmd._curr_amps])
-            text = text.replace('add indirect_detection', to_replace)
-            open(pjoin(self.dir_path, 'Cards', 'proc_card_mg5.dat'),'w').write(text)
+
             
                 
         
+    def modify_history(self, history):
+        """modify history to make an proc_card_mg5 more similar to the real process
+           hidden specific MadDM flag and or replace them by equivalent"""       
         
+        new_history = []
+        next_generate = True #put on True if the next add process need to be switch to generate
+        for line in history:
+            line = re.sub('\s+', ' ', line)
         
+            if line.startswith(('define darkmatter', 'define benchmark','coannihilator')):
+                continue
+            
+            if line.startswith('generate'):
+                next_generate = False
+                if line.startswith(('generate relic','generate direct')):
+                    next_generate = True
+                    continue
+                if '@' in line:
+                    index = line.find('@')
+                    if not line[index:].startswith(('@1995','@ID')):
+                        next_generate = True
+                        continue  
+                    
+                if line.startswith('generate indirect'):
+                    new_history +=  [p.get('process').nice_string(
+                        prefix='add process ' if i>0 else 'generate ') 
+                                     for i,p in enumerate(self.cmd._curr_amps)]
+                    continue
+            
+            if line.startswith('add'):
+                if line.startswith(('add relic','add direct')):
+                    continue
+                if '@' in line:
+                    index = line.find('@')
+                    if not line[index:].startswith(('@1995','@ID')):
+                        continue  
+                if line.startswith('add indirect'):
+                    new_history +=  [p.get('process').nice_string(
+                        prefix='generate ' if (i==0 and next_generate) else 'add process ') 
+                                     for i,p in enumerate(self.cmd._curr_amps)]
+                    next_generate = False
+                    continue
+                
+                if next_generate and line.startswith('add process'):
+                    line = line.replace('add process', 'generate')
+                    next_generate = False
+                
+                
+            #default behavior propagate
+            new_history.append(line)
+                  
+        return bannermod.ProcCard(new_history)
     #def copy_template(self, model):
     #    
     #    out = super(ProcessExporterIndirectD,self).copy_template(model)        
