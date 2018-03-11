@@ -58,12 +58,6 @@ MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
 PPPCDIR = os.getcwd()+'/PPPC4DMID/'
 
 
-os.system('rm /scratch/federico/MadDM/maddm_dev2/DRAGON/Indirect/RunWeb')
-#os.system('rm /home/users/f/a/fambrogi/NEW_MADDM/BZR_DEF_30Jan/maddm_dev2/DRAGON/Indirect/RunWeb') ## FF                                                                       
-#os.system('rm /home/users/f/a/fambrogi/NEW_MADDM/BZR_DEF_30Jan/maddm_dev2/Test/output/Output_Indirect')
-#os.system('rm -r /home/users/f/a/fambrogi/NEW_MADDM/BZR_DEF_30Jan/maddm_dev2/Test/Indirect/Events')
-#os.system('mkdir /home/users/f/a/fambrogi/NEW_MADDM/BZR_DEF_30Jan/maddm_dev2/Test/Indirect/Events')
-
 #Is there a better definition of infinity?
 __infty__ = float('inf')
 __mnestlog0__ = -1.0E90
@@ -685,15 +679,6 @@ class MADDMRunCmd(cmd.CmdShell):
         param_path  = pjoin(self.dir_path,'Cards', 'param_card.dat')
         self.param_card = param_card_mod.ParamCard(param_path)
 
-        ### FF Access the BLOCK param card 
-
-        #print '*********************  DM candidate', self.proc_characteristics['dm_candidate'][0]
-        #print 'DM ' , self.proc_characteristics['dm_candidate']
-        #print 'FF param card', self.param_card
-        #print 'GG qnumbers 52 \n', self.param_card['qnumbers 52']
-        #print 'FF selfcon',  self.param_card.get_value('qnumbers ' + self.proc_characteristics['dm_candidate'][0], 4)
-
-
         args = line.split()
         if '-f' in args or '--force' in args:
             force = True
@@ -713,10 +698,9 @@ class MADDMRunCmd(cmd.CmdShell):
             nb_output +=1
         else:
             output = pjoin('output', 'maddm.out')
+        misc.sprint(output)
 
 
-
- 
         misc.call(['./maddm.x', output], cwd =self.dir_path)
         #process = subprocess.Popen(['./maddm.x'], cwd =self.dir_path, stdout=subprocess.PIPE)
         #Here we read out the results which the FORTRAN module dumped into a file
@@ -727,35 +711,23 @@ class MADDMRunCmd(cmd.CmdShell):
         result['GeV2pb*pb2cm2']   = GeV2pb*pb2cm2 # conversion factor                                                                                                           
 
         sigv_indirect = 0.
-
-        #output_name = ['omegah2', 'x_freezeout', 'wimp_mass', 'sigmav_xf' ,
-                       #'sigmaN_SI_proton', 'sigmaN_SI_neutron', 'sigmaN_SD_proton',
-                        #'sigmaN_SD_neutron','Nevents', 'smearing']
-
-        #for name in output_name:
-        #    result[name] = ''
-
         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
 
 
-        #print 'FF param crd', self.param_card
-        #print 'FF properties', self.proc_characteristics['dm_candidate']
-
         result['tot_SM_xsec'] = -1
         sigv_indirect = 0.
+
         for line in open(pjoin(self.dir_path, output)):
       
                 splitline = line.split()
                 #If capture rate is calculated.
                 if 'ccap' in line:
                     oname = splitline[0].strip(':')+'_'+splitline[1]
-                    #output_name.append(oname)
                     val = splitline[2]
                     result[oname.split(':')[0] ] = val
 
                 else:
                     if self._two2twoLO:
-                        sigv_indirect_error = 0. ## FF: never used anywhere???
                         if 'sigma*v' in line: 
                             sigv_temp = float(splitline[1])
                             oname = splitline[0].split(':',1)[1] .split('_')
@@ -764,20 +736,16 @@ class MADDMRunCmd(cmd.CmdShell):
                             result['taacsID#'     + oname] = sigv_temp 
                             result['err_taacsID#' + oname] = 0 
                             if oname.split('_')[1] in ['uux','ddx','ssx']:
-                               #logger.debug('FF using generic qq limits!') 
-                               result['lim_taacsID#'+oname] = self.limits.ID_max(mdm, 'qqx')
+                                result['lim_taacsID#'+oname] = self.limits.ID_max(mdm, 'qqx')
                             elif oname.split('_')[1] in self.limits._allowed_final_states:
-                               result['lim_taacsID#'+oname] = self.limits.ID_max(mdm, oname.split('_')[1]) 
+                                result['lim_taacsID#'+oname] = self.limits.ID_max(mdm, oname.split('_')[1]) 
                             elif oname.split('_')[1] not in self.limits._allowed_final_states:
-                               result['lim_taacsID#'+oname] = -1
-
-#                            output_name.append('taacsID#%s' % oname)
+                                result['lim_taacsID#'+oname] = -1
                             sigv_indirect += sigv_temp
                     result[splitline[0].split(':')[0]] = float(splitline[1])
 
         result['taacsID'] = sigv_indirect
                             
-        cr_names = ['p', 'e']
         np_names = ['g','nue','numu','nutau']
 
         if str(self.mode['indirect']).startswith('flux'):
@@ -785,20 +753,19 @@ class MADDMRunCmd(cmd.CmdShell):
                 result['flux_%s' % chan] = -1.0
 
         # Calculating the xsi factor
-        if result['Omegah^2'] < 0:                                                                                                                                                             result['xsi'] = 1.0   
+        if result['Omegah^2'] < 0:
+            result['xsi'] = 1.0   
         elif result['Omegah^2'] < self.limits._oh2_planck and result['Omegah^2'] > 0:
-           result['xsi'] = result['Omegah^2'] / self.limits._oh2_planck
+            result['xsi'] = result['Omegah^2'] / self.limits._oh2_planck
         else: result['xsi'] = 1.0
 
         if self.mode['direct']:
-           result['lim_sigmaN_SI_n'] = self.limits.SI_max(mdm)
-           result['lim_sigmaN_SI_p'] = self.limits.SI_max(mdm)
-           result['lim_sigmaN_SD_p'] = self.limits.SD_max(mdm, 'p')
-           result['lim_sigmaN_SD_n'] = self.limits.SD_max(mdm, 'n')
-           result['GeV2pb*pb2cm2']   = GeV2pb*pb2cm2 # conversion factor 
+            result['lim_sigmaN_SI_n'] = self.limits.SI_max(mdm)
+            result['lim_sigmaN_SI_p'] = self.limits.SI_max(mdm)
+            result['lim_sigmaN_SD_p'] = self.limits.SD_max(mdm, 'p')
+            result['lim_sigmaN_SD_n'] = self.limits.SD_max(mdm, 'n')
+            result['GeV2pb*pb2cm2']   = GeV2pb*pb2cm2 # conversion factor 
 
-        
-        # F Saving the results in self.last_results 
         self.last_results = result
         self.last_results['point_number'] = nb_output
         
@@ -2174,6 +2141,7 @@ class MADDMRunCmd(cmd.CmdShell):
                print 'FF e , dPhidloge', e , dPhidlogE 
                aux.write_data_to_file(e , dPhidlogE  , filename = out_dir + '/positrons_flux_earth.txt' , header = header )
 
+        misc.sprint("CODE NEED CLEANING HERE!!!")
         '''
         else: out_dir = pjoin(self.dir_path, 'output')
 
@@ -2209,7 +2177,6 @@ class MADDMRunCmd(cmd.CmdShell):
                                 out_spec = pjoin(out_dir, spec + '_flux_earth_'+spectrum_method+'.txt')
                                 x = self.Spectra.spectra['x'] # !!! the x for oscillated neutrinos is the same for the spectra but not the same for positrons!!!
                                 aux.write_data_to_file(x , self.Spectra.spectra_earth[spec] , filename = out_spec , header = h_flux )
-     >>>>>>> MERGE-SOURCE
     '''
     
     def print_ind(self,what, sig_th, sig_alldm, ul,  thermal=False ,direc = False , exp='Fermi'):
