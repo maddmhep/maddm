@@ -103,7 +103,7 @@
     <PropDMLepton />       <!-- If this flag is specified, leptons originating from DM annihilation/decay are computed -->
     <PropDMAntiProton />   <!-- If this flag is specified, antiprotons originating from DM annihilation/decay are computed -->
     <Mass value="MadDM_dm_mass" />  <!-- DM particle mass in GeV TO BE REPLACED BY MadDM -->
-    <SigmaV value="MadDM_sigmav" />         <!-- if Annihilation is specified, the <sigma v> in cm^3/2 TO BE REPLACED BY MadDM  -->
+    <SigmaV value="1.e-26" />         <!-- if Annihilation is specified, the <sigma v> in cm^3/2 TO BE REPLACED BY MadDM  -->
     <SSDensity value="0.41" />       <!-- Dark Matter local energy density in GeV/cm^3 -->
    <!-- EkDelta value="1000." -->        <!-- if Delta is specified	as a spectrum model, this is the energy in GeV at which particles are injected -->
     <LeptonDatafile     value="MadDM_Positrons" /> <!-- TO BE REPLACED by MadDM -->

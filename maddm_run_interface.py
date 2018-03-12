@@ -832,7 +832,6 @@ class MADDMRunCmd(cmd.CmdShell):
             # *** Initialize a list containing the desired variables in the summary output of the scan
             order = ['run']
 
-            print 'FF prima' , parameters, values 
             # *** saving the name of the iterated parameters, and the values in the results dictionary
             for par,val in zip(parameters, values):
                 order.append(par)
@@ -886,7 +885,8 @@ class MADDMRunCmd(cmd.CmdShell):
                 order.append('like_tot')
 
                 if self.mode['indirect'].startswith('flux'):
-                    for channel in np_names:
+                    for channel in self.Spectra.spectra.keys():
+                        if 'antip' in channel or 'pos' in channel: continue
                         order.append('flux_%s' % channel)
 
                 #if self.maddm_card['sigmav_method'] == 'inclusive':
@@ -1127,7 +1127,7 @@ class MADDMRunCmd(cmd.CmdShell):
             elif 'PPPC' in self.maddm_card['indirect_flux_source_method'] and self.maddm_card['sigmav_method'] == 'inclusive':
                 logger.info('Calculating cosmic rays fluxes using the spectra from the PPPC4DMID Tables')
             self.calculate_fluxes_source_n()
-        # FF saving PPPC spectra in the output folder (py8 spectra are copied from the Indirect fodler already)                                                  
+        # FF savng PPPC spectra in the output folder (py8 spectra are copied from the Indirect fodler already)                                                  
         # if 'PPPC' in self.maddm_card['indirect_flux_source_method']:
         #    self.save_PPPC_spectra()
             
@@ -1779,7 +1779,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
     def run_Dragon(self, out_dir = ''):
  
-        point_name = self.last_results['point_number']
+        point_name = self.last_results['run']
         
         dragon_dir = '/scratch/federico/MadDM/DRAGON/DRAGON-master/'
 
@@ -1837,7 +1837,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
     def write_scan_output(self, out_path = '', keys = '', header = False):
 
-
+        
         # writing the parameters                                                                                                                                                 
         if out_path and header:
            nice_keys = []
@@ -1862,6 +1862,7 @@ class MADDMRunCmd(cmd.CmdShell):
             summary.write('{:9d}'.format(int(self.last_results['run'])) + s)
 
             for k in keys:
+                if 'run' in k: continue 
                 num = self.form_n( self.last_results[k] )
                 summary.write(num + s)
             summary.write('\n')
@@ -1872,8 +1873,6 @@ class MADDMRunCmd(cmd.CmdShell):
     def print_results(self):
     
         """ print the latest results """
-        #omega_min = 0
-        #omega_max = 0.12
 
         # Determine xsi for thermal scenarios with DM < DM tot.                
         dm_scen = 0
@@ -1894,19 +1893,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
         #skip this if there is a sequential scan going on.
 
-        '''
-        if not self.param_card_iterator:
-            pass_relic = pass_message if self.last_results['Omegah^2'] < self.limits._oh2_planck else fail_message
-        else:
-            pass_relic         = ''
-        '''
         pass_relic = pass_message if self.last_results['Omegah^2'] < self.limits._oh2_planck else fail_message                                                                 
-
-        #if omega_min < self.last_results['omegah2'] < omega_max:
-        #    fail_relic_msg = ''
-        #else:
-        #    fail_relic_msg = '%s Model excluded (relic not in range [%s,%s])%s' %\
-        #                      (bcolors.FAIL, omega_min, omega_max,bcolors.ENDC)
 
         omega    = self.last_results['Omegah^2']
         x_f      = self.last_results['x_f']
@@ -1921,19 +1908,10 @@ class MADDMRunCmd(cmd.CmdShell):
         if self.mode['relic']:
             logger.info("\n***** Relic Density")
 
-            logger.info( self.form_s('Relic Density') + '=\t' + self.form_s(self.form_n(omega    ) ) )
+            logger.info( self.form_s('Relic Density') + '=\t' + self.form_n(omega    )  + '   ' +  pass_relic )
             logger.info( self.form_s('x_f'          ) + '=\t' + self.form_s(self.form_n(x_f      ) ) )
             logger.info( self.form_s('sigmav(xf)'   ) + '=\t' + self.form_s(self.form_n(sigma_xf ) ) )
             logger.info( self.form_s('xsi'          ) + '=\t' + self.form_s(self.form_n(xsi      ) ) )
-
-
-#            logger.info(self.form_s('Relic density') +'= '+ '\t' + self.form_n(omega) + '\t'+ pass_relic)
-#            logger.info(self.form_s('x_f')           +'= '+ '\t' + self.form_n(x_f)                     )
-#            logger.info(self.form_s('sigma(xf)')     +'= '+ '\t' + '%.2e GeV^-2 = %.2e cm^3/s', self.last_results['sigmav(xf)'],self.last_results['sigmav(xf)']*GeV2pb*pb2cm3 )
-#            logger.info(self.form_s('sigma(xf)')     +'= '+ '\t' + ' = %.2e cm^3/s', self.last_results['sigmav(xf)']*GeV2pb*pb2cm3 )
-
-            #logger.info('   x_f            : %.2f', self.last_results['x_f'])
-            #logger.info('   sigmav(xf)     : %.2e GeV^-2 = %.2e cm^3/s', self.last_results['sigmav(xf)'],self.last_results['sigmav(xf)']*GeV2pb*pb2cm3)
 
         if self.mode['direct']:
             sigN_SI_p , sigN_SI_n = self.last_results['sigmaN_SI_p'] , self.last_results['sigmaN_SI_n']
@@ -1954,13 +1932,6 @@ class MADDMRunCmd(cmd.CmdShell):
                     mess_th       = self.det_message_screen(th_cross, D['lim'] )
                     mess_alldm    = self.det_message_screen(D['sig'], D['lim'] )
                     self.print_ind(D['n'],th_cross , D['sig'], ul,  thermal=dm_scen ,direc = False , exp=D['exp']) # leave False to avout GeV^-2
-
-                    #if dm_scen: # thermal scenario 
-                    #      logger.info(self.form_s(D['n']+' (Thermal)') +'= '+'\t'+ self.form_n(th_cross)+' GeV^-2 = '+self.form_n(th_cross*GeV2pb*pb2cm2)+ \
-                    #                 ' cm^2'+'\t'+ mess_th    + '\t'      + self.form_s(' (All DM)')        +'= '+'\t'+ self.form_n(D['sig'])+' GeV^-2 = '+self.form_n(D['sig']                  #                   *GeV2pb*pb2cm2)+' cm^2'+'\t'+ mess_alldm + '\t'      +'ul ='+ self.form_n(D['lim']) + ' cm^2'+ '\t'+ self.form_s(D['exp']) )
-                    #else: 
-                    #      logger.info(self.form_s(D['n']+' All DM') +'= '+'\t'+ self.form_n(D['sig'])+' GeV^-2 = '+self.form_n(D['sig']*GeV2pb*pb2cm2)+' cm^2'+'\t'+ mess_alldm  +\
-                    #      '\t'      +'ul= '+ self.form_n(D['lim']) + ' cm^2'+ '\t'+ self.form_s(D['exp']) )
      
             '''
             logger.info(' sigmaN_SI_p    th: %.2e GeV^-2 = %.2e cm^2   \t ul: %.2e cm^2 %s',xsi*sigN_SI_p, xsi*sigN_SI_p*GeV2pb*pb2cm2,self.limits.SI_max(mdm), pass_dd_si_proton)
@@ -1991,11 +1962,8 @@ class MADDMRunCmd(cmd.CmdShell):
                 logger.info('FF  use the generic qq limits for light quarks (u,d,s)' )
 
                 for key in detailled_keys:
-                    #logger.info(key)
                     clean_key_list = key.split("#")
-                    #logger.info(clean_key_list)
                     clean_key = clean_key_list[1] #clean_key_list[0]+"_"+clean_key_list[1]
-                    #print 'FF for the method ', self.mode['indirect'] , ' the clean_key is: ',  clean_key 
                     finalstate = clean_key.split("_")[1]
                     f_original = clean_key.split("_")[1]
                     if 'ss' in finalstate or 'uu' in finalstate or 'dd' in finalstate:
@@ -2012,27 +1980,15 @@ class MADDMRunCmd(cmd.CmdShell):
 
                         self.last_results['Fermi_lim_'+key] = self.limits.ID_max(mdm, finalstate)
                     else:  s_ul   = '-1'
-                    #here check if the cross section is allowed. Do this channel by channel
+                    # here check if the cross section is allowed. Do this channel by channel
                     # Make sure that the velocity at which the limit is evaluated matches the dm velocity in the calculation.
                     if not self.param_card_iterator:
 
                       if finalstate not in self.limits._allowed_final_states :
-                          #message = nolim_message
                           self.print_ind(clean_key, s_thermal, s_alldm, 0,  thermal= dm_scen)
-
-                          #logger.info('     %s \t sigmav(th): %.3e \t sigmav(ul): %s \t [cm^3/s] \t  %s' % (clean_key, s_theo, s_ul, message))
 
                       else:
                           if (v == self.limits._id_limit_vel[finalstate]):
-                             #s_thermal  = s_alldm*xsi2
-                             #mess_ther  = self.det_message_screen(s_therm,ul)
-                             #mess_alldm = self.det_message_screen(s_alldm,ul)
-                             #self. print_ind(self,what, sig_th, sig_alldm, ul,  thermal=False)
-#                                if self.last_results[key] < ( s_ul ):
-#                                    message = pass_message 
-#                                elif self.last_results[key] > ( s_ul ):
-#                                    message = fail_message
-#                                else: message = nolim_message
                              self.print_ind(clean_key, s_thermal, s_alldm, s_ul,  thermal= dm_scen)
 
                           else:
@@ -2040,8 +1996,6 @@ class MADDMRunCmd(cmd.CmdShell):
 
                         #self.print_ind(self, clean_key, s_thermal, sig_alldm, s_ul,  thermal= dm_scen)
                         #logger.info('     %s \t  sigmav(th): %.2e \t sigmav(ul): %.3g \t [cm^3/s] \t  %s' % (clean_key, s_theo, s_ul, message))
-
-            #print 'FF last results ' , self.last_results 
 
             sigtot_alldm     = self.last_results['taacsID']
             sigtot_SM_alldm  = self.last_results['tot_SM_xsec']
@@ -2054,21 +2008,11 @@ class MADDMRunCmd(cmd.CmdShell):
             else: 
                  self.print_ind('DM DM > SM SM', sigtot_SM_th , sigtot_SM_alldm, fermi_ul,  thermal= dm_scen)
 
-            '''
-            if self.maddm_card['indirect_flux_source_method'] == 'pythia8':
-                if self.last_results['taacsID']*xsi2 > self.last_results['Fermi_sigmav'] and self.last_results['Fermi_sigmav'] > 0:   message = fail_message
-                elif self.last_results['taacsID']*xsi2 < self.last_results['Fermi_sigmav'] : message = pass_message
-                elif self.last_results['Fermi_sigmav'] < 0: message = nolim_message
-                logger.info('     %s\t sigmav(th): %.2e  \t sigmav(ul): %.3g \t [cm^3/s] \t %s ' % ('DM DM > all',  self.last_results['taacsID']*xsi2 ,  self.last_results['Fe                rmi_sigmav'], message))
-            '''
-
-
             if str(self.mode['indirect']).startswith('flux'):
-                logger.info('*** Fluxes at source:')
+                logger.info('*** Fluxes at earth [particle/(cm^2 sr)]:')
                 np_names = {'gammas':'g'      , 'neutrinos_e':'nue' , 'neutrinos_mu':'numu' , 'neutrinos_tau':'nutau'}
                 for chan in np_names.keys():
                     logger.info( self.form_s(chan + ' Flux') + '=\t' + self.form_s(self.form_n (self.last_results['flux_%s' % chan]) ))
-
                     
                     #logger.info('%10s : %.3e \t particles/[cm^2 s sr]' %(chan, self.last_results['flux_%s' % chan] ))
                 print '\n'
@@ -2116,8 +2060,6 @@ class MADDMRunCmd(cmd.CmdShell):
 
         if save_switch == 'off' and 'dragon' not in self.mode['indirect']:
            spec_source, flux_source , flux_earth  = False, False, False
-            
-        #print 'FF ind_mode , spec_source , flux_source , flux_earth ' , ind_mode , spec_source , flux_source , flux_earth 
 
         # Saving the output in the general output directory for a single point        
         if not scan: 
@@ -2134,9 +2076,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
              out_dir = dir_point # all the various output must be saved here             
 
-
              print 'FF out_dir to be removed **************** ', out_dir
-
    
              if save_switch == 'off':
                  if self.maddm_card['sigmav_method'] != 'inclusive': # here, need to remove everyhting i.e. the whole run_xx folder
@@ -2175,23 +2115,23 @@ class MADDMRunCmd(cmd.CmdShell):
                if 'x' not in spec:
                    dndlogx = self.Spectra.spectra[spec]
                    aux.write_data_to_file(x , dndlogx  , filename = out_dir + '/' + spec + '_spectrum_source.txt' , header = header )
-                     
+        '''             
         if flux_source:
            logger.debug('FF saving flux source')
            e = self.Spectra.flux_source['e']
            for flux in self.Spectra.flux_source.keys():
-               header = '# E[GeV]   dN/dE ' + flux + '\t' + self.maddm_card['indirect_flux_source_method'] +' flux at source'
+               header = '# E[GeV]   dPhi/dE ' + flux + '\t' + self.maddm_card['indirect_flux_source_method'] +' flux at source'
                if flux != 'e':
                    dNdE = self.Spectra.flux_source[flux]['dNdE']
 
                    aux.write_data_to_file(e , dNdE  , filename = out_dir + '/' + flux + '_flux_source.txt' , header = header )
                    print 'FF the flux is ', out_dir + '/' + flux + '_flux_source.txt' 
-
+        '''
         if flux_earth:
            logger.debug('FF saving flux earth')
            e = self.Spectra.flux_earth_neutrinos['e']
            for flux in self.Spectra.flux_earth_neutrinos.keys():
-               header = '# E[GeV]   dN/dE ' + flux + '\t' + self.maddm_card['indirect_flux_source_method'] +' flux at earth'
+               header = '# E[GeV]   dPhi/dE ' + flux + '\t' + self.maddm_card['indirect_flux_source_method'] +' flux at earth'
                if flux != 'e':
                    dNdE = self.Spectra.flux_earth_neutrinos[flux]['dNdE']
                    aux.write_data_to_file(e , dNdE  , filename = out_dir + '/' + flux + '_flux_earth.txt' , header = header )
