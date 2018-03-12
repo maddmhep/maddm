@@ -1155,7 +1155,7 @@ class MADDMRunCmd(cmd.CmdShell):
         
         # Spectra produced by Pythia8
         # FF maybe not used? check
-        self.spectra = ['ex','gx','nuex','numux','nutaux','px','restx']  
+        # self.spectra = ['ex','gx','nuex','numux','nutaux','px','restx']  
 
         #compile the pythia8 script
         if not os.path.exists(pjoin(self.dir_path,'bin','internal','main101')):
@@ -1258,14 +1258,14 @@ class MADDMRunCmd(cmd.CmdShell):
     # reading the spectra from the pythia8 output
     def read_py8spectra(self):
         run_name = self.me_cmd.run_name
-        for sp,k in self.Spectra.spectra_id.iteritems() :
-            
-            sp_name = sp + '_lhe.dat'
+        for sp in self.Spectra.spectra.keys(): 
+            if 'x' in sp: continue
+            sp_name = sp + '_spectrum_pythia8.dat'
             out_dir = pjoin(self.dir_path,'Indirect', 'Events', run_name, sp_name )
-            if sp == 'gx': # FF the x values are the same for any spectra
+            if sp == 'gammas': # FF the x values are the same for any spectra
                   x = np.loadtxt(out_dir , unpack = True )[0]
                   self.Spectra.spectra['x'] = [ np.power(10,num) for num in x]     # from log[10,x] to x
-            self.Spectra.spectra[k] = np.loadtxt(out_dir , unpack = True )[1].tolist()                                  
+            self.Spectra.spectra[sp] = np.loadtxt(out_dir , unpack = True )[1].tolist()                                  
        
 
 
@@ -1779,8 +1779,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
     def run_Dragon(self, out_dir = ''):
  
-        point_name = self.last_results['run']
-        
+        point_name = self.last_results['run']        
         dragon_dir = '/scratch/federico/MadDM/DRAGON/DRAGON-master/'
 
         if not os.path.exists(pjoin(dragon_dir,'DRAGON') ):
@@ -2114,6 +2113,7 @@ class MADDMRunCmd(cmd.CmdShell):
                header = '# x=Ekin/mDM     dn/dlogx   ' + spec + '\t' + self.maddm_card['indirect_flux_source_method'] + ' spectra at source'
                if 'x' not in spec:
                    dndlogx = self.Spectra.spectra[spec]
+                   dndlogx = np.log10(dndlogx)
                    aux.write_data_to_file(x , dndlogx  , filename = out_dir + '/' + spec + '_spectrum_source.txt' , header = header )
         '''             
         if flux_source:

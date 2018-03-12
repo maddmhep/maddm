@@ -113,13 +113,13 @@ int main() {
   numu.operator*=(1./nEvent/DeltaBin);
   nutau.operator*=(1./nEvent/DeltaBin);
 
-  gamma.table( outdir + "./gx_lhe.dat");
-  electron.table( outdir + "./ex_lhe.dat");
-  proton.table( outdir + "./px_lhe.dat");
-  nue.table(outdir + "./nuex_lhe.dat");
-  numu.table(outdir + "./numux_lhe.dat");
-  nutau.table(outdir + "./nutaux_lhe.dat");
-  rest.table(outdir + "./restx_lhe.dat");
+  gamma.table( outdir + "./gammas_spectrum_pythia8.dat");
+  electron.table( outdir + "./positrons_spectrum_pythia8.dat");
+  proton.table( outdir + "./antiprotons_spectrum_pythia8.dat");
+  nue.table(outdir + "./neutrinos_e_spectrum_pythia8.dat");
+  numu.table(outdir + "./neutrinos_mu_spectrum_pythia8.dat");
+  nutau.table(outdir + "./neutrinos_tau_spectrum_pythia8.dat");
+  rest.table(outdir + "./restx_spectrum_pythia8.dat");
 
   cout << gamma << electron << proton << nue << numu << nutau << rest;
   
