@@ -58,6 +58,9 @@ MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
 PPPCDIR = os.getcwd()+'/PPPC4DMID/'
 
 
+
+os.system('rm /home/ucl/cp3/fambrogi/NEW_MADDM/MadDM_MARCH/maddm_dev2/TUTTO/Indirect/RunWeb')
+
 #Is there a better definition of infinity?
 __infty__ = float('inf')
 __mnestlog0__ = -1.0E90
@@ -767,7 +770,7 @@ class MADDMRunCmd(cmd.CmdShell):
             result['GeV2pb*pb2cm2']   = GeV2pb*pb2cm2 # conversion factor 
 
         self.last_results = result
-        self.last_results['point_number'] = nb_output
+        self.last_results['run'] = nb_output
         
         
         #print 'FF last result', result 
@@ -778,7 +781,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
         if self.mode['indirect']:
             ### FF TO_DO ADD HERE the loading of the PPPC tables !!!
-            with misc.MuteLogger(names=['madevent','madgraph'],levels=[50,50]):
+            #with misc.MuteLogger(names=['madevent','madgraph'],levels=[50,50]):
                 self.launch_indirect(force)
 
         #if sigv_indirect:
@@ -814,17 +817,24 @@ class MADDMRunCmd(cmd.CmdShell):
 
         #    logger.info("relic density  : %.2e ", self.last_results['omegah2'])
         if self.param_card_iterator:
+
             param_card_iterator = self.param_card_iterator
 
-
+            parameters, values =  param_card_iterator.param_order , param_card_iterator.itertag
             self.param_card_iterator = []
-            param_card_iterator.store_entry(nb_output, result)
-
-            #print 'FF result ', result
 
             self.save_remove_indirect_output(scan = True, point_number= nb_output ) ## this is to remove or save spectra, not the scan summary file!
 
-            order = []
+            # *** Initialize a list containing the desired variables in the summary output of the scan
+            order = ['run']
+
+            print 'FF prima' , parameters, values 
+            # *** saving the name of the iterated parameters, and the values in the results dictionary
+            for par,val in zip(parameters, values):
+                order.append(par)
+                self.last_results[par] = val
+                #print 'FF ' , self.last_results
+
 
             # *** Relic density
             if self.mode['relic']:
@@ -904,25 +914,27 @@ class MADDMRunCmd(cmd.CmdShell):
             '''
             #print 'FF testing writer'
             summary_file = pjoin(self.dir_path, 'output','PROVA_SUMMARY.txt')
-            param_card_iterator.write_summary_new(out_path = summary_file , keys = order, header = True )
-            param_card_iterator.write_summary_new(out_path = summary_file , keys = order , point = nb_output , \
-                                                                  header = False, last_results = self.last_results)
+            self.write_scan_output(out_path = summary_file , keys = order, header = True )
+            self.write_scan_output(out_path = summary_file , keys = order )
             #print 'FF nb_output' , nb_output
             #check if the param_card defines a scan.
             with misc.TMP_variable(self, 'in_scan_mode', True):
                 with misc.MuteLogger(names=['cmdprint','madevent','madgraph','madgraph.plugin'],levels=[50,50,50,20]):
                     
                     for i,card in enumerate(param_card_iterator):
-
+                        print 'FF parameters, values ' ,parameters, values 
                         point_number = nb_output+i+1
-                        self.last_results['point_number'] = point_number
+                        self.last_results['run'] = point_number
                         
                         card.write(pjoin(self.dir_path,'Cards','param_card.dat'))
                         self.exec_cmd("launch -f", precmd=True, postcmd=True, errorhandling=False)
+
+                        for par,val in zip(param_card_iterator.param_order, param_card_iterator.itertag):
+                            self.last_results[par] = val
                         #print 'FF last results in lop' , self.last_results
                         #param_card_iterator.store_entry(nb_output+i+1, self.last_results)
-                        param_card_iterator.write_summary_new(out_path = summary_file , keys = order , point = point_number , \
-                                                                  header = False, last_results = self.last_results)
+                        #print 'FF ' , self.last_results
+                        self.write_scan_output(out_path = summary_file , keys = order, header = False)
 
                         ### the following three lines are added by chiara to check the widht = auto function 
                         # self._param_card = param_card_mod.ParamCard('/Users/arina/Documents/physics/software/maddm_dev2/test_width/Cards/param_card.dat')
@@ -1797,11 +1809,45 @@ class MADDMRunCmd(cmd.CmdShell):
             
 
         write_dragon_input(template= template_card , mdm = mDM , sigmav = sigv )
-        os.remove(pjoin(self.dir_path, 'output','positrons_dndne.txt') )
-        os.remove(pjoin(self.dir_path, 'output','antiprotons_dndne.txt') )
         os.chdir(dragon_dir)
         os.system('./DRAGON ' + dragon_input )
         os.chdir(self.dir_path)
+        os.remove(pjoin(self.dir_path, 'output','positrons_dndne.txt') )
+        os.remove(pjoin(self.dir_path, 'output','antiprotons_dndne.txt') )
+
+
+    def write_scan_output(self, out_path = '', keys = '', header = False):
+
+
+        # writing the parameters                                                                                                                                                 
+        if out_path and header:
+           nice_keys = []
+           for k in keys:
+               k = k.replace('taacsID#','')
+               k = k.replace('taacsID','tot_Xsec')
+               nice_keys.append(k)
+
+           summary = open(out_path, 'w')                                                                                                                            
+
+           for k in nice_keys:
+                ind = nice_keys.index(k) + 1
+                if ind <=9: ind = '0'+str(ind)
+                summary.write( '# [' + str(ind) + ']' + ' : ' + k + '\n' )
+
+           summary.write('\n\n\n')
+           summary.close()
+
+        elif (out_path and not header):
+            s = '\t'
+            summary = open(out_path, 'a+')
+            summary.write('{:9d}'.format(int(self.last_results['run'])) + s)
+
+            for k in keys:
+                num = self.form_n( self.last_results[k] )
+                summary.write(num + s)
+            summary.write('\n')
+            summary.close()
+
 
     
     def print_results(self):
@@ -2121,7 +2167,6 @@ class MADDMRunCmd(cmd.CmdShell):
 
                    aux.write_data_to_file(e , dNdE  , filename = out_dir + '/' + flux + '_flux_source.txt' , header = header )
                    print 'FF the flux is ', out_dir + '/' + flux + '_flux_source.txt' 
-
 
         if flux_earth:
            logger.debug('FF saving flux earth')
