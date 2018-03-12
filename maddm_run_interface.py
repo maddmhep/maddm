@@ -665,12 +665,16 @@ class MADDMRunCmd(cmd.CmdShell):
                 import madgraph.interface.master_interface as master_interface
                 self.mg5 = master_interface.MasterCmd()
 
+        if not commands:
+            return
+
         if not model:
             model = self.proc_characteristics['model']
-        if self.mg5._curr_model.get('modelpath+restriction') != model:
-            self.mg5.do_import(model)
-            
-            
+        if  not self.mg5._curr_model or\
+                     self.mg5._curr_model.get('modelpath+restriction') != model:
+            self.mg5.do_import('model %s ' % model)
+
+        
         for line in commands:
             self.mg5.exec_cmd(line, errorhandling=False, printcmd=False, 
                               precmd=False, postcmd=False, child=False)
@@ -997,7 +1001,7 @@ class MADDMRunCmd(cmd.CmdShell):
     def launch_indirect(self, force):
         """running the indirect detection"""
 
-        print "FF self.mode['indirect'] ", self.mode['indirect']
+        misc.sprint("FF self.mode['indirect'] ", self.mode['indirect'])
 
         if not os.path.exists(pjoin(self.dir_path, 'Indirect')):
             self._two2twoLO = True
@@ -1021,60 +1025,72 @@ class MADDMRunCmd(cmd.CmdShell):
         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
 
         # FF madevent or Reshuffling methods fro sigmav
-        print 'FF sigmav method *** ', self.maddm_card['sigmav_method']
+        misc.sprint( 'FF sigmav method *** ', self.maddm_card['sigmav_method'])
 
         if self.maddm_card['sigmav_method'] != 'inclusive':
-           runcardpath = pjoin(self.dir_path,'Indirect', 'Cards', 'run_card.dat')
-           run_card = banner_mod.RunCard(runcardpath)
+            runcardpath = pjoin(self.dir_path,'Indirect', 'Cards', 'run_card.dat')
+            run_card = banner_mod.RunCard(runcardpath)
 
-           vave_temp = self.maddm_card['vave_indirect']
+            vave_temp = self.maddm_card['vave_indirect']
 
-           # ensure that VPM is the central one for the printout (so far)
-           self.last_results['taacsID'] = 0.0
-           #for i,v in enumerate(scan_v):
+            # ensure that VPM is the central one for the printout (so far)
+            self.last_results['taacsID'] = 0.0
+            #for i,v in enumerate(scan_v):
 
-           run_card['ebeam1'] = mdm * math.sqrt(1+vave_temp**2)
-           run_card['ebeam2'] = mdm * math.sqrt(1+vave_temp**2)
-           run_card['use_syst'] = False
-           run_card.remove_all_cut()
+            run_card['ebeam1'] = mdm * math.sqrt(1+vave_temp**2)
+            run_card['ebeam2'] = mdm * math.sqrt(1+vave_temp**2)
+            run_card['use_syst'] = False
+            run_card.remove_all_cut()
         
-           misc.sprint("check how to set nevents!")
-           if os.path.exists(pjoin(self.dir_path, 'Cards', 'pythia8_card.dat')):
-               py8card = Indirect_PY8Card(pjoin(self.dir_path, 'Cards', 'pythia8_card.dat'))
-               if py8card['Main:NumberOfEvents'] != -1:
-                   run_card['nevents'] = py8card['Main:NumberOfEvents']
+
+            if os.path.exists(pjoin(self.dir_path, 'Cards', 'pythia8_card.dat')):
+                py8card = Indirect_PY8Card(pjoin(self.dir_path, 'Cards', 'pythia8_card.dat'))
+                if py8card['Main:NumberOfEvents'] != -1:
+                    run_card['nevents'] = py8card['Main:NumberOfEvents']
         
-               run_card.write(runcardpath)
+                run_card.write(runcardpath)
         
-           if self.maddm_card['sigmav_method'] == 'madevent':
-               self.me_cmd.do_launch('-f')
-           elif self.maddm_card['sigmav_method'] == 'reshuffling': 
-               cmd = ['launch',
+            misc.sprint("TODO reduce printout here (not working for some reason)")
+            if __debug__:
+                set_level = 10
+            else:
+                set_level = 30
+            
+            if self.maddm_card['sigmav_method'] == 'madevent':
+                logger.info("Running sigmav assuming delta in energy via madevent")
+                with misc.MuteLogger(['madgraph'], [set_level]):
+                    self.me_cmd.do_launch('-f')
+            elif self.maddm_card['sigmav_method'] == 'reshuffling': 
+                cmd = ['launch',
                    'reweight=indirect',
                    'edit reweight --before_line="launch" change velocity %s' % vave_temp]
-               misc.sprint("using reshuffling")
-               self.me_cmd.import_command_file(cmd)
+                misc.sprint("TODO modify code to keep the RWGT directory!")
+                logger.info("Running sigmav assuming delta in energy via madevent")
+                logger.info("Then use reshuffling method to restore full kinematic dependence.")
+                
+                with misc.MuteLogger(['madgraph','madevent','cmdprint'], [set_level]*3):
+                    self.me_cmd.import_command_file(cmd)
                         
-           for key, value in self.me_cmd.Presults.iteritems():
-               clean_key_list = key.split("/")
-               clean_key =clean_key_list[len(clean_key_list)-1].split('_')[1] +'_'+  clean_key_list[len(clean_key_list)-1].split('_')[2] 
+            for key, value in self.me_cmd.Presults.iteritems():
+                clean_key_list = key.split("/")
+                clean_key =clean_key_list[len(clean_key_list)-1].split('_')[1] +'_'+  clean_key_list[len(clean_key_list)-1].split('_')[2] 
  
-               if key.startswith('xsec'):
-                #<------- FIX THIS. GET RID OF VAVE_TEMP. THIS WILL JUST GET INTEGRATED BY MADEVENT
-                  self.last_results['taacsID#%s' %(clean_key)] = value* pb2cm3
-                  self.last_results['taacsID'] += value* pb2cm3
-               elif key.startswith('xerr'):
-                  self.last_results['err_taacsID#%s' %(clean_key)] = value * pb2cm3
+                if key.startswith('xsec'):
+                    misc.sprint("<------- FIX THIS. GET RID OF VAVE_TEMP. THIS WILL JUST GET INTEGRATED BY MADEVENT")
+                    self.last_results['taacsID#%s' %(clean_key)] = value* pb2cm3
+                    self.last_results['taacsID'] += value* pb2cm3
+                elif key.startswith('xerr'):
+                    self.last_results['err_taacsID#%s' %(clean_key)] = value * pb2cm3
 
 
-           self.run_pythia8_for_flux() 
+            self.run_pythia8_for_flux() 
               
-           if self.maddm_card['indirect_flux_source_method'] == 'pythia8':
+            if self.maddm_card['indirect_flux_source_method'] == 'pythia8':
                 logger.info('Calculating Fermi limit using using pythia8 gamma rays spectrum')
-           elif 'pythia' not in self.maddm_card['indirect_flux_source_method']:
+            elif 'pythia' not in self.maddm_card['indirect_flux_source_method']:
                 logger.warning('Since pyhtia8 is run, using pythia8 gamma rays spectrum (not PPPC4DMID Tables)')
 
-           self.read_py8spectra()
+            self.read_py8spectra()
 
 
 #        else self.maddm_card['sigmav_method'] == 'inclusive':
@@ -1105,7 +1121,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
         # ****** Calculating Fluxes Source
 
-        if self.mode['indirect'].startswith('flux') :
+        if self.mode['indirect'] and self.mode['indirect'].startswith('flux') :
             if 'pythia' in self.maddm_card['indirect_flux_source_method'] or self.maddm_card['sigmav_method'] != 'inclusive'  :
                 logger.info('Calculating cosmic rays fluxes using pythia8 gamma rays spectrum')
             elif 'PPPC' in self.maddm_card['indirect_flux_source_method'] and self.maddm_card['sigmav_method'] == 'inclusive':
@@ -1120,15 +1136,15 @@ class MADDMRunCmd(cmd.CmdShell):
         #print 'FF new: profile, method, function', self.maddm_card['dm_profile'] , self.maddm_card['prop_method'] , self.maddm_card['halo_funct']       
 
 
-        # ****** Calculating Fluxes Earth                                                                                                                                        
+            # ****** Calculating Fluxes Earth                                                                                                                                        
             if 'earth' in self.mode['indirect']: 
-                 self.neu_oscillations() # neutrinos oscillations
+                self.neu_oscillations() # neutrinos oscillations
                   
-                 if 'PPPC' in self.maddm_card['indirect_flux_earth_method']:
-                     self.read_PPPC_positrons_earth()
-                 elif 'dragon' in self.maddm_card['indirect_flux_earth_method']:
-                     logger.info('Calling DRAGON for positrons and antiprotons propagation')
-                     self.run_Dragon()                                                                                                  
+                if 'PPPC' in self.maddm_card['indirect_flux_earth_method']:
+                    self.read_PPPC_positrons_earth()
+                elif 'dragon' in self.maddm_card['indirect_flux_earth_method']:
+                    logger.info('Calling DRAGON for positrons and antiprotons propagation')
+                    self.run_Dragon()                                                                                                  
 
               
                     
@@ -1143,8 +1159,11 @@ class MADDMRunCmd(cmd.CmdShell):
 
         #compile the pythia8 script
         if not os.path.exists(pjoin(self.dir_path,'bin','internal','main101')):
+            
             if not hasattr(self, 'mg5'):
-                self.run_mg5('')
+                self.run_mg5([]) # just initialize self.mg5
+            
+            
             py8 = self.mg5.options['pythia8_path']
             files.cp(pjoin(py8, 'share','Pythia8','examples','Makefile'), 
                pjoin(self.dir_path,'bin','internal'))
