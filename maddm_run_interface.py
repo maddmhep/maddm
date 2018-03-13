@@ -2399,8 +2399,7 @@ class MADDMRunCmd(cmd.CmdShell):
             self.maddm_card.set('do_flux', True if (self.mode['indirect'] and self.mode['indirect'] != 'sigmav') else False, user=False)
             self.maddm_card.set('only2to2lo', self._two2twoLO, user=False)
             #self.maddm_card.set('run_multinest', self.mode['run_multinest'], user=False)
-            self.maddm_card.write_include_file(pjoin(self.dir_path, 'include'))        
-        
+
         if not self.in_scan_mode and not self.mode['nestscan']:
             logger.info("Start computing %s" % ','.join([name for name, value in self.mode.items() if value]))
         return self.mode
@@ -2719,9 +2718,9 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
     def init_maddm(self, path):
         """ initialize cards for the reading/writing of maddm"""
         
-        self.maddm_def = MadDMCard(self.paths['maddm_default'])
+        self.maddm_def = MadDMCard(self.paths['maddm_default'], consistency=False)
         try:
-            self.maddm = MadDMCard(self.paths['maddm'])
+            self.maddm = MadDMCard(self.paths['maddm'], consistency=False)
         except Exception as e:
             logger.error('Current maddm_card is not valid. We are going to use the default one.')
             logger.error('problem detected: %s' % e) 
@@ -3104,9 +3103,9 @@ class MadDMCard(banner_mod.RunCard):
     initial_distances = {}
     full_template = False
     
-    def __new__(cls, finput=None):
+    def __new__(cls, finput=None, **opt):
         """Bypass the standard RunCard one"""
-        return super(banner_mod.RunCard, cls).__new__(cls, finput)
+        return super(banner_mod.RunCard, cls).__new__(cls, finput, **opt)
 
     def fill_jfactors(self, filename=pjoin(MDMDIR,'Jfactors','jfactors.dat')):
 
@@ -3342,17 +3341,17 @@ class MadDMCard(banner_mod.RunCard):
                     logger.warning('since sigmav_method is on inclusive, indirect_flux_source_method has been switch to PPPC4MID')
                 #if self['do_flux']:
                     #logger.warning('since sigmav_method is on inclusive, indirect_flux_source_method has been switch to PPPC4MID')
-                self['indirect_flux_source_method'] == 'PPPC4DMID'
+                self['indirect_flux_source_method'] = 'PPPC4DMID'
             if self['indirect_flux_earth_method'] != 'PPPC4DMID':
                 if self['do_flux']:
                     logger.warning('since sigmav_method is on inclusive, indirect_flux_earth_method has been switch to PPPC4MID')
-                self['indirect_flux_earth_method'] == 'PPPC4DMID' 
+                self['indirect_flux_earth_method'] = 'PPPC4DMID' 
         ## FF must be fixed       
 
         elif self['indirect_flux_earth_method'] == 'PPPC4DMID+dragon':
             if self['indirect_flux_source_method'] != 'PPPC4DMID':
                 logger.warning('since indirect_flux_earth_method is on PPPC4DMID+dragon, indirect_flux_source_method has been switch to PPPC4DMID')
-                self['indirect_flux_source_method'] == 'PPPC4DMID'
+                self['indirect_flux_source_method'] = 'PPPC4DMID'
         elif self['indirect_flux_earth_method'] == 'PPPC4DMID':
             if self['indirect_flux_source_method'].lower() not in ['PPPC4DMID', 'none']:
                 logger.warning('since indirect_flux_earth_method is on PPPC4DMID, indirect_flux_source_method has been switch to none')
