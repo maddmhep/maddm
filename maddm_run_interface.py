@@ -2492,7 +2492,7 @@ class Indirect_PY8Card(banner_mod.PY8Card):
         
         self.add_param("Main:timesAllowErrors", 10, hidden=True, comment="allow a few failures before quitting")
         self.add_param("Main:NumberOfEvents", -1,  comment="number of events to go trough")
-        self.add_param("Main:spareParm1", 1000, hidden=True, comment=" mass of the Dark matter")
+        self.add_param("Main:spareParm1", 1000.0, hidden=True, comment=" mass of the Dark matter")
         self.add_param("Main:spareWord1" , './', hidden=True, comment="specify output dir") 
         # Init
         self.add_param("Init:showChangedSettings", True, hidden=True, comment="list changed settingspython")

@@ -895,12 +895,15 @@ class MadDM_interface(master_interface.MasterCmd):
         # update the param_card value
         txt = self._curr_model.write_param_card()
         param_card = check_param_card.ParamCard(self._curr_model.write_param_card())
-
+        
         if self._param_card:
             for block in self._param_card:
                 for param in self._param_card[block]:
-                    param_card[block].get(param.lhacode).value =  param.value
- 
+                    try:
+                        param_card[block].get(param.lhacode).value =  param.value
+                    except KeyError:
+                        continue #possible in MSSM due to restriction on SLHA2 format
+                        
         self._param_card = param_card        
         if not isinstance(self._curr_model, model_reader.ModelReader):
             self._curr_model = model_reader.ModelReader(self._curr_model) 
