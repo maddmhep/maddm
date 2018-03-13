@@ -59,7 +59,7 @@ PPPCDIR = os.getcwd()+'/PPPC4DMID/'
 
 
 
-os.system('rm /home/ucl/cp3/fambrogi/NEW_MADDM/MadDM_MARCH/maddm_dev2/TUTTO/Indirect/RunWeb')
+#s.system('rm /scratch/federico/MadDM/maddm_dev2/BB_new/Indirect/RunWeb')
 
 #Is there a better definition of infinity?
 __infty__ = float('inf')
@@ -827,7 +827,7 @@ class MADDMRunCmd(cmd.CmdShell):
             parameters, values =  param_card_iterator.param_order , param_card_iterator.itertag
             self.param_card_iterator = []
 
-            self.save_remove_indirect_output(scan = True, point_number= nb_output ) ## this is to remove or save spectra, not the scan summary file!
+            self.save_remove_indirect_output(scan = True) ## this is to remove or save spectra, not the scan summary file!
 
             # *** Initialize a list containing the desired variables in the summary output of the scan
             order = ['run']
@@ -927,11 +927,10 @@ class MADDMRunCmd(cmd.CmdShell):
                     
                     for i,card in enumerate(param_card_iterator):
                         print 'FF parameters, values ' ,parameters, values 
-                        point_number = nb_output+i+1
-                        self.last_results['run'] = point_number
                         
                         card.write(pjoin(self.dir_path,'Cards','param_card.dat'))
                         self.exec_cmd("launch -f", precmd=True, postcmd=True, errorhandling=False)
+                        self.last_results['run'] = nb_output+i+1
 
                         for par,val in zip(param_card_iterator.param_order, param_card_iterator.itertag):
                             self.last_results[par] = val
@@ -946,7 +945,7 @@ class MADDMRunCmd(cmd.CmdShell):
                         # logger.warning('--> try again WY0: %.2e' % width)
                         #<=-------------- Mihailo commented out max_col = 10
                         #logger.info('Results for the point \n' + param_card_iterator.write_summary(None, order, lastline=True,nbcol=10)[:-1])#, max_col=10)[:-1])
-                        self.save_remove_indirect_output(scan = True, point_number= nb_output+1+i )
+                        self.save_remove_indirect_output(scan = True)
 
 
 
@@ -2028,12 +2027,13 @@ class MADDMRunCmd(cmd.CmdShell):
                                 fluxes_earth = False )                  
             logger.info('Results written in ' +pjoin(self.dir_path, 'output', 'MadDM_results.txt') )
 
-        self.save_remove_indirect_output(scan = False)
+            self.save_remove_indirect_output(scan = False)
 
 
     # point number must be e.g. run_xx for madevent , or 1,2, ecc. for PPPC 
-    def save_remove_indirect_output(self, scan = False, point_number= -1):
+    def save_remove_indirect_output(self, scan = False):
 
+        point_number = self.last_results['run']
         if point_number < 10: # to uniform incusive vs madevent/reshuffling naming convention
            point_number = '0'+ str(point_number)
 
@@ -2048,16 +2048,16 @@ class MADDMRunCmd(cmd.CmdShell):
         dir_point       = pjoin(events, 'run_'+ str(point_number) )
 
         # If indirect is called, then spectra_source == True by def. The other two options depends on the user choice (sigmav, flux_source, flux_earth)
-        spec_source, flux_source , flux_earth = '','',''
+        spec_source, flux_source , flux_earth = False ,'',''
    
-        if ind_mode:
+        if ind_mode and 'inclusive' in self.maddm_card['sigmav_method']:
            spec_source = True
            if 'source' in ind_mode:
               flux_source = True
            elif 'earth' in ind_mode  and 'inclusive' in  self.maddm_card['sigmav_method']:
               flux_source , flux_earth = True , True
 
-        if save_switch == 'off' and 'dragon' not in self.mode['indirect']:
+        if 'off' in save_switch and 'dragon' not in self.mode['indirect']:
            spec_source, flux_source , flux_earth  = False, False, False
 
         # Saving the output in the general output directory for a single point        
@@ -2075,24 +2075,24 @@ class MADDMRunCmd(cmd.CmdShell):
 
              out_dir = dir_point # all the various output must be saved here             
 
-             print 'FF out_dir to be removed **************** ', out_dir
+             #print 'FF out_dir to be removed **************** ', out_dir
    
-             if save_switch == 'off':
-                 if self.maddm_card['sigmav_method'] != 'inclusive': # here, need to remove everyhting i.e. the whole run_xx folder
+             if 'off' in save_switch:
+                 if 'inclusive' not in self.maddm_card['sigmav_method'] : # here, need to remove everyhting i.e. the whole run_xx folder
                     shutil.rmtree(out_dir)
                                       
-             elif save_switch == 'all':
+             elif 'all' in save_switch :
                  if self.maddm_card['sigmav_method'] == 'inclusive': # saving spectra onyl in inclusive mode since madevent/resh have their own pythia8 spectra             
                     self.save_spec_flux(out_dir = out_dir, spec_source = spec_source, flux_source = flux_source, flux_earth = flux_earth)
                  
-                 elif self.maddm_card['sigmav_method'] != 'inclusive':
+                 elif 'inclusive' not in self.maddm_card['sigmav_method']:
                     self.save_spec_flux(out_dir = out_dir, spec_source = False, flux_source = flux_source, flux_earth = flux_earth)
 
-             elif save_switch == 'spectra':
-                  if self.maddm_card['sigmav_method'] == 'inclusive':
+             elif 'spectra' in save_switch :
+                  if 'inclusive' in self.maddm_card['sigmav_method']:
                        self.save_spec_flux(out_dir = out_dir, spec_source = spec_source, flux_source = flux_source, flux_earth = flux_earth)
                   else:
-                       print 'FF removing extra pythia files'
+                       #print 'FF removing extra pythia files' , point_number
                        if os.path.isfile( pjoin(out_dir,'unweighted_events.lhe.gz') ):
                           os.remove( pjoin(out_dir,'unweighted_events.lhe.gz') )
                           os.remove( pjoin(out_dir,'run_shower.sh') )
