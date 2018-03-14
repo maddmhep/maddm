@@ -97,17 +97,23 @@ class MadDM_interface(master_interface.MasterCmd):
     
     options_configuration = dict(master_interface.MasterCmd.options_configuration)
     options_configuration['pppc4dmid_path'] = './PPPC4DMID'
+    options_configuration['dragon_path'] = './DRAGON'
     
     def post_install_PPPC4DMID(self):
         return
     
-    def set_configuration(self, *args, **opts):
-        out = master_interface.MasterCmd.set_configuration(self, *args, **opts)
+    def set_configuration(self, config_path=None, final=True, **opts):
+
+        misc.sprint(self.options)        
+        out = master_interface.MasterCmd.set_configuration(self, config_path, final, **opts)
         
-        if self.options['pppc4dmid_path'] and not os.path.exists(self.options['pppc4dmid_path']):
-            self.options['pppc4dmid_path'] = None
-            
-        self.do_save('options', to_keep={'pppc4dmid_path':'./PPPC4DMID'})
+        if final:
+            if self.options['pppc4dmid_path'] and not os.path.exists(self.options['pppc4dmid_path']):
+                self.options['pppc4dmid_path'] = None
+            if self.options['dragon_path'] and not os.path.exists(self.options['dragon_path']):
+                self.options['dragon_path'] = None                
+            #self.do_save('options', to_keep={'pppc4dmid_path':'./PPPC4DMID'})
+        
         return out
     
     def preloop(self, *args, **opts):

@@ -1772,11 +1772,17 @@ class MADDMRunCmd(cmd.CmdShell):
     def run_Dragon(self, out_dir = ''):
  
         point_name = self.last_results['run']        
-        dragon_dir = '/scratch/federico/MadDM/DRAGON/DRAGON-master/'
+        dragon_dir = self.options['dragon_path']
 
-        if not os.path.exists(pjoin(dragon_dir,'DRAGON') ):
-           logger.error('The DRAGON executable cannot be find! Will not run positrons and antiprotons propagation!')
-           return
+        if not dragon_dir:
+            exe = misc.which('DRAGON')
+            if exe:
+                dragon_dir = os.path.dirname(exe)
+                
+        if not dragon_dir or not os.path.exists(pjoin(dragon_dir,'DRAGON')):
+            logger.error('The DRAGON executable cannot be find! Will not run positrons and antiprotons propagation!')
+            logger.info("To specify the path to DRAGON_PATH, please use command 'set dragon_path DRAGON_DIRECTORY'.")
+            return
        
         template_card = pjoin(MDMDIR,'Templates','Cards','dragon_card.xml')
         dr_path = 'path to Dragon installation - read from where?'
