@@ -2915,7 +2915,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         """ trigger via update to_full LINE"""
         
         logger.info("update the maddm_card by including all the hidden parameter")
-        self.maddm.use_full_template = True
+        self.maddm.full_template = True
         self.maddm.write(self.paths['maddm'], write_hidden=True)
 
 
@@ -3314,7 +3314,6 @@ class MadDMCard(banner_mod.RunCard):
 
         #self.write_jfactors() 
         
-
         if not template:
             if self.full_template:
                 template = pjoin(MDMDIR, 'Templates', 'Cards', 'maddm_card_full.dat')
@@ -3324,7 +3323,7 @@ class MadDMCard(banner_mod.RunCard):
             else:
                 template = pjoin(MDMDIR, 'Templates', 'Cards', 'maddm_card.dat')
             python_template = True
-
+            
         super(MadDMCard, self).write(output_file, template=template,
                                     python_template=python_template,
                                     write_hidden=write_hidden) 
