@@ -95,7 +95,7 @@
    %(indirect_flux_earth_method)s    =  indirect_flux_earth_method ! dragon or PPPC4DMID_ep
 
 # velocity in halo
-   %(vave_indirect)s   = vave_indirect  ! average velocity of DM particles in halos in natural units (e.g. 1E-3 for our galaxy)
+   %(vave_indirect)s   = vave_indirect  ! average velocity of DM in halos in natural units (e.g. 1E-3 for our galaxy, 1E-5 for dSph galaxies)
 
 ###################################################################################
 #
