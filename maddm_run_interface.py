@@ -267,16 +267,16 @@ class Spectra:
             key = channel+'_'+prof+'_'+prop+'_'+halo_func
 
         if dm_min == dm_max :
-               #print 'FF spec_1 ' , sp_dic[spectrum][ str(dm_min) ][channel] , ' channel ', channel
-               return sp_dic[spectrum][ str(dm_min) ][key]
+            #print 'FF spec_1 ' , sp_dic[spectrum][ str(dm_min) ][channel] , ' channel ', channel
+            return sp_dic[spectrum][ str(dm_min) ][key]
         spec_1 = sp_dic[spectrum][ str(dm_min) ][key]
         spec_2 = sp_dic[spectrum][ str(dm_max) ][key]
      
         #print 'FF spec_1 spec_2 ', spec_1 , spec_2 , key 
         for x in range(len(spec_1)): # the spectrum values are ordered as 'x' vaues extracted from the Log[10,x] in the PPPC Tables                       
-               interp_function = interp1d([dm_min, dm_max], [spec_1[x],spec_2[x]] )
-               value =  interp_function(mdm)
-               interpolated.append(value)
+            interp_function = interp1d([dm_min, dm_max], [spec_1[x],spec_2[x]] )
+            value =  interp_function(mdm)
+            interpolated.append(value)
 
         return interpolated
 
@@ -349,15 +349,15 @@ class Fermi_bounds:
         return dw_dic_coll
 
     def eflux(self,spectrum, emin=1e2, emax=1e5, quiet=False):
-       """ Integrate a generic spectrum, multiplied by E, to get the energy flux.                                                                                             
-       """
-       espectrum = lambda e: spectrum(e)*e
-       tol = min(espectrum(emin),espectrum(emax))*1e-10
-       try:
-          return quad(espectrum,emin,emax,epsabs=tol,full_output=True)[0]
-       except Exception, msg:
-          logger.info('Numerical error "%s" when calculating integral flux.' % msg)
-       return np.nan
+        """ Integrate a generic spectrum, multiplied by E, to get the energy flux.                                                                                             
+        """
+        espectrum = lambda e: spectrum(e)*e
+        tol = min(espectrum(emin),espectrum(emax))*1e-10
+        try:
+            return quad(espectrum,emin,emax,epsabs=tol,full_output=True)[0]
+        except Exception, msg:
+            logger.info('Numerical error "%s" when calculating integral flux.' % msg)
+        return np.nan
 
     def marg_like_dw(self,dw_in_i,pred,marginalize):
       
@@ -785,12 +785,8 @@ class MADDMRunCmd(cmd.CmdShell):
 
         if self.mode['indirect']:
             ### FF TO_DO ADD HERE the loading of the PPPC tables !!!
-            #with misc.MuteLogger(names=['madevent','madgraph'],levels=[50,50]):
+            with misc.MuteLogger(names=['madevent','madgraph'],levels=[50,50]):
                 self.launch_indirect(force)
-
-        #if sigv_indirect:
-        #    result['taacsID'] = sigv_indirect
-        #    result['err_taacsID'] = math.sqrt(sigv_indirect_error)
 
 
         
@@ -799,9 +795,6 @@ class MADDMRunCmd(cmd.CmdShell):
 
         # Saving or removing output    
         # self.save_remove_indirect_output(scan = False, point_number= nb_output )
-
-
-        
 
         # --------------------------------------------------------------------#
         #   THIS PART IS FOR MULTINEST SCANS
@@ -820,8 +813,9 @@ class MADDMRunCmd(cmd.CmdShell):
         # --------------------------------------------------------------------#
 
         #    logger.info("relic density  : %.2e ", self.last_results['omegah2'])
+        
         if self.param_card_iterator:
-
+            
             param_card_iterator = self.param_card_iterator
 
             parameters, values =  param_card_iterator.param_order , param_card_iterator.itertag
@@ -865,7 +859,6 @@ class MADDMRunCmd(cmd.CmdShell):
  
             # *** Indirect detection
             if self.mode['indirect']:
-    
                 #if not self._two2twoLO:
                 #order +=['halo_velocity']#,'indirect', 'indirect_error']
                 detailled_keys = [k for k in self.last_results if k.startswith('taacsID#') ]
@@ -906,7 +899,8 @@ class MADDMRunCmd(cmd.CmdShell):
                    order.remove(elem)
 
 
-            #to_print = param_card_iterator.write_summary(None, order, nbcol=10)#, max_col=10)
+            #to_print = param_card_iterator.write_summary(None, order, nbcol=10)#, max_col=10)          
+            misc.sprint("Need code cleaning here")
             '''
             for line in to_print.split('\n'):
                 if line:
@@ -2348,25 +2342,26 @@ class MADDMRunCmd(cmd.CmdShell):
         """ask the question about card edition / Run mode """
         
         process_data = self.proc_characteristics
-        self.mode, cmd_quest = self.ask('', '0', mode=mode, 
+        if not hasattr(self, 'mode') or not force:
+            self.mode, cmd_quest = self.ask('', '0', mode=mode, 
                         data=self.proc_characteristics,
                         ask_class=MadDMSelector, timeout=60, path_msg=' ',
                         return_instance=True, force=force)
         
-        # automatically switch to keep_wgt option
-        #edit the maddm_card to be consistent with self.mode
-        cmd_quest.get_cardcmd()
-
-        self.maddm_card = cmd_quest.maddm
-        for key, value in self.mode.items():
-            if value == 'ON' or value is True:
-                self.mode[key] = True
-
-            elif value == 'OFF':
-                self.mode[key] = False
-        self.mode['capture'] = False
-        # create the inc file for maddm
-        logger.debug('2to2 in ask_run_configuration: %s' % self._two2twoLO)
+            # automatically switch to keep_wgt option
+            #edit the maddm_card to be consistent with self.mode
+            cmd_quest.get_cardcmd()
+    
+            self.maddm_card = cmd_quest.maddm
+            for key, value in self.mode.items():
+                if value == 'ON' or value is True:
+                    self.mode[key] = True
+    
+                elif value == 'OFF':
+                    self.mode[key] = False
+            self.mode['capture'] = False
+            # create the inc file for maddm
+            logger.debug('2to2 in ask_run_configuration: %s' % self._two2twoLO)
 
         self.auto_width = set() #ensure to reset auto_width! at the 
         self.check_param_card(pjoin(self.dir_path, 'Cards', 'param_card.dat'))
@@ -3344,14 +3339,9 @@ class MadDMCard(banner_mod.RunCard):
                 self['indirect_flux_source_method'] = 'PPPC4DMID'
             if self['indirect_flux_earth_method'] != 'PPPC4DMID':
                 if self['do_flux']:
-                    logger.warning('since sigmav_method is on inclusive, indirect_flux_earth_method has been switch to PPPC4MID')
-                self['indirect_flux_earth_method'] = 'PPPC4DMID' 
-        ## FF must be fixed       
-
-        elif self['indirect_flux_earth_method'] == 'PPPC4DMID+dragon':
-            if self['indirect_flux_source_method'] != 'PPPC4DMID':
-                logger.warning('since indirect_flux_earth_method is on PPPC4DMID+dragon, indirect_flux_source_method has been switch to PPPC4DMID')
-                self['indirect_flux_source_method'] = 'PPPC4DMID'
+                    logger.warning('since sigmav_method is on inclusive, indirect_flux_earth_method has been switch to PPPC4MID_ep')
+                self['indirect_flux_earth_method'] = 'PPPC4DMID_ep' 
+                
         elif self['indirect_flux_earth_method'] == 'PPPC4DMID':
             if self['indirect_flux_source_method'].lower() not in ['PPPC4DMID', 'none']:
                 logger.warning('since indirect_flux_earth_method is on PPPC4DMID, indirect_flux_source_method has been switch to none')

@@ -36,6 +36,7 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
+
 class DMError(Exception): pass
 
 # Root path
