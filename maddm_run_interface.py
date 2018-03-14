@@ -1820,9 +1820,7 @@ class MADDMRunCmd(cmd.CmdShell):
             
 
         write_dragon_input(template= template_card , mdm = mDM , sigmav = sigv )
-        os.chdir(dragon_dir)
-        os.system('./DRAGON ' + dragon_input )
-        os.chdir(self.dir_path)
+        misc.call(['./DRAGON', dragon_input], cwd=dragon_dir)
         os.remove(pjoin(self.dir_path, 'output','positrons_dndne.txt') )
         os.remove(pjoin(self.dir_path, 'output','antiprotons_dndne.txt') )
 
@@ -1832,21 +1830,21 @@ class MADDMRunCmd(cmd.CmdShell):
         
         # writing the parameters                                                                                                                                                 
         if out_path and header:
-           nice_keys = []
-           for k in keys:
-               k = k.replace('taacsID#','')
-               k = k.replace('taacsID','tot_Xsec')
-               nice_keys.append(k)
-
-           summary = open(out_path, 'w')                                                                                                                            
-
-           for k in nice_keys:
+            nice_keys = []
+            for k in keys:
+                k = k.replace('taacsID#','')
+                k = k.replace('taacsID','tot_Xsec')
+                nice_keys.append(k)
+            
+            summary = open(out_path, 'w')                                                                                                                            
+            
+            for k in nice_keys:
                 ind = nice_keys.index(k) + 1
                 if ind <=9: ind = '0'+str(ind)
                 summary.write( '# [' + str(ind) + ']' + ' : ' + k + '\n' )
 
-           summary.write('\n\n\n')
-           summary.close()
+            summary.write('\n\n\n')
+            summary.close()
 
         elif (out_path and not header):
             s = '\t'
@@ -1869,11 +1867,11 @@ class MADDMRunCmd(cmd.CmdShell):
         # Determine xsi for thermal scenarios with DM < DM tot.                
         dm_scen = 0
         if self.last_results['xsi'] > 0 and self.last_results['xsi'] < 1:
-             xsi  = self.last_results['xsi']
-             dm_scen = True
+            xsi  = self.last_results['xsi']
+            dm_scen = True
         else: 
-             xsi = 1
-             dm_scen = False
+            xsi = 1
+            dm_scen = False
 
         xsi2 = xsi**2
 
@@ -2351,6 +2349,8 @@ class MADDMRunCmd(cmd.CmdShell):
             # automatically switch to keep_wgt option
             #edit the maddm_card to be consistent with self.mode
             cmd_quest.get_cardcmd()
+            # write Cards/.lastmode to recover 
+            cmd_quest.write_switch()
     
             self.maddm_card = cmd_quest.maddm
             for key, value in self.mode.items():
@@ -2697,6 +2697,14 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         self.me_dir = opts['mother_interface'].dir_path
         self.availmode = opts.pop('data', collections.defaultdict(bool))
         # call the initialisation of the ControlSwith part
+        
+        if os.path.exists(pjoin(self.me_dir, 'Cards', '.lastrun')):
+            self.default_switch = {}
+            for line in  open(pjoin(self.me_dir, 'Cards', '.lastrun')):
+                if not line: continue
+                key, value = line.split()
+                self.default_switch[key] = value
+        
 
         cmd.ControlSwitch.__init__(self, self.to_control, opts['mother_interface'], *args, **opts)
         # initialise the various card to control
@@ -2709,7 +2717,18 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         common_run.AskforEditCard.__init__(self, question, cards,
                                             *args, **opts)
         self.question = self.create_question()
-                
+               
+    def write_switch(self, path=None):
+        """store value of the switch for the default at next run"""
+        
+        if not path:
+            path = pjoin(self.me_dir, 'Cards', '.lastrun')
+        fsock = open(path,'w')
+        for key, value in self.answer.items():
+            fsock.write('%s %s\n' % (key,value))
+        fsock.close()
+                   
+     
     def init_maddm(self, path):
         """ initialize cards for the reading/writing of maddm"""
         
