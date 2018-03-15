@@ -692,25 +692,35 @@ class MADDMRunCmd(cmd.CmdShell):
             force = True
         else:
             force = False
+        
+        # determine run_name for name in the output directory:
+        if '-n' in args:
+            self.run_name = args[args.index('-n')+1]
+            if os.path.exists(pjoin(self.dir_path, 'output', self.run_name)):
+                shutil.rmtree(pjoin(self.dir_path, 'output', self.run_name))
+                try:
+                    shutil.rmtree(pjoin(self.dir_path, 'Indirect','Events', self.run_name))
+                except Exception:
+                    pass
+        else:
+            i = 1
+            while os.path.exists(pjoin(self.dir_path, 'output', 'run_%02d' %i)):
+                i += 1
+            self.run_name = 'run_%02d' % i
+        
+        misc.sprint(self.dir_path, self.run_name)
+        # create output directory.
+        os.mkdir(pjoin(self.dir_path, 'output', self.run_name))
+        
         self.ask_run_configuration(mode=[], force=force)
 
 
         if not self.multinest_running:
             self.compile()
 
-        nb_output = 1
  
-        # FF Does this do anything ?
-        output = pjoin(self.dir_path, 'output', 'maddm_%s.out') 
-        while os.path.exists(output % nb_output):
-            nb_output +=1
-        else:
-            output = pjoin('output', 'maddm.out')
-        misc.sprint(output)
-
-
-        misc.call(['./maddm.x', output], cwd =self.dir_path)
-        #process = subprocess.Popen(['./maddm.x'], cwd =self.dir_path, stdout=subprocess.PIPE)
+        output = pjoin(self.dir_path, 'output', self.run_name, 'maddm.out') 
+        misc.call(['./maddm.x', pjoin('output', self.run_name, 'maddm.out')], cwd =self.dir_path)
         #Here we read out the results which the FORTRAN module dumped into a file
         #called 'maddm.out'. The format is such that the first line is always relic density
         # , second line is the nucleon scattering cross section (SI) for proton, third is SI
@@ -718,9 +728,7 @@ class MADDMRunCmd(cmd.CmdShell):
         result = {}
         result['GeV2pb*pb2cm2']   = GeV2pb*pb2cm2 # conversion factor                                                                                                           
 
-        sigv_indirect = 0.
         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
-
 
         result['tot_SM_xsec'] = -1
         sigv_indirect = 0.
@@ -775,7 +783,7 @@ class MADDMRunCmd(cmd.CmdShell):
             result['GeV2pb*pb2cm2']   = GeV2pb*pb2cm2 # conversion factor 
 
         self.last_results = result
-        self.last_results['run'] = nb_output
+        self.last_results['run'] = self.run_name
         
                   
 #        if self.mode['indirect'] and not self._two2twoLO:
@@ -783,9 +791,7 @@ class MADDMRunCmd(cmd.CmdShell):
 #                self.launch_indirect(force)
 
         if self.mode['indirect']:
-            ### FF TO_DO ADD HERE the loading of the PPPC tables !!!
-            with misc.MuteLogger(names=['madevent','madgraph'],levels=[50,50]):
-                self.launch_indirect(force)
+            self.launch_indirect(force)
 
         
         if not self.in_scan_mode and not self.multinest_running:
@@ -793,7 +799,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
         # Saving the output for single point
         if not self.param_card_iterator:
-           self.save_remove_indirect_output(scan = False)
+            self.save_remove_indirect_output(scan = False)
 
 
         # --------------------------------------------------------------------#
@@ -896,22 +902,9 @@ class MADDMRunCmd(cmd.CmdShell):
             #order.append('taacsID')
             for elem in order:
                 if elem not in self.last_results.keys():
-                   order.remove(elem)
+                    order.remove(elem)
 
-
-            #to_print = param_card_iterator.write_summary(None, order, nbcol=10)#, max_col=10)          
-            misc.sprint("Need code cleaning here")
-            '''
-            for line in to_print.split('\n'):
-                if line:
-                    logger.info(line)
-                    ## added by chiara to check the width (next three lines)
-                    # self._param_card = param_card_mod.ParamCard('/Users/arina/Documents/physics/software/maddm_dev2/test_width/Cards/param_card.dat')
-                    # width = self.param_card.get_value('width', 5000000)
-                    # logger.warning('--> WY0: %.2e' % width)
-            '''
-            #print 'FF testing writer'
-            summary_file = pjoin(self.dir_path, 'output','PROVA_SUMMARY.txt')
+            summary_file = pjoin(self.dir_path, 'output','scan_%s.txt' %self.run_name)
             self.write_scan_output(out_path = summary_file , keys = order, header = True )
             self.write_scan_output(out_path = summary_file , keys = order )
             #print 'FF nb_output' , nb_output
@@ -919,11 +912,15 @@ class MADDMRunCmd(cmd.CmdShell):
             with misc.TMP_variable(self, 'in_scan_mode', True):
                 with misc.MuteLogger(names=['cmdprint','madevent','madgraph','madgraph.plugin'],levels=[50,50,50,20]):
                     
+                    run_name = str(self.run_name)
+                    
                     for i,card in enumerate(param_card_iterator):
                         print 'FF INDIRECT MODE *************** ', self.mode['indirect']
                         card.write(pjoin(self.dir_path,'Cards','param_card.dat'))
-                        self.exec_cmd("launch -f", precmd=True, postcmd=True, errorhandling=False)
-                        self.last_results['run'] = nb_output+i+1
+                        self.exec_cmd("launch -f -n %s_%02d" % (run_name, i+1),
+                                       precmd=True, postcmd=True, errorhandling=False)
+                        misc.sprint(self.last_results['run'], "%s_%02d" % (run_name, i+1), 'can skip next line if those are always equals', self.run_name)
+                        self.last_results['run'] = "%s_%02d" % (run_name, i+1)
 
                         for par,val in zip(param_card_iterator.param_order, param_card_iterator.itertag):
                             self.last_results[par] = val
@@ -993,8 +990,6 @@ class MADDMRunCmd(cmd.CmdShell):
     def launch_indirect(self, force):
         """running the indirect detection"""
 
-        misc.sprint("FF self.mode['indirect'] ", self.mode['indirect'])
-
         if not os.path.exists(pjoin(self.dir_path, 'Indirect')):
             self._two2twoLO = True
             #return
@@ -1015,9 +1010,6 @@ class MADDMRunCmd(cmd.CmdShell):
             self.me_cmd = Indirect_Cmd(pjoin(self.dir_path, 'Indirect'))
 
         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
-
-        # FF madevent or Reshuffling methods fro sigmav
-        misc.sprint( 'FF sigmav method *** ', self.maddm_card['sigmav_method'])
 
         if self.maddm_card['sigmav_method'] != 'inclusive':
             runcardpath = pjoin(self.dir_path,'Indirect', 'Cards', 'run_card.dat')
@@ -1047,13 +1039,14 @@ class MADDMRunCmd(cmd.CmdShell):
                 set_level = 10
             else:
                 set_level = 30
+            set_level=50
             
             if self.maddm_card['sigmav_method'] == 'madevent':
                 logger.info("Running sigmav assuming delta in energy via madevent")
                 with misc.MuteLogger(['madgraph'], [set_level]):
-                    self.me_cmd.do_launch('-f')
+                    self.me_cmd.do_launch('-f -n %s' % self.run_name)
             elif self.maddm_card['sigmav_method'] == 'reshuffling': 
-                cmd = ['launch',
+                cmd = ['launch %s' % self.run_name,
                    'reweight=indirect',
                    'edit reweight --before_line="launch" change velocity %s' % vave_temp]
                 misc.sprint("TODO modify code to keep the RWGT directory!")
@@ -1154,7 +1147,7 @@ class MADDMRunCmd(cmd.CmdShell):
             try:
                 misc.compile(['main101'], cwd=pjoin(self.dir_path,'bin','internal'))
             except MadGraph5Error,e:
-                print e
+                logger.debug(str(e))
                 logger.critical('Indirect detection, py8 script can not be compiled. Skip flux calculation')
                 return
 
@@ -1771,7 +1764,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
     def run_Dragon(self, out_dir = ''):
  
-        point_name = self.last_results['run']        
+        run_name = self.last_results['run']        
         dragon_dir = self.options['dragon_path']
 
         if not dragon_dir:
@@ -1792,19 +1785,19 @@ class MADDMRunCmd(cmd.CmdShell):
 
         # !!! Fix this when calling the function in the loop (scan mode) !!!
         if not out_dir:
-           out_dir = pjoin(self.dir_path, 'output')
+            out_dir = pjoin(self.dir_path, 'output', run_name)
 
-        dragon_input = pjoin( self.dir_path, 'output' , str(point_name) + '_DRAGON.xml')
+        dragon_input = pjoin( self.dir_path, 'output' , run_name, 'DRAGON.xml')
 
         def write_dragon_input(template= template_card , mdm = mDM , sigmav = sigv , dragon_input = dragon_input ):
             # convert spectra in dndx in dnde
             #print 'FF self.Spectra.spectra keys', self.Spectra.spectra.keys()
             energy , positrons, antiprotons = self.Spectra.flux_source['e'] , self.Spectra.flux_source['positrons']['dNdE'] , \
                                                                               self.Spectra.flux_source['antiprotons']['dNdE']
-                  
-            out_pos  = open(pjoin(self.dir_path, 'output','positrons_dndne.txt') , 'w')
-            out_anti = open(pjoin(self.dir_path, 'output','antiprotons_dndne.txt') ,'w')
-            print 'FF directories ' , pjoin(self.dir_path, 'output')
+            
+            out_dir = os.path.dirname(dragon_input)
+            out_pos  = open(pjoin(out_dir, 'positrons_dndne.txt') , 'w')
+            out_anti = open(pjoin(out_dir, 'antiprotons_dndne.txt') ,'w')
 
             for en, pos, anti in zip (energy, positrons, antiprotons):
                 out_pos .write(str(en)+ ' ' + str(pos)  +'\n')
@@ -1813,21 +1806,19 @@ class MADDMRunCmd(cmd.CmdShell):
             out_anti.close()
 
             xml_in = open(dragon_input, 'w') 
-            inp = open(template,'r') # read template cardq
-            for line in inp.readlines():
-                line = line.replace('MadDM_dm_mass'    , str(mdm)    )
-                line = line.replace('MadDM_sigmav'     , str(sigmav) )
-                line = line.replace('MadDM_Positrons'  , pjoin(self.dir_path, 'output', 'positrons_dndne.txt'  ) )
-                line = line.replace('MadDM_Antiprotons', pjoin(self.dir_path, 'output', 'antiprotons_dndne.txt') )
-                xml_in.write(line)
-            print 'FF written Dragon input card in ' , dragon_input
+            xml_in.write(open(template,'r').read() %
+                         {'dm_mass': mdm,
+                          'sigmav': sigmav,
+                          'Positrons': pjoin(out_dir, 'positrons_dndne.txt'),
+                          'Antiprotons' : pjoin(out_dir, 'antiprotons_dndne.txt')
+                          })
             xml_in.close()
-            
 
-        write_dragon_input(template= template_card , mdm = mDM , sigmav = sigv )
         misc.call(['./DRAGON', dragon_input], cwd=dragon_dir)
-        os.remove(pjoin(self.dir_path, 'output','positrons_dndne.txt') )
-        os.remove(pjoin(self.dir_path, 'output','antiprotons_dndne.txt') )
+        if not __debug__:
+            logger.debug('keep dragon positrons/antiprotons files due to debug mode.')
+            os.remove(pjoin(out_dir,'positrons_dndne.txt') )
+            os.remove(pjoin(out_dir,'antiprotons_dndne.txt') )
 
 
     def write_scan_output(self, out_path = '', keys = '', header = False):
@@ -1853,7 +1844,7 @@ class MADDMRunCmd(cmd.CmdShell):
         elif (out_path and not header):
             s = '\t'
             summary = open(out_path, 'a+')
-            summary.write('{:9d}'.format(int(self.last_results['run'])) + s)
+            summary.write('%s\t' % self.last_results['run'])
 
             for k in keys:
                 if 'run' in k: continue 
@@ -2023,12 +2014,12 @@ class MADDMRunCmd(cmd.CmdShell):
             self.save_remove_indirect_output(scan = False)
 
 
-    # point number must be e.g. run_xx for madevent , or 1,2, ecc. for PPPC 
     def save_remove_indirect_output(self, scan = False):
 
-        point_number = self.last_results['run']
-        if point_number < 10: # to uniform incusive vs madevent/reshuffling naming convention
-           point_number = '0'+ str(point_number)
+        run_name = self.last_results['run']
+        assert run_name == self.run_name
+        
+        point_number = run_name #to be remoed to always use run_name
 
         ind_mode = self.mode['indirect']      
         save_switch = self.maddm_card['save_output']
@@ -2038,77 +2029,74 @@ class MADDMRunCmd(cmd.CmdShell):
         # Setting the various paths
         source_indirect = pjoin(self.dir_path,    'Indirect'      )
         events          = pjoin(source_indirect,  'Events'        )
-        dir_point       = pjoin(events, 'run_'+ str(point_number) )
+        dir_point       = pjoin(events, run_name )
 
         # If indirect is called, then spectra_source == True by def. The other two options depends on the user choice (sigmav, flux_source, flux_earth)
         spec_source, flux_source , flux_earth = False ,'',''
    
         if ind_mode and 'inclusive' in self.maddm_card['sigmav_method']:
-           spec_source = True
-           if 'source' in ind_mode:
-              flux_source = True
-           elif 'earth' in ind_mode:
-              flux_source , flux_earth = True , True
+            spec_source = True
+            if 'source' in ind_mode:
+                flux_source = True
+            elif 'earth' in ind_mode:
+                flux_source , flux_earth = True , True
 
         if 'off' in save_switch and 'dragon' not in self.mode['indirect']:
-           spec_source, flux_source , flux_earth  = False, False, False
+            spec_source, flux_source , flux_earth  = False, False, False
 
         # Saving the output in the general output directory for a single point        
         if not scan: 
-               out_dir = pjoin(self.dir_path, 'output')
-               self.save_spec_flux(out_dir = out_dir, spec_source = spec_source, flux_source = False, flux_earth = flux_earth)    
-               logger.info('Output files saved in ' + pjoin(self.dir_path, 'output') )
-
-        elif   scan:
-             if 'off' in save_switch and 'inclusive' in self.maddm_card['sigmav_method']: # nothing to do here
-                 for F in ['d2NdEdcos.dat','dNdcos.dat','dNdE.dat','rate.dat']:
-                     f_path = pjoin( self.dir_path , 'output', F)
-                     if os.path.isfile(F):
+            out_dir = pjoin(self.dir_path, 'output', run_name)
+            self.save_spec_flux(out_dir = out_dir, spec_source = spec_source, flux_source = False, flux_earth = flux_earth)    
+            logger.info('Output files saved in ' + pjoin(self.dir_path, 'output') )
+        elif scan:
+            if 'off' in save_switch and 'inclusive' in self.maddm_card['sigmav_method']: # nothing to do here
+                for F in ['d2NdEdcos.dat','dNdcos.dat','dNdE.dat','rate.dat']:
+                    f_path = pjoin( self.dir_path , 'output', F)
+                    if os.path.isfile(F):
                         os.remove(F)                
-                 return
+                return
                 
-             if not os.path.exists(source_indirect) : os.makedirs(source_indirect)
-             if not os.path.exists(events)          : os.makedirs(events)
-             if not os.path.exists(pjoin(self.dir_path, 'output' , 'Output_Indirect')) :
-                    os.symlink(events, pjoin(self.dir_path, 'output' , 'Output_Indirect') ) # Creating the symbolic link to the Events directory (inside Indirect)
-             if not os.path.exists(dir_point)       : os.makedirs(dir_point)
+            if not os.path.exists(source_indirect) : os.makedirs(source_indirect)
+            if not os.path.exists(events)          : os.makedirs(events)
+            if not os.path.exists(pjoin(self.dir_path, 'output', run_name, 'Output_Indirect')):
+                files.ln(dir_point, pjoin(self.dir_path, 'output', run_name, 'Output_Indirect'))
+            if not os.path.exists(dir_point)       : os.makedirs(dir_point)
 
-             out_dir = dir_point # all the various output must be saved here             
+            out_dir = dir_point # all the various output must be saved here             
 
-             #print 'FF out_dir to be removed **************** ', out_dir
+            #print 'FF out_dir to be removed **************** ', out_dir
    
-             if 'off' in save_switch:
-                 if 'inclusive' not in self.maddm_card['sigmav_method'] : # here, need to remove everyhting i.e. the whole run_xx folder
+            if 'off' in save_switch:
+                if 'inclusive' not in self.maddm_card['sigmav_method'] : # here, need to remove everyhting i.e. the whole run_xx folder
                     shutil.rmtree(out_dir)
                                       
-             elif 'all' in save_switch :
-                 for F in ['d2NdEdcos.dat','dNdcos.dat','dNdE.dat','rate.dat']:
-                     f_path = pjoin( self.dir_path , 'output', F)
-                     if os.path.isfile(f_path):
+            elif 'all' in save_switch :
+                for F in ['d2NdEdcos.dat','dNdcos.dat','dNdE.dat','rate.dat']:
+                    f_path = pjoin( self.dir_path , 'output', F)
+                    if os.path.isfile(f_path):
                         shutil.move(f_path , pjoin(out_dir, F) )
 
                  
-                 if 'inclusive' in self.maddm_card['sigmav_method']: # saving spectra onyl in inclusive mode since madevent/resh have their own pythia8 spectra             
+                if 'inclusive' in self.maddm_card['sigmav_method']: # saving spectra onyl in inclusive mode since madevent/resh have their own pythia8 spectra             
                     self.save_spec_flux(out_dir = out_dir, spec_source = spec_source, flux_source = flux_source, flux_earth = flux_earth)
                  
-                 elif 'inclusive' not in self.maddm_card['sigmav_method']:
+                elif 'inclusive' not in self.maddm_card['sigmav_method']:
                     self.save_spec_flux(out_dir = out_dir, spec_source = False, flux_source = flux_source, flux_earth = flux_earth)
 
-             elif 'spectra' in save_switch :
-                  for F in ['d2NdEdcos.dat','dNdcos.dat','dNdE.dat','rate.dat']:
-                     f_path = pjoin( self.dir_path , 'output', F)
-                     print 'FF paths direct', f_path , pjoin(out_dir, F) 
-                     if os.path.isfile(f_path):
-                        print 'FF moving direct output', pjoin(out_dir, F) 
-                        shutile.move(f_path , pjoin(out_dir, F) )
+            elif 'spectra' in save_switch :
+                for F in ['d2NdEdcos.dat','dNdcos.dat','dNdE.dat','rate.dat']:
+                    f_path = pjoin( self.dir_path , 'output', F)
+                    if os.path.isfile(f_path):
+                        files.mv(f_path , pjoin(out_dir, F) )
                                 
-                  if 'inclusive' in self.maddm_card['sigmav_method']:
-                       self.save_spec_flux(out_dir = out_dir, spec_source = spec_source, flux_source = flux_source, flux_earth = flux_earth)
-                  else:
-                       #print 'FF removing extra pythia files' , point_number
-                       if os.path.isfile( pjoin(out_dir,'unweighted_events.lhe.gz') ):
-                          os.remove( pjoin(out_dir,'unweighted_events.lhe.gz') )
-                          os.remove( pjoin(out_dir,'run_shower.sh') )
+                if 'inclusive' in self.maddm_card['sigmav_method']:
+                    self.save_spec_flux(out_dir = out_dir, spec_source = spec_source, flux_source = flux_source, flux_earth = flux_earth)
+                else:
+                    #print 'FF removing extra pythia files' , point_number
+                    if os.path.isfile( pjoin(out_dir,'unweighted_events.lhe.gz') ):
+                        os.remove( pjoin(out_dir,'unweighted_events.lhe.gz') )
+                        os.remove( pjoin(out_dir,'run_shower.sh') )
        
 
 
@@ -2116,17 +2104,19 @@ class MADDMRunCmd(cmd.CmdShell):
 
     # This aux function saves the spectra/fluxes in the given directory out_dir
     def save_spec_flux(self, out_dir = '' , spec_source = False, flux_source = False, flux_earth = False):
-        if not out_dir: out_dir = pjoin(self.dir_path, 'output') # default output directory if not defined
+        
+        if not out_dir: out_dir = pjoin(self.dir_path, 'output', self.run_name) # default output directory if not defined
 
         spec_method = self.maddm_card['indirect_flux_source_method']
 
         if spec_source:
-           x = np.log10(self.Spectra.spectra['x'])
-           for spec in self.Spectra.spectra.keys():
-               header = '# Log10(x=Ekin/mDM)   dn/dlogx   ' + spec + '\t' + self.maddm_card['indirect_flux_source_method'] + ' spectra at source'
-               if 'x' not in spec:
-                   dndlogx = self.Spectra.spectra[spec]
-                   aux.write_data_to_file(x , dndlogx  , filename = out_dir + '/' + spec + '_spectrum_source.dat' , header = header )
+            x = np.log10(self.Spectra.spectra['x'])
+            for spec in self.Spectra.spectra.keys():
+                header = '# Log10(x=Ekin/mDM)   dn/dlogx   ' + spec + '\t' + self.maddm_card['indirect_flux_source_method'] + ' spectra at source'
+                if 'x' not in spec:
+                    dndlogx = self.Spectra.spectra[spec]
+                    aux.write_data_to_file(x , dndlogx  , filename = out_dir + '/' + spec + '_spectrum_source.dat' , header = header )
+        misc.sprint("Need to clean the code here")
         '''             
         if flux_source:
            logger.debug('FF saving flux source')
@@ -2140,20 +2130,20 @@ class MADDMRunCmd(cmd.CmdShell):
                    print 'FF the flux is ', out_dir + '/' + flux + '_flux_source.dat' 
         '''
         if flux_earth:
-           logger.debug('FF saving flux earth')
-           e = self.Spectra.flux_earth['e']
-           for flux in self.Spectra.flux_earth.keys():
-               header = '# E[GeV]   dPhi/dE [particles/(cm2 s sr)] ' + flux + '\t' + self.maddm_card['indirect_flux_source_method'] +' flux at earth'
-               if flux != 'e':
-                   dPhidE = self.Spectra.flux_earth[flux]['dPhidE']
-                   aux.write_data_to_file(e , dPhidE  , filename = out_dir + '/' + flux + '_dphide_' + spec_method +'.dat' , header = header )
+            logger.debug('FF saving flux earth')
+            e = self.Spectra.flux_earth['e']
+            for flux in self.Spectra.flux_earth.keys():
+                header = '# E[GeV]   dPhi/dE [particles/(cm2 s sr)] ' + flux + '\t' + self.maddm_card['indirect_flux_source_method'] +' flux at earth'
+                if flux != 'e':
+                    dPhidE = self.Spectra.flux_earth[flux]['dPhidE']
+                    aux.write_data_to_file(e , dPhidE  , filename = out_dir + '/' + flux + '_dphide_' + spec_method +'.dat' , header = header )
 
 
-           if 'PPPC' in self.maddm_card['indirect_flux_earth_method']: # for PPPC4DMID, I save also the positron at earth
-               e = self.Spectra.flux_earth_positrons['e']
-               header = '# E[GeV]   dPhi/dlogE [particles/(cm2 s sr)]  positrons \t PPPC4DMID flux at earth'
-               dPhidlogE = self.Spectra.flux_earth_positrons['positrons']['dPhidlogE']
-               aux.write_data_to_file(e , dPhidlogE  , filename = out_dir + '/positrons_flux_earth.txt' , header = header )
+            if 'PPPC' in self.maddm_card['indirect_flux_earth_method']: # for PPPC4DMID, I save also the positron at earth
+                e = self.Spectra.flux_earth_positrons['e']
+                header = '# E[GeV]   dPhi/dlogE [particles/(cm2 s sr)]  positrons \t PPPC4DMID flux at earth'
+                dPhidlogE = self.Spectra.flux_earth_positrons['positrons']['dPhidlogE']
+                aux.write_data_to_file(e , dPhidlogE  , filename = out_dir + '/positrons_flux_earth.txt' , header = header )
 
         misc.sprint("CODE NEED CLEANING HERE!!!")
         '''
@@ -2419,6 +2409,7 @@ class MADDMRunCmd(cmd.CmdShell):
         # else:
         #     raise Exception, "No computation requested. End the computation"
     
+        misc.sprint(self.dir_path)
         if os.path.exists(pjoin(self.dir_path, 'src', 'maddm.x')) or os.path.exists(pjoin(self.dir_path, 'maddm.x')):
             logger.info("compilation done")
         else:

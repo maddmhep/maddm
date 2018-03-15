@@ -14,9 +14,9 @@ def integrate(integrand, x_grid=[], a=0, b=0, npts=0, **kwargs):
             return simpson
 
         for ii in range(0, len(x_grid)-1):
-           start_pt = x_grid[ii]
-           end_pt =  x_grid[ii+1]
-           simpson = simpson + (end_pt - start_pt)/6.0*(integrand(start_pt, **kwargs) + 4.0*integrand(0.5*\
+            start_pt = x_grid[ii]
+            end_pt =  x_grid[ii+1]
+            simpson = simpson + (end_pt - start_pt)/6.0*(integrand(start_pt, **kwargs) + 4.0*integrand(0.5*\
                                        (start_pt+end_pt), **kwargs) + integrand(end_pt, **kwargs))
 
 
@@ -50,8 +50,8 @@ def module_exists(className):
 
 #check if a string is a float
 def isfloat(value):
-  try:
-    float(value)
-    return True
-  except ValueError:
-    return False
+    try:
+        float(value)
+        return True
+    except ValueError:
+        return False
