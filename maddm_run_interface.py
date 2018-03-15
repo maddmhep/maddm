@@ -1815,6 +1815,7 @@ class MADDMRunCmd(cmd.CmdShell):
             xml_in.close()
 
         misc.call(['./DRAGON', dragon_input], cwd=dragon_dir)
+
         if not __debug__:
             logger.debug('keep dragon positrons/antiprotons files due to debug mode.')
             os.remove(pjoin(out_dir,'positrons_dndne.txt') )
@@ -1822,8 +1823,6 @@ class MADDMRunCmd(cmd.CmdShell):
 
 
     def write_scan_output(self, out_path = '', keys = '', header = False):
-        
-        # writing the parameters                                                                                                                                                 
         if out_path and header:
             nice_keys = []
             for k in keys:
@@ -3410,7 +3409,7 @@ class Multinest(object):
         self.options = {
             'prior':'loguniform',
             'loglikelihood':{'relic':'gaussian', 'directSI':'half_gauss', 'directSD_p':'half_gauss','directSD_n':'half_gauss', 'indirect':'half_gauss'},
-            'livepts':50000,
+            'livepts':10000,
             'sampling_efficiency':'model',
             'parameters':[],
             'prefix':'mnest_',
@@ -3455,15 +3454,15 @@ class Multinest(object):
                 self.output_observables.remove('default')
             
             if self.maddm_run.mode['relic']:
-                self.output_observables.append('omegah2')
-                self.output_observables.append('sigmav_xf')
-                self.output_observables.append('x_freezeout')
+                self.output_observables.append('Omegah^2')
+                self.output_observables.append('sigmav(xf)')
+                self.output_observables.append('x_f')
 
             if self.maddm_run.mode['direct']:
-                self.output_observables.append('sigmaN_SI_neutron')
-                self.output_observables.append('sigmaN_SI_proton')
-                self.output_observables.append('sigmaN_SD_neutron')
-                self.output_observables.append('sigmaN_SD_proton')
+                self.output_observables.append('sigmaN_SI_n')
+                self.output_observables.append('sigmaN_SI_p')
+                self.output_observables.append('sigmaN_SD_n')
+                self.output_observables.append('sigmaN_SD_p')
                 self.output_observables.append('Nevents')
 
             if self.maddm_run.mode['indirect']:
@@ -3664,11 +3663,11 @@ class Multinest(object):
             return
 
         if self.maddm_run.mode['relic']:
-            omegah2 = results['omegah2']
+            omegah2 = results['Omegah^2']
         if self.maddm_run.mode['direct']:
-            spinSI = 0.5*(results['sigmaN_SI_proton'] + results['sigmaN_SI_neutron']) * GeV2pb * pb2cm2
-            spinSDp = results['sigmaN_SD_proton']  * GeV2pb * pb2cm2
-            spinSDn = results['sigmaN_SD_neutron'] * GeV2pb * pb2cm2
+            spinSI = 0.5*(results['sigmaN_SI_p'] + results['sigmaN_SI_n']) * GeV2pb * pb2cm2
+            spinSDp = results['sigmaN_SD_p']  * GeV2pb * pb2cm2
+            spinSDn = results['sigmaN_SD_n'] * GeV2pb * pb2cm2
         #<=========== for ID we will need each channel separately.
         if self.maddm_run.mode['indirect']:
             sigmavID = {'tot': results['taacsID']}
