@@ -55,11 +55,7 @@ logger = logging.getLogger('madgraph.plugin.maddm')
 #logger.setLevel(10) #level 20 = INFO
 
 MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
-PPPCDIR = os.getcwd()+'/PPPC4DMID/'
 
-
-
-os.system('rm /scratch/federico/MadDM/maddm_dev2/IND_SCAN/Indirect/RunWeb')
 
 #Is there a better definition of infinity?
 __infty__ = float('inf')
@@ -188,11 +184,17 @@ class ExpConstraints:
         else:
             return np.interp(mdm, self._id_limit_mdm[channel], self._id_limit_sigv[channel])
 
-# This class holds some functionalities to load spectra from the PPPC4DMID files or the output from pythia8,
-# interpolates the PPPC4DMID spectra for arbitrary values of DM etc.
+################################################################################
+##    Spectra
+################################################################################
 class Spectra:
+    """This class holds some functionalities to load spectra from the PPPC4DMID 
+    files or the output from pythia8, interpolates the PPPC4DMID spectra for 
+    arbitrary values of DM etc.
+    """
 
     def __init__(self):
+        
         
         self.spectra_id    = {'px':'antiprotons', 'gx':'gammas', 'nuex':'neutrinos_e', 'numux':'neutrinos_mu', 'nutaux':'neutrinos_tau', 'ex':'positrons'}
 
@@ -222,7 +224,11 @@ class Spectra:
             return 
         else: return True 
 
-    def load_PPPC_source(self,corr = '',load = True):
+    def load_PPPC_source(self, PPPCDIR, corr = '',load = True):
+        """routine to load the PPPC table if installed already"""
+        
+        misc.sprint(PPPCDIR)
+        
         if load: 
           if (not os.path.isfile(PPPCDIR+'/PPPC_Tables_EW.npy') and not os.path.isfile(PPPCDIR+'/PPPC_Tables_noEW.npy')):
             logger.error('PPPC4DMID Spectra at source not found! Please install by typing install PPPC4DMID') # Break and ask the user to download the Tables       
@@ -239,12 +245,12 @@ class Spectra:
              return dic
 
     # not yet implemented (tables missing) 
-    def load_PPPC_earth(self, prof = 'Ein'):
-         if (not os.path.isfile(PPPCDIR+'/PPPC_Tables_epEarth_'+prof+'.npy') ):
+    def load_PPPC_earth(self, PPPCDIR, prof = 'Ein'):
+        if (not os.path.isfile(PPPCDIR+'/PPPC_Tables_epEarth_'+prof+'.npy') ):
             logger.error('PPPC4DMID Spectra at Earth not found! Please install by typing install PPPC4DMID') # Break and ask the user to download the Tables                     
             return
         
-         else:
+        else:
             #print 'FF dic_path', '/PPPC_Tables_epEarth_'+prof+'.npy' 
 
             dic = np.load(PPPCDIR+'/PPPC_Tables_epEarth_'+prof+'.npy').item()
@@ -553,7 +559,7 @@ class MADDMRunCmd(cmd.CmdShell):
             dir_path = root_path
 
         self.dir_path = dir_path
-        self.param_card_iterator = [] #an placeholder containing a generator of paramcard for scanning
+        self.param_card_iterator = [] #a placeholder containing a generator of paramcard for scanning
         
         # Define self.proc_characteristics (set of information related to the
         # directory status
@@ -574,7 +580,7 @@ class MADDMRunCmd(cmd.CmdShell):
         self.auto_width = set() # keep track of width set on Auto
 
         self.limits = ExpConstraints()
-        self.options = {}
+        self.options = options
 
         self.Spectra = Spectra()
         self.Fermi   = Fermi_bounds()
@@ -1044,7 +1050,7 @@ class MADDMRunCmd(cmd.CmdShell):
             if self.maddm_card['sigmav_method'] == 'madevent':
                 logger.info("Running sigmav assuming delta in energy via madevent")
                 with misc.MuteLogger(['madgraph'], [set_level]):
-                    self.me_cmd.do_launch('-f -n %s' % self.run_name)
+                    self.me_cmd.do_launch('%s -f' % self.run_name)
             elif self.maddm_card['sigmav_method'] == 'reshuffling': 
                 cmd = ['launch %s' % self.run_name,
                    'reweight=indirect',
@@ -1079,29 +1085,12 @@ class MADDMRunCmd(cmd.CmdShell):
 
 
 #        else self.maddm_card['sigmav_method'] == 'inclusive':
-        else:
+        elif self.read_PPPCspectra():   # return False if PPPC4DMID not installed!
             logger.info('Calculating Fermi limit using PPPC4DMID spectra')
-            self.read_PPPCspectra()
 
         # ****** Calculating Fermi Limits
+        self.calculate_fermi_limits(mdm)
 
-        self.last_results['Fermi_sigmav'] = -1
-        x, gammas = self.Spectra.spectra['x'] , self.Spectra.spectra['gammas']
-        #print ' FF spectra', x , '' , gammas                                                                                                                               
-        if not gammas:
-            logger.error('The gamma spectrum is empty!Will not calculate Fermi limit')
-            self.last_results['Fermi_sigmav'] = -1
-            self.last_results['pvalue']       = -1
-            self.last_results['like_tot']     = -1
-        elif gammas: 
-            #print 'FF majorana dirac' , self.norm_Majorana_Dirac()
-            #print 'FF gammas', gammas 
-            sigmav = self.Fermi.Fermi_sigmav_lim(mdm, x , gammas ,maj_dirac= self.norm_Majorana_Dirac() ) # Returns a 3d array with [sigmav,pvalue,likel.]
-            self.last_results['Fermi_sigmav'] = sigmav[0] # FF store the results from the Fermi limit calculation                                    
-            self.last_results['pvalue']       = sigmav[1]
-            self.last_results['like_tot']     = sigmav[2]
-            print 'FF sigmav , value , likeli ' , sigmav[0] , sigmav[1] , sigmav[2]
-        #print "FF self.mode['indirect'] ***************  " + self.mode['indirect']
 
         
         # ****** Calculating Fluxes at detection
@@ -1121,6 +1110,29 @@ class MADDMRunCmd(cmd.CmdShell):
                 elif 'dragon' in self.maddm_card['indirect_flux_earth_method']:
                     logger.info('Calling DRAGON for positrons and antiprotons propagation')
                     self.run_Dragon()                                                                                                                
+
+    def calculate_fermi_limits(self, mdm):
+        """setup the computation for the fermi limits"""
+        
+        self.last_results['Fermi_sigmav'] = -1
+        
+        
+        x, gammas = self.Spectra.spectra['x'] , self.Spectra.spectra['gammas']
+
+        if not gammas:
+            if not self.options['pppc4dmid_path'] and self.maddm_card['indirect_flux_source_method'].startswith('PPP'):
+                pass
+            else:
+                logger.error('The gamma spectrum is empty! Will not calculate Fermi limit')
+            self.last_results['Fermi_sigmav'] = -1
+            self.last_results['pvalue']       = -1
+            self.last_results['like_tot']     = -1
+        elif gammas: 
+            sigmav = self.Fermi.Fermi_sigmav_lim(mdm, x , gammas ,maj_dirac= self.norm_Majorana_Dirac() ) # Returns a 3d array with [sigmav,pvalue,likel.]
+            self.last_results['Fermi_sigmav'] = sigmav[0] # FF store the results from the Fermi limit calculation                                    
+            self.last_results['pvalue']       = sigmav[1]
+            self.last_results['like_tot']     = sigmav[2]
+            logger.debug('FF sigmav = %s , value=%s , likeli=%s ' , (sigmav[0] , sigmav[1] , sigmav[2]))
 
 
     def run_pythia8_for_flux(self):
@@ -1246,41 +1258,45 @@ class MADDMRunCmd(cmd.CmdShell):
 
     # FF this function reads the spectra from the PPPC tables from each annihilation channel, and adds them up according to the BR 
     def read_PPPCspectra(self):
-         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
+        mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
 
-         if 'PPPC4DMID' in self.maddm_card['indirect_flux_source_method'] or 'inclusive' in self.maddm_card['sigmav_method']:
+        if not self.options['pppc4dmid_path']:
+            logger.error('PPPC4DMID not installed. Please install by typing "install PPPC4DMID".')
+            return
+
+        if 'PPPC4DMID' in self.maddm_card['indirect_flux_source_method'] or 'inclusive' in self.maddm_card['sigmav_method']:
             if self.Spectra.check_mass(mdm):
                if '_ew' in self.maddm_card['indirect_flux_source_method']:
-                    PPPC_source = self.Spectra.load_PPPC_source(corr = 'ew')
+                    PPPC_source = self.Spectra.load_PPPC_source(self.options['pppc4dmid_path'],corr = 'ew')
                else:
-                    PPPC_source = self.Spectra.load_PPPC_source(corr = '')
+                    PPPC_source = self.Spectra.load_PPPC_source(self.options['pppc4dmid_path'], corr = '')
 
-         # FF here I combine the spectra: multiply each channel by the BR                                                                                                  
-         # I create a temporary list that at each loop in the channel, retains the partial sum of each x value multiplied by the channel BR                                      
-         # At the end of the loop over the channels, this is the combine spectrum (do it for all the spectra - gammas, nue, positron etc. )
+        # FF here I combine the spectra: multiply each channel by the BR                                                                                                  
+        # I create a temporary list that at each loop in the channel, retains the partial sum of each x value multiplied by the channel BR                                      
+        # At the end of the loop over the channels, this is the combine spectrum (do it for all the spectra - gammas, nue, positron etc. )
 
-         self.Spectra.spectra['x'] = PPPC_source['x']
+        self.Spectra.spectra['x'] = PPPC_source['x']
 
-         # print 'FF last results:', self.last_results
-         available_channels = {}
-         for x in self.last_results.keys():
+        # print 'FF last results:', self.last_results
+        available_channels = {}
+        for x in self.last_results.keys():
               if 'err' not in x and 'taacsID#' in x and 'lim_' not in x:
                   available_channels[x] = x.split('_')[1] # list of available SM channel xsections
 
     
-         self.last_results['available_channels'] = available_channels.keys()
-         #print 'FF the available channels are' , available_channels.keys()
-         # {'taacsID#xxdxxdb_ccx': 'ccx', 'taacsID#xxdxxdb_y0y0': 'y0y0', 'taacsID#xxdxxdb_ttx': 'ttx', 'taacsID#xxdxxdb_ssx': 'ssx', 
-         # 'taacsID#xxdxxdb_uux': 'uux', 'taacsID#xxdxxdb_ddx': 'ddx', 'taacsID#xxdxxdb_bbx': 'bbx'}
+        self.last_results['available_channels'] = available_channels.keys()
+        #print 'FF the available channels are' , available_channels.keys()
+        # {'taacsID#xxdxxdb_ccx': 'ccx', 'taacsID#xxdxxdb_y0y0': 'y0y0', 'taacsID#xxdxxdb_ttx': 'ttx', 'taacsID#xxdxxdb_ssx': 'ssx', 
+        # 'taacsID#xxdxxdb_uux': 'uux', 'taacsID#xxdxxdb_ddx': 'ddx', 'taacsID#xxdxxdb_bbx': 'bbx'}
 
-         # self.Spectra.spectra_id = {'px':'antiprotons', 'gx':'gammas', 'nuex':'neutrinos_e', 'numux':'neutrinos_mu', 'nutaux':'neutrinos_tau', 'ex':'positrons'}
+        # self.Spectra.spectra_id = {'px':'antiprotons', 'gx':'gammas', 'nuex':'neutrinos_e', 'numux':'neutrinos_mu', 'nutaux':'neutrinos_tau', 'ex':'positrons'}
 
-         # FF Check that at lest one SM channel is available
-         if not any(i in self.Spectra.map_allowed_final_state_PPPC.keys() for i in available_channels.values()):
+        # FF Check that at lest one SM channel is available
+        if not any(i in self.Spectra.map_allowed_final_state_PPPC.keys() for i in available_channels.values()):
                   logger.error('No SM annihilation channel available, cannot use PPPC4DMID Tables!')
                   return
                   
-         for sp, sp_t in self.Spectra.spectra_id.iteritems():
+        for sp, sp_t in self.Spectra.spectra_id.iteritems():
               #spec_temp = [ 0 for i in range(len(x)) ] 
               self.last_results['tot_SM_xsec'] = 0
               # self.Spectra.map_allowed_final_state_PPPC = {'qqx':'qq', 'ccx':'cc', 'gg':'gg', 'bbx':'bb', 'ttx':'tt',
@@ -1355,34 +1371,38 @@ class MADDMRunCmd(cmd.CmdShell):
               self.Spectra.spectra[sp_t] = sum_spec
               #print 'FF self.Spectra.spectra[sp_t]' , self.Spectra.spectra[sp_t] 
 
-         #print self.Spectra.spectra
+        #print self.Spectra.spectra
 
     
     def read_PPPC_positrons_earth(self):
-         # This funcion reads the positron flux at earth from the PPPC Tables
+        # This funcion reads the positron flux at earth from the PPPC Tables
+         
+        if not self.options['pppc4dmid_path']:
+            logger.error('PPPC4DMID not installed. Please install by typing "install PPPC4DMID".')
+            return 
+         
         
-         PROF = self.maddm_card['dm_profile']
-         PROP = self.maddm_card['prop_method']
-         HALO = self.maddm_card['halo_funct']
-         logger.debug('FF profile,prop,halo ***  ' + PROF + ' ' + PROP + ' ' + HALO ) 
+        PROF = self.maddm_card['dm_profile']
+        PROP = self.maddm_card['prop_method']
+        HALO = self.maddm_card['halo_funct']
+        logger.debug('FF profile,prop,halo ***  ' + PROF + ' ' + PROP + ' ' + HALO ) 
 
-         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
+        mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
 
-         if 'PPPC4DMID' in self.maddm_card['indirect_flux_earth_method'] or self.maddm_card['sigmav_method'] == 'inclusive':
+        if 'PPPC4DMID' in self.maddm_card['indirect_flux_earth_method'] or self.maddm_card['sigmav_method'] == 'inclusive':
             if self.Spectra.check_mass(mdm):
-               PPPC_earth = self.Spectra.load_PPPC_earth(prof = PROF)
+               PPPC_earth = self.Spectra.load_PPPC_earth(self.options['pppc4dmid_path'], prof = PROF)
                
-         #print 'FF PPPC_earth' ,PPPC_earth
-         E = 10**np.array(PPPC_earth['x']) # converting Log10(E) in E ; will save fluxes as E vs dPhi/dE
-         self.Spectra.flux_earth_positrons['e'] = E
+        #print 'FF PPPC_earth' ,PPPC_earth
+        E = 10**np.array(PPPC_earth['x']) # converting Log10(E) in E ; will save fluxes as E vs dPhi/dE
+        self.Spectra.flux_earth_positrons['e'] = E
 
-         print 'FF arrays' , PPPC_earth['x'] ,E
 
-         channels = self.last_results['available_channels']
+        channels = self.last_results['available_channels']
 
-         # filling a dictionary with all non -zero cross section positrons fluxes from SM annihilations channels
-         temp_dic = {}
-         for CH in channels: # e.g.  ccx, ttx ecc.
+        # filling a dictionary with all non -zero cross section positrons fluxes from SM annihilations channels
+        temp_dic = {}
+        for CH in channels: # e.g.  ccx, ttx ecc.
             C = CH.split('_')[1]
             if C in self.Spectra.map_allowed_final_state_PPPC.keys():
                ch = self.Spectra.map_allowed_final_state_PPPC[C]  # ch is the name of the channels in the Tables                                                           
@@ -1401,14 +1421,14 @@ class MADDMRunCmd(cmd.CmdShell):
                 temp_dic[C]['spec'] = interp_spec
                 temp_dic[C]['xsec'] = ch_BR
 
-         sum_spec = []
-         for num in range(0,len(temp_dic[temp_dic.keys()[0]]['spec']) ):
+        sum_spec = []
+        for num in range(0,len(temp_dic[temp_dic.keys()[0]]['spec']) ):
             val = 0
             for k in temp_dic.keys():
                 val = val + temp_dic[k]['spec'][num] * ( temp_dic[k]['xsec'] / self.last_results['tot_SM_xsec'] )
             sum_spec.append(val)
 
-         self.Spectra.flux_earth_positrons['positrons']['dPhidlogE'] = sum_spec
+        self.Spectra.flux_earth_positrons['positrons']['dPhidlogE'] = sum_spec
 
          
     def neu_oscillations(self):
@@ -3272,8 +3292,8 @@ class MadDMCard(banner_mod.RunCard):
         self.add_param('vave_indirect', 0.00002, include=True)
         self.add_param('halo_profile', 'Draco', include=True, legacy=True)   ##### this naming doesn't make sense fix it!!!!!!!!
 
-        self.add_param('jfactors', {'__type__':1.0}, include=False, hidden=True)
-        self.add_param('distances', {'__type__':1.0}, include=False, hidden=True)
+        self.add_param('jfactors', {'__type__':1.0}, include=False, hidden=True, system=True)
+        self.add_param('distances', {'__type__':1.0}, include=False, hidden=True, system=True)
         self.add_param('npts_for_flux', 200, include=False, hidden=True) #number of points for the flux diff. distribution
 
         self.add_param('only_two_body_decays', True, include=False)
@@ -3357,6 +3377,10 @@ class MadDMCard(banner_mod.RunCard):
                 
                 
 class Indirect_Cmd(me5_interface.MadEventCmdShell):
+    
+    options_configuration = dict(me5_interface.MadEventCmdShell.options_configuration)
+    options_configuration.update({'pppc4dmid_path': './PPPC4DMID',
+                                  'dragon_path': './DRAGON'})
     
     def __init__(self, *args, **opts):
         
