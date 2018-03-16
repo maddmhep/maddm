@@ -227,22 +227,20 @@ class Spectra:
     def load_PPPC_source(self, PPPCDIR, corr = '',load = True):
         """routine to load the PPPC table if installed already"""
         
-        misc.sprint(PPPCDIR)
         
         if load: 
-          if (not os.path.isfile(PPPCDIR+'/PPPC_Tables_EW.npy') and not os.path.isfile(PPPCDIR+'/PPPC_Tables_noEW.npy')):
-            logger.error('PPPC4DMID Spectra at source not found! Please install by typing install PPPC4DMID') # Break and ask the user to download the Tables       
-            return
+            if (not os.path.isfile(PPPCDIR+'/PPPC_Tables_EW.npy') and not os.path.isfile(PPPCDIR+'/PPPC_Tables_noEW.npy')):
+                logger.error('PPPC4DMID Spectra at source not found! Please install by typing install PPPC4DMID') # Break and ask the user to download the Tables       
+                return
 
-          if not corr:
-             dic =  np.load(PPPCDIR+'/PPPC_Tables_noEW.npy').item()
-             misc.sprint('PPPC4DMID Spectra at source loaded')
-             return dic
-
-          elif corr == 'ew':
-             dic =  np.load(PPPCDIR+'/PPPC_Tables_noEW.npy').item()
-             misc.sprint('PPPC4DMID Spectra at source (with EW corrections) loaded')
-             return dic
+            if not corr:
+                dic =  np.load(PPPCDIR+'/PPPC_Tables_noEW.npy').item()
+                logger.info('PPPC4DMID Spectra at source loaded')
+                return dic
+            elif corr == 'ew':
+                dic =  np.load(PPPCDIR+'/PPPC_Tables_noEW.npy').item()
+                logger.info('PPPC4DMID Spectra at source (with EW corrections) loaded')
+                return dic
 
     # not yet implemented (tables missing) 
     def load_PPPC_earth(self, PPPCDIR, prof = 'Ein'):
@@ -690,8 +688,7 @@ class MADDMRunCmd(cmd.CmdShell):
     def do_launch(self, line):
         """run the code"""
 
-        param_path  = pjoin(self.dir_path,'Cards', 'param_card.dat')
-        self.param_card = param_card_mod.ParamCard(param_path)
+
 
         args = line.split()
         if '-f' in args or '--force' in args:
@@ -699,6 +696,7 @@ class MADDMRunCmd(cmd.CmdShell):
         else:
             force = False
         
+
         # determine run_name for name in the output directory:
         if '-n' in args:
             self.run_name = args[args.index('-n')+1]
@@ -710,21 +708,24 @@ class MADDMRunCmd(cmd.CmdShell):
                     pass
         else:
             i = 1
-            while os.path.exists(pjoin(self.dir_path, 'output', 'run_%02d' %i)):
+            while os.path.exists(pjoin(self.dir_path, 'output', 'run_%02d' %i)) or\
+                  os.path.exists(pjoin(self.dir_path, 'output', 'run_%02d_01' %i)):
                 i += 1
             self.run_name = 'run_%02d' % i
         
-        misc.sprint(self.dir_path, self.run_name)
-        # create output directory.
-        os.mkdir(pjoin(self.dir_path, 'output', self.run_name))
-        
         self.ask_run_configuration(mode=[], force=force)
-
 
         if not self.multinest_running:
             self.compile()
 
- 
+
+        if self.param_card_iterator:
+            self.run_name += '_01'
+
+        # create output directory.
+        os.mkdir(pjoin(self.dir_path, 'output', self.run_name))
+        
+                 
         output = pjoin(self.dir_path, 'output', self.run_name, 'maddm.out') 
         misc.call(['./maddm.x', pjoin('output', self.run_name, 'maddm.out')], cwd =self.dir_path)
         #Here we read out the results which the FORTRAN module dumped into a file
@@ -798,7 +799,6 @@ class MADDMRunCmd(cmd.CmdShell):
 
         if self.mode['indirect']:
             self.launch_indirect(force)
-
         
         if not self.in_scan_mode and not self.multinest_running:
             self.print_results()
@@ -894,39 +894,23 @@ class MADDMRunCmd(cmd.CmdShell):
                         if 'antip' in channel or 'pos' in channel: continue
                         order.append('flux_%s' % channel)
 
-                #if self.maddm_card['sigmav_method'] == 'inclusive':
-                #        order.append('tot_SM_xsec')
-            #logger.info(order)            
-            # FF to be fixed!
-            #<=-------------- Mihailo commented out max_col = 10
-
-#            print 'FF the order is', order
-#            print 'FF last results', self.last_results 
-            
-            # removing extra entries if not in last_results
-            #print 'FF the order is ', order 
-            #order.append('taacsID')
             for elem in order:
                 if elem not in self.last_results.keys():
                     order.remove(elem)
 
-            summary_file = pjoin(self.dir_path, 'output','scan_%s.txt' %self.run_name)
+            run_name = str(self.run_name).rsplit('_',1)[0]
+            summary_file = pjoin(self.dir_path, 'output','scan_%s.txt' % run_name)
             self.write_scan_output(out_path = summary_file , keys = order, header = True )
             self.write_scan_output(out_path = summary_file , keys = order )
-            #print 'FF nb_output' , nb_output
-            #check if the param_card defines a scan.
             with misc.TMP_variable(self, 'in_scan_mode', True):
                 with misc.MuteLogger(names=['cmdprint','madevent','madgraph','madgraph.plugin'],levels=[50,50,50,20]):
                     
-                    run_name = str(self.run_name)
                     
                     for i,card in enumerate(param_card_iterator):
                         print 'FF INDIRECT MODE *************** ', self.mode['indirect']
                         card.write(pjoin(self.dir_path,'Cards','param_card.dat'))
-                        self.exec_cmd("launch -f -n %s_%02d" % (run_name, i+1),
+                        self.exec_cmd("launch -f -n %s_%02d" % (run_name, i+2),
                                        precmd=True, postcmd=True, errorhandling=False)
-                        misc.sprint(self.last_results['run'], "%s_%02d" % (run_name, i+1), 'can skip next line if those are always equals', self.run_name)
-                        self.last_results['run'] = "%s_%02d" % (run_name, i+1)
 
                         for par,val in zip(param_card_iterator.param_order, param_card_iterator.itertag):
                             self.last_results[par] = val
@@ -1005,9 +989,11 @@ class MADDMRunCmd(cmd.CmdShell):
         
         if not self.in_scan_mode: 
             logger.info('Running indirect detection')
+            
         if not hasattr(self, 'me_cmd'):
+            misc.sprint('Is this make sense? Should think of something better (was only work on Mac)')
             try:
-                os.remove(pjoin(self.dir_path,'indirect', 'RunWeb'))
+                os.remove(pjoin(self.dir_path,'Indirect', 'RunWeb'))
             except Exception:
                 pass
             self.me_cmd = Indirect_Cmd(pjoin(self.dir_path, 'Indirect'))
@@ -1049,7 +1035,7 @@ class MADDMRunCmd(cmd.CmdShell):
             
             if self.maddm_card['sigmav_method'] == 'madevent':
                 logger.info("Running sigmav assuming delta in energy via madevent")
-                with misc.MuteLogger(['madgraph'], [set_level]):
+                with misc.MuteLogger(['madgraph','madevent','cmdprint'], [set_level]*3):
                     self.me_cmd.do_launch('%s -f' % self.run_name)
             elif self.maddm_card['sigmav_method'] == 'reshuffling': 
                 cmd = ['launch %s' % self.run_name,
@@ -1067,7 +1053,6 @@ class MADDMRunCmd(cmd.CmdShell):
                 clean_key =clean_key_list[len(clean_key_list)-1].split('_')[1] +'_'+  clean_key_list[len(clean_key_list)-1].split('_')[2] 
  
                 if key.startswith('xsec'):
-                    misc.sprint("<------- FIX THIS. GET RID OF VAVE_TEMP. THIS WILL JUST GET INTEGRATED BY MADEVENT")
                     self.last_results['taacsID#%s' %(clean_key)] = value* pb2cm3
                     self.last_results['taacsID'] += value* pb2cm3
                 elif key.startswith('xerr'):
@@ -1132,7 +1117,7 @@ class MADDMRunCmd(cmd.CmdShell):
             self.last_results['Fermi_sigmav'] = sigmav[0] # FF store the results from the Fermi limit calculation                                    
             self.last_results['pvalue']       = sigmav[1]
             self.last_results['like_tot']     = sigmav[2]
-            logger.debug('FF sigmav = %s , value=%s , likeli=%s ' , (sigmav[0] , sigmav[1] , sigmav[2]))
+            logger.debug('FF sigmav = %s , value=%s , likeli=%s ' , sigmav[0] , sigmav[1] , sigmav[2])
 
 
     def run_pythia8_for_flux(self):
@@ -2038,8 +2023,6 @@ class MADDMRunCmd(cmd.CmdShell):
         run_name = self.last_results['run']
         assert run_name == self.run_name
         
-        point_number = run_name #to be remoed to always use run_name
-
         ind_mode = self.mode['indirect']      
         save_switch = self.maddm_card['save_output']
 
@@ -2428,7 +2411,6 @@ class MADDMRunCmd(cmd.CmdShell):
         # else:
         #     raise Exception, "No computation requested. End the computation"
     
-        misc.sprint(self.dir_path)
         if os.path.exists(pjoin(self.dir_path, 'src', 'maddm.x')) or os.path.exists(pjoin(self.dir_path, 'maddm.x')):
             logger.info("compilation done")
         else:
