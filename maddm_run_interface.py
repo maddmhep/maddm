@@ -7,14 +7,9 @@ import re
 import sys
 import subprocess
 import auxiliary as aux
-import timeit
 import stat
 import shutil
-import threading, subprocess
-import json
 
-# FF check if these are already imported somewhere else?                                                                                                                            
-import scipy
 from scipy.interpolate import interp1d
 from scipy.integrate import quad
 from scipy.optimize import minimize_scalar
@@ -22,7 +17,6 @@ from scipy.optimize import brute
 from scipy.optimize import fmin
 from scipy.special import gammainc
 
-import shutil
 import MGoutput
 from madgraph import MadGraph5Error
 from models import check_param_card
@@ -991,16 +985,13 @@ class MADDMRunCmd(cmd.CmdShell):
             logger.info('Running indirect detection')
             
         if not hasattr(self, 'me_cmd'):
-            misc.sprint('Is this make sense? Should think of something better (was only work on Mac)')
-            try:
-                os.remove(pjoin(self.dir_path,'Indirect', 'RunWeb'))
-            except Exception:
-                pass
-            self.me_cmd = Indirect_Cmd(pjoin(self.dir_path, 'Indirect'))
+            self.me_cmd = Indirect_Cmd(pjoin(self.dir_path, 'Indirect'), force_run=True)
+            #force_run = True means no crash associated with RunWeb -> we check this later
         elif self.me_cmd.me_dir != pjoin(self.dir_path, 'Indirect'):
             self.me_cmd.do_quit()
-            self.me_cmd = Indirect_Cmd(pjoin(self.dir_path, 'Indirect'))
-
+            self.me_cmd = Indirect_Cmd(pjoin(self.dir_path, 'Indirect'), force_run=True)
+            #force_run = True means no crash associated with RunWeb -> we check this later
+            
         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
 
         if self.maddm_card['sigmav_method'] != 'inclusive':
@@ -1030,24 +1021,21 @@ class MADDMRunCmd(cmd.CmdShell):
             if __debug__:
                 set_level = 10
             else:
-                set_level = 30
-            set_level=50
-            
-            if self.maddm_card['sigmav_method'] == 'madevent':
-                logger.info("Running sigmav assuming delta in energy via madevent")
+                set_level = 50
+            logger.info("Computing sigmav with method: %s" % self.maddm_card['sigmav_method'])
+            with self.me_cmd.RunWebHandling(pjoin(self.dir_path, 'Indirect')):
+                #this with statement ensure that only one process is running within
+                #that directory.
                 with misc.MuteLogger(['madgraph','madevent','cmdprint'], [set_level]*3):
-                    self.me_cmd.do_launch('%s -f' % self.run_name)
-            elif self.maddm_card['sigmav_method'] == 'reshuffling': 
-                cmd = ['launch %s' % self.run_name,
-                   'reweight=indirect',
-                   'edit reweight --before_line="launch" change velocity %s' % vave_temp]
-                misc.sprint("TODO modify code to keep the RWGT directory!")
-                logger.info("Running sigmav assuming delta in energy via madevent")
-                logger.info("Then use reshuffling method to restore full kinematic dependence.")
-                
-                with misc.MuteLogger(['madgraph','madevent','cmdprint'], [set_level]*3):
-                    self.me_cmd.import_command_file(cmd)
-                        
+                    #mute logger          
+                    if self.maddm_card['sigmav_method'] == 'madevent':
+                        self.me_cmd.do_launch('%s -f' % self.run_name)
+                    elif self.maddm_card['sigmav_method'] == 'reshuffling': 
+                        cmd = ['launch %s' % self.run_name,
+                           'reweight=indirect',
+                           'edit reweight --before_line="launch" change velocity %s' % vave_temp]
+                        self.me_cmd.import_command_file(cmd)
+                  
             for key, value in self.me_cmd.Presults.iteritems():
                 clean_key_list = key.split("/")
                 clean_key =clean_key_list[len(clean_key_list)-1].split('_')[1] +'_'+  clean_key_list[len(clean_key_list)-1].split('_')[2] 
@@ -2043,14 +2031,17 @@ class MADDMRunCmd(cmd.CmdShell):
             elif 'earth' in ind_mode:
                 flux_source , flux_earth = True , True
 
-        if 'off' in save_switch and 'dragon' not in self.mode['indirect']:
+        if 'off' in save_switch and \
+            (self.mode['indirect'] and 'dragon' not in self.mode['indirect']):
             spec_source, flux_source , flux_earth  = False, False, False
 
         # Saving the output in the general output directory for a single point        
         if not scan: 
             out_dir = pjoin(self.dir_path, 'output', run_name)
             self.save_spec_flux(out_dir = out_dir, spec_source = spec_source, flux_source = False, flux_earth = flux_earth)    
-            logger.info('Output files saved in ' + pjoin(self.dir_path, 'output') )
+            logger.info('Output files saved in %s', out_dir)
+            if self.mode['indirect'] and not os.path.exists(pjoin(self.dir_path, 'output', run_name, 'Output_Indirect')):
+                files.ln(dir_point, pjoin(self.dir_path, 'output', run_name, 'Output_Indirect'))
         elif scan:
             if 'off' in save_switch and 'inclusive' in self.maddm_card['sigmav_method']: # nothing to do here
                 for F in ['d2NdEdcos.dat','dNdcos.dat','dNdE.dat','rate.dat']:
@@ -2061,8 +2052,9 @@ class MADDMRunCmd(cmd.CmdShell):
                 
             if not os.path.exists(source_indirect) : os.makedirs(source_indirect)
             if not os.path.exists(events)          : os.makedirs(events)
-            if not os.path.exists(pjoin(self.dir_path, 'output', run_name, 'Output_Indirect')):
-                files.ln(dir_point, pjoin(self.dir_path, 'output', run_name, 'Output_Indirect'))
+            if self.mode['indirect'] and 'off' != save_switch and\
+                not os.path.exists(pjoin(self.dir_path, 'output', run_name, 'Output_Indirect')):
+                files.ln(dir_point, pjoin(self.dir_path, 'output', run_name), 'Output_Indirect')
             if not os.path.exists(dir_point)       : os.makedirs(dir_point)
 
             out_dir = dir_point # all the various output must be saved here             
@@ -2099,9 +2091,6 @@ class MADDMRunCmd(cmd.CmdShell):
                     if os.path.isfile( pjoin(out_dir,'unweighted_events.lhe.gz') ):
                         os.remove( pjoin(out_dir,'unweighted_events.lhe.gz') )
                         os.remove( pjoin(out_dir,'run_shower.sh') )
-       
-
-
               
 
     # This aux function saves the spectra/fluxes in the given directory out_dir
