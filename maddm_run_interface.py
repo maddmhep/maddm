@@ -2108,7 +2108,7 @@ class MADDMRunCmd(cmd.CmdShell):
                self.save_spec_flux(out_dir = out_dir, spec_source = True, flux_source = False, flux_earth = flux_earth)    
                logger.info('Output files saved in %s', out_dir)
             else:
-               if not os.path.exists(pjoin(self.dir_path, 'output' , run_name, 'Output_Indirect')):
+               if not os.path.islink(pjoin(self.dir_path, 'output' , run_name, 'Output_Indirect')):
                   os.symlink(pjoin(self.dir_path,'Indirect','Events',run_name), \
                              pjoin(self.dir_path, 'output' , run_name, 'Output_Indirect') )      
                
