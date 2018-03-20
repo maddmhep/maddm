@@ -1063,6 +1063,18 @@ class MADDMRunCmd(cmd.CmdShell):
         elif self.read_PPPCspectra():   # return False if PPPC4DMID not installed!
             logger.info('Calculating Fermi limit using PPPC4DMID spectra')
 
+
+        # *** Multiply all the calculated indirect cross section by 2*(vave_indirect) value
+
+        halo_vel = self.maddm_card['vave_indirect']
+        for key,value in (self.last_results).iteritems():
+            if 'taacs' in key and 'lim' not in key and 'err' not in key or 'xsec' in key:
+                new_value = halo_vel * 2 * value
+                self.last_results[key] = new_value
+                #print 'FF old , updated' , value, self.last_results[key]
+                
+        
+            
         # ****** Calculating Fermi Limits
         self.calculate_fermi_limits(mdm)
 
