@@ -1069,7 +1069,8 @@ class MADDMRunCmd(cmd.CmdShell):
 
         # ****** Calculating Fluxes at detection
 
-        if self.mode['indirect'] and self.mode['indirect'].startswith('flux') :
+        if self.mode['indirect'].startswith('flux') :
+            print 'FF ************  self.mode is ', self.mode['indirect']
             #if 'pythia' in self.maddm_card['indirect_flux_source_method'] or self.maddm_card['sigmav_method'] != 'inclusive' :
             #    logger.info('Calculating cosmic rays fluxes using pythia8 gamma rays spectrum')
             #elif 'PPPC' in self.maddm_card['indirect_flux_source_method'] and self.maddm_card['sigmav_method'] == 'inclusive':
@@ -1078,7 +1079,8 @@ class MADDMRunCmd(cmd.CmdShell):
             self.calculate_fluxes() # calculating dPhidE 
 
             # ****** Calculating Fluxes Earth                                                                                                                       
-            if 'earth' in self.mode['indirect']:  
+            if 'earth' in self.mode['indirect']:
+                print '*****************     FF trying to get CR propagated'
                 if 'PPPC' in self.maddm_card['indirect_flux_earth_method']:
                     self.read_PPPC_positrons_earth()
                 elif 'dragon' in self.maddm_card['indirect_flux_earth_method']:
@@ -1766,6 +1768,8 @@ class MADDMRunCmd(cmd.CmdShell):
         run_name = self.last_results['run']        
         dragon_dir = self.options['dragon_path']
 
+        dragon_dir = '/scratch/federico/MadDM/DRAGON/DRAGON-master'
+        
         if not dragon_dir:
             exe = misc.which('DRAGON')
             if exe:
@@ -2036,6 +2040,7 @@ class MADDMRunCmd(cmd.CmdShell):
         # Internal: save the results as a numpy dictionary
         # np.save(pjoin(self.dir_path, 'output','Results'), self.last_results)
 
+        print "self.mode['direct']", self.mode['direct'] 
         if not self.param_card_iterator:
             self.save_summary_single(relic = True, direct = self.mode['direct'], \
                                 indirect = self.mode['indirect'], 
@@ -2133,11 +2138,11 @@ class MADDMRunCmd(cmd.CmdShell):
 
                  
                 if 'inclusive' in self.maddm_card['sigmav_method']: # saving spectra onyl in inclusive mode since madevent/resh have their own pythia8 spectra             
-                    self.save_spec_flux(out_dir = pjoin(self.dir_path , 'output', run_name, F), \
+                    self.save_spec_flux(out_dir = pjoin(self.dir_path , 'output', run_name), \
                                             spec_source = spec_source, flux_source = flux_source, flux_earth = flux_earth)
                  
                 elif 'inclusive' not in self.maddm_card['sigmav_method']:
-                    self.save_spec_flux(out_dir = pjoin(self.dir_path , 'output', run_name, F), \
+                    self.save_spec_flux(out_dir = pjoin(self.dir_path , 'output', run_name), \
                                             spec_source = False, flux_source = flux_source, flux_earth = flux_earth)
                     os.symlink(pjoin(self.dir_path,'Indirect','Events',run_name), pjoin(self.dir_path, 'output' , run_name, 'Output_Indirect') )
 
@@ -2328,6 +2333,9 @@ class MADDMRunCmd(cmd.CmdShell):
 
         if direct:
 
+            for name in ['d2NdEdcos.dat','dNdE.dat','dNdcos.dat','rate.dat']:
+                shutil.move(pjoin(self.dir_path, 'output',name) ,  pjoin(self.dir_path, 'output', point , name))
+            
             out.write('\n#############################################\n')
             out.write('# Direct Detection [cm^2]                   #\n')
             out.write('#############################################\n\n')
@@ -2339,9 +2347,6 @@ class MADDMRunCmd(cmd.CmdShell):
                 out.write(form_s(D['n']) + '= ' + form_s('['+ form_n(cross) + ',' + form_n(ul) + ']' ) + '# '+exp + '\n')
 
         if indirect:      
-
-            for name in ['d2NdEdcos.dat','dNdE.dat','dNdcos.dat','rate.dat']:
-                shutil.move(pjoin(self.dir_path, 'output',name) ,  pjoin(self.dir_path, 'output', point , name))
 
             sigmav_meth = self.maddm_card['sigmav_method'] # method actually used
 
@@ -3433,10 +3438,10 @@ class MadDMCard(banner_mod.RunCard):
                 #if self['do_flux']:
                     #logger.warning('since sigmav_method is on inclusive, indirect_flux_source_method has been switch to PPPC4MID')
                 self['indirect_flux_source_method'] = 'PPPC4DMID'
-            if self['indirect_flux_earth_method'] != 'PPPC4DMID':
-                if self['do_flux']:
-                    logger.warning('since sigmav_method is on inclusive, indirect_flux_earth_method has been switch to PPPC4MID_ep')
-                self['indirect_flux_earth_method'] = 'PPPC4DMID_ep' 
+            #if self['indirect_flux_earth_method'] != 'PPPC4DMID':
+            #    if self['do_flux']:
+            #        logger.warning('since sigmav_method is on inclusive, indirect_flux_earth_method has been switch to PPPC4MID_ep')
+            #    self['indirect_flux_earth_method'] = 'PPPC4DMID_ep' 
                 
         elif self['indirect_flux_earth_method'] == 'PPPC4DMID':
             if self['indirect_flux_source_method'].lower() not in ['PPPC4DMID', 'none']:
