@@ -1112,6 +1112,7 @@ class MADDMRunCmd(cmd.CmdShell):
         self.last_results['like_nonth']   = -1
 
         halo_vel = self.maddm_card['vave_indirect']
+        
         if halo_vel < (3*10**(-6)) or halo_vel > ( 1.4*10**(-4) ):
            logger.error('The DM velocity in the dwarfs halo is not in the [3*10^-6 - 1.5*10^-4]/c range - will not calcuate Fermi limits!')        
            logger.error('Please rerun with the correct velocity to re-calculate the correct sigmav for Fermi limits.')
@@ -1127,11 +1128,15 @@ class MADDMRunCmd(cmd.CmdShell):
                 logger.error('The gamma spectrum is empty! Will not calculate Fermi limit')
 
         elif gammas:
+            
             sigmav = self.Fermi.Fermi_sigmav_lim(mdm, x , gammas ,maj_dirac= self.norm_Majorana_Dirac() )
+            print 'FF **** gammas, sigmav ', gammas, sigmav 
             self.last_results['Fermi_sigmav'] = sigmav # returns Fermi exp UL
                     
-            if 'PPPC' in self.maddm_card['indirect_flux_source_method']: sigmav_th = self.last_results['tot_SM_xsec']
-            else : sigmav_th = self.last_results['taacsID']
+            if 'PPPC' in self.maddm_card['indirect_flux_source_method']:
+                sigmav_th = self.last_results['tot_SM_xsec']
+            else :
+                sigmav_th = self.last_results['taacsID']
  
             pvalue_nonth , like_nonth = self.Fermi.Fermi_sigmav_lim(mdm, x , gammas ,maj_dirac= self.norm_Majorana_Dirac() , sigmav_th = sigmav_th )
             self.last_results['pvalue_nonth'] = pvalue_nonth 

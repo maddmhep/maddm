@@ -140,7 +140,7 @@ C      Here write the output.
        vID_natural = vave_indirect !/299792.d0  here natural just signals that it's in natural units.
 
         do k=1, ANN_NUM_PROCESSES
-           sigv =  taacs_ID(k,vID_natural)*pbtocm3
+           sigv =  taacs_ID(k,vID_natural)*pbtocm3*2.d0*vID_natural
            write(33,fmt='(A8,A12,A4,ES14.7,A7)') 'sigma*v:',PROCESS_NAMES(k),' ',sigv, ' cm^3/s'
         enddo
 c        print*,'total:', total_cross * gevtopb * pbtocm3
