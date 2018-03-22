@@ -2253,7 +2253,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 line = line + '\t' + '{:16}'.format(exp+' ul') + ' = ' +  self.form_n(ul)
 
             else:                                                                                                                                                           
-                line = self.form_s(what) + + self.form_s('All DM = ' + self.form_n(sig_alldm) ) + '   ' + self.form_s(alldm_mess)                                                           
+                line = self.form_s(what)  + self.form_s('All DM = ' + self.form_n(sig_alldm) ) + '   ' + self.form_s(alldm_mess)                               
                 #line = line + '\t' + self.form_s(exp+' ul = '+ self.form_n(ul) )
                 line = line + '\t' + '{:16}'.format(exp+' ul') + ' = ' +  self.form_n(ul)
 
