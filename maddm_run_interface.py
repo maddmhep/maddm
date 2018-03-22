@@ -340,9 +340,10 @@ class Fermi_bounds:
                               'likelihood': likes }
 
                      dw_dic_coll[dwarf] = dict
-                     
+                    
         return dw_dic_coll
 
+    
     def eflux(self,spectrum, emin=1e2, emax=1e5, quiet=False):
         """ Integrate a generic spectrum, multiplied by E, to get the energy flux.                                                                                             
         """
@@ -483,9 +484,8 @@ class Fermi_bounds:
 
         elif sigmav_th:
              pred_sigma = pred*sigmav_th/sigmav0
-             #print 'FF pred, sigma_v theo , sigma v0' ,	pred, sigmav_th	, sigmav0 , pred_sigma	
              result = self.res_tot_dw(pred_sigma,marginalize)
-             #print 'FF lieklihood is' , result 
+             #print 'FF results / pred_sigma / sigmav_th  are ' , result , pred_sigma , sigmav_th 
              return result[2] , result[0]
 
 class bcolors:
@@ -1120,13 +1120,17 @@ class MADDMRunCmd(cmd.CmdShell):
                 sigmav_th = self.last_results['tot_SM_xsec']
             else :
                 sigmav_th = self.last_results['taacsID']
- 
+
+            #print 'FF sigma_th ', sigmav_th
+            #sigma_th = 2.46e-5
+            #print 'FF sigma_th ', sigmav_th
+
             pvalue_nonth , like_nonth = self.Fermi.Fermi_sigmav_lim(mdm, x , gammas ,maj_dirac= self.norm_Majorana_Dirac() , sigmav_th = sigmav_th )
             self.last_results['pvalue_nonth'] = pvalue_nonth 
             self.last_results['like_nonth']   = like_nonth
             logger.debug('sigmav = %s , pvalue-nonth = %s , like-nonth = %s '  %(sigmav , pvalue_nonth , like_nonth ) )
 
-            # if relic is not caluclated or xsi > 1, evaluates also the thermal scenarios likelihood and p-value
+            # Evaluates also the thermal scenarios likelihood and p-value when 0 < xsi < 1
             if self.last_results['xsi'] > 0 and self.last_results['xsi'] < 1:                                                                                  
                sigmav_th = sigmav_th * self.last_results['xsi']**2 
                pvalue_th , like_th  = self.Fermi.Fermi_sigmav_lim(mdm, x , gammas ,maj_dirac= self.norm_Majorana_Dirac(), sigmav_th = sigmav_th )
@@ -2135,7 +2139,8 @@ class MADDMRunCmd(cmd.CmdShell):
                 elif 'inclusive' not in self.maddm_card['sigmav_method']:
                     self.save_spec_flux(out_dir = pjoin(self.dir_path , 'output', run_name), \
                                             spec_source = False, flux_source = flux_source, flux_earth = flux_earth)
-                    os.symlink(pjoin(self.dir_path,'Indirect','Events',run_name), pjoin(self.dir_path, 'output' , run_name, 'Output_Indirect') )
+                    if not os.path.islink(pjoin(self.dir_path, 'output' , run_name, 'Output_Indirect')):
+                           os.symlink(pjoin(self.dir_path,'Indirect','Events',run_name), pjoin(self.dir_path, 'output' , run_name, 'Output_Indirect') )
 
 
             elif 'spectra' in save_switch :
@@ -2153,7 +2158,8 @@ class MADDMRunCmd(cmd.CmdShell):
                     if os.path.isfile( pjoin(out_dir,'unweighted_events.lhe.gz') ):
                         os.remove( pjoin(out_dir,'unweighted_events.lhe.gz') )
                         os.remove( pjoin(out_dir,'run_shower.sh') )
-                    os.symlink(pjoin(self.dir_path,'Indirect','Events',run_name), pjoin(self.dir_path, 'output' , run_name, 'Output_Indirect') )
+                    if not os.path.islink(pjoin(self.dir_path, 'output' , run_name, 'Output_Indirect')):
+                        os.symlink(pjoin(self.dir_path,'Indirect','Events',run_name), pjoin(self.dir_path, 'output' , run_name, 'Output_Indirect') )
 
 
 
