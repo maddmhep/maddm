@@ -2,6 +2,7 @@ import logging
 import os
 
 import maddm_run_interface as maddm_run_interface
+import dm_tutorial_text as dm_tutorial_text
 
 import madgraph.core.base_objects as base_objects
 import madgraph.core.helas_objects as helas_objects
@@ -19,10 +20,12 @@ import models.model_reader as model_reader
 import numpy as np
 
 import re
+from PLUGIN.new_interface.maddm_run_interface import MADDMRunCmd
 pjoin = os.path.join
 
 logger = logging.getLogger('madgraph.plugin.maddm')
-
+logger_tuto = logging.getLogger('tutorial_plugin') # -> stdout include instruction in
+                                                  #    order to learn maddm
 GeV2pb = 3.894E8
 
 class bcolors:
@@ -67,6 +70,8 @@ class MadDM_interface(master_interface.MasterCmd):
   "           ##########    ######                                                 \n"+\
   "             ################                                                   \n"+\
   "                 ########                                                       \n"+\
+  "                                                                                    \n"+\
+  "            Need to learn? -> type tutorial                               \n"+\
   "                                                                                    \n"+\
   "            ====================================================\n"+\
   "            |           "+bcolors.OKBLUE+" A MadGraph5_aMC@NLO plugin.            "+bcolors.ENDC+"|\n"\
@@ -216,7 +221,7 @@ class MadDM_interface(master_interface.MasterCmd):
         logger.info("")
         logger.info("syntax: define darkmatter [OPTIONS]", '$MG:color:BLUE')
         logger.info(" -- define the current (set) of darkmatter.")
-        logger.info("    If no option specified. It assigned the less massive neutral BSM particle.")
+        logger.info("    If no option specified. It assigned the less massive neutral BSM particle (with zero width).")
         logger.info(" OPTIONS:", '$MG:BOLD')
         logger.info("    - You can specify the darkmatter by specifying their name/pdg code")
         logger.info("     o example: define darkmatter n1 n2",'$MG:color:GREEN')
@@ -518,6 +523,75 @@ class MadDM_interface(master_interface.MasterCmd):
         return self.deal_multiple_categories(out, formatting)
 
 
+    def do_tutorial(self, line):
+        """Activate/deactivate the tutorial mode."""
+
+        if line:
+            super(MadDM_interface, self).do_tutorial(line)
+            if not line.lower().strip() not in ['off', 'quit']:
+                return 
+            
+            
+        args = self.split_arg(line)
+        #self.check_tutorial(args)
+        if not args:
+            args = ['maddm']
+        tutorials = {'maddm': logger_tuto}
+        
+        try:
+            misc.sprint('tuto activated')
+            tutorials[args[0]].setLevel(logging.INFO)
+        except KeyError:
+            logger_tuto.info("\n\tThanks for using the tutorial!")
+            logger_tuto.setLevel(logging.ERROR)
+            misc.sprint('tuto des-activated')
+            
+    def postcmd(self,stop, line):
+        """ finishing a command
+        This looks if the command add a special post part.
+        This looks if we have to write an additional text for the tutorial."""
+
+        stop = super(MadDM_interface, self).postcmd(stop, line)
+        # Print additional information in case of routines fails
+        if stop == False:
+            return False
+
+        args=line.split()
+        # Return for empty line
+        if len(args)==0:
+            return stop
+
+        # try to print linked to the first word in command
+        #as import_model,... if you don't find then try print with only
+        #the first word.
+        if len(args)==1:
+            command=args[0]
+        else:
+            command = args[0]+'_'+args[1].split('.')[0]
+
+        try:
+            logger_tuto.info(getattr(dm_tutorial_text, command).replace('\n','\n\t'))
+        except Exception:
+            try:
+                logger_tuto.info(getattr(dm_tutorial_text, args[0]).replace('\n','\n\t'))
+            except Exception:
+                pass
+            
+        return stop
+
+    def help_output(self):
+        """ """
+        logger.info("**************** MG5AMC OPTION ***************************")
+        super(MadDM_interface, self).help_output()
+        logger.info("**************** MADDM NEW OPTION ***************************")
+        logger.info("   MadDM plugin adds two type of output indirect and maddm   ")
+        logger.info("    - indirect:") 
+        logger.info("         is basicaly equivalent to madevent but with a different default run_card.")
+        logger.info("         and with some tweak to correctly generate the banner in the context of maddm")
+        logger.info("    - maddm:")
+        logger.info("         mode where computation of relic/indirect and direct detection can take place")
+        logger.info("         This is the default mode if not explicitly specified", 'MG:BOLD')
+        
 
     def do_output(self, line):
         """ """
