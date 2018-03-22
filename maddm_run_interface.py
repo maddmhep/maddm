@@ -929,7 +929,7 @@ class MADDMRunCmd(cmd.CmdShell):
             param_card_iterator.write(pjoin(self.dir_path,'Cards','param_card.dat'))
             #name = misc.get_scan_name('maddm_%s' % (nb_output), 'maddm_%s' % (nb_output+i))
             #path = pjoin(self.dir_path, 'output','scan_%s.txt' % name)
-            #logger.info("write all results in %s" % path ,'$MG:color:BLACK')
+            #logger.info("write all results in %s" % path ,'$MG:BOLD')
 
     def launch_multinest(self):
 
@@ -1882,7 +1882,7 @@ class MADDMRunCmd(cmd.CmdShell):
         sigma_xf = self.last_results['sigmav(xf)']
         xsi      = self.last_results['xsi']        
 
-        logger.info("MadDM Results", '$MG:color:BLACK')
+        logger.info("MadDM Results", '$MG:BOLD')
         if dm_scen: 
               logger.info("Define xsi = Relic density/Planck measurement for thermal scenarios.")
               logger.info("Rescaling theory prediction for xsi(direct det.) and xsi^2(indirect det.) for thermal scenarios.\n")
@@ -2910,7 +2910,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         """proxy for do_help"""
         
         if banner:                      
-            logger.info('*** HELP MESSAGE ***', '$MG:color:BLACK')
+            logger.info('*** HELP MESSAGE ***', '$MG:BOLD')
         
         if line:
             card = common_run.AskforEditCard.do_help(self, line,conflict_raise=conflict_raise, banner=False)
@@ -2928,13 +2928,13 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
 
             if args[start] in self.conflict and not conflict_raise:
                 conflict_raise = True
-                logger.info('**   AMBIGUOUS NAME: %s **', args[start], '$MG:color:BLACK')
+                logger.info('**   AMBIGUOUS NAME: %s **', args[start], '$MG:BOLD')
                 if card == '':
-                    logger.info('**   If not explicitely speficy this parameter  will modif the maddm_card file', '$MG:color:BLACK')
+                    logger.info('**   If not explicitely speficy this parameter  will modif the maddm_card file', '$MG:BOLD')
 
             self.maddm.do_help(args[start])
         if banner:                      
-            logger.info('*** END HELP ***', '$MG:color:BLACK')  
+            logger.info('*** END HELP ***', '$MG:BOLD')  
         return card    
     
     

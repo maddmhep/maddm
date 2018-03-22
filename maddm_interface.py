@@ -77,7 +77,7 @@ class MadDM_interface(master_interface.MasterCmd):
     # process number to distinguish the different type of matrix element
     process_tag = {'DM2SM': 1999, 
                    'DM2DM': 1998,
-                   'DMSM': 1997,
+                   'DMSM': 1997, # not use so far!
                    'DD': 1996,
                    'ID': 1995}
     
@@ -217,7 +217,7 @@ class MadDM_interface(master_interface.MasterCmd):
         logger.info("syntax: define darkmatter [OPTIONS]", '$MG:color:BLUE')
         logger.info(" -- define the current (set) of darkmatter.")
         logger.info("    If no option specified. It assigned the less massive neutral BSM particle.")
-        logger.info(" OPTIONS:", '$MG:color:BLACK')
+        logger.info(" OPTIONS:", '$MG:BOLD')
         logger.info("    - You can specify the darkmatter by specifying their name/pdg code")
         logger.info("     o example: define darkmatter n1 n2",'$MG:color:GREEN')
         logger.info("    - You can remove some particle from the search by prefixing the particle name by '/'.")
@@ -226,7 +226,7 @@ class MadDM_interface(master_interface.MasterCmd):
         logger.info("syntax: define coannihilator [REL_DIFF | PARTICLE(S)] [/ excluded_particles]", '$MG:color:BLUE')
         logger.info(" -- define the current (sets) of coannihilator. ")
         logger.info("    If no option is provided use a  relative difference of 10% is used.")         
-        logger.info(" OPTIONS:", '$MG:color:BLACK')
+        logger.info(" OPTIONS:", '$MG:BOLD')
         logger.info("    - You can specify the coannihilator by specifying their name")
         logger.info("     o example: define coannihilator n2 n3",'$MG:color:GREEN')   
         logger.info("    - You can specify the coannihilator by specifying their name if you use --usepdg")
@@ -318,7 +318,7 @@ class MadDM_interface(master_interface.MasterCmd):
             dm_particles = [p for p in dm_particles if p.get('name') == choice]
              
         # Print out the DM candidate
-        logger.info("Found Dark Matter candidate: %s" % dm_particles[0]['name'],  '$MG:color:BLACK')
+        logger.info("Found Dark Matter candidate: %s" % dm_particles[0]['name'],  '$MG:BOLD')
         self._dm_candidate = dm_particles
         self.update_model_with_EFT()
         
@@ -402,9 +402,9 @@ class MadDM_interface(master_interface.MasterCmd):
         
         if self._coannihilation:
             logger.info("Found coannihilation partners: %s" % ','.join([p['name'] for p in self._coannihilation]),
-                    '$MG:color:BLACK')
+                    '$MG:BOLD')
         else:
-            logger.info("No coannihilation partners found.", '$MG:color:BLACK')
+            logger.info("No coannihilation partners found.", '$MG:BOLD')
         
 
 
@@ -420,8 +420,44 @@ class MadDM_interface(master_interface.MasterCmd):
             self._coannihilation = []
             
         return super(MadDM_interface, self).do_import(line, *args, **opts)
-      
 
+    def help_generate(self):
+        """ """
+        logger.info("**************** MADDM NEW OPTION ***************************")
+        logger.info("syntax: generate|add relic_density [/ X]", '$MG:color:BLUE')
+        logger.info(" -- generate relic density matrix element excluding any particle(s) X") 
+        logger.info("    to appear as s/t channel in any diagram")
+        logger.info("    - FOR ADVANCED USER", '$MG:BOLD')
+        logger.info("      manual definition of the matrix element is possible via the following syntax:")
+        logger.info("        add process DM  DM > Z Y @ DM2SM # annihilation" )
+        logger.info("        add process DMi  DMj > DMk DMl @ DM2DM # DM-diffusion for co-annihilation")
+        logger.info("")
+        logger.info("syntax: generate|add direct_detection", '$MG:color:BLUE')
+        logger.info(" -- generate direct detection matrix element excluding any particle(s) X") 
+        logger.info("    to appear as s/t channel in any diagram")        
+        logger.info("    - FOR ADVANCED USER", '$MG:BOLD')
+        logger.info("      manual definition of the matrix element is possible via the following syntax:")
+        logger.info("        add process DM  N > DM N @ DD")
+        logger.info("")
+        logger.info("syntax: generate|add indirect_detection [2to2lo] [final_states] [/ X]", '$MG:color:BLUE')    
+        logger.info(" -- generate indirect detection matrix element")
+        logger.info("       X forbids any s/t channel propagator to be present in the Feynman diagram")
+        logger.info("    syntax: generate|add indirect_detection 2to2lo / X", '$MG:color:BLUE') 
+        logger.info("    -- generate indirect detection matrix element for inclusive method of integration only")
+        logger.info("    syntax: generate|add indirect_detection F1 F2 / X", '$MG:color:BLUE') 
+        logger.info("    -- generate indirect detection matrix element for a given final state (F1 F2)")
+        logger.info("       Three body final state are also allowed. (forbidding the use of PPPC4DMID on those)")
+        logger.info("")    
+        logger.info("    - FOR ADVANCED USER", '$MG:BOLD')             
+        logger.info("      manual definition of the matrix element is possible via the following syntax:")
+        logger.info("        note: only for 2to2lo")
+        logger.info("        add process DM  N > DM N @ ID")
+        logger.info("")
+        logger.info("**************** MG5AMC OPTION ***************************")
+        super(MadDM_interface, self).help_define()
+
+    help_add = help_generate
+    
     def do_add(self, line):
         """ """
         
@@ -464,7 +500,7 @@ class MadDM_interface(master_interface.MasterCmd):
             out = {"standard options": out}
         
         if len(args) == 1:
-            options = ['relic_density', 'direct_detection', 'indirect_detection', 'capture']
+            options = ['relic_density', 'direct_detection', 'indirect_detection']#, 'capture']
             out['maddm options'] = self.list_completion(text, options , line)
         return self.deal_multiple_categories(out, formatting)
 
@@ -477,7 +513,7 @@ class MadDM_interface(master_interface.MasterCmd):
             out = {"standard options": out}
         
         if len(args) == 1:
-            options = ['relic_density', 'direct_detection', 'indirect_detection', 'capture']
+            options = ['relic_density', 'direct_detection', 'indirect_detection']#, 'capture']
             out['maddm options'] = self.list_completion(text, options , line)
         return self.deal_multiple_categories(out, formatting)
 
@@ -748,20 +784,20 @@ class MadDM_interface(master_interface.MasterCmd):
         
         logger.info("Generating X Nucleon > X Nucleon diagrams from the effective lagrangian...")
         #ONLY EFFECTIVE LAGRANGIAN
-        self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'SI')
+        self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'SI',excluded_particles)
 
         logger.info("INFO: Generating X Nucleon > X Nucleon diagrams from the effective+full lagrangian...")
         #EFFECTIVE + FULL
-        self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'SI+QED')
+        self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'SI+QED',excluded_particles)
         
         if (eff_operators_SD != False):
             logger.info("Doing the spin dependent part...")
             logger.info("Generating X Nucleon > X Nucleon diagrams from the effective lagrangian...")
 
-            self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'SD')
+            self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'SD',excluded_particles)
             #EFFECTIVE + FULL
             logger.info("Generating X Nucleon > X Nucleon diagrams from the effective + full lagrangian...")
-            self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'SD+QED')
+            self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'SD+QED',excluded_particles)
 
     #-----------------------------------------------------------------------#
     @misc.mute_logger(['madgraph','aloha','cmdprint'], [30,30,30])
@@ -847,7 +883,7 @@ class MadDM_interface(master_interface.MasterCmd):
             DM_scattering = []
 
             for pdg in dm_cand:
-               DM_scattering.append(pdg) , DM_scattering.append(-pdg)
+                DM_scattering.append(pdg) , DM_scattering.append(-pdg)
 
             bsm_all  = [ 'all', '/', '1','2','3','4','5','6','-1','-2','-3','-4','-5','-6','21','22','23','24','-24','25','11','12','13','14','15','16','-11','-12',
                     '-13','-14','-15','-16']
@@ -869,10 +905,7 @@ class MadDM_interface(master_interface.MasterCmd):
                     logger.info('no diagram for %s' % final_state)
 
             return
-#            self.exec_cmd('define sm = all / bsm')
-#            self.exec_cmd('display multiparticles')
-#            logger.critical('indirect detection needs to specify the final state: i.e. "add indirect b b~"')
-#            return
+
     
         allow_loop_induce=True
         if '--noloop' in argument:
