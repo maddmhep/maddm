@@ -1945,6 +1945,7 @@ class MADDMRunCmd(cmd.CmdShell):
             if len(detailled_keys)>0:
                 logger.info('Using generic qq limits for light quarks (u,d,s)' )
 
+                skip = []
                 for key in detailled_keys:
                     clean_key_list = key.split("#")
                     clean_key = clean_key_list[1] #clean_key_list[0]+"_"+clean_key_list[1]
@@ -1957,8 +1958,8 @@ class MADDMRunCmd(cmd.CmdShell):
                     s_thermal  = s_alldm*xsi2
 
                     if s_alldm <= 10**(-100): 
-                       logger.info('Skipping zero cross section processes for ' + f_original )
-                       continue 
+                        skip.append(f_original)
+                        continue 
                     if finalstate in self.limits._allowed_final_states :
                         s_ul   = self.limits.ID_max(mdm, finalstate)
 
@@ -1983,8 +1984,8 @@ class MADDMRunCmd(cmd.CmdShell):
 
                         #self.print_ind(self, clean_key, s_thermal, sig_alldm, s_ul,  thermal= dm_scen)
                         #logger.info('     %s \t  sigmav(th): %.2e \t sigmav(ul): %.3g \t [cm^3/s] \t  %s' % (clean_key, s_theo, s_ul, message))
-            
-
+                logger.info('Skipping zero cross section processes for: %s', ', '.join(skip))
+                
             sigtot_alldm     = self.last_results['taacsID']
             sigtot_SM_alldm  = self.last_results['tot_SM_xsec']
             sigtot_th        = sigtot_alldm * xsi2

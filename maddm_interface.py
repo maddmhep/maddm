@@ -256,14 +256,19 @@ class MadDM_interface(master_interface.MasterCmd):
         #  3. The particle's width should be 0 or 'ZERO'                        #
         #  4. The assigned DM candidate is the lightest of all the particles        #
         #          that meet the above criteria.                                        #
-        #                                                                        #
+        #  5. We then check that such DM candidate has:
+        #          - some non zero couplings
+        #          - no decay to pair of SM particle                            #
+        #                                                                       #
         #-----------------------------------------------------------------------#
-        particles = self._curr_model.get('particles')                
+        particles = self._curr_model.get('particles')  
         bsm_particles = [p for p in particles 
                          if 25 < p.get('pdg_code') < 99000000 and\
-                         (p.get('name') not in excluded_particles or p.get('antiname') not in excluded_particles) and\
+                         (p.get('name') not in excluded_particles and p.get('antiname') not in excluded_particles) and\
                          p.get('charge') == 0]
- 
+        
+        assert ('xc' not in excluded_particles or 'xc' not in [p.get('name') for p in bsm_particles])
+        
         dm_particles = []
         dm_mass = 0
         # When manually entering in the DM and coannihilation particles, both particle and anti-particle
@@ -275,13 +280,12 @@ class MadDM_interface(master_interface.MasterCmd):
             curr_mass = abs(self._curr_model.get_mass(p['pdg_code']))
             if (p['width'] == 'ZERO' or  get_width(p) == 0) and curr_mass>0:
                 # If nothing has been found so far then set the first DM candidate
-                if not dm_particles:
+                # If we already found a candidate, compare the masses and keep the one that's lighter
+                if not dm_particles or curr_mass < dm_mass:
+                    dm_particles = [p]
+                    dm_mass = curr_mass
+                elif dm_particles and curr_mass == dm_mass:
                     dm_particles.append(p)
-                    dm_mass = curr_mass
-                # If we already found a candidate, comare the masses and keep the one that's lighter
-                elif (curr_mass < dm_mass):
-                    dm_particles[0] = p
-                    dm_mass = curr_mass
 
         # Check to see if we actually found a DM candidate
         if not dm_particles:
@@ -289,6 +293,30 @@ class MadDM_interface(master_interface.MasterCmd):
         if dm_mass == 0:
             raise DMError, "No dark matter candidate since we found a DarkEnergy candidate: %s" % dm_particles[0]['name']
 
+        # Validity check
+        dm_names = [p.get('name') for p in dm_particles]
+        for p in list(dm_particles):
+            has_coupling = False
+            for vert in self._curr_model.get('interactions'):
+                if p in vert['particles']:
+                    for coup_name in  vert['couplings'].values():
+                        if self._curr_model.get('coupling_dict')[coup_name]:
+                            has_coupling = True
+                            break
+                if has_coupling:
+                    break
+            else:
+                dm_particles.remove(p)
+
+        if not dm_particles:
+            logger.warning("""found %s but none have them have non zero coupling. Retry by excluding those""", ','.join(dm_names))
+            return self.search_dm_candidate(excluded_particles=excluded_particles+dm_names)
+        
+        if len(dm_particles) >1:
+            choice = self.ask("More than one valid candidate found: Please select the one that you want:",
+                     default=dm_names[0], choices=dm_names)
+            dm_particles = [p for p in dm_particles if p.get('name') == choice]
+             
         # Print out the DM candidate
         logger.info("Found Dark Matter candidate: %s" % dm_particles[0]['name'],  '$MG:color:BLACK')
         self._dm_candidate = dm_particles
@@ -321,7 +349,9 @@ class MadDM_interface(master_interface.MasterCmd):
                                   path_msg='enter path', 
                                   ask_class = EditParamCard,
                                   card=[path],
-                                  pwd=os.getcwd())
+                                  pwd=os.getcwd(),
+                                  param_consistency=False
+                                  )
         else:
             path = answer
             
@@ -486,6 +516,7 @@ class MadDM_interface(master_interface.MasterCmd):
                     ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps', '_done_export'],
                     [self._ID_procs, self._ID_matrix_elements, self._ID_amps, None]):
                     super(MadDM_interface, self).do_output('indirect %s/Indirect' % path)
+                    
                 #ensure to sync the param_card
                 os.remove(pjoin(path, 'Indirect', 'Cards', 'param_card.dat'))
                 files.ln(pjoin(path, 'Cards', 'param_card.dat'), 
