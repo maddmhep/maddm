@@ -1087,10 +1087,35 @@ class EditParamCard(common_run.AskforEditCard):
     def do_asperge(self, *args, **opts):
         "Not available"
         logger.warning("asperge not available in this mode")
+        
+    def do_help(self,*args, **opts):
+        """ print standard help """
+        
+        out =  super(EditParamCard, self).do_help(*args, **opts)
 
-    
+        logger.info("""In order to automatically determine your darkmatter candidate, we need to have a benchmark point.""")
+        logger.info("")
+        logger.info("  For the darkmatter, we will apply the following algorithm:")
+        logger.info("      1. The DM particle must be a BSM particle (pdg_code > 25) ")  
+        logger.info("      2. The particle should have no charge (electric or color)")
+        logger.info("      3. The particle\'s width should be 0 or 'ZERO'")
+        logger.info("      4. The particle should have at least one non vanishing coupling" )
+        logger.info("      5. The assigned DM candidate is the lightest of all the particles that meet the above criteria.")  
+        logger.info("")
+        logger.info("  For coannihilation, we apply the following algorithm:")
+        logger.info("      The code selects all the BSM particles that are within an input mass difference with the DM candidate.")
+        logger.info("      Particles without any non vanishing coupling are discarded")
  
+        logger_tuto.info("""
+This card is here ONLY to allow to determine automatically darkmatter/coannihilator.
+You will have the possibility to edit it later to define another benchmark, perform scan/...
+But the diagram generated will depend of the dark matter selected at this stage.
 
-        
-        
+To edit a parameter of the card without having to use a text editor your can type
+>set mxd 5
+
+When you are done editing the card, just press enter ( you can also type done or 0)
+""")
+            
+        return out
         

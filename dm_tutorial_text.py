@@ -125,16 +125,6 @@ Here you are, you have finished your first computation!
 and you have reached the end of this tutorial.
 you can now type 
 MadDM> tutorial quit
-
-By the way did you know that upon launch you can
-[same functionality as in MG5aMc]
-1) edit any parameter like this:
-   > set mxd 10
-2) run a scan over parameter space
-   > set mxd scan:[10, 20, 40]
-   > set mxd scan:[10**i for i in range(5)]
-3) ask to compute the width automatically for a particle
-   > set my0 Auto
 """
 
 set_mxd="""

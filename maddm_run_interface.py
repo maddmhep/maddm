@@ -46,6 +46,7 @@ except:
 
 pjoin = os.path.join
 logger = logging.getLogger('madgraph.plugin.maddm')
+logger_tuto = logging.getLogger('tutorial_plugin')
 #logger.setLevel(10) #level 20 = INFO
 
 MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
@@ -2935,6 +2936,30 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
             card = cmd.ControlSwitch.do_help(self, line, list_command=False)
             if banner:                      
                 logger.info('*** END HELP ***', '$MG:BOLD')
+            
+            logger_tuto.info("""
+This question allows you BOTH to define what you are going to run (via the value at the top).
+But also to edit the content of the various file defining the  run/benchmark (bottom).
+
+To bypass the computation of relic density you can do
+> relic=OFF            
+to make the compuatation of the  directional detection
+> direct=directional
+                
+You can also edit the card referenced.
+Note that you can 
+   1) edit any parameter like this:
+       > set mxd 10
+       [use auto completion if you need to search a name]
+   2) run a scan over parameter space
+        > set mxd scan:[10, 20, 40]
+        > set mxd scan:[10**i for i in range(5)]
+   3) ask to compute the width automatically for a particle
+        > set my0 Auto  
+        
+When you are done with such edition, just press enter (or write 'done' or '0')          
+""") 
+
             return
             
         args = self.split_arg(line)
