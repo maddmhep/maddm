@@ -2803,11 +2803,55 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
             files.cp(self.paths['maddm_default'], self.paths['maddm'])
             self.maddm = MadDMCard(self.paths['maddm'])
         
-        self.special_shortcut.update({'nevents': ([int],['Main:numberOfEvents %(0)s'])})
-        self.special_shortcut_help.update({'nevents': 'number of events to generate for indirect detection if sigmav_method is madevent/reshuffling'})
-        
+        self.special_shortcut.update({'nevents': ([int],['Main:numberOfEvents %(0)s']),
+                                      'fast':([],[lambda self: self.pass_to_fast_mode]),
+                                      'precise':([],[lambda self: self.pass_to_precise_mode])
+                                      })
+        self.special_shortcut_help.update({'nevents': 'number of events to generate for indirect detection if sigmav_method is madevent/reshuffling',
+                                           'fast': 'modify the maddm_card to favor fast computation (but less precise) of the indirect mode',
+                                           'precise': 'modify the maddm_card to favor accuracy over speed computation for the indirect mode'
+                                          }
+                                          )
+    
         self.maddm_set = list(set(self.maddm_def.keys() + self.maddm_def.hidden_param))
         return self.maddm.keys() 
+
+    
+    def pass_to_fast_mode(self):
+        """pass to fast mode according to the paper"""
+        
+        indirect = self.answer['indirect']
+        if indirect in ['OFF', None]:
+            logger.info("setting fast mode is only valid when indirect mode is getting called.")
+            return 
+        elif indirect == 'sigmav':
+            self.do_set("sigmav_method inclusive")
+        elif indirect == 'flux_source':
+            self.do_set("sigmav_method inclusive")
+            self.do_set("indirect_flux_source_method PPPC4DMID_ew")
+            print "done"
+        elif indirect == 'flux_earth':
+            self.do_set("sigmav_method inclusive")
+            self.do_set("indirect_flux_earth_method PPPC4DMID_ep")
+        
+    def pass_to_precise_mode(self):
+        """pass to fast mode according to the paper"""
+        
+        indirect = self.answer['indirect']
+        if indirect in ['OFF', None]:
+            logger.info("setting fast mode is only valid when indirect mode is getting called.")
+            return 
+        elif indirect == 'sigmav':
+            self.do_set("sigmav_method reshuffling")
+        elif indirect == 'flux_source':
+            self.do_set("indirect_flux_source_method pythia8")
+            self.do_set("set main:numberofevents 1000000")
+            self.do_set("TimeShower:weakShower = on")
+        elif indirect == 'flux_earth':
+            self.do_set("indirect_flux_source_method pythia8")
+            self.do_set("set main:numberofevents 1000000")
+            self.do_set("TimeShower:weakShower = on")
+            self.do_set("indirect_flux_earth_method dragon")            
 
     def get_cardcmd(self):
         """ return the list of command that need to be run to have a consistent 
@@ -2935,14 +2979,14 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
             return
         return super(MadDMSelector, self).do_compute_widths(line)
             
-    def do_help(self, line,conflict_raise=False, banner=True):
+    def do_help(self, line, conflict_raise=False, banner=True):
         """proxy for do_help"""
         
         if banner:                      
             logger.info('*** HELP MESSAGE ***', '$MG:BOLD')
         
         if line:
-            card = common_run.AskforEditCard.do_help(self, line,conflict_raise=conflict_raise, banner=False)
+            card = common_run.AskforEditCard.do_help(self, line, conflict_raise=conflict_raise, banner=False)
         args = self.split_arg(line)
         
         start = 0
@@ -2962,9 +3006,28 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
                     logger.info('**   If not explicitely speficy this parameter  will modif the maddm_card file', '$MG:BOLD')
 
             self.maddm.do_help(args[start])
+            
+        ### CHECK if a help_xxx exist (only for those wihtout a do_xxx)
+        if len(args) == 1:
+            if not hasattr(self, 'do_%s' % args[0]) and hasattr(self, 'help_%s' % args[0]):
+                getattr(self, 'help_%s' %args[0])()
+            
         if banner:                      
             logger.info('*** END HELP ***', '$MG:BOLD')  
         return card    
+    
+    def help_indirect(self):
+        
+        logger.info("indirect flag can take three values: sigmav, flux_source, flux_earth")
+        logger.info()
+        logger.info("  sigmav: ", "$MG:BOLD")
+        
+        logger.info("  flux_source", "$MG:BOLD")
+        
+        logger.info("  flux_earth:", "$MG:BOLD")
+        logger.info("  This produces the flux at Earth of e+ and anti proton")
+                
+        
     
     
     def do_update(self, line, timer=0):
@@ -3163,8 +3226,9 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         self.maddm.write(self.paths['maddm'])
         
     def setDM(self, name, value, loglevel=20):
-        logger.log(loglevel,'modify parameter %s of the maddm_card.dat to %s' % (name, value))
+        logger.log(loglevel,'modify parameter %s of the maddm_card.dat to %s' % (name, value), '$MG:BOLD')
         self.maddm.set(name, value, user=True)
+
 
 
 class InvalidMaddmCard(banner_mod.InvalidRunCard):
