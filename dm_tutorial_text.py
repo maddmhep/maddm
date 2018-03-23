@@ -17,18 +17,18 @@ tutorial = """
 You have entered tutorial mode. This will introduce you to the main
 syntax options of the MadDM plugin.
 
-Compare to MG5aMC, the following functions have additional options
+As compared with MG5aMC, the following functions have additional options
 1) define 
 2) generate 
 3) add
 4) output 
 You can type help XXXX to see the associated help.
 
-The goal of this tutorial is to learn how to generate processes for DM productions
+The goal of this tutorial is to learn how to generate processes for dark matter annihilation and scattering
 and to use those to compute the relic density, direct and/or indirect detection.
 
 First you need to import your model of interest. If you do not have a favorite model you
-can use of those available online (that can be download automatically). For example:
+can use one of those available online (that can be download automatically). For example:
 MadDM> import model DMsimp_s_spin0
 """
 
@@ -42,12 +42,12 @@ If your model has R-parity and that you do not know what is your DM for a given
 benchmark, you can ask us to find it for you with:
 MadDM> define darkmatter
 You will need to define your benchmark point (edit the file) and then
-the code will pick the less massive neutral BSM particle (with zero width).
+the code will pick the lightest massive neutral BSM particle (with zero width).
 """
 
 import_model = """
 You have just imported a new BSM model.
-If you want to see the list of model that can be downloaded automatically you can enter:
+If you want to see the list of models that can be downloaded automatically you can enter:
 MadDM> display modellist
 
 """ +display_modellist
@@ -65,7 +65,7 @@ MadDM> define coannihilator xr
      MadDM> generate relic_density
    - computation of direct detection (detector on earth for DM interaction with matter)
      MadDM> add direct_detection
-   - computation of indirect detection (detector on earth for DM interaction with matter)
+   - computation of indirect detection (annihilation of dark matter in halos and detector on or close to the Earth)
      MadDM> add indirect_detection     
 
    Note: 'generate' remove all previously generated matrix-element.
@@ -103,18 +103,18 @@ what to run/...
 
 launch="""
 
-Here you are, you have finish your first computation.
-and you have reach the end of this tutorial.
+Here you are, you have finished your first computation!
+and you have reached the end of this tutorial.
 you can now type 
 MadDM> tutorial quit
 
-By the way did you know that in question asked during the launch you can
+By the way did you know that upon launch you can
 [same functionality as in MG5aMc]
 1) edit any parameter like this:
    > set mxd 10
 2) run a scan over parameter space
-   > set mxd scan: [10, 20, 40]
-   > set mxd scan: [10**i for i in range(5)]
+   > set mxd scan:[10, 20, 40]
+   > set mxd scan:[10**i for i in range(5)]
 3) ask to compute the width automatically for a particle
    > set my0 Auto
 """
