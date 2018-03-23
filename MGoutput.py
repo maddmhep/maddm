@@ -1085,7 +1085,7 @@ class ProcessExporterIndirectD(object):
         for line in history:
             line = re.sub('\s+', ' ', line)
         
-            if line.startswith(('define darkmatter', 'define benchmark','coannihilator')):
+            if line.startswith(('define darkmatter', 'define benchmark','define coannihilator')):
                 continue
             
             if line.startswith('generate'):

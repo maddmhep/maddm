@@ -598,14 +598,16 @@ class MadDM_interface(master_interface.MasterCmd):
         logger.info("**************** MG5AMC OPTION ***************************")
         super(MadDM_interface, self).help_output()
         logger.info("**************** MADDM NEW OPTION ***************************")
-        logger.info("   MadDM plugin adds two type of output indirect and maddm   ")
-        logger.info("    - indirect:") 
+        logger.info("   -- syntax: output [MODE] PATH [OPTIONS]", '$MG:color:BLUE')
+        logger.info("")
+        logger.info("   MadDM plugin adds two additional MODE for the output of the matrix-element:")
+        logger.info("    - indirect:", '$MG:BOLD') 
         logger.info("         is basicaly equivalent to madevent but with a different default run_card.")
         logger.info("         and with some tweak to correctly generate the banner in the context of maddm")
-        logger.info("    - maddm:")
+        logger.info("    - maddm:", '$MG:BOLD')
         logger.info("         mode where computation of relic/indirect and direct detection can take place")
-        logger.info("         This is the default mode if not explicitly specified", 'MG:BOLD')
-        
+        logger.info("         This is the default mode if not explicitly specified")
+        logger.info("")        
 
     def do_output(self, line):
         """ """
