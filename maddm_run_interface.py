@@ -635,7 +635,6 @@ class MADDMRunCmd(cmd.CmdShell):
     If you want to force the computation right now and re-edit
     the cards afterwards, you can type \"compute_wdiths\".''')
 
-
     def do_compute_widths(self, line):
                 
         if self.maddm_card['only_two_body_decays']:
@@ -777,8 +776,6 @@ class MADDMRunCmd(cmd.CmdShell):
 
         else: result['xsi'] = 1.0
 
-
-
         if self.mode['direct']:
             result['lim_sigmaN_SI_n'] = self.limits.SI_max(mdm)
             result['lim_sigmaN_SI_p'] = self.limits.SI_max(mdm)
@@ -788,8 +785,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
         self.last_results = result
         self.last_results['run'] = self.run_name
-        
-                  
+                          
 #        if self.mode['indirect'] and not self._two2twoLO:
 #            with misc.MuteLogger(names=['madevent','madgraph'],levels=[50,50]):
 #                self.launch_indirect(force)
@@ -804,7 +800,6 @@ class MADDMRunCmd(cmd.CmdShell):
         if not self.param_card_iterator:
             self.save_remove_output(scan = False)
 
-
         # --------------------------------------------------------------------#
         #   THIS PART IS FOR MULTINEST SCANS
         # --------------------------------------------------------------------#
@@ -814,7 +809,6 @@ class MADDMRunCmd(cmd.CmdShell):
             self.multinest_running = True
             self.launch_multinest()
             self.multinest_running = False
-
 
 
         # --------------------------------------------------------------------#
@@ -1225,17 +1219,6 @@ class MADDMRunCmd(cmd.CmdShell):
         #if ret_code != 0:
         #    raise self.InvalidCmd, 'Pythia8 shower interrupted with return code %d.\n'%ret_code+ ' You can find more information in this log file:\n%s' % pythia_log
 
-        '''                                           
-        for sp,k in self.Spectra.spectra_id.iteritems() :
-            sp_name = sp + '_lhe.dat'
-        
-            sp_out = pjoin(self.dir_path , 'Indirect', 'Events', run_name, sp_name )
-            #raw_input('FF :')
-            out_dir = pjoin(self.dir_path,'output', sp_name.replace('lhe','pythia8') )
-            print 'FF copying pythia spectra'
-            shutil.copyfile(sp_out , out_dir )
-        '''
-
 
     # reading the spectra from the pythia8 output
     def read_py8spectra(self):
@@ -1249,7 +1232,6 @@ class MADDMRunCmd(cmd.CmdShell):
                   self.Spectra.spectra['x'] = [ np.power(10,num) for num in x]     # from log[10,x] to x
             self.Spectra.spectra[sp] = np.loadtxt(out_dir , unpack = True )[1].tolist()                                  
        
-
 
     # This function reads the spectra from the PPPC tables from each annihilation channel, and adds them up according to the BR 
     def read_PPPCspectra(self):
@@ -1505,10 +1487,10 @@ class MADDMRunCmd(cmd.CmdShell):
                    '''
                    self.last_results['flux_%s' % spec] = Phi 
 
-             if 'PPPC' in self.maddm_card['indirect_flux_earth_method']:
-                 logger.info('Calculating positrons flux using the PPPC4DMID tables (propagated at Earth).')
-                 pos = self.Phi(chan= spec, positrons = True)
-                 self.last_results['flux_positrons'] = pos * self.last_results['tot_SM_xsec']/(10**(-26)) 
+             #if 'PPPC' in self.maddm_card['indirect_flux_earth_method']:
+             #    logger.info('Calculating positrons flux using the PPPC4DMID tables (propagated at Earth).')
+             #    pos = self.Phi(chan= spec, positrons = True)
+             #    self.last_results['flux_positrons'] = pos * self.last_results['tot_SM_xsec']/(10**(-26)) 
 
 
     '''
@@ -1989,10 +1971,8 @@ class MADDMRunCmd(cmd.CmdShell):
                         self.print_ind(clean_key, s_thermal, s_alldm, s_ul,  thermal= dm_scen) 
 
                 if len(skip) >=1:        
-                      logger.info('Skipping zero cross section processes for: %s', ', '.join(skip))
-                      
-            if light_s: logger.info('Using generic Fermi limits for light quarks (u,d,s)' )                                                                                                
-    
+                      logger.info('Skipping zero cross section processes for: %s', ', '.join(skip))                      
+            if light_s: logger.info('Using generic Fermi limits for light quarks (u,d,s)' )                                                                                               
             sigtot_alldm     = self.last_results['taacsID']
             sigtot_SM_alldm  = self.last_results['tot_SM_xsec']
             sigtot_th        = sigtot_alldm * xsi2
@@ -2012,7 +1992,6 @@ class MADDMRunCmd(cmd.CmdShell):
                    self.print_ind('DM DM > all',sigtot_th , sigtot_alldm, self.last_results['Fermi_sigmav'],  thermal= dm_scen)
                 else:
                    self.print_ind('DM DM > SM SM', sigtot_SM_th , sigtot_SM_alldm, self.last_results['Fermi_sigmav'],  thermal= dm_scen)
- 
 
             logger.info('')
 
@@ -2022,8 +2001,8 @@ class MADDMRunCmd(cmd.CmdShell):
                 for chan in np_names.keys():
                     logger.info( self.form_s(chan + ' Flux') + '=\t' + self.form_s(self.form_n (self.last_results['flux_%s' % chan]) ))
 
-                if self.last_results['flux_positrons']:
-                    logger.info( self.form_s('positrons Flux') + '=\t' + self.form_s(self.form_n (self.last_results['flux_positrons']) ))
+                #if self.last_results['flux_positrons']:
+                #    logger.info( self.form_s('positrons Flux') + '=\t' + self.form_s(self.form_n (self.last_results['flux_positrons']) ))
 
                 logger.info('\n')
 
@@ -2183,7 +2162,6 @@ class MADDMRunCmd(cmd.CmdShell):
                     aux.write_data_to_file(x , dndlogx  , filename = out_dir + '/' + spec + '_spectrum_source.dat' , header = header )
 
         if flux_earth:
-            logger.debug('FF saving flux earth')
             e = self.Spectra.flux_source['e']
             for flux in self.Spectra.flux_earth.keys():
                 header = '# E[GeV]   dPhi/dE [particles/(cm2 s sr)] ' + flux + '\t' + self.maddm_card['indirect_flux_source_method'] +' flux at earth'
@@ -2198,43 +2176,6 @@ class MADDMRunCmd(cmd.CmdShell):
                 dPhidlogE = self.Spectra.flux_earth_positrons['positrons']['dPhidlogE']
                 aux.write_data_to_file(e , dPhidlogE  , filename = out_dir + '/positrons_dphide_' + spec_method +'.dat' , header = header )
 
-        misc.sprint("CODE NEED CLEANING HERE!!!")
-        '''
-        else: out_dir = pjoin(self.dir_path, 'output')
-
-        if save_switch == 'off':
-            if self.maddm_card['sigmav_method'] != 'inclusive': # here, need to remove everyhting i.e. the whole run_xx folder
-                shutil.rmtree(dir_point)
-                    
-        elif save_switch == 'all':
-            if self.maddm_card['sigmav_method'] == 'inclusive': # saving spectra onyl in inclusive mode since madevent/resh have their own pythia8 spectra             
-                for spec in self.Spectra.spectra.keys():
-                    if 'earth' in spec or 'x' in spec: 
-                        continue
-                    out_spec = pjoin(out_dir, spec + '_spectrum_source_'+spectrum_method+'.txt')
-                    x = self.Spectra.spectra['x']
-                    aux.write_data_to_file(x , self.Spectra.spectra[spec] , filename = out_spec , header = '# x=Ekin/mDM      dn/dlogx' )
-                    
-                    if 'flux' in self.maddm_card['sigmav_method']:
-            #if self.madd_card['sigmav_method'] == 'inclusive':                                   
-                        print 'FF saving spectra at source PPPC'
-                    # self.Spectra.spectra
-                        for spec in self.Spectra.spectra.keys():
-                            x = self.CR_fluxes['Energies']
-                            flux = self.CR_fluxes['dPhidE_'+  spec]
-                            out_flux = pjoin(out_dir, spec + '_flux_source_'+spectrum_method+'.txt')
-                            aux.write_data_to_file(x , flux  , filename = out_flux , header= h_flux)
-
-                    if 'earth' in self.maddm_card['sigmav_method']:
-                        for spec in self.Spectra.spectra_earth.keys():
-                            if 'x' in spec: 
-                                continue
-                            
-                            if 'neutrino' in spec:
-                                out_spec = pjoin(out_dir, spec + '_flux_earth_'+spectrum_method+'.txt')
-                                x = self.Spectra.spectra['x'] # !!! the x for oscillated neutrinos is the same for the spectra but not the same for positrons!!!
-                                aux.write_data_to_file(x , self.Spectra.spectra_earth[spec] , filename = out_spec , header = h_flux )
-    '''
     
     def print_ind(self,what, sig_th, sig_alldm, ul,  thermal=False ,direc = False , exp='Fermi', no_lim = False):
         ''' to print the output on screen. Set no_lim = True to avoid printing the experimental ul (e.g. Fermi ul for wrong dm velocity)'''
@@ -2372,8 +2313,8 @@ class MADDMRunCmd(cmd.CmdShell):
            out.write('# Fluxes calculated using the spectra from ' + self.maddm_card['indirect_flux_earth_method'] + '\n\n' )
            for name in ['neutrinos_e','neutrinos_mu','neutrinos_tau','gammas']:
                 out.write(form_s('Flux_'+name)+ '= '+ form_s(form_n(self.last_results['flux_'+name] )) + '\n' )
-           if self.last_results['flux_positrons']:
-               out.write(form_s('Flux_positrons')+ '= '+ form_s(form_n(self.last_results['flux_positrons'] )) + '\n' )
+#           if self.last_results['flux_positrons']:
+#               out.write(form_s('Flux_positrons')+ '= '+ form_s(form_n(self.last_results['flux_positrons'] )) + '\n' )
 
 
 
@@ -2730,7 +2671,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
             return 'source_py8'
                 
     ####################################################################
-    # everything related to multinset option
+    # everything related to multinest option
     ####################################################################    
     def set_default_nestscan(self):
         """set the default value for nestscan="""
