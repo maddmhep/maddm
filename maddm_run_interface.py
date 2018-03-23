@@ -1931,13 +1931,13 @@ class MADDMRunCmd(cmd.CmdShell):
 
           detailled_keys = [k for k in self.last_results.keys() if k.startswith('taacsID#')]
           logger.info('<sigma v> method: %s ' % self.maddm_card['sigmav_method'] )
-          logger.info('DM particle halo velocity: %s ' % halo_vel) # the velocity should be the same                                                           
+          logger.info('DM particle halo velocity: %s/c ' % halo_vel) # the velocity should be the same                                                           
 
           if halo_vel > (3*10**(-6)) and halo_vel < ( 1.4*10**(-4) ): # range of validity of Fermi limits
 
+            light_s = False
             if len(detailled_keys)>0:
                 #logger.info('Using generic Fermi limits for light quarks (u,d,s)' )
-                light_s = False
                 skip = []
                 for key in detailled_keys:
                     clean_key_list = key.split("#")
@@ -1987,10 +1987,19 @@ class MADDMRunCmd(cmd.CmdShell):
             fermi_ul         = self.last_results['Fermi_sigmav']
 
             if len(detailled_keys) > 1 :
+               logger.info('Total limits calculated with Fermi likelihood:')
                if self.maddm_card['sigmav_method']!= 'inclusive':     
                    self.print_ind('DM DM > all',sigtot_th , sigtot_alldm, fermi_ul,  thermal= dm_scen)
                else: 
                    self.print_ind('DM DM > SM SM', sigtot_SM_th , sigtot_SM_alldm, fermi_ul,  thermal= dm_scen)
+
+            elif len(detailled_keys) == 1:
+                logger.info('Total limits calculated with Fermi likelihood:')
+                if self.maddm_card['sigmav_method']!= 'inclusive':
+                   self.print_ind('DM DM > all',sigtot_th , sigtot_alldm, self.last_results['Fermi_sigmav'],  thermal= dm_scen)
+                else:
+                   self.print_ind('DM DM > SM SM', sigtot_SM_th , sigtot_SM_alldm, self.last_results['Fermi_sigmav'],  thermal= dm_scen)
+ 
 
             logger.info('')
 
@@ -2028,7 +2037,7 @@ class MADDMRunCmd(cmd.CmdShell):
         # np.save(pjoin(self.dir_path, 'output','Results'), self.last_results)
 
         if not self.param_card_iterator:
-            self.save_summary_single(relic = True, direct = self.mode['direct'], \
+            self.save_summary_single(relic = self.mode['relic'], direct = self.mode['direct'], \
                                 indirect = self.mode['indirect'], 
                                 fluxes_source= self.mode['indirect'].startswith('flux') if isinstance(self.mode['indirect'],str) else self.mode['indirect'], 
                                 fluxes_earth = False )                  
@@ -2245,7 +2254,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
 
 
-    def save_summary_single(self, relic = True , direct = False , indirect = False , fluxes_source = False , fluxes_earth = False):
+    def save_summary_single(self, relic = False, direct = False , indirect = False , fluxes_source = False , fluxes_earth = False):
 
         point = self.last_results['run']
         # creting symlink to Events folder in Inidrect output directory
@@ -2284,7 +2293,8 @@ class MADDMRunCmd(cmd.CmdShell):
         if direct:
 
             for name in ['d2NdEdcos.dat','dNdE.dat','dNdcos.dat','rate.dat']:
-                shutil.move(pjoin(self.dir_path, 'output',name) ,  pjoin(self.dir_path, 'output', point , name))
+                if os.path.isfile(pjoin(self.dir_path, 'output',name)):
+                   shutil.move(pjoin(self.dir_path, 'output',name) ,  pjoin(self.dir_path, 'output', point , name))
             
             out.write('\n#############################################\n')
             out.write('# Direct Detection [cm^2]                   #\n')
