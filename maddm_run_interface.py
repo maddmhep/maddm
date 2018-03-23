@@ -68,17 +68,17 @@ class ExpConstraints:
         self._dd_si_limit_file = pjoin(MDMDIR, 'ExpData', 'Xenont1T_data_2017.dat')
         self._dd_sd_proton_limit_file = pjoin(MDMDIR, 'ExpData', 'Pico60_sd_proton.dat') # <---------CHANGE THE FILE!!!
         self._dd_sd_neutron_limit_file = pjoin(MDMDIR, 'ExpData', 'Lux_2017_sd_neutron.dat')
-        self._id_limit_file = {'qqx'   :pjoin(MDMDIR, 'ExpData', 'MadDM_FermiLim_qq.dat'),
-                               'ccx'   :pjoin(MDMDIR, 'ExpData', 'MadDM_FermiLim_cc.dat'),
-                               'gg'    :pjoin(MDMDIR, 'ExpData', 'MadDM_FermiLim_gg.dat'),
-                               'bbx'   :pjoin(MDMDIR, 'ExpData', 'MadDM_FermiLim_bb.dat'),
-                               'ttx'   :pjoin(MDMDIR, 'ExpData', 'MadDM_FermiLim_tt.dat'),
-                               'e+e-'  :pjoin(MDMDIR, 'ExpData', 'MadDM_FermiLim_ee.dat'),
-                               'mu+mu-':pjoin(MDMDIR, 'ExpData', 'MadDM_FermiLim_mumu.dat'),
-                               'ta+ta-':pjoin(MDMDIR, 'ExpData', 'MadDM_FermiLim_tautau.dat'),
-                               'w+w-'  :pjoin(MDMDIR, 'ExpData', 'MadDM_FermiLim_ww.dat'),
-                               'zz'    :pjoin(MDMDIR, 'ExpData', 'MadDM_FermiLim_zz.dat'),
-                               'hh'    :pjoin(MDMDIR, 'ExpData', 'MadDM_FermiLim_hh.dat'),
+        self._id_limit_file = {'qqx'   :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_qq.dat'),
+                               'ccx'   :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_cc.dat'),
+                               'gg'    :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_gg.dat'),
+                               'bbx'   :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_bb.dat'),
+                               'ttx'   :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_tt.dat'),
+                               'e+e-'  :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_ee.dat'),
+                               'mu+mu-':pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_mumu.dat'),
+                               'ta+ta-':pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_tautau.dat'),
+                               'w+w-'  :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_WW.dat'),
+                               'zz'    :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_ZZ.dat'),
+                               'hh'    :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_hh.dat'),
 
                                'hess2013': pjoin(MDMDIR,'ExpData', 'hess_I_2013_einasto.dat'),
                                'hess2016': pjoin(MDMDIR,'ExpData', 'hess_2016_einasto.dat'),
@@ -134,9 +134,9 @@ class ExpConstraints:
                                                                                                             
         for channel, limit_file in self._id_limit_file.iteritems():
             if limit_file != '': # FF : need to redo the limit files as two columns                                                                             
-             if 'MadDM_FermiLim' in limit_file:
+             if 'MadDM_Fermi_Lim' in limit_file:
                 self._id_limit_mdm[channel]  = np.loadtxt(limit_file, unpack=True)[0]
-                self._id_limit_sigv[channel] = np.loadtxt(limit_file, unpack=True)[3]
+                self._id_limit_sigv[channel] = np.loadtxt(limit_file, unpack=True)[1]
              else:  self._id_limit_mdm[channel] ,  self._id_limit_sigv[channel] = np.loadtxt(limit_file, unpack=True , comments = '#')
 
             else:
