@@ -53,11 +53,29 @@ MadDM> display modellist
 """ +display_modellist
 
 
+define_coannihilator = """Now that the dark matter candidate  and coannihilator(s) are defined.
+
+ You can specify what type of computation you want to do
+   - computation of relic density
+     MadDM> generate relic_density
+   - computation of direct detection (detector on earth for DM interaction with matter)
+     MadDM> add direct_detection
+   - computation of indirect detection (annihilation of dark matter in halos and detector on or close to the Earth)
+     MadDM> add indirect_detection     
+
+   Note: 'generate' remove all previously generated matrix-element.
+         'add' keeps those
+         for the rest they are identical
+"""
+
+
+
+
 define_darkmatter = """
 Now that the dark matter candidate is defined. You can either 
 
 1) search/define coannihilator
-[Do not do it if you use the model suggested in the tutorial since you do not have those particles]
+[Note that we do not have such particles for the proposed model]
 MadDM> define coannihilator xr
 
 2) specify what type of computation you want to do
@@ -119,3 +137,11 @@ By the way did you know that upon launch you can
    > set my0 Auto
 """
 
+set_mxd="""
+The above is only valid WITHIN the question trigger by the 'launch' command.
+At this level of the interface, the 'set' command controls some options of the runs.
+To see the list of such options you can do
+MadDM> display options
+"""
+
+set_my0=set_mxd
