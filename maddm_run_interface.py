@@ -2922,15 +2922,28 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
             
     def do_help(self, line, conflict_raise=False, banner=True):
         """proxy for do_help"""
-        
-        if banner:                      
-            logger.info('*** HELP MESSAGE ***', '$MG:BOLD')
-        
+             
         if line:
+            if banner:                      
+                logger.info('*** HELP MESSAGE ***', '$MG:BOLD')
             card = common_run.AskforEditCard.do_help(self, line, conflict_raise=conflict_raise, banner=False)
+        else:
+            if banner:
+                logger.info('*** HELP MESSAGE FOR CARD EDITION ***', '$MG:BOLD')
+            card = common_run.AskforEditCard.do_help(self, line, conflict_raise=conflict_raise, banner=False)
+            logger.info('*** HELP MESSAGE FOR CHANGING SWITCH ***', '$MG:BOLD')
+            card = cmd.ControlSwitch.do_help(self, line, list_command=False)
+            if banner:                      
+                logger.info('*** END HELP ***', '$MG:BOLD')
+            return
+            
         args = self.split_arg(line)
         
+        if not args:
+            args =['']
+        
         start = 0
+        
         if args[start] in ['maddm', 'maddm_card']:
             card = 'maddm'
             start += 1
@@ -2960,17 +2973,34 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
     def help_indirect(self):
         
         logger.info("indirect flag can take three values: sigmav, flux_source, flux_earth")
+        logger.info("   for each of those flag, we propose two mode of computation fast or precise")
+        logger.info("   this can be setup (and tweak) within the maddm_card.") 
+        logger.info("    A quick way to setup such mode is to type: 'set fast' or 'set precise'")
         logger.info()
         logger.info("  sigmav: ", "$MG:BOLD")
-        
+        logger.info("     computation of the velocity-weighted annihilation cross section at present time.")
+        logger.info('     ')
         logger.info("  flux_source", "$MG:BOLD")
-        
+        logger.info("")
+        logger.info("     computation of the energy spectra before any propagation.")
+        logger.info("")
         logger.info("  flux_earth:", "$MG:BOLD")
-        logger.info("  This produces the flux at Earth of e+ and anti proton")
+        logger.info("     This produces the flux at Earth of e+ and anti proton")
                 
+    def help_direct(self):
         
-    
-    
+        logger.info("direct flag can take three values: direct, directional")
+        logger.info('     ')
+        logger.info("  direct: ", "$MG:BOLD")
+        logger.info("     Theoretical elastic spin-independent and spin-dependent cross section dark matter off nucleons")
+        logger.info('     ')
+        logger.info("  directional", "$MG:BOLD")
+        logger.info("     Directional event rate (double differential event rate)")
+        
+    def help_relic(self):
+        logger.info("relic flag can take two values: ON/OFF")
+        logger.info("  It controls if you are going to compute the relic density for the current benchmark")
+      
     def do_update(self, line, timer=0):
         """syntax: update dependent: Change the mass/width of particles which are not free parameter for the model.
                     update missing:   add to the current param_card missing blocks/parameters.
