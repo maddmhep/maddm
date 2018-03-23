@@ -76,7 +76,7 @@ Now that the dark matter candidate is defined. You can either
 
 1) search/define coannihilator
 [Note that we do not have such particles for the proposed model]
-MadDM> define coannihilator xr
+MadDM> define coannihilator ~xr
 
 2) specify what type of computation you want to do
    - computation of relic density

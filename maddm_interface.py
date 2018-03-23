@@ -464,7 +464,7 @@ class MadDM_interface(master_interface.MasterCmd):
         logger.info("    -- generate indirect detection matrix element for inclusive method of integration only")
         logger.info("    syntax: generate|add indirect_detection F1 F2 / X", '$MG:color:BLUE') 
         logger.info("    -- generate indirect detection matrix element for a given final state (F1 F2)")
-        logger.info("       Three body final state are also allowed. (forbidding the use of PPPC4DMID on those)")
+        logger.info("       'three body final states (actually n body finally states) are allowed (those are forbidden when using PPPC4DMID)")
         logger.info("")    
         logger.info("    - FOR ADVANCED USER", '$MG:BOLD')             
         logger.info("      manual definition of the matrix element is possible via the following syntax:")
