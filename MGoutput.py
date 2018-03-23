@@ -1058,9 +1058,23 @@ class ProcessExporterIndirectD(object):
                                 self.cmd._curr_model['name'],
                                 self.cmd._generate_info)
         
+        self.modify_banner()
+        
 
-            
-                
+    def modify_banner(self):
+        """enforce that <init> in events.lhe have id 52 for both beam (ensure that py8 accepts it)"""
+        
+        all_lines = open(pjoin(self.dir_path,'bin','internal','banner.py')).readlines()
+        
+        for i, line in enumerate(all_lines):
+            if 'def get_idbmup(lpp):' in line:
+                break
+
+        next_line = all_lines[i+1] 
+        nb_space = next_line.find(next_line.strip())
+        all_lines.insert(i+2, '%sreturn 52 #enforce DM ID for pythia8\n' % (' '*nb_space))
+        
+        open(pjoin(self.dir_path,'bin','internal','banner.py'),'w').writelines(all_lines)
         
     def modify_history(self, history):
         """modify history to make an proc_card_mg5 more similar to the real process
