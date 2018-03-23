@@ -1041,7 +1041,7 @@ class MADDMRunCmd(cmd.CmdShell):
             self.run_pythia8_for_flux() 
               
             if self.maddm_card['indirect_flux_source_method'] == 'pythia8':
-                logger.info('Calculating Fermi limit using using pythia8 gamma rays spectrum')
+                logger.info('Calculating Fermi limit using pythia8 gamma rays spectrum')
             elif 'pythia' not in self.maddm_card['indirect_flux_source_method']:
                 logger.warning('Since pyhtia8 is run, using pythia8 gamma rays spectrum (not PPPC4DMID Tables)')
 
@@ -1069,7 +1069,6 @@ class MADDMRunCmd(cmd.CmdShell):
         if self.mode['indirect'].startswith('flux') :
             print 'FF ************  self.mode is ', self.mode['indirect']
             self.neu_oscillations() # neutrinos oscillations                                                                                                                   
-            self.calculate_fluxes() # calculating dPhidE 
 
         # ****** Calculating Fluxes Earth                                                                                                                       
             if 'earth' in self.mode['indirect']:
@@ -1079,6 +1078,8 @@ class MADDMRunCmd(cmd.CmdShell):
                 elif 'dragon' in self.maddm_card['indirect_flux_earth_method']:
                     logger.info('Calling DRAGON for positrons and antiprotons propagation')
                     self.run_Dragon()                                                                                                                
+
+            self.calculate_fluxes() # calculating dPhidE                                                                                                                            
 
 
     def calculate_fermi_limits(self, mdm):
@@ -1470,9 +1471,9 @@ class MADDMRunCmd(cmd.CmdShell):
 
         # declaring what to do
         if 'pythia' in self.maddm_card['indirect_flux_source_method'] or self.maddm_card['sigmav_method'] != 'inclusive' :
-            logger.info('Calculating cosmic rays fluxes using pythia8 gamma rays spectrum')
+            logger.info('Calculating cosmic rays fluxes using pythia8 gammas and neutrinos spectra.')
         elif 'PPPC' in self.maddm_card['indirect_flux_source_method'] and self.maddm_card['sigmav_method'] == 'inclusive':
-            logger.info('Calculating cosmic rays fluxes using the spectra from the PPPC4DMID Tables')
+            logger.info('Calculating cosmic rays fluxes using gammas and neutrinos spectra from the PPPC4DMID tables.')
         # self.Spectra.spectra = = {'x':[] , 'antiprotons':[], 'gammas':[], 'neutrinos_e':[], 'neutrinos_mu':[], 'neutrinos_tau':[], 'positrons':[] }
         cr_spectra = self.Spectra.spectra.keys()
         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
@@ -1504,7 +1505,10 @@ class MADDMRunCmd(cmd.CmdShell):
                    '''
                    self.last_results['flux_%s' % spec] = Phi 
 
-
+             if 'PPPC' in self.maddm_card['indirect_flux_earth_method']:
+                 logger.info('Calculating positrons flux using the PPPC4DMID tables (propagated at Earth).')
+                 pos = self.Phi(chan= spec, positrons = True)
+                 self.last_results['flux_positrons'] = pos * self.last_results['tot_SM_xsec']/(10**(-26)) 
 
 
     '''
@@ -1586,28 +1590,37 @@ class MADDMRunCmd(cmd.CmdShell):
 
     
     def dNdE_int(self,energy, channel= ''):
-        # returns the interpolated value for the Phi integral calculation
-        E    = self.Spectra.flux_source['e']
-        dNdE = self.Spectra.flux_source[channel]['dNdE']
-        return np.interp(energy, E, dNdE )
+        if channel != 'positrons':
+           # returns the interpolated value for the Phi integral calculation
+           E    = self.Spectra.flux_source['e']
+           dNdE = self.Spectra.flux_source[channel]['dNdE']
+           return np.interp(energy, E, dNdE )
 
+        else:
+            print 'FF DING TI'
+            E = self.Spectra.flux_earth_positrons['e']
+            dPhidlogE = self.Spectra.flux_earth_positrons['positrons']['dPhidlogE']
+            print 'FF E , ddd ', E , dPhidlogE 
+            return np.interp(energy, E, dPhidlogE )
 
-    def Phi(self, chan= ''):
+    def Phi(self, chan= '' , positrons = False):
         # this function integrates over the energy the differential spectrum to give the total flux 
         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
         sigv = self.last_results['taacsID']
         halo_profile = self.maddm_card['halo_profile']
         jfact = self.maddm_card['jfactors'][halo_profile]
 
-
         npts =  self.maddm_card['npts_for_flux']
         grid = [de*2*mdm/npts for de in range(0, npts+1)]
-            #CHECK HERE THAT THE JACOBIAN FROM X TO E IS CORRECT                                                                                                                
-        #dNdE, dPhidE = self.dNdE_dPhidE(interp, x=x, dndlogx=dndlogx)                                                                                                         
-        integrate_dNdE = aux.integrate( self.dNdE_int  , grid , channel = chan ) # the last are the arguments of the function                                         
-        #print 'FF integrate_dNdE' , integrate_dNdE                                                                                                                             
-        phi = 1.0/(self.norm_Majorana_Dirac()*2*math.pi*mdm*mdm)*sigv*jfact*integrate_dNdE                                                                                     
-        #print 'FF phi is', phi                                                                                                                                               
+
+        if not positrons:
+            integrate_dNdE = aux.integrate( self.dNdE_int  , grid , channel = chan ) # the last are the arguments of the function                                         
+            phi = 1.0/(self.norm_Majorana_Dirac()*2*math.pi*mdm*mdm)*sigv*jfact*integrate_dNdE                                                                                     
+
+        else:
+            integrate_dPhidE = aux.integrate(self.dNdE_int, grid, channel = 'positrons')
+            phi = integrate_dPhidE # flux at Earth already calculated in tables
+            
         return phi
 
     
@@ -2008,6 +2021,10 @@ class MADDMRunCmd(cmd.CmdShell):
                 np_names = {'gammas':'g'      , 'neutrinos_e':'nue' , 'neutrinos_mu':'numu' , 'neutrinos_tau':'nutau'}
                 for chan in np_names.keys():
                     logger.info( self.form_s(chan + ' Flux') + '=\t' + self.form_s(self.form_n (self.last_results['flux_%s' % chan]) ))
+
+                if self.last_results['flux_positrons']:
+                    logger.info( self.form_s('positrons Flux') + '=\t' + self.form_s(self.form_n (self.last_results['flux_positrons']) ))
+
                 logger.info('\n')
 
           else:  
@@ -2179,7 +2196,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 e = self.Spectra.flux_earth_positrons['e']
                 header = '# E[GeV]   dPhi/dlogE [particles/(cm2 s sr)]  positrons \t PPPC4DMID flux at earth'
                 dPhidlogE = self.Spectra.flux_earth_positrons['positrons']['dPhidlogE']
-                aux.write_data_to_file(e , dPhidlogE  , filename = out_dir + '/positrons_flux_earth.txt' , header = header )
+                aux.write_data_to_file(e , dPhidlogE  , filename = out_dir + '/positrons_dphide_' + spec_method +'.dat' , header = header )
 
         misc.sprint("CODE NEED CLEANING HERE!!!")
         '''
@@ -2355,6 +2372,8 @@ class MADDMRunCmd(cmd.CmdShell):
            out.write('# Fluxes calculated using the spectra from ' + self.maddm_card['indirect_flux_earth_method'] + '\n\n' )
            for name in ['neutrinos_e','neutrinos_mu','neutrinos_tau','gammas']:
                 out.write(form_s('Flux_'+name)+ '= '+ form_s(form_n(self.last_results['flux_'+name] )) + '\n' )
+           if self.last_results['flux_positrons']:
+               out.write(form_s('Flux_positrons')+ '= '+ form_s(form_n(self.last_results['flux_positrons'] )) + '\n' )
 
 
 
@@ -3532,8 +3551,9 @@ class Multinest(object):
                     self.output_observables.append('tot_SM_xsec')
                 else:
                     self.output_observables.append('taacsID')
-                    
-                self.output_observables.append('like_nonth')
+
+                #self.output_observables.append('Fermi_sigmav')
+                #self.output_observables.append('like_nonth')
                 
                 #detailled_keys = [k for k in self.maddm_run.last_results.keys() if k.startswith('taacsID#')]
                 #for key in detailled_keys:
@@ -3842,8 +3862,7 @@ class Multinest(object):
             if obs == 'indirect' and self.maddm_run.mode['indirect']:
 
                 like = results['like_nonth']
-                print 'FF the like for multinest is: *** ', like 
-                chi+= like 
+                chi += like 
 
                 
                 '''
