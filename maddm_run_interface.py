@@ -1970,7 +1970,7 @@ class MADDMRunCmd(cmd.CmdShell):
                     else:                                                                                                                                                          
                         self.print_ind(clean_key, s_thermal, s_alldm, s_ul,  thermal= dm_scen) 
 
-                if len(skip) >=1:        
+            if len(skip) >=1:        
                       logger.info('Skipping zero cross section processes for: %s', ', '.join(skip))                      
             if light_s: logger.info('Using generic Fermi limits for light quarks (u,d,s)' )                                                                                               
             sigtot_alldm     = self.last_results['taacsID']
