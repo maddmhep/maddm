@@ -272,8 +272,6 @@ class MadDM_interface(master_interface.MasterCmd):
                          (p.get('name') not in excluded_particles and p.get('antiname') not in excluded_particles) and\
                          p.get('charge') == 0]
         
-        assert ('xc' not in excluded_particles or 'xc' not in [p.get('name') for p in bsm_particles])
-        
         dm_particles = []
         dm_mass = 0
         # When manually entering in the DM and coannihilation particles, both particle and anti-particle
@@ -404,6 +402,21 @@ class MadDM_interface(master_interface.MasterCmd):
             # For organizational purposes we put the coannihilation particles by
             #alphabetical order by name
             self._coannihilation.sort(key=lambda p: p['name'])
+        
+        # Validity check
+        for p in list(self._coannihilation):
+            has_coupling = False
+            for vert in self._curr_model.get('interactions'):
+                if p in vert['particles']:
+                    for coup_name in  vert['couplings'].values():
+                        if self._curr_model.get('coupling_dict')[coup_name]:
+                            has_coupling = True
+                            break
+                if has_coupling:
+                    break
+            else:
+                self._coannihilation.remove(p)
+        
         
         if self._coannihilation:
             logger.info("Found coannihilation partners: %s" % ','.join([p['name'] for p in self._coannihilation]),
@@ -539,12 +552,10 @@ class MadDM_interface(master_interface.MasterCmd):
         tutorials = {'maddm': logger_tuto}
         
         try:
-            misc.sprint('tuto activated')
             tutorials[args[0]].setLevel(logging.INFO)
         except KeyError:
             logger_tuto.info("\n\tThanks for using the tutorial!")
             logger_tuto.setLevel(logging.ERROR)
-            misc.sprint('tuto des-activated')
             
     def postcmd(self,stop, line):
         """ finishing a command
@@ -560,6 +571,9 @@ class MadDM_interface(master_interface.MasterCmd):
         # Return for empty line
         if len(args)==0:
             return stop
+        
+        if args[0] == 'import' and ('__REAL' in line or '__COMPLEX' in line):
+            return stop 
 
         # try to print linked to the first word in command
         #as import_model,... if you don't find then try print with only
@@ -1031,7 +1045,7 @@ class MadDM_interface(master_interface.MasterCmd):
         backup_dm_candidate = self._dm_candidate
         backup_coannihilation = self._coannihilation
         
-        self.exec_cmd(mg5_command)
+        self.exec_cmd(mg5_command, postcmd=False)
         self._curr_amps = backup_amp
         self._param_card = backup_param_card 
         self._dm_candidate = backup_dm_candidate
