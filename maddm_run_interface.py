@@ -1929,12 +1929,12 @@ class MADDMRunCmd(cmd.CmdShell):
           logger.info('<sigma v> method: %s ' % self.maddm_card['sigmav_method'] )
           logger.info('DM particle halo velocity: %s/c ' % halo_vel) # the velocity should be the same                                                           
 
+          skip = []
           if halo_vel > (3*10**(-6)) and halo_vel < ( 1.4*10**(-4) ): # range of validity of Fermi limits
 
             light_s = False
             if len(detailled_keys)>0:
                 #logger.info('Using generic Fermi limits for light quarks (u,d,s)' )
-                skip = []
                 for key in detailled_keys:
                     clean_key_list = key.split("#")
                     clean_key = clean_key_list[1] #clean_key_list[0]+"_"+clean_key_list[1]
@@ -2160,7 +2160,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 header = '# Log10(x=Ekin/mDM)   dn/dlogx   ' + spec + '\t' + self.maddm_card['indirect_flux_source_method'] + ' spectra at source'
                 if 'x' not in spec:
                     dndlogx = self.Spectra.spectra[spec]
-                    aux.write_data_to_file(x , dndlogx  , filename = out_dir + '/' + spec + '_spectrum_source.dat' , header = header )
+                    aux.write_data_to_file(x , dndlogx  , filename = out_dir + '/' + spec + '_spectrum_'+ spec_method+'.dat' , header = header )
 
         if flux_earth:
             e = self.Spectra.flux_source['e']
