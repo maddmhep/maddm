@@ -870,7 +870,8 @@ class MADDMRunCmd(cmd.CmdShell):
                        order = order + ['pvalue_nonth','like_nonth']
 
                     if self.mode['indirect'].startswith('flux'):
-                       for channel in self.Spectra.spectra.keys():
+                       #for channel in self.Spectra.spectra.keys(): #['neutrinos_e', 'neutrinos_mu' , 'neutrinos_tau']
+                       for channel in ['gammas','neutrinos_e', 'neutrinos_mu' , 'neutrinos_tau']:
                            if 'antip' in channel or 'pos' in channel: continue
                            order.append('flux_%s' % channel)
 
@@ -1699,8 +1700,8 @@ class MADDMRunCmd(cmd.CmdShell):
 
             if str(self.mode['indirect']).startswith('flux'):
                 logger.info('*** Fluxes at earth [particle/(cm^2 sr)]:')
-                np_names = {'gammas':'g'      , 'neutrinos_e':'nue' , 'neutrinos_mu':'numu' , 'neutrinos_tau':'nutau'}
-                for chan in ['neutrinos_e', 'neutrinos_mu' , 'neutrinos_tau']:
+                #np_names = {'gammas':'g'      , 'neutrinos_e':'nue' , 'neutrinos_mu':'numu' , 'neutrinos_tau':'nutau'}
+                for chan in ['gammas','neutrinos_e', 'neutrinos_mu' , 'neutrinos_tau']:
                     logger.info( self.form_s(chan + ' Flux') + '=\t' + self.form_s(self.form_n (self.last_results['flux_%s' % chan]) ))
 
                 logger.info('\n')
