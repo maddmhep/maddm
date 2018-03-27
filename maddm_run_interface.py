@@ -750,6 +750,7 @@ class MADDMRunCmd(cmd.CmdShell):
                             sigv_indirect += sigv_temp
                     result[splitline[0].split(':')[0]] = float(splitline[1])
 
+                    
         result['taacsID'] = sigv_indirect
                             
         np_names = ['g','nue','numu','nutau']
@@ -1006,10 +1007,18 @@ class MADDMRunCmd(cmd.CmdShell):
             for key, value in self.me_cmd.Presults.iteritems():
                 clean_key_list = key.split("/")
                 clean_key =clean_key_list[len(clean_key_list)-1].split('_')[1] +'_'+  clean_key_list[len(clean_key_list)-1].split('_')[2] 
- 
+
+                if value < 10**(-100): continue                
                 if key.startswith('xsec'):
                     self.last_results['taacsID#%s' %(clean_key)] = value* pb2cm3
                     self.last_results['taacsID'] += value* pb2cm3
+                    if clean_key.split('_')[1] in ['uux','ddx','ssx']:
+                        self.last_results['lim_taacsID#'+clean_key] = self.limits.ID_max(mdm, 'qqx')
+                    elif clean_key.split('_')[1] in self.limits._allowed_final_states:
+                        self.last_results['lim_taacsID#'+clean_key] = self.limits.ID_max(mdm, clean_key.split('_')[1])
+                    elif clean_key.split('_')[1] not in self.limits._allowed_final_states:
+                        self.last_results['lim_taacsID#'+clean_key] = -1
+                    
                 elif key.startswith('xerr'):
                     self.last_results['err_taacsID#%s' %(clean_key)] = value * pb2cm3
 
@@ -1663,8 +1672,7 @@ class MADDMRunCmd(cmd.CmdShell):
                         skip.append(f_original)
                         continue 
                     if finalstate in self.limits._allowed_final_states :
-                        s_ul   = self.limits.ID_max(mdm, finalstate)
-
+                        s_ul   = self.limits.ID_max(mdm, finalstate)    
                         self.last_results['Fermi_lim_'+key] = self.limits.ID_max(mdm, finalstate)
                     else:  s_ul   = '-1'
 
@@ -1737,7 +1745,7 @@ class MADDMRunCmd(cmd.CmdShell):
                                 indirect = self.mode['indirect'], 
                                 fluxes_source= self.mode['indirect'].startswith('flux') if isinstance(self.mode['indirect'],str) else self.mode['indirect'], 
                                 fluxes_earth = False )                  
-            logger.info('Results written in: ' +pjoin(self.dir_path, 'output', 'MadDM_results.txt') )
+            logger.info('Results written in: ' +pjoin(self.dir_path, 'output', self.run_name, 'MadDM_results.txt') )
 
             self.save_remove_output(scan = False)
 
@@ -1961,20 +1969,24 @@ class MADDMRunCmd(cmd.CmdShell):
         if indirect:      
 
             sigmav_meth = self.maddm_card['sigmav_method'] # method actually used
-
+            method = self.maddm_card['indirect_flux_source_method']
+            
             out.write('\n#############################################\n')
             out.write('# Indirect Detection [cm^3/s]               #\n')
             out.write('#############################################\n\n')
 
             out.write('# Annihilation cross section computed with the method: ' + sigmav_meth +' \n')
 
+
+
+            
             tot_th , tot_ul , tot_sm = self.last_results['taacsID'] , self.last_results['Fermi_sigmav'] , self.last_results['tot_SM_xsec']
             pvalue_th     = self.last_results['pvalue_th']
             likelihood_th = self.last_results['like_th'] 
             pvalue_nonth  = self.last_results['pvalue_nonth']
             likelihood_nonth = self.last_results['like_nonth']
 
-
+            """
             if sigmav_meth !='inclusive':
                 out.write('# Fermi Limit for DM annihilation computed with Pythia8 spectra  \n\n')
                 out.write(form_s('Total_xsec') +'= ' + form_s('['+ form_n(tot_th) +','+ form_n(tot_ul) +']') + '\n') 
@@ -1992,7 +2004,16 @@ class MADDMRunCmd(cmd.CmdShell):
                     out.write(form_s(proc)      + '= '+ form_s('['+ form_n(proc_th)+',' + form_n(proc_ul)+']') + '\n')
            
                 out.write(form_s('TotalSM_xsec')+ '= '+ form_s('['+ form_n(tot_sm)+ ',' + form_n(tot_ul) +']') + '\n')
+            """
 
+            out.write('# Global Fermi Limit computed with ' + method + ' spectra\n\n')                                                                              
+            lista = [ proc for proc in self.last_results.keys() if 'taacsID#' in proc and 'lim_' not in proc and 'err' not in proc ]                                      
+            for name in lista:                                                                                                                                         
+                proc = name.replace('taacsID#','')                                                                                                                      
+                proc_th , proc_ul = self.last_results[name] , self.last_results['lim_'+name]                                                                          
+                out.write(form_s(proc)      + '= '+ form_s('['+ form_n(proc_th)+',' + form_n(proc_ul)+']') + '\n')
+                
+            out.write(form_s('TotalSM_xsec')+ '= '+ form_s('['+ form_n(tot_sm)+ ',' + form_n(tot_ul) +']') + '\n')
             out.write( form_s('Fermi_Likelihood')+ '= '+ form_s(form_n(likelihood_nonth))  +'\n' )
             out.write( form_s('Fermi_pvalue'    )+ '= '+ form_s(form_n(pvalue_nonth    ))  +'\n')
 
