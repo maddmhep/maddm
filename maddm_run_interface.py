@@ -1008,7 +1008,6 @@ class MADDMRunCmd(cmd.CmdShell):
                 clean_key_list = key.split("/")
                 clean_key =clean_key_list[len(clean_key_list)-1].split('_')[1] +'_'+  clean_key_list[len(clean_key_list)-1].split('_')[2] 
 
-                if value < 10**(-100): continue                
                 if key.startswith('xsec'):
                     self.last_results['taacsID#%s' %(clean_key)] = value* pb2cm3
                     self.last_results['taacsID'] += value* pb2cm3
