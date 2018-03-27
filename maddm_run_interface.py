@@ -1050,7 +1050,6 @@ class MADDMRunCmd(cmd.CmdShell):
 
             self.calculate_fluxes() # calculating dPhidE                                                                                                                            
 
-
     def calculate_fermi_limits(self, mdm):
         """setup the computation for the fermi limits"""
 
@@ -1701,7 +1700,7 @@ class MADDMRunCmd(cmd.CmdShell):
             if str(self.mode['indirect']).startswith('flux'):
                 logger.info('*** Fluxes at earth [particle/(cm^2 sr)]:')
                 np_names = {'gammas':'g'      , 'neutrinos_e':'nue' , 'neutrinos_mu':'numu' , 'neutrinos_tau':'nutau'}
-                for chan in np_names.keys():
+                for chan in ['neutrinos_e', 'neutrinos_mu' , 'neutrinos_tau']:
                     logger.info( self.form_s(chan + ' Flux') + '=\t' + self.form_s(self.form_n (self.last_results['flux_%s' % chan]) ))
 
                 logger.info('\n')
