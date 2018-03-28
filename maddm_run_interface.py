@@ -966,7 +966,7 @@ class MADDMRunCmd(cmd.CmdShell):
             runcardpath = pjoin(self.dir_path,'Indirect', 'Cards', 'run_card.dat')
             run_card = banner_mod.RunCard(runcardpath)
 
-            vave_temp = self.maddm_card['vave_indirect']
+            vave_temp = math.sqrt(3)/2.0 * self.maddm_card['vave_indirect']
 
             # ensure that VPM is the central one for the printout (so far)
             self.last_results['taacsID'] = 0.0
@@ -1034,13 +1034,15 @@ class MADDMRunCmd(cmd.CmdShell):
             logger.info('Calculating Fermi limit using PPPC4DMID spectra')
 
 
-        # *** Multiply all the calculated indirect cross section by 2*(vave_indirect) value (since is relative velocity)
+        # *** Multiply all the calculated indirect cross section by sqrt(3)/2 * 2 *(vave_indirect) value (since is relative velocity)
         halo_vel = self.maddm_card['vave_indirect']
         for key,value in (self.last_results).iteritems():
             if 'taacs' in key and 'lim' not in key and 'err' not in key or 'xsec' in key:
-                new_value = halo_vel * 2 * value
+                new_value = halo_vel * math.sqrt(3)/2 * 2 * value
                 self.last_results[key] = new_value
-            
+
+
+                
         # ****** Calculating Fermi Limits
         self.calculate_fermi_limits(mdm)
 
