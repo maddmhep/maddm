@@ -9,7 +9,7 @@ loglikelihood directSD_p   half_gauss 0.01 # [gaussian, half_gauss, user] log10(
 loglikelihood directSD_n   half_gauss 0.01 # [gaussian, half_gauss, user] log10(gauss_width) - for half_gauss
 loglikelihood indirect     half_gauss 0.01 # [gaussian, half_gauss, user] log10(gauss_width) - for half_gauss
 #
-livepts 50000
+livepts 10000
 #
 sampling_efficiency model # [model, parameter]
 #

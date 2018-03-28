@@ -2481,9 +2481,9 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         elif indirect == 'flux_source':
             self.do_set("sigmav_method inclusive")
             self.do_set("indirect_flux_source_method PPPC4DMID_ew")
-            print "done"
         elif indirect == 'flux_earth':
             self.do_set("sigmav_method inclusive")
+            self.do_set("indirect_flux_source_method PPPC4DMID_ew")
             self.do_set("indirect_flux_earth_method PPPC4DMID_ep")
         
     def pass_to_precise_mode(self):
@@ -2497,13 +2497,15 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
             self.do_set("sigmav_method reshuffling")
         elif indirect == 'flux_source':
             self.do_set("indirect_flux_source_method pythia8")
-            self.do_set("set main:numberofevents 1000000")
+            self.do_set("Main:numberOfEvents 1000000")
             self.do_set("TimeShower:weakShower = on")
+            self.do_set("sigmav_method reshuffling")
         elif indirect == 'flux_earth':
             self.do_set("indirect_flux_source_method pythia8")
-            self.do_set("set main:numberofevents 1000000")
+            self.do_set("Main:numberOfEvents 1000000")
             self.do_set("TimeShower:weakShower = on")
-            self.do_set("indirect_flux_earth_method dragon")            
+            self.do_set("indirect_flux_earth_method dragon")
+            self.do_set("sigmav_method reshuffling")
 
     def get_cardcmd(self):
         """ return the list of command that need to be run to have a consistent 

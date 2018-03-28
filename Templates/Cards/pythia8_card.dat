@@ -16,7 +16,7 @@ Main:NumberOfEvents      = -1
 ! ============
 !
 ! See: http://home.thep.lu.se/~torbjorn/pythia82html/WeakShowers.html 
-TimeShower:weakShower = off 
+TimeShower:weakShower = on
 TimeShower:weakShowerMode = 0
 WeakShower:enhancement = 1.  
 TimeShower:pTminWeak = 0.1
