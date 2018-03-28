@@ -985,24 +985,24 @@ class MADDMRunCmd(cmd.CmdShell):
         
                 run_card.write(runcardpath)
         
-            misc.sprint("TODO reduce printout here (not working for some reason)")
             if __debug__:
                 set_level = 10
             else:
                 set_level = 50
             logger.info("Computing sigmav with method: %s" % self.maddm_card['sigmav_method'])
             with self.me_cmd.RunWebHandling(pjoin(self.dir_path, 'Indirect')):
-                #this with statement ensure that only one process is running within
-                #that directory.
-                with misc.MuteLogger(['madgraph','madevent','cmdprint'], [set_level]*3):
-                    #mute logger          
-                    if self.maddm_card['sigmav_method'] == 'madevent':
-                        self.me_cmd.do_launch('%s -f' % self.run_name)
-                    elif self.maddm_card['sigmav_method'] == 'reshuffling': 
-                        cmd = ['launch %s' % self.run_name,
-                           'reweight=indirect',
-                           'edit reweight --before_line="launch" change velocity %s' % vave_temp]
-                        self.me_cmd.import_command_file(cmd)
+                with misc.TMP_variable(banner_mod.RunCard, 'get_idbmup', lambda *args: 52):
+                    #this with statement ensure that only one process is running within
+                    #that directory.
+                    with misc.MuteLogger(['madgraph','madevent','cmdprint'], [set_level]*3):
+                        #mute logger          
+                        if self.maddm_card['sigmav_method'] == 'madevent':
+                            self.me_cmd.do_launch('%s -f' % self.run_name)
+                        elif self.maddm_card['sigmav_method'] == 'reshuffling': 
+                            cmd = ['launch %s' % self.run_name,
+                               'reweight=indirect',
+                               'edit reweight --before_line="launch" change velocity %s' % vave_temp]
+                            self.me_cmd.import_command_file(cmd)
                   
             for key, value in self.me_cmd.Presults.iteritems():
                 clean_key_list = key.split("/")
