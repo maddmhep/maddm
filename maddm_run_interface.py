@@ -1911,9 +1911,6 @@ class MADDMRunCmd(cmd.CmdShell):
 
         logger.info(line)
           
-
-
-
     def save_summary_single(self, relic = False, direct = False , indirect = False , fluxes_source = False , fluxes_earth = False):
 
         point = self.last_results['run']
@@ -1932,7 +1929,7 @@ class MADDMRunCmd(cmd.CmdShell):
         out = open(pjoin(self.dir_path, 'output', point, 'MadDM_results.txt'),'w')
  
         out.write('#############################################\n')
-        out.write('#                MadDM v. ' + str(self.MadDM_version) +'                #\n' )
+        out.write('#                MadDM v. ' + str(self.MadDM_version) +'               #\n' )
         out.write('#############################################\n\n\n')
 
         if relic:
@@ -2021,9 +2018,9 @@ class MADDMRunCmd(cmd.CmdShell):
                out.write( form_s('Fermi_pvalue(Thermal)'    )+ '= '+ form_s(form_n(pvalue_th    ))  +'\n ')
 
         if fluxes_source:
-           out.write('\n#############################################\n')
-           out.write('# CR Flux at Earth [particles/(cm^2 s sr)] #\n')
-           out.write('#############################################\n\n')
+           out.write('\n##############################################\n')
+           out.write('# CR Flux at Earth [particles/(cm^2 s sr)]   #\n')
+           out.write('##############################################\n\n')
            out.write('# Fluxes calculated using the spectra from ' + self.maddm_card['indirect_flux_earth_method'] + '\n\n' )
            for name in ['neutrinos_e','neutrinos_mu','neutrinos_tau','gammas']:
                 out.write(form_s('Flux_'+name)+ '= '+ form_s(form_n(self.last_results['flux_'+name] )) + '\n' )
