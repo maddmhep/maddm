@@ -478,7 +478,7 @@ class MadDM_interface(master_interface.MasterCmd):
     
     def do_add(self, line):
         """ """
-        
+
         args = self.split_arg(line)    
         if len(args) and args[0] == 'process':
             args.pop(0)
@@ -615,6 +615,7 @@ class MadDM_interface(master_interface.MasterCmd):
         if not self._curr_amps:
             self.do_generate('relic_density')
             self.do_add('direct_detection')
+            self.do_add('indirect_detection')
         
         
         args = self.split_arg(line)
@@ -750,6 +751,7 @@ class MadDM_interface(master_interface.MasterCmd):
             if not self._dm_candidate:
                 return
             self.search_coannihilator(excluded=excluded_particles)
+            self.history.append('add relic / %s' % ' '.join(excluded_particles))
 
 
         # Tabulates all the BSM particles so they can be included in the
@@ -852,6 +854,8 @@ class MadDM_interface(master_interface.MasterCmd):
             self.search_dm_candidate(excluded_particles)
             if not self._dm_candidate:
                 return
+            else:
+                self.history.append('add direct / %s' % ' '.join(excluded_particles))
 
         if len(self._dm_candidate) > 1:
             logger.warning("More than one DM candidate. Can not run Direct Detection.")
@@ -946,6 +950,8 @@ class MadDM_interface(master_interface.MasterCmd):
             self.search_dm_candidate()
             if not self._dm_candidate:
                 return
+            else:
+                self.history.append('add indirect %s' % ' '.join(argument))
 
         if len(self._curr_proc_defs) == 0:
             self.generate_relic([])
