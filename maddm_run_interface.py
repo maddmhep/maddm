@@ -2258,6 +2258,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         else:
             self.switch['relic'] = 'Not Avail.'
 
+
     def get_allowed_relic(self):
         """Specify which parameter are allowed for relic="""
         
@@ -2394,7 +2395,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
 
     def get_allowed_nestscan(self):
         """Specify which parameter are allowed for relic="""
-            
+        
         if hasattr(self, 'allowed_nestscan'):
             return getattr(self, 'allowed_nestscan')
         
@@ -2441,7 +2442,19 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         for key, value in self.answer.items():
             fsock.write('%s %s\n' % (key,value))
         fsock.close()
-                   
+           
+           
+    def detect_card_type(self, path):
+        """detect card type -> add multinest"""
+        
+        output = super(MadDMSelector, self).detect_card_type(path)
+        
+        if output == 'unknown':
+            text = open(path).read()
+            if 'livepoints' in text: return 'multinest'
+            if 'prefix' in text: return 'multinest'
+            
+        return output
      
     def init_maddm(self, path):
         """ initialize cards for the reading/writing of maddm"""
