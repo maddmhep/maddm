@@ -439,6 +439,19 @@ class MadDM_interface(master_interface.MasterCmd):
             
         return super(MadDM_interface, self).do_import(line, *args, **opts)
 
+    def clean_process(self):
+        """ensure that all processes are cleaned from memory.
+        typically called from import model and generate XXX command
+        """
+
+        super(MadDM_interface, self).clean_process()
+        
+        # flip indirect/standard process definition
+        self._ID_procs = base_objects.ProcessDefinitionList()
+        self._ID_matrix_elements = helas_objects.HelasMultiProcess()
+        self._ID_amps = diagram_generation.AmplitudeList()
+        
+    
     def help_generate(self):
         """ """
         logger.info("**************** MADDM NEW OPTION ***************************")
