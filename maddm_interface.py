@@ -16,11 +16,8 @@ import madgraph.interface.common_run_interface as common_run
 import models.check_param_card as check_param_card
 import models.model_reader as model_reader
 
-#HERE I HARDCODED NUMPY
-import numpy as np
 
 import re
-from PLUGIN.new_interface.maddm_run_interface import MADDMRunCmd
 pjoin = os.path.join
 
 logger = logging.getLogger('madgraph.plugin.maddm')
@@ -629,6 +626,9 @@ class MadDM_interface(master_interface.MasterCmd):
             self.do_generate('relic_density')
             self.do_add('direct_detection')
             self.do_add('indirect_detection')
+            self.history.append('generate relic_density')
+            self.history.append('add direct_detection')            
+            self.history.append('add indirect_detection')
         
         
         args = self.split_arg(line)
@@ -693,18 +693,19 @@ class MadDM_interface(master_interface.MasterCmd):
 
     def do_launch(self, line):
         
-        
         args = self.split_arg(line)
         (options, args) = madgraph_interface._launch_parser.parse_args(args)
         with misc.TMP_variable(self, '_export_formats', self._export_formats + ['maddm']):
             self.check_launch(args, options)
         options = options.__dict__        
         
-        
+
         if args[0] != 'maddm':
             return super(MadDM_interface, self).do_launch(line)
         else:
             self._MDM = maddm_run_interface.MADDMRunCmd(dir_path=args[1], options=self.options)
+            self._done_export = (args[1], 'plugin')
+            
             if options['interactive']:
                 return self.define_child_cmd_interface(self._MDM)
             else:
@@ -716,6 +717,7 @@ class MadDM_interface(master_interface.MasterCmd):
                     raise
                 else:
                     self._MDM.exec_cmd('quit')
+                self._done_export = (args[1], 'plugin')
                 return
 
 
@@ -764,7 +766,8 @@ class MadDM_interface(master_interface.MasterCmd):
             if not self._dm_candidate:
                 return
             self.search_coannihilator(excluded=excluded_particles)
-            self.history.append('add relic / %s' % ' '.join(excluded_particles))
+            self.history.append('add relic_density %s %s' % ( '/' if excluded_particles else '',
+                                                      ' '.join(excluded_particles)))
 
 
         # Tabulates all the BSM particles so they can be included in the
@@ -868,7 +871,8 @@ class MadDM_interface(master_interface.MasterCmd):
             if not self._dm_candidate:
                 return
             else:
-                self.history.append('add direct / %s' % ' '.join(excluded_particles))
+                self.history.append('add direct_detection %s %s' % ( '/' if excluded_particles else '',
+                                                      ' '.join(excluded_particles)))
 
         if len(self._dm_candidate) > 1:
             logger.warning("More than one DM candidate. Can not run Direct Detection.")
@@ -964,7 +968,7 @@ class MadDM_interface(master_interface.MasterCmd):
             if not self._dm_candidate:
                 return
             else:
-                self.history.append('add indirect %s' % ' '.join(argument))
+                self.history.append('add indirect_detection %s' % ' '.join(argument))
 
         if len(self._curr_proc_defs) == 0:
             self.generate_relic([])
