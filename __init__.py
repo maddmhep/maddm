@@ -17,5 +17,5 @@ new_reweight = {'indirect': MGoutput.Indirect_Reweight}
 
 ## The test/code have been validated up to this version
 latest_validated_version = (2,6,2)
-minimal_mg5amcnlo_version = (2,5,0)
+minimal_mg5amcnlo_version = (2,6,2)
 maximal_mg5amcnlo_version = (1000,1000,1000)
