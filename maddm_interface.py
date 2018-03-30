@@ -47,7 +47,7 @@ class MadDM_interface(master_interface.MasterCmd):
 
     intro_banner=\
   "            ====================================================\n"+\
-  "            |                  "+bcolors.OKBLUE+"  MadDM v2.0                     "+bcolors.ENDC+"|\n"\
+  "            |                  "+bcolors.OKBLUE+"  MadDM v3.0                     "+bcolors.ENDC+"|\n"\
   "            ====================================================\n"+\
   "                                                                               \n"+\
   "                #########                                                        \n"+\
@@ -841,21 +841,20 @@ class MadDM_interface(master_interface.MasterCmd):
 
         # Generate all the DM particles scattering off of the thermal background and
         # change to a different DM species (again, no pure scatterings)
-
-        # for i in xrange(nb_dm):
-        #     for j in xrange(nb_dm):
-        #         if i == j:
-        #             continue
-        #         if excluded_particles:
-        #             proc = "DM_particle_%s sm_particles > DM_particle_%s sm_particles / %s %s @DMSM"\
-        #                % (i,j,' '.join(excluded_particles), coupling)
-        #         else:
-        #             proc = "DM_particle_%s sm_particles > DM_particle_%s sm_particles %s @DMSM"\
-        #                % (i,j, coupling)
-        #         try:
-        #             self.do_add('process %s' % proc)
-        #         except (self.InvalidCmd,diagram_generation.NoDiagramException) :
-        #             continue
+        for i in xrange(nb_dm):
+            for j in xrange(nb_dm):
+                if i == j:
+                    continue
+                if excluded_particles:
+                    proc = "DM_particle_%s sm_particles > DM_particle_%s sm_particles / %s %s @DMSM"\
+                            % (i,j,' '.join(excluded_particles), coupling)
+                else:
+                    proc = "DM_particle_%s sm_particles > DM_particle_%s sm_particles %s @DMSM"\
+                            % (i,j, coupling)
+                try:
+                    self.do_add('process %s' % proc)
+                except (self.InvalidCmd,diagram_generation.NoDiagramException) :
+                    continue
 
     def generate_direct(self, excluded_particles=[]):
         """User level function which performs direct detection functions        

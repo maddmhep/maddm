@@ -187,6 +187,10 @@ class Spectra:
     files or the output from pythia8, interpolates the PPPC4DMID spectra for 
     arbitrary values of DM etc.
     """
+    
+    PPPCdata = {}
+    PPPC_type = None
+    
 
     def __init__(self):
         
@@ -221,27 +225,43 @@ class Spectra:
     def load_PPPC_source(self, PPPCDIR, corr = '',load = True):
         """routine to load the PPPC table if installed already"""
         
-        if load: 
-            if (not os.path.isfile(PPPCDIR+'/PPPC_Tables_EW.npy') and not os.path.isfile(PPPCDIR+'/PPPC_Tables_noEW.npy')):
-                logger.error('PPPC4DMID Spectra at source not found! Please install by typing install PPPC4DMID') # Break and ask the user to download the Tables       
-                return
+        if not load:
+            return
+        
+        if Spectra.PPPC_type == ('source', corr):
+            return Spectra.PPPCdata
+        
+        if (not os.path.isfile(PPPCDIR+'/PPPC_Tables_EW.npy') and not os.path.isfile(PPPCDIR+'/PPPC_Tables_noEW.npy')):
+            logger.error('PPPC4DMID Spectra at source not found! Please install by typing install PPPC4DMID') # Break and ask the user to download the Tables       
+            return
 
-            if not corr:
-                dic =  np.load(PPPCDIR+'/PPPC_Tables_noEW.npy').item()
-                logger.info('PPPC4DMID Spectra at source loaded')
-                return dic
-            elif corr == 'ew':
-                dic =  np.load(PPPCDIR+'/PPPC_Tables_noEW.npy').item()
-                logger.info('PPPC4DMID Spectra at source (with EW corrections) loaded')
-                return dic
+        if not corr:
+            dic =  np.load(PPPCDIR+'/PPPC_Tables_noEW.npy').item()
+            logger.info('PPPC4DMID Spectra at source loaded')
+            Spectra.PPPCdata = dic
+            Spectra.PPPC_type = ('source', corr)
+            return dic
+        elif corr == 'ew':
+            dic =  np.load(PPPCDIR+'/PPPC_Tables_noEW.npy').item()
+            logger.info('PPPC4DMID Spectra at source (with EW corrections) loaded')
+            Spectra.PPPCdata = dic
+            Spectra.PPPC_type = ('source', corr)
+            return dic
 
     def load_PPPC_earth(self, PPPCDIR, prof = 'Ein'):
+        
+        if Spectra.PPPC_type == ('earth', prof):
+            return Spectra.PPPCdata
+        
         if (not os.path.isfile(PPPCDIR+'/PPPC_Tables_epEarth_'+prof+'.npy') ):
             logger.error('PPPC4DMID Spectra at Earth not found! Please install by typing install PPPC4DMID') # Break and ask the user to download the Tables                     
             return
         
         else:
             dic = np.load(PPPCDIR+'/PPPC_Tables_epEarth_'+prof+'.npy').item()
+            Spectra.PPPCdata = dic
+            Spectra.PPPC_type = ('earth', prof)
+            
             return dic 
 
     # this function extracts the values of the spectra interpolated linearly between two values mdm_1 and mdm_2                                              
