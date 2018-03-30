@@ -1,0 +1,51 @@
+            ====================================================
+            |                    MadDM v3.0                     |
+            ====================================================
+
+                #########
+             ###\\####//#####              Launchpad:  launchpad.net/maddm
+           ######\\##//########
+          ########\\//###########
+         #########//\\############
+        #########//##\\############                   arXiv:1308.4955
+       ########//#####\\###########                   arXiv:1505.04190
+       ######################### ## ___________________________________________
+       ####################### 0  #  _     _               _  _____   _     _
+       #############   0  ###    ## | \   / |   ___    ___|| | ___ \ | \   / |
+       ##############    #########  ||\\ //|| / __ |  / __ | ||   || ||\\ //||
+        ##########################  ||  V  || ||__||  ||__|| ||___|| ||  V  ||
+         ###################   ##   ||     || \_____\ \____| |_____/ ||     ||
+          ############       ###    ___________________________________________
+           ##########    ######
+             ################
+                 ########
+
+            ====================================================
+            |            A MadGraph5_aMC@NLO plugin.            |
+            ====================================================
+
+== What is new in Maddm v3?
+  Here are the main new features of MadDm version3
+    1. Indirect detection (different speed/precision mode are available)
+    2. experimental constraint module (indirect and direct detection)
+    3. possibility of running multinest (auto-scan method)
+    4. built-in tutorial
+
+== Requirements
+   * The requirement for the code are 
+    * MadGraph5_aMC@NLO (version 2.6.2 or later)
+    * gcc
+    * Python2.7
+    * numpy
+    * scipy
+   * Optional dependencies
+    * pymultinest
+    * Dragon
+    * Pythia8
+
+== Installing/learning the code
+    * You should install that package within the PLUGIN directory of MadGraph5_aMC@NLO
+    * You should copy the file maddm under the ./bin directory of MadGraph5_aMC@NLO
+    * You can then run that executable.
+      -> This will open a shell prompt. t
+         To learn the main feature type "tutorial" and follow the instructions
