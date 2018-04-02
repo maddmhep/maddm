@@ -1021,7 +1021,7 @@ class MADDMRunCmd(cmd.CmdShell):
                         elif self.maddm_card['sigmav_method'] == 'reshuffling': 
                             cmd = ['launch %s' % self.run_name,
                                'reweight=indirect',
-                               'edit reweight --before_line="launch" change velocity %s' % vave_temp]
+                               'edit reweight --replace_line="change velocity" --before_line="launch" change velocity %s' % vave_temp]
                             self.me_cmd.import_command_file(cmd)
                   
             for key, value in self.me_cmd.Presults.iteritems():

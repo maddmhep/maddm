@@ -492,6 +492,10 @@ class MadDM_interface(master_interface.MasterCmd):
         if len(args) and args[0] == 'process':
             args.pop(0)
         if len(args) and args[0] in["relic_density", 'relic']:
+            # check that relic is empty
+            if any(p.get('id') != self.process_tag['DM2SM'] for p in self._curr_proc_defs):
+                logger.warning('relic density Feynman diagram already generated (likely due to indirect mode). Avoid to doing it again.')
+                return
             if '/' not in line:
                 return self.generate_relic([])
             else:
@@ -813,7 +817,7 @@ class MadDM_interface(master_interface.MasterCmd):
             proc = "dm_particles dm_particles > fs_particles fs_particles %s @DM2SM" \
                    %(coupling)  #changed here
                    
-        self.do_generate(proc)
+        self.do_add('process %s' %proc)
 
         # Generate all the DM -> DM processes
         nb_dm = len(self._dm_candidate + self._coannihilation)
@@ -971,7 +975,9 @@ class MadDM_interface(master_interface.MasterCmd):
             else:
                 self.history.append('add indirect_detection %s' % ' '.join(argument))
 
-        if len(self._curr_proc_defs) == 0:
+        if len(self._curr_proc_defs) == 0 or \
+           all(p.get('id') != self.process_tag['DM2SM'] for p in self._curr_proc_defs):
+            logger.info('For indirect detection we need to generate relic density matrix-element','$MG:BOLD')
             self.generate_relic([])
 
         if '2to2lo' in argument:
