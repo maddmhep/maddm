@@ -93,7 +93,7 @@ MadDM> define coannihilator xr
 
 generate="""
 
-You can add addition type of computation if you want
+You can add additional type of computation if you want
    - computation of relic density
      MadDM> add relic_density
    - computation of direct detection (detector on earth for DM interaction with matter)

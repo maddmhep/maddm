@@ -106,7 +106,6 @@ class MadDM_interface(master_interface.MasterCmd):
     
     def set_configuration(self, config_path=None, final=True, **opts):
 
-        misc.sprint(self.options)        
         out = master_interface.MasterCmd.set_configuration(self, config_path, final, **opts)
         
         if final:
@@ -922,7 +921,7 @@ class MadDM_interface(master_interface.MasterCmd):
                  WARNING: This function is a proxy to be used inside
                  GenerateDiagramsDirDetect() function and no where else!
         """                                                             
-        
+
         quarks = range(1,7) # ['d', 'u', 's', 'c', 'b','t']
         antiquarks = [-1*pdg for pdg in quarks] # ['d~', 'u~', 's~', 'c~', 'b~','t~']
         
@@ -962,6 +961,9 @@ class MadDM_interface(master_interface.MasterCmd):
            Currently works only with canonical mode and one dm candidate.
         related to syntax: generate indirect a g / n3
         """
+        
+
+        
         if not self._dm_candidate:
             self.search_dm_candidate()
             if not self._dm_candidate:
@@ -981,7 +983,6 @@ class MadDM_interface(master_interface.MasterCmd):
              Pythia8 needs to be linked to the code. You can install it by typing 'install pythia8'.
              You can compute the rate (no distribution) by typing 'add indirect 2to2lo'. ''')
         #    return
-
 
         #Check if the argument contains only two particles in the final state
         #if not, force the code to use madevent
@@ -1004,14 +1005,14 @@ class MadDM_interface(master_interface.MasterCmd):
                 bsm_all.append(m)
             bsm = " ".join(str(x) for x in bsm_all)
 
-            self.exec_cmd('define q_mdm = 1 2 3 4 -1 -2 -3 -4')
-            self.exec_cmd('define bsm = %s'  % bsm)
+            self.exec_cmd('define q_mdm = 1 2 3 4 -1 -2 -3 -4',postcmd=False)
+            self.exec_cmd('define bsm = %s'  % bsm,postcmd=False)
 
             final_states = ['bsm bsm','q_mdm q_mdm','21 21', '5 -5', '6 -6', '22 22', '23 23', '24 -24','25 25', '11 -11', '13 -13', '15 -15', '12 -12', '14 -14', '16 -16']
 
             for final_state in final_states:
                 try: 
-                    self.exec_cmd('add indirect %s --noloop' % final_state)
+                    self.exec_cmd('add indirect %s --noloop' % final_state,postcmd=False)
                 except diagram_generation.NoDiagramException:
                     continue
                     logger.info('no diagram for %s' % final_state)
@@ -1039,7 +1040,6 @@ class MadDM_interface(master_interface.MasterCmd):
                 #We put the coupling order restrictions after the @ID in order to
                 #apply it to the entire matrix element.
                 proc = '%s %s > %s @ID %s' % (name, antiname, ' '.join(argument), coupling)
-
                 try:
                     self.do_add('process %s' % proc)
                 except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
