@@ -15,7 +15,7 @@ import madgraph.iolibs.files as files
 import madgraph.interface.common_run_interface as common_run
 import models.check_param_card as check_param_card
 import models.model_reader as model_reader
-
+from madgraph import MG5DIR
 
 import re
 pjoin = os.path.join
@@ -105,9 +105,11 @@ class MadDM_interface(master_interface.MasterCmd):
     
     options_configuration = dict(master_interface.MasterCmd.options_configuration)
     options_configuration['pppc4dmid_path'] = './PPPC4DMID'
-    options_configuration['dragon_path'] = './DRAGON'
+    options_configuration['dragon_path'] = None
     
     def post_install_PPPC4DMID(self):
+        if os.path.exists(pjoin(MG5DIR, 'PPPC4DMID')):
+            self.options['pppc4dmid_path'] = pjoin(MG5DIR, 'PPPC4DMID')
         return
     
     def set_configuration(self, config_path=None, final=True, **opts):
@@ -972,6 +974,8 @@ class MadDM_interface(master_interface.MasterCmd):
         related to syntax: generate indirect a g / n3
         """
         
+        
+        self.install_indirect()
 
         
         if not self._dm_candidate:
@@ -1058,6 +1062,43 @@ class MadDM_interface(master_interface.MasterCmd):
                     if allow_loop_induce:
                         proc = '%s %s > %s %s [noborn=QCD] @ID ' % (name, antiname, ' '.join(argument), coupling)
                         self.do_add('process %s' % proc)
+  
+  
+    def install_indirect(self):
+        """Code to install the reduction library if needed"""
+        
+        opt = self.options
+        
+        # Check if first time:
+        if (opt['dragon_path'] is not  None):
+            return
+        
+        logger.info("First time that you asked for indirect detection. Now asking for dependency tool:", '$MG:BOLD')
+        to_install = self.ask('install', '0',  ask_class=AskMadDMInstaller, timeout=300, 
+                              path_msg=' ')
+        
+        rename = {'dragon_data_from_galprop': 'dragon_data'}
+        key_to_opts = {'PPPC4DMID':'pppc4dmid_path',
+                       'dragon': 'dragon_path',
+                       'dragon_data_from_galprop':None,
+                       'pythia8': 'pythia8_path'}
+        
+        for key, value in to_install.items():
+            if value == 'install':
+                if key in rename:
+                    key = rename[key]
+                self.exec_cmd('install %s --local' % key)
+            # Not install
+            elif value == 'off':
+                self.exec_cmd("set %s ''" % key)
+                self.exec_cmd('save options %s' % key)
+            elif key_to_opts[key]:
+                key =  key_to_opts[key]
+                self.exec_cmd("set %s %s" % (key,value))
+                self.exec_cmd('save options %s' % key) 
+            
+                
+            
   
     def update_model_with_EFT(self):
         """ """
@@ -1153,3 +1194,131 @@ When you are done editing the card, just press enter ( you can also type done or
             
         return out
         
+import madgraph.interface.loop_interface as loop_interface
+class AskMadDMInstaller(loop_interface.AskLoopInstaller):
+    
+    local_installer = []
+    required = []
+    order = ['pythia8', 'PPPC4DMID', 'dragon', 'dragon_data_from_galprop']
+    bypassed = []
+    
+   
+    def __init__(self, question, *args, **opts):
+        
+        self.code = dict([(name, 'install') for name in self.order])
+        self.online=True
+        #check if some partial installation is already done.  
+        if 'mother_interface' in opts:
+            mother = opts['mother_interface']
+            if  'heptools_install_dir' in mother.options:
+                install_dir = mother.options['heptools_install_dir']
+            else:
+                install_dir = pjoin(MG5DIR, 'HEPTools')
+
+
+            for c in ['pythia8', 'dragon']:
+                if os.path.exists(pjoin(install_dir, c)):
+                    self.code[c] =  pjoin(install_dir, c)
+                    
+            if os.path.exists(pjoin(MG5DIR, 'PPPC4DMID')):
+                c= 'PPPC4DMID'
+                self.code[c] =  pjoin(MG5DIR, c)
+            if os.path.exists(pjoin(install_dir, 'dragon','data')):
+                self.code['dragon_data_from_galprop'] =  pjoin(install_dir, 'dragon','data')
+
+        
+        # 1. create the question
+        question, allowed_answer = self.create_question(first=True)
+        
+        opts['allow_arg'] = allowed_answer
+        
+        cmd.OneLinePathCompletion.__init__(self, question, *args, **opts)
+    
+    def create_question(self, first = False):
+        """ """
+
+        question = "For indirect detection, MadDM relies on some external tools." +\
+                   "You can decide here which one you want to include." +\
+                   "Not installing all the dependencies will limit functionalities."+\
+                   "\nWhich one do you want to install? (this needs to be done only once)\n"
+        
+        allowed_answer = set(['0','done'])
+
+        #order = ['pythia8', 'PPPC4DMID', 'dragon', 'dragon_data_from_galprop']
+                
+        status = {'off': '%(start_red)sdo not install%(stop)s',
+                  'install': '%(start_green)swill be installed %(stop)s',
+                  'local': '%(start_green)swill be installed %(stop)s(offline installation from local repository)',
+                  }
+        
+        descript = {'pythia8': ['pythia8', ' shower (precise mode)','[1410.3012]'],
+                    'PPPC4DMID': ['PPPC4DMID', 'all (fast mode)' , '[1012.4515]'],
+                    'dragon': ['dragon', 'propagation (precise mode)' , '[0807.4730]'],
+                    'dragon_data_from_galprop':['dragon_data_from_galprop', 'input for dragon', '[1712.09755]']
+                    }
+        
+        
+        for i,key in enumerate(self.order,1):
+            if key in self.bypassed and self.code[key] == 'off':
+                continue
+            if os.path.sep not in self.code[key]:
+                question += '%s. %%(start_blue)s%-9s %-5s %-13s%%(stop)s : %s%s\n' % \
+                   tuple([i,]+descript[key]+[status[self.code[key]],]+\
+                     ['(recommended)' if key in ['ninja','collier'] and self.code[key] in ['install'] else ''])
+            else:
+                question += '%s. %%(start_blue)s%-9s %-5s %-13s%%(stop)s : %s\n' % tuple([i,]+descript[key]+[self.code[key],])
+            if key in self.required:
+                continue
+            allowed_answer.update([str(i), key])
+            if key in self.local_installer:
+                allowed_answer.update(['key=local','key=off'])
+
+                
+        question += "You can:\n -> hit 'enter' to proceed\n -> type a number to cycle its options\n -> enter the following command:\n"+\
+          '    %(start_blue)s{tool_name}%(stop)s [%(start_blue)sinstall%(stop)s|%(start_blue)snoinstall%(stop)s|'+\
+          '%(start_blue)s{prefixed_installation_path}%(stop)s]\n'
+        if first:
+            question += '\n%(start_bold)s%(start_red)sIf you are unsure about what this question means, just type enter to proceed. %(stop)s'
+
+        question = question % {'start_green' : '\033[92m',
+                               'start_red' : '\033[91m',
+                               'start_blue' : '\033[34m',
+                               'stop':  '\033[0m',
+                               'start_bold':'\033[1m', 
+                               }
+        return question, allowed_answer
+    
+    do_pythia8 = lambda self,line : self.apply_name('pythia8', line)
+    do_PPPC4DMID = lambda self,line : self.apply_name('PPPC4DMID', line)
+    
+    def do_dragon(self, line):
+        
+        self.apply_name('dragon', line)
+        if self.code['dragon'] in ['install']:
+            self.code['dragon_data_from_galprop'] = 'install'
+        elif self.code['dragon'] != 'off':
+            if os.path.exists(pjoin(self.code['dragon'],'data')):
+                self.apply_name('dragon_data_from_galprop', pjoin(self.code['dragon'],'data'))
+            else:
+                self.apply_name('dragon_data_from_galprop', 'install')
+        else:
+            self.apply_name('dragon_data_from_galprop', 'noinstall')
+            #self.code['dragon_data_from_galprop'] = 'off'
+
+    def do_dragon_data(self, line):
+        
+        self.apply_name('dragon_data_from_galprop', line)
+        if self.code['dragon_data_from_galprop'] in ['install']:
+            if self.code['dragon'] == 'off':
+                self.code['dragon'] = 'install'
+
+    do_dragon_data_from_galprop = do_dragon_data
+
+    complete_pythia8 = loop_interface.AskLoopInstaller.complete_prog
+    complete_PPPC4DMID = loop_interface.AskLoopInstaller.complete_prog
+    complete_dragon = loop_interface.AskLoopInstaller.complete_prog
+    complete_dragon_data = loop_interface.AskLoopInstaller.complete_prog
+    complete_dragon_data_from_galprop = loop_interface.AskLoopInstaller.complete_prog
+
+    
+    
