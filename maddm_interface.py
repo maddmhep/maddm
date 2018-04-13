@@ -90,11 +90,17 @@ class MadDM_interface(master_interface.MasterCmd):
     # for install command:
     _install_opts = list(master_interface.MasterCmd._install_opts)
     _install_opts.append('PPPC4DMID')
+    _advanced_install_opts = list(master_interface.MasterCmd._advanced_install_opts)
+    _advanced_install_opts +=['gsl', 'fitsio','dragon','dragon_data']
+    
     install_ad = dict(master_interface.MasterCmd.install_ad)
-    install_ad.update({'PPPC4DMID': ['1012.4515']})
+    install_ad.update({'PPPC4DMID': ['1012.4515'],
+                       'dragon':['0807.4730'],
+                       'dragon_data':['1712.09755']}
+                       )
     install_name =  dict(master_interface.MasterCmd.install_name)
     install_name.update({'PPPC4DMID':'PPPC4DMID'})
-    
+    install_name.update({'dragon_data_from_galprop':'dragon_data'})
     # path to PPPC4DMID
     
     options_configuration = dict(master_interface.MasterCmd.options_configuration)
