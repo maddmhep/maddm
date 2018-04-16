@@ -54,9 +54,9 @@ class MadDM_interface(master_interface.MasterCmd):
   "             ###\\\\####//#####              Launchpad:  launchpad.net/maddm      \n"+\
   "           ######\\\\##//########                                              \n"+\
   "          ########\\\\//###########                                            \n"+\
-  "         #########//\\\\############                                           \n"+\
-  "        #########//##\\\\############      "+bcolors.FAIL+"             arXiv:1308.4955        \n"+bcolors.ENDC+\
-  "       ########//#####\\\\###########                   "+bcolors.FAIL+"arXiv:1505.04190        \n"+bcolors.ENDC+\
+  "         #########//\\\\############                    "+bcolors.FAIL+"arXiv:1308.4955        \n"+bcolors.ENDC+\
+  "        #########//##\\\\############                   "+bcolors.FAIL+"arXiv:1505.04190        \n"+bcolors.ENDC+\
+  "       ########//#####\\\\###########                   "+bcolors.FAIL+"arXiv:1804.00444        \n"+bcolors.ENDC+\
   "       ######################### ## ___________________________________________\n"+\
   "       ####################### 0  # "+bcolors.OKGREEN+" _     _               _  _____   _     _  \n"+bcolors.ENDC+\
   "       #############   0  ###    ## "+bcolors.OKGREEN+"| \   / |   ___    ___|| | ___ \ | \   / | \n"+bcolors.ENDC+\
