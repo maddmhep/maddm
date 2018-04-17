@@ -1087,7 +1087,7 @@ class MadDM_interface(master_interface.MasterCmd):
             if value == 'install':
                 if key in rename:
                     key = rename[key]
-                self.exec_cmd('install %s --local' % key)
+                self.exec_cmd('install %s' % key)
             # Not install
             elif value == 'off':
                 self.exec_cmd("set %s ''" % key)
