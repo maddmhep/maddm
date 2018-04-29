@@ -2,21 +2,28 @@ import logging
 import os
 
 import maddm_run_interface as maddm_run_interface
+import dm_tutorial_text as dm_tutorial_text
 
+import madgraph.core.base_objects as base_objects
+import madgraph.core.helas_objects as helas_objects
 import madgraph.core.diagram_generation as diagram_generation
 import madgraph.interface.master_interface as master_interface
 import madgraph.interface.madgraph_interface as madgraph_interface
 import madgraph.various.misc as misc
+import madgraph.iolibs.files as files
 #import darkmatter as darkmatter
 import madgraph.interface.common_run_interface as common_run
 import models.check_param_card as check_param_card
 import models.model_reader as model_reader
-
+from madgraph import MG5DIR
 
 import re
 pjoin = os.path.join
 
 logger = logging.getLogger('madgraph.plugin.maddm')
+logger_tuto = logging.getLogger('tutorial_plugin') # -> stdout include instruction in
+                                                  #    order to learn maddm
+GeV2pb = 3.894E8
 
 class bcolors:
     HEADER = '\033[95m'
@@ -29,27 +36,27 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
+
 class DMError(Exception): pass
 
 # Root path
 MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
 
-    
 
 class MadDM_interface(master_interface.MasterCmd):
 
     intro_banner=\
   "            ====================================================\n"+\
-  "            |                  "+bcolors.OKBLUE+"  MadDM v2.0                     "+bcolors.ENDC+"|\n"\
+  "            |                  "+bcolors.OKBLUE+"  MadDM v3.0                     "+bcolors.ENDC+"|\n"\
   "            ====================================================\n"+\
   "                                                                               \n"+\
-  "                #########            Basics tutorial:  susy.phsx.ku.edu/~mihailo \n"+\
+  "                #########                                                        \n"+\
   "             ###\\\\####//#####              Launchpad:  launchpad.net/maddm      \n"+\
   "           ######\\\\##//########                                              \n"+\
   "          ########\\\\//###########                                            \n"+\
-  "         #########//\\\\############                                           \n"+\
-  "        #########//##\\\\############      "+bcolors.FAIL+"             arXiv:1308.4955        \n"+bcolors.ENDC+\
-  "       ########//#####\\\\###########                   "+bcolors.FAIL+"arXiv:1505.04190        \n"+bcolors.ENDC+\
+  "         #########//\\\\############                    "+bcolors.FAIL+"arXiv:1308.4955        \n"+bcolors.ENDC+\
+  "        #########//##\\\\############                   "+bcolors.FAIL+"arXiv:1505.04190        \n"+bcolors.ENDC+\
+  "       ########//#####\\\\###########                   "+bcolors.FAIL+"arXiv:1804.00444        \n"+bcolors.ENDC+\
   "       ######################### ## ___________________________________________\n"+\
   "       ####################### 0  # "+bcolors.OKGREEN+" _     _               _  _____   _     _  \n"+bcolors.ENDC+\
   "       #############   0  ###    ## "+bcolors.OKGREEN+"| \   / |   ___    ___|| | ___ \ | \   / | \n"+bcolors.ENDC+\
@@ -61,22 +68,71 @@ class MadDM_interface(master_interface.MasterCmd):
   "             ################                                                   \n"+\
   "                 ########                                                       \n"+\
   "                                                                                    \n"+\
+  "            Need to learn? -> type tutorial                               \n"+\
+  "                                                                                    \n"+\
   "            ====================================================\n"+\
   "            |           "+bcolors.OKBLUE+" A MadGraph5_aMC@NLO plugin.            "+bcolors.ENDC+"|\n"\
   "            ====================================================\n"+\
   "%s" 
     
     _define_options = ['darkmatter', 'coannihilator', 'benchmark']
-    
     # process number to distinguish the different type of matrix element
     process_tag = {'DM2SM': 1999, 
                    'DM2DM': 1998,
-                   'DMSM': 1997,
+                   'DMSM': 1997, # not use so far!
                    'DD': 1996,
                    'ID': 1995}
     
     eff_operators_SI = {1:'SIEFFS', 2:'SIEFFF', 3:'SIEFFV'}
     eff_operators_SD = {1:False, 2:'SDEFFF', 3:'SDEFFV'} 
+    
+    
+    # for install command:
+    _install_opts = list(master_interface.MasterCmd._install_opts)
+    _install_opts.append('PPPC4DMID')
+    _advanced_install_opts = list(master_interface.MasterCmd._advanced_install_opts)
+    _advanced_install_opts +=['gsl', 'fitsio','dragon','dragon_data']
+    
+    install_ad = dict(master_interface.MasterCmd.install_ad)
+    install_ad.update({'PPPC4DMID': ['1012.4515'],
+                       'dragon':['0807.4730'],
+                       'dragon_data':['1712.09755']}
+                       )
+    install_name =  dict(master_interface.MasterCmd.install_name)
+    install_name.update({'PPPC4DMID':'PPPC4DMID'})
+    install_name.update({'dragon_data_from_galprop':'dragon_data'})
+    # path to PPPC4DMID
+    
+    options_configuration = dict(master_interface.MasterCmd.options_configuration)
+    options_configuration['pppc4dmid_path'] = './PPPC4DMID'
+    options_configuration['dragon_path'] = None
+    
+    def post_install_PPPC4DMID(self):
+        if os.path.exists(pjoin(MG5DIR, 'PPPC4DMID')):
+            self.options['pppc4dmid_path'] = pjoin(MG5DIR, 'PPPC4DMID')
+        return
+    
+    def set_configuration(self, config_path=None, final=True, **opts):
+
+        out = master_interface.MasterCmd.set_configuration(self, config_path, final, **opts)
+        
+        if final:
+            if self.options['pppc4dmid_path'] and not os.path.exists(self.options['pppc4dmid_path']):
+                self.options['pppc4dmid_path'] = None
+            if self.options['dragon_path'] and not os.path.exists(self.options['dragon_path']):
+                self.options['dragon_path'] = None                
+            #self.do_save('options', to_keep={'pppc4dmid_path':'./PPPC4DMID'})
+        
+        return out
+    
+    def preloop(self, *args, **opts):
+        super(MadDM_interface, self).preloop(*args, **opts)
+        self.prompt = 'MadDM>'
+    
+    def change_principal_cmd(self, name):
+        out = super(MadDM_interface, self).change_principal_cmd(name)
+        self.prompt = 'MadDM>'
+        return out
     
     def __init__(self, *args, **opts):
         
@@ -85,8 +141,11 @@ class MadDM_interface(master_interface.MasterCmd):
         self._coannihilation = []
         self._param_card = None
         self.coannihilation_diff = 1
+        self._ID_procs = base_objects.ProcessDefinitionList()
+        self._ID_matrix_elements = helas_objects.HelasMultiProcess()
+        self._ID_amps = diagram_generation.AmplitudeList() 
         #self.dm = darkmatter.darkmatter()
-        
+        self._force_madevent_for_ID = False
 
 
 ################################################################################        
@@ -101,11 +160,15 @@ class MadDM_interface(master_interface.MasterCmd):
                     self.search_dm_candidate([])
                 elif args[1].startswith('/'):
                     self.search_dm_candidate([a.replace('/', '') for a in args[1:]])
-                elif len(args)==2:
-                    self._dm_candidate = [self._curr_model.get_particle(args[1])]
-                    if not self._dm_candidate[0]:
+                elif len(args)>=2:
+                    self._dm_candidate = [self._curr_model.get_particle(dm) for dm in args[1:]]
+                    #remove None
+                    self._dm_candidate = [dm for dm in self._dm_candidate if dm]
+                    if not self._dm_candidate:
                         raise DMError, '%s is not a valid particle for the model.' % args[1] 
-                    self.update_model_with_EFT()
+                    if len(self._dm_candidate) == 1:
+                        # No update of the model if 2(or more) DM since DD is not possible
+                        self.update_model_with_EFT()
             
             elif args[0] == 'coannihilator':
                 if not self._dm_candidate:
@@ -162,8 +225,8 @@ class MadDM_interface(master_interface.MasterCmd):
         logger.info("")
         logger.info("syntax: define darkmatter [OPTIONS]", '$MG:color:BLUE')
         logger.info(" -- define the current (set) of darkmatter.")
-        logger.info("    If no option specified. It assigned the less massive neutral BSM particle.")
-        logger.info(" OPTIONS:", '$MG:color:BLACK')
+        logger.info("    If no option specified. It assigned the less massive neutral BSM particle (with zero width).")
+        logger.info(" OPTIONS:", '$MG:BOLD')
         logger.info("    - You can specify the darkmatter by specifying their name/pdg code")
         logger.info("     o example: define darkmatter n1 n2",'$MG:color:GREEN')
         logger.info("    - You can remove some particle from the search by prefixing the particle name by '/'.")
@@ -172,7 +235,7 @@ class MadDM_interface(master_interface.MasterCmd):
         logger.info("syntax: define coannihilator [REL_DIFF | PARTICLE(S)] [/ excluded_particles]", '$MG:color:BLUE')
         logger.info(" -- define the current (sets) of coannihilator. ")
         logger.info("    If no option is provided use a  relative difference of 10% is used.")         
-        logger.info(" OPTIONS:", '$MG:color:BLACK')
+        logger.info(" OPTIONS:", '$MG:BOLD')
         logger.info("    - You can specify the coannihilator by specifying their name")
         logger.info("     o example: define coannihilator n2 n3",'$MG:color:GREEN')   
         logger.info("    - You can specify the coannihilator by specifying their name if you use --usepdg")
@@ -202,14 +265,17 @@ class MadDM_interface(master_interface.MasterCmd):
         #  3. The particle's width should be 0 or 'ZERO'                        #
         #  4. The assigned DM candidate is the lightest of all the particles        #
         #          that meet the above criteria.                                        #
-        #                                                                        #
+        #  5. We then check that such DM candidate has:
+        #          - some non zero couplings
+        #          - no decay to pair of SM particle                            #
+        #                                                                       #
         #-----------------------------------------------------------------------#
-        particles = self._curr_model.get('particles')                
+        particles = self._curr_model.get('particles')  
         bsm_particles = [p for p in particles 
                          if 25 < p.get('pdg_code') < 99000000 and\
-                         (p.get('name') not in excluded_particles or p.get('antiname') not in excluded_particles) and\
+                         (p.get('name') not in excluded_particles and p.get('antiname') not in excluded_particles) and\
                          p.get('charge') == 0]
- 
+        
         dm_particles = []
         dm_mass = 0
         # When manually entering in the DM and coannihilation particles, both particle and anti-particle
@@ -219,24 +285,47 @@ class MadDM_interface(master_interface.MasterCmd):
         # Looping over all the BSM particles we check the criteria described above
         for p in bsm_particles:
             curr_mass = abs(self._curr_model.get_mass(p['pdg_code']))
-            if p['width'] == 'ZERO' or  get_width(p) == 0:
+            if (p['width'] == 'ZERO' or  get_width(p) == 0) and curr_mass>0:
                 # If nothing has been found so far then set the first DM candidate
-                if not dm_particles:
+                # If we already found a candidate, compare the masses and keep the one that's lighter
+                if not dm_particles or curr_mass < dm_mass:
+                    dm_particles = [p]
+                    dm_mass = curr_mass
+                elif dm_particles and curr_mass == dm_mass:
                     dm_particles.append(p)
-                    dm_mass = curr_mass
-                # If we already found a candidate, comare the masses and keep the one that's lighter
-                elif (curr_mass < dm_mass):
-                    dm_particles[0] = p
-                    dm_mass = curr_mass
 
         # Check to see if we actually found a DM candidate
         if not dm_particles:
             raise DMError, "No dark matter candidates in the model!"
         if dm_mass == 0:
-            raise DMError, "No dark matter candidate since we found a DarkEnergy candidate!"
+            raise DMError, "No dark matter candidate since we found a DarkEnergy candidate: %s" % dm_particles[0]['name']
 
+        # Validity check
+        dm_names = [p.get('name') for p in dm_particles]
+        for p in list(dm_particles):
+            has_coupling = False
+            for vert in self._curr_model.get('interactions'):
+                if p in vert['particles']:
+                    for coup_name in  vert['couplings'].values():
+                        if self._curr_model.get('coupling_dict')[coup_name]:
+                            has_coupling = True
+                            break
+                if has_coupling:
+                    break
+            else:
+                dm_particles.remove(p)
+
+        if not dm_particles:
+            logger.warning("""found %s but none have them have non zero coupling. Retry by excluding those""", ','.join(dm_names))
+            return self.search_dm_candidate(excluded_particles=excluded_particles+dm_names)
+        
+        if len(dm_particles) >1:
+            choice = self.ask("More than one valid candidate found: Please select the one that you want:",
+                     default=dm_names[0], choices=dm_names)
+            dm_particles = [p for p in dm_particles if p.get('name') == choice]
+             
         # Print out the DM candidate
-        logger.info("Found Dark Matter candidate: %s" % dm_particles[0]['name'],  '$MG:color:BLACK')
+        logger.info("Found Dark Matter candidate: %s" % dm_particles[0]['name'],  '$MG:BOLD')
         self._dm_candidate = dm_particles
         self.update_model_with_EFT()
         
@@ -265,8 +354,11 @@ class MadDM_interface(master_interface.MasterCmd):
                 timeout = 0
                 out = self.ask(question, '0', possible_answer, timeout=int(1.5*timeout),
                                   path_msg='enter path', 
-                                  ask_class = common_run.EditParamCard,
-                                  card=[path])
+                                  ask_class = EditParamCard,
+                                  card=[path],
+                                  pwd=os.getcwd(),
+                                  param_consistency=False
+                                  )
         else:
             path = answer
             
@@ -315,11 +407,26 @@ class MadDM_interface(master_interface.MasterCmd):
             #alphabetical order by name
             self._coannihilation.sort(key=lambda p: p['name'])
         
+        # Validity check
+        for p in list(self._coannihilation):
+            has_coupling = False
+            for vert in self._curr_model.get('interactions'):
+                if p in vert['particles']:
+                    for coup_name in  vert['couplings'].values():
+                        if self._curr_model.get('coupling_dict')[coup_name]:
+                            has_coupling = True
+                            break
+                if has_coupling:
+                    break
+            else:
+                self._coannihilation.remove(p)
+        
+        
         if self._coannihilation:
             logger.info("Found coannihilation partners: %s" % ','.join([p['name'] for p in self._coannihilation]),
-                    '$MG:color:BLACK')
+                    '$MG:BOLD')
         else:
-            logger.info("No coannihilation partners found.", '$MG:color:BLACK')
+            logger.info("No coannihilation partners found.", '$MG:BOLD')
         
 
 
@@ -335,15 +442,68 @@ class MadDM_interface(master_interface.MasterCmd):
             self._coannihilation = []
             
         return super(MadDM_interface, self).do_import(line, *args, **opts)
-      
 
+    def clean_process(self):
+        """ensure that all processes are cleaned from memory.
+        typically called from import model and generate XXX command
+        """
+
+        super(MadDM_interface, self).clean_process()
+        
+        # flip indirect/standard process definition
+        self._ID_procs = base_objects.ProcessDefinitionList()
+        self._ID_matrix_elements = helas_objects.HelasMultiProcess()
+        self._ID_amps = diagram_generation.AmplitudeList()
+        
+    
+    def help_generate(self):
+        """ """
+        logger.info("**************** MADDM NEW OPTION ***************************")
+        logger.info("syntax: generate|add relic_density [/ X]", '$MG:color:BLUE')
+        logger.info(" -- generate relic density matrix element excluding any particle(s) X") 
+        logger.info("    to appear as s/t channel in any diagram")
+        logger.info("    - FOR ADVANCED USER", '$MG:BOLD')
+        logger.info("      manual definition of the matrix element is possible via the following syntax:")
+        logger.info("        add process DM  DM > Z Y @ DM2SM # annihilation" )
+        logger.info("        add process DMi  DMj > DMk DMl @ DM2DM # DM-diffusion for co-annihilation")
+        logger.info("")
+        logger.info("syntax: generate|add direct_detection", '$MG:color:BLUE')
+        logger.info(" -- generate direct detection matrix element excluding any particle(s) X") 
+        logger.info("    to appear as s/t channel in any diagram")        
+        logger.info("    - FOR ADVANCED USER", '$MG:BOLD')
+        logger.info("      manual definition of the matrix element is possible via the following syntax:")
+        logger.info("        add process DM  N > DM N @ DD")
+        logger.info("")
+        logger.info("syntax: generate|add indirect_detection [2to2lo] [final_states] [/ X]", '$MG:color:BLUE')    
+        logger.info(" -- generate indirect detection matrix element")
+        logger.info("       X forbids any s/t channel propagator to be present in the Feynman diagram")
+        logger.info("    syntax: generate|add indirect_detection 2to2lo / X", '$MG:color:BLUE') 
+        logger.info("    -- generate indirect detection matrix element for inclusive method of integration only")
+        logger.info("    syntax: generate|add indirect_detection F1 F2 / X", '$MG:color:BLUE') 
+        logger.info("    -- generate indirect detection matrix element for a given final state (F1 F2)")
+        logger.info("       'three body final states (actually n body finally states) are allowed (those are forbidden when using PPPC4DMID)")
+        logger.info("")    
+        logger.info("    - FOR ADVANCED USER", '$MG:BOLD')             
+        logger.info("      manual definition of the matrix element is possible via the following syntax:")
+        logger.info("        note: only for 2to2lo")
+        logger.info("        add process DM  N > DM N @ ID")
+        logger.info("")
+        logger.info("**************** MG5AMC OPTION ***************************")
+        super(MadDM_interface, self).help_define()
+
+    help_add = help_generate
+    
     def do_add(self, line):
         """ """
-        
+
         args = self.split_arg(line)    
         if len(args) and args[0] == 'process':
             args.pop(0)
         if len(args) and args[0] in["relic_density", 'relic']:
+            # check that relic is empty
+            if any(p.get('id') != self.process_tag['DM2SM'] for p in self._curr_proc_defs):
+                logger.warning('relic density Feynman diagram already generated (likely due to indirect mode). Avoid to doing it again.')
+                return
             if '/' not in line:
                 return self.generate_relic([])
             else:
@@ -359,12 +519,16 @@ class MadDM_interface(master_interface.MasterCmd):
                 return self.generate_direct(excluded)
         elif len(args) and args[0] in ["indirect_detection", "indirect"]:
             self.generate_indirect(args[1:])
+
         else:
             if '@' in line:
                 line = re.sub(r'''(?<=@)(%s\b)''' % '\\b|'.join(self.process_tag), 
                               lambda x: `self.process_tag[x.group(0)]`, line)
             return super(MadDM_interface, self).do_add(line)
-            
+        
+    @misc.mute_logger(['madgraph', 'models'], [30,30])    
+    def add_model(self,*args,**opts):
+        super(MadDM_interface, self).add_model(*args, **opts)
 
     def complete_generate(self, text, line, begidx, endidx, formatting=True):
         """Complete particle information + handle maddm options"""
@@ -375,7 +539,7 @@ class MadDM_interface(master_interface.MasterCmd):
             out = {"standard options": out}
         
         if len(args) == 1:
-            options = ['relic_density', 'direct_detection']
+            options = ['relic_density', 'direct_detection', 'indirect_detection']#, 'capture']
             out['maddm options'] = self.list_completion(text, options , line)
         return self.deal_multiple_categories(out, formatting)
 
@@ -388,11 +552,83 @@ class MadDM_interface(master_interface.MasterCmd):
             out = {"standard options": out}
         
         if len(args) == 1:
-            options = ['relic_density', 'direct_detection', 'indirect']
+            options = ['relic_density', 'direct_detection', 'indirect_detection']#, 'capture']
             out['maddm options'] = self.list_completion(text, options , line)
         return self.deal_multiple_categories(out, formatting)
 
 
+    def do_tutorial(self, line):
+        """Activate/deactivate the tutorial mode."""
+
+        if line:
+            super(MadDM_interface, self).do_tutorial(line)
+            if not line.lower().strip() not in ['off', 'quit']:
+                return 
+            
+            
+        args = self.split_arg(line)
+        #self.check_tutorial(args)
+        if not args:
+            args = ['maddm']
+        tutorials = {'maddm': logger_tuto}
+        
+        try:
+            tutorials[args[0]].setLevel(logging.INFO)
+        except KeyError:
+            logger_tuto.info("\n\tThanks for using the tutorial!")
+            logger_tuto.setLevel(logging.ERROR)
+            
+    def postcmd(self,stop, line):
+        """ finishing a command
+        This looks if the command add a special post part.
+        This looks if we have to write an additional text for the tutorial."""
+
+        stop = super(MadDM_interface, self).postcmd(stop, line)
+        # Print additional information in case of routines fails
+        if stop == False:
+            return False
+
+        args=line.split()
+        # Return for empty line
+        if len(args)==0:
+            return stop
+        
+        if args[0] == 'import' and ('__REAL' in line or '__COMPLEX' in line):
+            return stop 
+
+        # try to print linked to the first word in command
+        #as import_model,... if you don't find then try print with only
+        #the first word.
+        if len(args)==1:
+            command=args[0]
+        else:
+            command = args[0]+'_'+args[1].split('.')[0]
+
+        try:
+            logger_tuto.info(getattr(dm_tutorial_text, command).replace('\n','\n\t'))
+        except Exception:
+            try:
+                logger_tuto.info(getattr(dm_tutorial_text, args[0]).replace('\n','\n\t'))
+            except Exception:
+                pass
+            
+        return stop
+
+    def help_output(self):
+        """ """
+        logger.info("**************** MG5AMC OPTION ***************************")
+        super(MadDM_interface, self).help_output()
+        logger.info("**************** MADDM NEW OPTION ***************************")
+        logger.info("   -- syntax: output [MODE] PATH [OPTIONS]", '$MG:color:BLUE')
+        logger.info("")
+        logger.info("   MadDM plugin adds two additional MODE for the output of the matrix-element:")
+        logger.info("    - indirect:", '$MG:BOLD') 
+        logger.info("         is basicaly equivalent to madevent but with a different default run_card.")
+        logger.info("         and with some tweak to correctly generate the banner in the context of maddm")
+        logger.info("    - maddm:", '$MG:BOLD')
+        logger.info("         mode where computation of relic/indirect and direct detection can take place")
+        logger.info("         This is the default mode if not explicitly specified")
+        logger.info("")        
 
     def do_output(self, line):
         """ """
@@ -400,6 +636,10 @@ class MadDM_interface(master_interface.MasterCmd):
         if not self._curr_amps:
             self.do_generate('relic_density')
             self.do_add('direct_detection')
+            self.do_add('indirect_detection')
+            self.history.append('generate relic_density')
+            self.history.append('add direct_detection')            
+            self.history.append('add indirect_detection')
         
         
         args = self.split_arg(line)
@@ -413,7 +653,37 @@ class MadDM_interface(master_interface.MasterCmd):
         if args and args[0] == 'maddm':
             line = ' '.join(args)
         
-        super(MadDM_interface, self).do_output(line)
+        if self._curr_amps:
+            super(MadDM_interface, self).do_output(line)
+        
+        if self._ID_procs:
+
+            path = self._done_export[0]
+            if self._ID_procs!='2to2lo':
+                import aloha.aloha_lib as aloha_lib
+                aloha_lib.KERNEL = aloha_lib.Computation()
+
+                with misc.TMP_variable(self,
+                    ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps', '_done_export'],
+                    [self._ID_procs, self._ID_matrix_elements, self._ID_amps, None]):
+                    super(MadDM_interface, self).do_output('indirect %s/Indirect' % path)
+                    
+                #ensure to sync the param_card
+                os.remove(pjoin(path, 'Indirect', 'Cards', 'param_card.dat'))
+                files.ln(pjoin(path, 'Cards', 'param_card.dat'), 
+                         pjoin(path, 'Indirect', 'Cards'))
+
+                #ensure to sync the param_card
+                os.remove(pjoin(path, 'Indirect', 'Cards', 'param_card.dat'))
+                files.ln(pjoin(path, 'Cards', 'param_card.dat'), 
+                     pjoin(path, 'Indirect', 'Cards'))
+
+            import MGoutput
+            proc_path = pjoin(path, 'matrix_elements', 'proc_characteristics')
+            proc_charac = MGoutput.MADDMProcCharacteristic(proc_path)
+            proc_charac['has_indirect_detection'] = True
+            proc_charac.write(proc_path)
+            
 
     def find_output_type(self, path):
         if os.path.exists(pjoin(path,'matrix_elements','proc_characteristics')):
@@ -421,8 +691,18 @@ class MadDM_interface(master_interface.MasterCmd):
         else:
             return super(MadDM_interface, self).find_output_type(path)
 
-    def do_launch(self, line):
+    def check_output(self,*args, **opts):
         
+        if 'maddm' in self._export_formats:
+            # can happen if running launch directly
+            export_formats = list(self._export_formats )
+            export_formats.remove('maddm')
+            with misc.TMP_variable(self, '_export_formats', export_formats):
+                return super(MadDM_interface, self).check_output(*args, **opts)
+        else:
+            return super(MadDM_interface, self).check_output(*args, **opts)
+
+    def do_launch(self, line):
         
         args = self.split_arg(line)
         (options, args) = madgraph_interface._launch_parser.parse_args(args)
@@ -430,23 +710,27 @@ class MadDM_interface(master_interface.MasterCmd):
             self.check_launch(args, options)
         options = options.__dict__        
         
-        
+
         if args[0] != 'maddm':
             return super(MadDM_interface, self).do_launch(line)
         else:
-            MDM = maddm_run_interface.MADDMRunCmd(dir_path=args[1], options=self.options) 
-            if options['interactive']:              
-                return self.define_child_cmd_interface(MDM)
+            self._MDM = maddm_run_interface.MADDMRunCmd(dir_path=args[1], options=self.options)
+            self._done_export = (args[1], 'plugin')
+            
+            if options['interactive']:
+                return self.define_child_cmd_interface(self._MDM)
             else:
-                self.define_child_cmd_interface(MDM,  interface=False)
-                MDM.exec_cmd('launch ' + line.replace(args[1], ''))
+                self.define_child_cmd_interface(self._MDM,  interface=False)
+                try:
+                    self._MDM.exec_cmd('launch ' + line.replace(args[1], ''))
+                except:
+                    self._MDM.exec_cmd('quit')
+                    raise
+                else:
+                    self._MDM.exec_cmd('quit')
+                self._done_export = (args[1], 'plugin')
                 return
-            
-            
-            
-            
-                    
-            
+
 
     def define_multiparticles(self, label, list_of_particles):
         """define a new multiparticle from a particle list (add both particle and anti-particle)"""
@@ -493,6 +777,8 @@ class MadDM_interface(master_interface.MasterCmd):
             if not self._dm_candidate:
                 return
             self.search_coannihilator(excluded=excluded_particles)
+            self.history.append('add relic_density %s %s' % ( '/' if excluded_particles else '',
+                                                      ' '.join(excluded_particles)))
 
 
         # Tabulates all the BSM particles so they can be included in the
@@ -539,7 +825,7 @@ class MadDM_interface(master_interface.MasterCmd):
             proc = "dm_particles dm_particles > fs_particles fs_particles %s @DM2SM" \
                    %(coupling)  #changed here
                    
-        self.do_generate(proc)
+        self.do_add('process %s' %proc)
 
         # Generate all the DM -> DM processes
         nb_dm = len(self._dm_candidate + self._coannihilation)
@@ -566,21 +852,20 @@ class MadDM_interface(master_interface.MasterCmd):
 
         # Generate all the DM particles scattering off of the thermal background and
         # change to a different DM species (again, no pure scatterings)
-
-        # for i in xrange(nb_dm):
-        #     for j in xrange(nb_dm):
-        #         if i == j:
-        #             continue
-        #         if excluded_particles:
-        #             proc = "DM_particle_%s sm_particles > DM_particle_%s sm_particles / %s %s @DMSM"\
-        #                % (i,j,' '.join(excluded_particles), coupling)
-        #         else:
-        #             proc = "DM_particle_%s sm_particles > DM_particle_%s sm_particles %s @DMSM"\
-        #                % (i,j, coupling)
-        #         try:
-        #             self.do_add('process %s' % proc)
-        #         except (self.InvalidCmd,diagram_generation.NoDiagramException) :
-        #             continue
+        for i in xrange(nb_dm):
+            for j in xrange(nb_dm):
+                if i == j:
+                    continue
+                if excluded_particles:
+                    proc = "DM_particle_%s sm_particles > DM_particle_%s sm_particles / %s %s @DMSM"\
+                            % (i,j,' '.join(excluded_particles), coupling)
+                else:
+                    proc = "DM_particle_%s sm_particles > DM_particle_%s sm_particles %s @DMSM"\
+                            % (i,j, coupling)
+                try:
+                    self.do_add('process %s' % proc)
+                except (self.InvalidCmd,diagram_generation.NoDiagramException) :
+                    continue
 
     def generate_direct(self, excluded_particles=[]):
         """User level function which performs direct detection functions        
@@ -595,12 +880,15 @@ class MadDM_interface(master_interface.MasterCmd):
             self.search_dm_candidate(excluded_particles)
             if not self._dm_candidate:
                 return
+            else:
+                self.history.append('add direct_detection %s %s' % ( '/' if excluded_particles else '',
+                                                      ' '.join(excluded_particles)))
 
         if len(self._dm_candidate) > 1:
             logger.warning("More than one DM candidate. Can not run Direct Detection.")
             return 
   
-   
+        #generate a special
         
         #Now figure out the label of the effective vertex to use. The convention is:
         #<SI or SD>EFF<F, S, or V>, i.e. SIEFFV for Spin Independent Effective vertex for Vector Current.
@@ -617,25 +905,23 @@ class MadDM_interface(master_interface.MasterCmd):
         
         logger.info("Generating X Nucleon > X Nucleon diagrams from the effective lagrangian...")
         #ONLY EFFECTIVE LAGRANGIAN
-        self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'SI')
+        self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'SI',excluded_particles)
 
         logger.info("INFO: Generating X Nucleon > X Nucleon diagrams from the effective+full lagrangian...")
         #EFFECTIVE + FULL
-        self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'SI+QED')
+        self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'SI+QED',excluded_particles)
         
         if (eff_operators_SD != False):
             logger.info("Doing the spin dependent part...")
             logger.info("Generating X Nucleon > X Nucleon diagrams from the effective lagrangian...")
 
-            self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'SD')
+            self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'SD',excluded_particles)
             #EFFECTIVE + FULL
             logger.info("Generating X Nucleon > X Nucleon diagrams from the effective + full lagrangian...")
-            self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'SD+QED')
-        
+            self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'SD+QED',excluded_particles)
 
-        
-        
     #-----------------------------------------------------------------------#
+    @misc.mute_logger(['madgraph','aloha','cmdprint'], [30,30,30])
     def DiagramsDD(self, SI_name, SD_name, type, excluded=[]):
         """Generates direct detection diagrams. i_dm is the index of DM part. 
                  Whether spin dependent or spin independent diagrams should be                 
@@ -645,9 +931,9 @@ class MadDM_interface(master_interface.MasterCmd):
                  to zero. If you want the spin independent full lagrangian + eff.
                  then you need to set SI_order=2 and QED_order=2...
                  WARNING: This function is a proxy to be used inside
-                 GenerateDiagramsDirDetect() function and no place else!
+                 GenerateDiagramsDirDetect() function and no where else!
         """                                                             
-        
+
         quarks = range(1,7) # ['d', 'u', 's', 'c', 'b','t']
         antiquarks = [-1*pdg for pdg in quarks] # ['d~', 'u~', 's~', 'c~', 'b~','t~']
         
@@ -671,7 +957,7 @@ class MadDM_interface(master_interface.MasterCmd):
                      'excluded': ('/ %s' % ' '.join(excluded) if excluded else ''),
                      'orders': orders
                      }
-            
+
             try:
                 self.do_add('process %s' % proc)
             except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
@@ -681,73 +967,139 @@ class MadDM_interface(master_interface.MasterCmd):
         return has_diagram
 
     def generate_indirect(self, argument):
-        """User level function which performs direct detection functions        
-           Generates the DM - q,g scattering matrix elements for spin dependent 
-           and spin independent direct detection cross section                   
-           Currently works only with canonical mode and one dm candidate.        
-           The function also merges the dark matter model with the effective        
-           vertex model.          
-        related to syntax: generate indirect a g / n3  
+        """User level function which performs indirect detection functions
+           Generates the DM DM > X where X is anything user specified.
+           Also works for loop induced processes as well as NLO-QCD.
+           Currently works only with canonical mode and one dm candidate.
+        related to syntax: generate indirect a g / n3
         """
+        
+        
+        self.install_indirect()
 
+        
         if not self._dm_candidate:
-            self.search_dm_candidate(excluded_particles)
+            self.search_dm_candidate()
             if not self._dm_candidate:
                 return
-        
-        # separate final state particle from excluded particles
-        if '/' in argument:
-            ind = argument.find('/')
-            particles, excluded = argument[:ind], argument[ind+1:]
-        elif any(a.startswith('/') for a in argument):
-            line = ' '.join(argument)
-            particles, excluded = line.split('/',1)
-            particles = particles.split()
-            excluded = excluded.replace('/','').split()
-        else:
-            particles = argument
-            excluded = []
-        
-        
-        #handling the final state to ensure model independant support
-        if 'v' in particles:
-            particles.remove('v')
-            particles += ['12', '14', '16']
-        
-        antiparticles = []
-        for i,p in enumerate(particles):
-            if p.isdigit():
-                if p not in ['22','21','12','14','16']:
-                    raise self.InvalidCmd, '%s is not a valid final state for indirect detection' % p
-                antiparticles.append(str(-1*int(p)))   
             else:
-                if p in ['a', 'g', 've','vm','vt']:
-                    p ={'a':22, 'g':21, 've':12,'vm':14,'vt':16}[p]
-                misc.sprint(p)
-                part = self._curr_model.get_particle(p)
-                misc.sprint(part)
-                if part.get('pdg_code') not in [22,21,12,14,16]:
-                    raise self.InvalidCmd, '%s is not a valid final state for indirect detection' % p
-                particles[i] = part.get('name') 
-                antiparticles.append(part.get('antiname'))
+                self.history.append('add indirect_detection %s' % ' '.join(argument))
+
+        if len(self._curr_proc_defs) == 0 or \
+           all(p.get('id') != self.process_tag['DM2SM'] for p in self._curr_proc_defs):
+            logger.info('For indirect detection we need to generate relic density matrix-element','$MG:BOLD')
+            self.generate_relic([])
+
+        if '2to2lo' in argument:
+            self._ID_procs ='2to2lo'
+            return
         
-        # First try LO matrix-element
-        done= []
-        for dm in self._dm_candidate:
-            name = dm.get('name')
-            antiname = dm.get('name')
-            if name in done:
-                continue
-            done += [name, antiname]
-            for p, antip in zip(particles,antiparticles):
-                proc = '%s %s > %s %s @ID' % (name, antiname, p,antip)
+        if not self.options['pythia8_path']:
+            logger.warning('''In order to have distribution related to indirect detection:
+             Pythia8 needs to be linked to the code. You can install it by typing 'install pythia8'.
+             You can compute the rate (no distribution) by typing 'add indirect 2to2lo'. ''')
+        #    return
+
+        #Check if the argument contains only two particles in the final state
+        #if not, force the code to use madevent
+        
+        if (len(' '.join(argument).split('/')[0].split())!=2):
+            self._force_madevent_for_ID = True
+        # Generates events for all the DM annihilation channels (also BSM)
+        if argument == []:
+
+            dm_cand = [ dic['pdg_code'] for dic in self._dm_candidate ] 
+            DM_scattering = []
+
+            for pdg in dm_cand:
+                DM_scattering.append(pdg) , DM_scattering.append(-pdg)
+
+            bsm_all  = [ 'all', '/', '1','2','3','4','5','6','-1','-2','-3','-4','-5','-6','21','22','23','24','-24','25','11','12','13','14','15','16','-11','-12',
+                    '-13','-14','-15','-16']
+
+            for m in DM_scattering:
+                bsm_all.append(m)
+            bsm = " ".join(str(x) for x in bsm_all)
+
+            self.exec_cmd('define q_mdm = 1 2 3 4 -1 -2 -3 -4',postcmd=False)
+            self.exec_cmd('define bsm = %s'  % bsm,postcmd=False)
+
+            final_states = ['bsm bsm','q_mdm q_mdm','21 21', '5 -5', '6 -6', '22 22', '23 23', '24 -24','25 25', '11 -11', '13 -13', '15 -15', '12 -12', '14 -14', '16 -16']
+
+            for final_state in final_states:
+                try: 
+                    self.exec_cmd('add indirect %s --noloop' % final_state,postcmd=False)
+                except diagram_generation.NoDiagramException:
+                    continue
+                    logger.info('no diagram for %s' % final_state)
+
+            return
+
+    
+        allow_loop_induce=True
+        if '--noloop' in argument:
+            argument.remove('--noloop')
+            allow_loop_induce=False
+
+        # flip indirect/standard process definition
+        with misc.TMP_variable(self, ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps'], 
+                                     [self._ID_procs, self._ID_matrix_elements, self._ID_amps]):
+            # First try LO matrix-element
+            coupling = "SIEFFS=0 SIEFFF=0 SIEFFV=0 SDEFFF=0 SDEFFV=0"
+            done= []
+            for dm in self._dm_candidate:
+                name = dm.get('name')
+                antiname = dm.get('antiname')
+                if name in done:
+                    continue
+                done += [name, antiname]
+                #We put the coupling order restrictions after the @ID in order to
+                #apply it to the entire matrix element.
+                proc = '%s %s > %s @ID %s' % (name, antiname, ' '.join(argument), coupling)
                 try:
                     self.do_add('process %s' % proc)
                 except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
-                    proc = '%s %s > %s %s [virt=ALL] @ID' % (name, antiname, p,antip)
-                    self.do_add('process %s' % proc)        
-
-      
+                    if allow_loop_induce:
+                        proc = '%s %s > %s %s [noborn=QCD] @ID ' % (name, antiname, ' '.join(argument), coupling)
+                        self.do_add('process %s' % proc)
+  
+  
+    def install_indirect(self):
+        """Code to install the reduction library if needed"""
+        
+        opt = self.options
+        
+        # Check if first time:
+        if (opt['dragon_path'] is not  None):
+            return
+        
+        logger.info("First time that you asked for indirect detection. Now asking for dependency tool:", '$MG:BOLD')
+        to_install = self.ask('install', '0',  ask_class=AskMadDMInstaller, timeout=300, 
+                              path_msg=' ')
+        
+        rename = {'dragon_data_from_galprop': 'dragon_data'}
+        key_to_opts = {'PPPC4DMID':'pppc4dmid_path',
+                       'dragon': 'dragon_path',
+                       'dragon_data_from_galprop':None,
+                       'pythia8': 'pythia8_path'}
+        
+        for key, value in to_install.items():
+            if value == 'install':
+                if key in rename:
+                    key = rename[key]
+                self.exec_cmd('install %s' % key)
+            # Not install
+            elif value == 'off':
+                self.exec_cmd("set %s ''" % key)
+                self.exec_cmd('save options %s' % key)
+            elif key_to_opts[key]:
+                key =  key_to_opts[key]
+                self.exec_cmd("set %s %s" % (key,value))
+                self.exec_cmd('save options %s' % key) 
+            
+                
+            
+  
     def update_model_with_EFT(self):
         """ """
         eff_operators_SD = {1:False, 2:'SDEFFF', 3:'SDEFFV'}
@@ -770,16 +1122,16 @@ class MadDM_interface(master_interface.MasterCmd):
         backup_dm_candidate = self._dm_candidate
         backup_coannihilation = self._coannihilation
         
-        self.exec_cmd(mg5_command)
+        self.exec_cmd(mg5_command, postcmd=False)
         self._curr_amps = backup_amp
         self._param_card = backup_param_card 
         self._dm_candidate = backup_dm_candidate
         self._coannihilation = backup_coannihilation
-        
+
         # update the param_card value
         txt = self._curr_model.write_param_card()
         param_card = check_param_card.ParamCard(self._curr_model.write_param_card())
-
+        
         if self._param_card:
             for block in self._param_card:
                 if block not in param_card:
@@ -787,21 +1139,189 @@ class MadDM_interface(master_interface.MasterCmd):
                     continue   
                 for param in self._param_card[block]:
                     try:
-                        slhaparam = param_card[block].get(param.lhacode)
+                        param_card[block].get(param.lhacode).value =  param.value
                     except KeyError:
-                        logger.debug('%s %s not valid entry in the card', block,param.lhacode)
-#                        misc.sprint(block,param.lhacode, 'fail')
-                    else:    
-                        slhaparam.value =  param.value
+                        continue #possible in MSSM due to restriction on SLHA2 format
  
         self._param_card = param_card        
         if not isinstance(self._curr_model, model_reader.ModelReader):
             self._curr_model = model_reader.ModelReader(self._curr_model) 
         self._curr_model.set_parameters_and_couplings(self._param_card) 
         
+import madgraph.interface.common_run_interface as common_run
+import madgraph.interface.extended_cmd as cmd
+
+class EditParamCard(common_run.AskforEditCard):
+    """a dedicated module for the param"""
+
+    special_shortcut ={}
+
+    def __init__(self, question, card=[], mode='auto', *args, **opt):
+
+        if not card:
+            card = ['param']
+        return super(EditParamCard,self).__init__(question, card, mode=mode, *args, **opt)
+
+    def do_asperge(self, *args, **opts):
+        "Not available"
+        logger.warning("asperge not available in this mode")
         
+    def do_help(self,*args, **opts):
+        """ print standard help """
+        
+        out =  super(EditParamCard, self).do_help(*args, **opts)
+
+        logger.info("""In order to automatically determine your darkmatter candidate, we need to have a benchmark point.""")
+        logger.info("")
+        logger.info("  For the darkmatter, we will apply the following algorithm:")
+        logger.info("      1. The DM particle must be a BSM particle (pdg_code > 25) ")  
+        logger.info("      2. The particle should have no charge (electric or color)")
+        logger.info("      3. The particle\'s width should be 0 or 'ZERO'")
+        logger.info("      4. The particle should have at least one non vanishing coupling" )
+        logger.info("      5. The assigned DM candidate is the lightest of all the particles that meet the above criteria.")  
+        logger.info("")
+        logger.info("  For coannihilation, we apply the following algorithm:")
+        logger.info("      The code selects all the BSM particles that are within an input mass difference with the DM candidate.")
+        logger.info("      Particles without any non vanishing coupling are discarded")
  
+        logger_tuto.info("""
+This card is here ONLY to allow to determine automatically darkmatter/coannihilator.
+You will have the possibility to edit it later to define another benchmark, perform scan/...
+But the diagram generated will depend of the dark matter selected at this stage.
+
+To edit a parameter of the card without having to use a text editor your can type
+>set mxd 5
+
+When you are done editing the card, just press enter ( you can also type done or 0)
+""")
+            
+        return out
+        
+import madgraph.interface.loop_interface as loop_interface
+class AskMadDMInstaller(loop_interface.AskLoopInstaller):
+    
+    local_installer = []
+    required = []
+    order = ['pythia8', 'PPPC4DMID', 'dragon', 'dragon_data_from_galprop']
+    bypassed = []
+    
+   
+    def __init__(self, question, *args, **opts):
+        
+        self.code = dict([(name, 'install') for name in self.order])
+        self.online=True
+        #check if some partial installation is already done.  
+        if 'mother_interface' in opts:
+            mother = opts['mother_interface']
+            if  'heptools_install_dir' in mother.options:
+                install_dir = mother.options['heptools_install_dir']
+            else:
+                install_dir = pjoin(MG5DIR, 'HEPTools')
+
+
+            for c in ['pythia8', 'dragon']:
+                if os.path.exists(pjoin(install_dir, c)):
+                    self.code[c] =  pjoin(install_dir, c)
+                    
+            if os.path.exists(pjoin(MG5DIR, 'PPPC4DMID')):
+                c= 'PPPC4DMID'
+                self.code[c] =  pjoin(MG5DIR, c)
+            if os.path.exists(pjoin(install_dir, 'dragon','data')):
+                self.code['dragon_data_from_galprop'] =  pjoin(install_dir, 'dragon','data')
 
         
+        # 1. create the question
+        question, allowed_answer = self.create_question(first=True)
+        
+        opts['allow_arg'] = allowed_answer
+        
+        cmd.OneLinePathCompletion.__init__(self, question, *args, **opts)
+    
+    def create_question(self, first = False):
+        """ """
+
+        question = "For indirect detection, MadDM relies on some external tools." +\
+                   "You can decide here which one you want to include." +\
+                   "Not installing all the dependencies will limit functionalities."+\
+                   "\nWhich one do you want to install? (this needs to be done only once)\n"
+        
+        allowed_answer = set(['0','done'])
+
+        #order = ['pythia8', 'PPPC4DMID', 'dragon', 'dragon_data_from_galprop']
+                
+        status = {'off': '%(start_red)sdo not install%(stop)s',
+                  'install': '%(start_green)swill be installed %(stop)s',
+                  'local': '%(start_green)swill be installed %(stop)s(offline installation from local repository)',
+                  }
+        
+        descript = {'pythia8': ['pythia8', ' shower (precise mode)','[1410.3012]'],
+                    'PPPC4DMID': ['PPPC4DMID', 'all (fast mode)' , '[1012.4515]'],
+                    'dragon': ['dragon', 'propagation (precise mode)' , '[0807.4730]'],
+                    'dragon_data_from_galprop':['dragon_data_from_galprop', 'input for dragon', '[1712.09755]']
+                    }
         
         
+        for i,key in enumerate(self.order,1):
+            if key in self.bypassed and self.code[key] == 'off':
+                continue
+            if os.path.sep not in self.code[key]:
+                question += '%s. %%(start_blue)s%-9s %-5s %-13s%%(stop)s : %s%s\n' % \
+                   tuple([i,]+descript[key]+[status[self.code[key]],]+\
+                     ['(recommended)' if key in ['ninja','collier'] and self.code[key] in ['install'] else ''])
+            else:
+                question += '%s. %%(start_blue)s%-9s %-5s %-13s%%(stop)s : %s\n' % tuple([i,]+descript[key]+[self.code[key],])
+            if key in self.required:
+                continue
+            allowed_answer.update([str(i), key])
+            if key in self.local_installer:
+                allowed_answer.update(['key=local','key=off'])
+
+                
+        question += "You can:\n -> hit 'enter' to proceed\n -> type a number to cycle its options\n -> enter the following command:\n"+\
+          '    %(start_blue)s{tool_name}%(stop)s [%(start_blue)sinstall%(stop)s|%(start_blue)snoinstall%(stop)s|'+\
+          '%(start_blue)s{prefixed_installation_path}%(stop)s]\n'
+        if first:
+            question += '\n%(start_bold)s%(start_red)sIf you are unsure about what this question means, just type enter to proceed. %(stop)s'
+
+        question = question % {'start_green' : '\033[92m',
+                               'start_red' : '\033[91m',
+                               'start_blue' : '\033[34m',
+                               'stop':  '\033[0m',
+                               'start_bold':'\033[1m', 
+                               }
+        return question, allowed_answer
+    
+    do_pythia8 = lambda self,line : self.apply_name('pythia8', line)
+    do_PPPC4DMID = lambda self,line : self.apply_name('PPPC4DMID', line)
+    
+    def do_dragon(self, line):
+        
+        self.apply_name('dragon', line)
+        if self.code['dragon'] in ['install']:
+            self.code['dragon_data_from_galprop'] = 'install'
+        elif self.code['dragon'] != 'off':
+            if os.path.exists(pjoin(self.code['dragon'],'data')):
+                self.apply_name('dragon_data_from_galprop', pjoin(self.code['dragon'],'data'))
+            else:
+                self.apply_name('dragon_data_from_galprop', 'install')
+        else:
+            self.apply_name('dragon_data_from_galprop', 'noinstall')
+            #self.code['dragon_data_from_galprop'] = 'off'
+
+    def do_dragon_data(self, line):
+        
+        self.apply_name('dragon_data_from_galprop', line)
+        if self.code['dragon_data_from_galprop'] in ['install']:
+            if self.code['dragon'] == 'off':
+                self.code['dragon'] = 'install'
+
+    do_dragon_data_from_galprop = do_dragon_data
+
+    complete_pythia8 = loop_interface.AskLoopInstaller.complete_prog
+    complete_PPPC4DMID = loop_interface.AskLoopInstaller.complete_prog
+    complete_dragon = loop_interface.AskLoopInstaller.complete_prog
+    complete_dragon_data = loop_interface.AskLoopInstaller.complete_prog
+    complete_dragon_data_from_galprop = loop_interface.AskLoopInstaller.complete_prog
+
+    
+    

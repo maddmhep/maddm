@@ -12,11 +12,13 @@ c-------------------------------------------------------------------------c
       include 'coupl.inc'
 
 c parameters used in this routine only
-      Integer sm_flag, prnt_tag
-      double precision Oh2
-      double precision total_events, sigmawnSI, sigmawpSI, gevtopb
+      Integer sm_flag, prnt_tag, k, ii
+      double precision Oh2, sigv
+      double precision total_events, sigmawnSI, sigmawpSI
       double precision sigmawnSD, sigmawpSD
+      double precision vID_natural
       character(len=32) outfilename
+c      double precision total_cross
 
 c include files generated my the python side that contains necessary information
       include 'maddm_card.inc'
@@ -45,6 +47,9 @@ c subroutine to initialize the necessary parameters for the calculation
 c ---- RELIC DENSITY CALCULATION -----
 c      call to relic_density will automatically set x_f and sigmav_xf.
 	  if (do_relic_density) then
+
+c      set up integration grid here so that it's only set up once.
+	        call set_up_grid(0.d0, 1.d0)
             Oh2 = relic_density(relic_canonical)
 	  else
 	  		Oh2 = -1d0
@@ -57,7 +62,7 @@ c     calls are to sigma_nucleon(proton, spin_independent).
 c     proton = 1 is for proton, 0 for neutron
 c     spin_independent = 1 for SI and 0 for SD.
 
-      gevtopb = 3.9d+8
+
       prnt_tag = 0
 
       if (do_direct_detection) then
@@ -96,7 +101,7 @@ c      	   write(*,*) 'SD : ', sigma_proton_SD, sigma_neutron_SD !Antony
 
       if (print_sigmas) then
          write(*,*) 'Contributions to the annihilation cross section at E = mdm(1) / x_f'
-	 call cross_check_all_process(mdm(1)/x_f,mdm(1)/x_f,1)
+	     call cross_check_all_process(mdm(1)/x_f,mdm(1)/x_f,1)
       endif
 
 C      Here write the output.
@@ -109,7 +114,7 @@ C      Here write the output.
 
 	  write(33,*) 'Omegah^2: ', Oh2
 	  write(33,*) 'x_f: ', x_f
-          write(33,*) 'Wimp_Mass: ', mdm(1), ' GeV'
+      write(33,*) 'Wimp_Mass: ', mdm(1), ' GeV'
 	  write(33,*) 'sigmav(xf): ', sigmav_xf
 	  write(33,*) 'sigmaN_SI_p: ', sigma_proton_SI, ' GeV^-2',
      &                ':', sigma_proton_SI*gevtopb, ' pb'
@@ -122,8 +127,27 @@ C      Here write the output.
 	  write(33,*) 'Nevents: ', Nint(total_events)
 	  write(33,*) 'smearing: ', sm_flag
 
-c	  close(33)
 
+      if (do_capture.and.do_direct_detection) then
+         do ii=1, n_celestial_bodies
+            capture_rate(ii) = Ccap(ii, 0.5d0*(sigma_proton_SI + sigma_neutron_SI)*gevtopb*pbtocm2,
+     &                                sigma_proton_SD*gevtopb*pbtocm2, sigma_neutron_SD*gevtopb*pbtocm2, mdm(1))
+            write(33, *) 'ccap:  ', object_name(ii), capture_rate(ii), ' 1/s'
+         enddo
+      endif
+
+      if (do_indirect_detection.and.only2to2lo) then
+       vID_natural = sqrt(3.) * vave_indirect !/299792.d0  here natural just signals that it's in natural units.
+
+        do k=1, ANN_NUM_PROCESSES
+           sigv =  taacs_ID(k,vID_natural)*pbtocm3*vID_natural  ! 2.d0
+           write(33,fmt='(A8,A12,A4,ES14.7,A7)') 'sigma*v:',PROCESS_NAMES(k),' ',sigv, ' cm^3/s'
+        enddo
+c        print*,'total:', total_cross * gevtopb * pbtocm3
+c        write(33,fmt='(A8,A12,A4,ES14.7,A7)') 'DM --> all:' 
+      endif
+
+      close(33)
 c-------------------------------------------------------------------------c
 c  Other test functions
 c-------------------------------------------------------------------------c

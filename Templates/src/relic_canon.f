@@ -174,7 +174,7 @@ c-------------------------------------------------------------------------c
       include 'maddm.inc'
       include 'coupl.inc'
 c input parameters
-      double precision x, integral, result, testvar, cosine
+      double precision x,  cosine
 
 c external function to be integrated over
       external taacs_integrand_canon, cosine
@@ -188,12 +188,12 @@ c passing x so that taacs_integrand can use it
 c This is used if we are doing a 1-d integration of taacs
 c      call romberg(taacs_integrand_canon, 0.d0, 1.d0, taacs_canon, eps_taacs, iter_taacs)
 
-c call simpson's rule
-        testvar =simpson(taacs_integrand_canon, 0.d0, 1.d0, eps_taacs, 10000)
+c call simpson's rule (assumes grid is set up)
+        taacs_canon =simpson(taacs_integrand_canon, 0.d0, 1.d0, grid, grid_npts)
 c       write(*,*) 'test: ', testvar
 
 C c Return a constant value for taacs (for testing purposes ONLY)
-C       taacs = 1.0d-10
+C       taacs_canon = 3.0d-9
 
       return
       end
@@ -247,9 +247,8 @@ c need to be weighted by a momentum factor for each \chi_{i}, \chi_{j} pair
         do x2=x1, ndmparticles
           dmi = x1
           dmj = x2
-          Wij_value = get_Wij_value(beta,x1,x2,0,1)
-
           if (s.ge.(mdm(x1)+mdm(x2))**2) then
+            Wij_value = get_Wij_value(beta,x1,x2,0,1)
             Wij_sum = Wij_sum + max(0.d0,dsqrt(lambda(s,mdm(x1)**2,mdm(x2)**2)/s)*Wij_value)
           endif
         enddo

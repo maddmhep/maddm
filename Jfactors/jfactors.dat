@@ -1,0 +1,44 @@
+#         J factors for the galactic center 
+#
+# Fermi-LAT (from arXiv:1506.00013)
+# Fermi-LAT ROIs      # distance   [kpc]     # J_factor [GeV^2/cm^5]
+NFW_R3                       8                     13.9e+22
+NFW_R41                      8                     8.5e+22
+Einasto_R16                  8                     8.5e+22
+Isothermal                   8                     6.9e+22
+#
+# HESS  (from arXiv:1609.08091)
+# HESS ROI            # distance   [kpc]    # J_factor [GeV^2/cm^5]
+Einasto_R16                   8                    8.5e+22
+#
+# J factors used by the Fermi-LAT collaboration for the exclusion limits on dwarfs
+# calculated over the solid angle 2.4 x 10^{-4} sr (angle = 0.5 degrees) from
+# https://www-glast.stanford.edu/pub\_data/1203/
+#
+# name of the dwarf        # distance   [kpc]  # J_NFW [GeV^2/cm^5]
+Bootes_I                          66                 6.3e+18
+Bootes_II                         42                 NAN
+Bootes_III                        47                 NAN
+Canes_Venatici_I                 218                 5.0e+17
+Canes_Venatici_II                160                 7.9e+17
+Canis_Major                        7                 NAN
+Carina                           105                 1.3e+18
+Coma_Berenices                    44                 1.0e+19
+Draco                             76                 6.3e+18
+Fornax                           147                 1.6e+18
+Hercules                         132                 1.3e+18
+Leo_I                            254                 5.0e+17
+Leo_II                           233                 4.0e+17
+Leo_IV                           154                 7.9e+17
+Leo_V                            178                 2.5e+16
+Pisces_II                        182                 NAN
+Sagittarius                       26                 NAN
+Sculptor                          86                 3.2e+18
+Segue_1                           23                 2.5e+19
+Segue_2                           35                 NAN
+Sextans                           86                 3.2e+17
+Ursa_Major_I                      97                 7.9e+17
+Ursa_Major_II                     32                 2.5e+19
+Ursa_Minor                        76                 7.9e+18
+Willman_1                         38                 NAN
+Reticulum_II                      32                 7.9e+18

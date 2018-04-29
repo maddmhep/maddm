@@ -1,9 +1,12 @@
 import logging
+import math
 import os
 import shutil
 import sys
 import collections
+import random
 from StringIO import StringIO
+import re
 
 import maddm_run_interface
 
@@ -18,6 +21,10 @@ import aloha
 import aloha.create_aloha as create_aloha
 from madgraph import MG5DIR
 from madgraph.iolibs.files import cp
+from madgraph.loop import loop_exporters
+from madgraph.core.base_objects import Process
+import madgraph.interface.reweight_interface as rwgt_interface
+import madgraph.various.banner as bannermod
 
 
 class MYStringIO(StringIO):
@@ -43,6 +50,8 @@ class MADDMProcCharacteristic(banner_mod.ProcCharacteristic):
         self.add_param('has_relic_density', False)
         self.add_param('has_direct_detection', False)
         self.add_param('has_directional_detection', False)
+        self.add_param('has_indirect_detection', False)
+        self.add_param('has_capture', False)
         self.add_param('dm_candidate', [0])
         self.add_param('coannihilator', [0])
         self.add_param('model', '')
@@ -114,7 +123,8 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
             files.ln(pjoin(self.dir_path, 'Source','MODEL', name),
                  pjoin(self.dir_path, 'include'))
          
-    
+    def write_procdef_mg5(self,*args):
+        return
     
     def pass_information_from_cmd(self, cmd):
         """pass information from the command interface to the exporter.
@@ -189,9 +199,10 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
                     mode = 'tot'
                 elif value ==2:
                     mode = 'eft'       
-            elif value:
-                mode = 'tot'
-            
+            #elif value and mode == 'bsm':
+            #    mode = 'tot'
+
+#        misc.sprint(orders, mode, efttype)            
         return mode, efttype
         
                 
@@ -228,7 +239,6 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         else:
             raise Exception
         
-
         self.write_matrix_element(writers.FortranWriter(filename_matrix),\
                             matrix_element, helicity_model)
 
@@ -268,6 +278,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         if proc_id in [self.DD]:
             self.proc_characteristic['has_direct_detection'] = True
             self.proc_characteristic['has_directional_detection'] = True
+            self.proc_characteristic['has_capture'] = True
 
         # Set lowercase/uppercase Fortran code
         writers.FortranWriter.downcase = False
@@ -566,6 +577,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         dd_initial_state = {'bsm':[], 'eft':[],'tot':[]} # store the pdg of the initial state
         
         for me in matrix_element_list.get_matrix_elements():
+
             p = me.get('processes')[0]
             tag = p.get('id')
             p1,p2,p3,p4 = p.get('legs')
@@ -587,8 +599,12 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
                 scattering_sm[ids].append(abs(p2.get('id')))
             elif tag == self.DD:
                 ddtype, si_or_sd = self.get_dd_type(p)
+                logger.debug('type: %s' % ddtype)
                 dd_names[ddtype].append(self.get_process_name(me, print_id=False))
-                dd_initial_state[ddtype].append(p.get_initial_ids()[1])                                             
+                dd_initial_state[ddtype].append(p.get_initial_ids()[1])
+
+            #logger.debug('dd_names:')
+            #logger.debug(dd_names)
                                                              
         
         # writting the information
@@ -599,7 +615,8 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
                 ids = self.make_ids(dm1, dm2, self.DM2SM)
                 for name in annihilation[ids]:
                     process_counter += 1
-                    fsock.writelines('process_names(%i) = \'%s\'' % (process_counter, name)) 
+                    fsock.writelines('process_names(%i) = \'%s\'' % (process_counter, name))
+
 
         for i,dm1 in enumerate(self.dm_particles):
             for j,dm2 in enumerate(self.dm_particles[i:],i):
@@ -879,7 +896,6 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         res_dict['nb_dm'] = len(self.dm_particles)
         res_dict['max_dm2dm'] = 1000#self.global_dict_info['max_dm2dm']
         res_dict['max_dm2sm'] = self.global_dict_info['max_dm2sm']
-        misc.sprint(self.global_dict_info['nb_me_dd'], )
         res_dict['nb_me'] = self.global_dict_info['nb_me']
         res_dict['nb_me_dd'] = self.global_dict_info['nb_me_dd']
         res_dict['nb_me_dd_eff'] = self.global_dict_info['nb_me_dd_eff']
@@ -921,10 +937,259 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         
         writer.write(open(pjoin(MDMDIR, 'python_templates', 'direct_detection.f')).read() % to_replace)
         
+
+class Indirect_Reweight(rwgt_interface.ReweightInterface):
+    
+    def __init__(self, *args, **opts):
+        
+        self.velocity = 1e-3
+        self.shuffling_mode = 'reweight'
+        super(Indirect_Reweight, self).__init__(*args, **opts)
+        self.output_type = '2.0'
+            
+    def change_kinematics(self, event):
+        
+        old_sqrts = event.sqrts
+        m = event[0].mass
+        new_sqrts = self.maddm_get_sqrts(m, self.velocity)
+        jac =  event.change_sqrts(new_sqrts)
+        
+        def flux(S, M1, M2):
+            return S**2 + M1**4 + M2**4 - 2.*S*M1**2 - 20*M1**2*M2**2 - 2.*S*M2**2
+    
+        jac *= flux(old_sqrts**2, m,m)/flux(new_sqrts**2, m,m)
+        
+        
+        if self.output_type != 'default':
+            mode = self.run_card['dynamical_scale_choice']
+            if mode == -1:
+                if self.dynamical_scale_warning:
+                    logger.warning('dynamical_scale is set to -1. New sample will be with HT/2 dynamical scale for renormalisation scale')
+                mode = 3
+            event.scale = event.get_scale(mode)
+            event.aqcd = self.lhe_input.get_alphas(event.scale, lhapdf_config=self.mother.options['lhapdf'])
+         
+        return jac,event
+        
+    def calculate_matrix_element(self,*args, **opts):
+        if self.shuffling_mode == 'shuffle':
+            return 1.0
+        else:
+            return super(Indirect_Reweight, self).calculate_matrix_element(*args,**opts)
+    
+    def create_standalone_directory(self, *args, **opts):
+        if self.shuffling_mode == 'shuffle':
+            return
+        return super(Indirect_Reweight, self).create_standalone_directory(*args, **opts)
+    
+    @staticmethod
+    def maddm_get_sqrts(m, ve):
+
+        R = random.random()
+        f = lambda v: (-1/ve**2 * math.exp(-v**2/ve**2) * (ve**2+v**2) +1) - R
+        df = lambda v: 2. * v**3/ve**4 *math.exp(-v**2/ve**2)
+        v = misc.newtonmethod(f, df, ve, error=1e-7, maxiter=250)
+
+        return 2* math.sqrt(m**2 / (1-v/2.)**2)    
+        
+    def do_change(self, line):    
+        
+        args = self.split_arg(line)
+        if len(args)>1:
+            if args[0] == 'velocity':
+                self.velocity = bannermod.ConfigFile.format_variable(args[1], float, 'velocity')
+                return 
+            elif args[0] == 'shuffling_mode':
+                if args[1].lower() in ['reweight', 'shuffle']:
+                    self.shuffling_mode = args[1]
+                return
+        return super(Indirect_Reweight, self).do_change(line)
+
+
+class ProcessExporterIndirectD(object):
+    """_________________________________________________________________________#
+    #                                                                         #
+    #  This class is used to export the matrix elements generated from        #
+    #  MadGraph into a format that can be used by MadDM                       #
+    #                                                                         #
+    #  This is basically a standard MadEvent output with some special trick   #
+    #                                                                         #
+    #_______________________________________________________________________"""
+ 
+    check = True
+    exporter = 'v4'
+    output = 'Template'
+    sa_symmetry = False
+     
+    def __new__(cls, path, options):
+        if cls is ProcessExporterIndirectD:
+            if 'compute_color_flows' in options:
+                return loop_exporters.LoopInducedExporterMEGroup.__new__(ProcessExporterIndirectDLI, path, options) 
+            else:
+                return export_v4.ProcessExporterFortranMEGroup.__new__(ProcessExporterIndirectDLO, path, options)
+        
+    #===========================================================================
+    # link symbolic link
+    #===========================================================================
+    def finalize(self, matrix_elements, history, mg5options, flaglist):
+        """Finalize Standalone MG4 directory"""
+        
+        # modify history to make an proc_card_mg5 more similar to the real process
+        # hidden specific MadDM flag and or replace them by equivalent
+
+        new_history = self.modify_history(history)
+        
+        super(ProcessExporterIndirectD, self).finalize(matrix_elements, new_history, mg5options, flaglist)
+        
+        path = pjoin(self.dir_path, 'Cards', 'param_card.dat')
+        if os.path.exists(pjoin('..','..', 'Cards', 'param_card.dat')):
+            try:
+                os.remove(path)
+            except Exception:
+                pass
+            
+            files.ln('../../Cards/param_card.dat', starting_dir=os.path.dirname(path),
+                     cwd=os.path.dirname(path))   
+        
+        filename = os.path.join(self.dir_path, 'Cards', 'me5_configuration.txt')
+        self.cmd.do_save('options %s' % filename.replace(' ', '\ '), check=False,
+                         to_keep={'mg5_path':MG5DIR})
+        
+        self.write_procdef_mg5( pjoin(self.dir_path, 'SubProcesses', \
+                                     'procdef_mg5.dat'),
+                                self.cmd._curr_model['name'],
+                                self.cmd._generate_info)
+        
+        self.modify_banner()
         
 
- 
- 
- 
+    def modify_banner(self):
+        """enforce that <init> in events.lhe have id 52 for both beam (ensure that py8 accepts it)"""
+        
+        all_lines = open(pjoin(self.dir_path,'bin','internal','banner.py')).readlines()
+        
+        for i, line in enumerate(all_lines):
+            if 'def get_idbmup(lpp):' in line:
+                break
+
+        next_line = all_lines[i+1] 
+        nb_space = next_line.find(next_line.strip())
+        all_lines.insert(i+2, '%sreturn 52 #enforce DM ID for pythia8\n' % (' '*nb_space))
+        
+        open(pjoin(self.dir_path,'bin','internal','banner.py'),'w').writelines(all_lines)
+        
+    def modify_history(self, history):
+        """modify history to make an proc_card_mg5 more similar to the real process
+           hidden specific MadDM flag and or replace them by equivalent"""       
+        
+        new_history = []
+        next_generate = True #put on True if the next add process need to be switch to generate
+        for line in history:
+            line = re.sub('\s+', ' ', line)
+        
+            if line.startswith(('define darkmatter', 'define benchmark','define coannihilator')):
+                continue
+            
+            if line.startswith('generate'):
+                next_generate = False
+                if line.startswith(('generate relic','generate direct')):
+                    next_generate = True
+                    continue
+                if '@' in line:
+                    index = line.find('@')
+                    if not line[index:].startswith(('@1995','@ID')):
+                        next_generate = True
+                        continue  
+                    
+                if line.startswith('generate indirect'):
+                    new_history +=  [p.get('process').nice_string(
+                        prefix='add process ' if i>0 else 'generate ') 
+                                     for i,p in enumerate(self.cmd._curr_amps)]
+                    continue
+            
+            if line.startswith('add'):
+                if line.startswith(('add relic','add direct')):
+                    continue
+                if '@' in line:
+                    index = line.find('@')
+                    if not line[index:].startswith(('@1995','@ID')):
+                        continue  
+                if line.startswith('add indirect'):
+                    new_history +=  [p.get('process').nice_string(
+                        prefix='generate ' if (i==0 and next_generate) else 'add process ') 
+                                     for i,p in enumerate(self.cmd._curr_amps)]
+                    next_generate = False
+                    continue
+                
+                if next_generate and line.startswith('add process'):
+                    line = line.replace('add process', 'generate')
+                    next_generate = False
+                
+                
+            #default behavior propagate
+            new_history.append(line)
+                  
+        return bannermod.ProcCard(new_history)
+    #def copy_template(self, model):
+    #    
+    #    out = super(ProcessExporterIndirectD,self).copy_template(model)        
+    #    self.modify_dummy()
+    #
+    #   return out
+    #===========================================================================
+    # write_source_makefile
+    #===========================================================================
+    #def write_source_makefile(self, writer):
+    #    """Write the nexternal.inc file for MG4"""
+    #
+    #    replace_dict = super(ProcessExporterIndirectD, self).write_source_makefile(None)
+    #
+    #    path = pjoin(MG5DIR,'madgraph','iolibs','template_files','madevent_makefile_source')
+
 
         
+    #    if writer:
+    #        text = open(path).read() % replace_dict
+    #        writer.write(text)
+    #        
+    #    return replace_dict
+        
+        
+    def pass_information_from_cmd(self, cmd):
+        """pass information from the command interface to the exporter.
+           Please do not modify any object of the interface from the exporter.
+        """
+        
+        self.cmd=cmd
+        return super(ProcessExporterIndirectD, self).pass_information_from_cmd(cmd)
+             
+    #===========================================================================
+    # create the run_card
+    #=========================================================================== 
+    def create_run_card(self, matrix_elements, history):
+        """ """
+ 
+        run_card = banner_mod.RunCard()
+    
+        # pass to new default
+        run_card["run_tag"] = "\'DM\'"
+        run_card['dynamical_scale_choice'] = 4
+        run_card['lpp1'] = 0
+        run_card['lpp2'] = 0
+        run_card['use_syst'] = False
+        run_card.remove_all_cut()
+                  
+        run_card.write(pjoin(self.dir_path, 'Cards', 'run_card_default.dat'),
+                       template=pjoin(MG5DIR, 'Template', 'LO', 'Cards', 'run_card.dat'),
+                       python_template=True)
+        run_card.write(pjoin(self.dir_path, 'Cards', 'run_card.dat'),
+                       template=pjoin(MG5DIR, 'Template', 'LO', 'Cards', 'run_card.dat'),
+                       python_template=True)
+    
+        
+         
+class ProcessExporterIndirectDLO(ProcessExporterIndirectD,export_v4.ProcessExporterFortranMEGroup):
+    pass
+
+class ProcessExporterIndirectDLI(ProcessExporterIndirectD,loop_exporters.LoopInducedExporterMEGroup):
+    pass

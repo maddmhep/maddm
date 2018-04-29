@@ -1,21 +1,28 @@
-MadDM v2.1.1
+MadDM v3.0.0
 
 A joint program of University of Kansas (KU), 
 Center for Cosmology, Particle Physics and Phenomenology (CP3), 
 Universite catholique de Louvain (UCL) and
 Durham University (IPPP)
 
-Please cite arXiv:1308.4955 for relic density
-            arXiv:1509.03683  for direct/directional detection
+Please cite: arXiv:1308.4955 for relic density
+             arXiv:1505.04190 for direct/directional detection
+             arXiv:1804.00044 for indirect detection, capture rate, parameter scanning
+
+Parameter scans using Multinest rely on the pymultinest code. 
+If you performed a Multinest scan in MadDM please cite:
+	     arXiv:0809.3437
+	     arXiv:0704.3704
+	     arXiv:1306.2144
 
 -------------------
 MadDM collaboration
 -------------------
+Chiara Arina (CP3-UCL)
 Kyoungchul Kong (KU)
 Fabio Maltoni (CP3-UCL)
 Olivier Mattelaer (CP3/CISM-UCL)
 Gopolang Mohlabeng (KU)
-Chiara Arina (CP3-UCL)
 ---------------------
 Former Member
 ---------------------

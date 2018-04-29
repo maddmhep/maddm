@@ -20,6 +20,11 @@ c relic_density.f
       double precision relic_density, approximate_xd
 c tests.f
       double precision crossijk, cross_check_process
+c indirect_detection.f
+      double precision sigmav_ID, dm_vel_dist_ID, integrand, taacs_ID, vave_glob,vave_indirect
+      integer channel_glob
+      character(20) halo_profile
+      common/idstuff/ vave_glob, channel_glob, vave_indirect, halo_profile
 
 c direct_detection.f
 	  double precision sigma_proton_SI, sigma_neutron_SI, sigma_nucleon
@@ -107,9 +112,9 @@ c number of annihilation particles and associated diagrams
 	  common/ dd_tot_process_ids/ dd_tot_process_ids
       logical ann_process_iden_init(maxdms,maxdms, %(max_dm2sm)i), dm2dm_process_iden_init(maxdms,maxdms,%(max_dm2dm)i)
       logical relic_canonical, calc_taacs_ann_array, calc_taacs_dm2dm_array, calc_taacs_scattering_array
-      logical do_relic_density, do_direct_detection, xd_approx
+      logical do_relic_density, do_direct_detection, do_indirect_detection, xd_approx, only2to2lo
       common/process_logical/ ann_process_iden_init, dm2dm_process_iden_init, relic_canonical,
-     . calc_taacs_ann_array, calc_taacs_dm2dm_array, calc_taacs_scattering_array, xd_approx
+     . calc_taacs_ann_array, calc_taacs_dm2dm_array, calc_taacs_scattering_array, xd_approx, only2to2lo
 
 c flags for the test subroutines to see if certain quantities have already been calculated
       logical Wij_ann_calc, Wij_dm2dm_calc, Wij_scattering_calc
@@ -150,8 +155,6 @@ c  Directional detection switch
       Integer Material
       common/target/Material
 
-!c Declare unit conversions and definitions
-!      double precision pi
 
 !c Declare WIMP constants
       double precision rhoDM, vescape, vMP
@@ -164,15 +167,78 @@ c  Directional detection switch
 
 !  Declare simulation variables
       Integer Energy_bins, cos_theta_bins, day_bins
-      double precision En_min,En_max,cos_min,cos_max,day_min,day_max
+      double precision En_min,En_max,cos_min,cos_max,day_min,day_max, m_proton, m_neutron, m_nucleon
+      double precision Naa, G_fermi, g1,sec, GeV, cm, cs, fm, km, kmtocm, barn, picobarn, GeVtokev, pbtocm2,
+     & GeVtoMeV, invcmtoGeV, cmtoinvGeV,Mevtokev,daytosec, hrtosec,tontokg,hukgtokg, gevtopb, pbtocm3
       common/simu/Energy_bins,cos_theta_bins,day_bins,En_min,En_max,cos_min,cos_max,day_min,day_max
+
+
+!  Constants
+      parameter(m_proton = 0.938d0)
+      parameter(m_neutron = 0.940d0)
+      parameter(m_nucleon = 0.939d0)
+      parameter(Naa       = 6.023d+26) ! Avogadro's number
+      parameter(G_fermi   = 1.166d-5) ! Fermi Constant in (GeV**(-2))
+      parameter(g1        = 0.357088d0) ! value of the U(1) gauge coupling constant
+
+! base units
+      parameter(sec   = 1.d0)
+      parameter(GeV   = 1.d0)
+      parameter(cm    = 1.d0)
+      parameter(cs    = 1.d0)
+
+! Some important constants and conversion factors.
+
+      parameter(fm         = 1.d-13) ! cm
+      parameter(km         = 1.d+5)  ! cm
+      parameter(kmtocm     = 1.d+5)  !cm
+      parameter(barn       = 1.d-24) ! cm^2
+      parameter(picobarn    = 1.d-12*1.d-24) ! cm^2
+      parameter(GeVtokev   = 1.d+6)
+      parameter(GeVtoMeV   = 1.d+3)
+      parameter(invcmtoGeV = 1.98d-14) ! converts cm^-1 to GeV
+      parameter(cmtoinvGeV = 5.076d+13) ! converts cm to GeV^-1
+      parameter(Mevtokev   = 1.d+3)
+      parameter(daytosec   = 24.d0*60.d0*60.d0)
+      parameter(hrtosec    = 60.d0*60.d0)
+      parameter(tontokg    = 1000.d0)
+      parameter(hukgtokg   = 100.d0)
+      parameter(gevtopb    = 3.89d+8)
+      parameter(pbtocm3    = 2.99d-26)
+      parameter(pbtocm2    = 1.00d-36)
+
+c------------------------Capture rate---------------------------------
+      logical do_capture
+
+      integer nelements, n_celestial_bodies
+      parameter (nelements = 294)
+      parameter (n_celestial_bodies = 1)
+      double precision capture_rate(n_celestial_bodies), c0(n_celestial_bodies), vbar(n_celestial_bodies)
+     &  , vesc0(n_celestial_bodies), rho0(n_celestial_bodies), M0(n_celestial_bodies)
+      double precision Ccap, Akin, Skin, Fform
+
+      character(30) object_name(n_celestial_bodies)
+
+      double precision, dimension(n_celestial_bodies, nelements) ::  Ai
+      double precision, dimension(n_celestial_bodies, nelements) :: Zi
+      double precision, dimension(n_celestial_bodies, nelements) :: fi
+      double precision, dimension(n_celestial_bodies, nelements) :: phii
+      double precision, dimension(n_celestial_bodies, nelements) :: Finf
+      double precision, dimension(n_celestial_bodies, nelements) :: mci
+      double precision, dimension(n_celestial_bodies, nelements) :: ali
+      common/capture_params/ Ai, Zi, fi, phii, Finf, mci, ali,do_capture,
+     & capture_rate, c0, M0, rho0, vbar, object_name
 
 c------------------------ Resonance information --------------------------
 ! s-channel Resonance locations
-      Integer nres, ngrid_init, nres_points
+      Integer nres, ngrid_init, nres_points, grid_npts
       parameter (nres = %(n_resonances)d)
+      parameter (grid_npts = 2000)
+      double precision grid(grid_npts), grid_ID(grid_npts)
       double precision resonances(nres)
       double precision resonance_widths(nres)
       double precision beta_res(nres)
       double precision beta_res_width(nres)
       common/resonancevars/resonances, resonance_widths, beta_res, beta_res_width, nres_points, ngrid_init
+      common/grids/ grid_ID, grid
+

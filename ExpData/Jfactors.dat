@@ -1,0 +1,55 @@
+# GLon	GLat	dist.	log10(Jbar_NFW[GeV2cm-5sr])	sig	log10(alpha_s_NFW[deg])	sig	log10(Jbar_Bur[GeV2cm-5sr])	sig	log10(alpha_s_Bur[deg])	sig	
+# see 1611.03184v1 Tab.1 for ref., (geringer-sameth M. 2015a,ApJ, 801, 74)
+# Row 00 bootes_I
+# Row 01 bootes_II
+# Row 02 bootes_III
+# Row 03 canes_venatici_I
+# Row 04 canes_venatici_II
+# Row 05 canis_major
+# Row 06 carina
+# Row 07 coma_berenices
+# Row 08 draco
+# Row 09 fornax
+# Row 10 hercules
+# Row 11 leo_I
+# Row 12 leo_II
+# Row 13 leo_IV
+# Row 14 leo_V
+# Row 15 pisces_II
+# Row 16 sagittarius
+# Row 17 sculptor
+# Row 18 segue_1
+# Row 19 segue_2
+# Row 20 sextans
+# Row 21 ursa_major_I
+# Row 22 ursa_major_II
+# Row 23 ursa_minor
+# Row 24 willman_1
+# Row 25 reticulum_II
+#
+358.1	69.6	66	18.2	0.4		-0.6	0.3	16.6	0.17	-1.1	0.2
+353.7	68.9	42	nan		nan		nan		nan	nan		nan		nan		nan
+35.4	75.4	47	nan		nan		nan		nan	nan		nan		nan		nan
+74.3	79.8	218	17.4	0.3		-1.3	0.2	17.6	0.17	-1.6	0.1
+113.6	82.7	160	17.6	0.4		-1.1	0.4	17.8	0.19	-1.6	0.2
+240.0	-8.0	7	nan		nan		nan		nan	nan		nan		nan		nan
+260.1	-22.2	105	17.9	0.1		-1.0	0.3	18.1	0.16	-1.5	0.1
+241.9	83.6	44	19.0	0.4		-0.6	0.5	18.9	0.21	-1.1	0.3
+86.4	34.7	76	18.8	0.1		-0.6	0.2	18.7	0.17	-1.0	0.2
+237.1	-65.7	147	17.8	0.1		-0.8	0.2	18.1	0.22	-1.1	0.1
+28.7	36.9	132	16.9	0.7		-1.1	0.4	17.9	0.19	-1.6	0.2
+226.0	49.1	254	17.8	0.2		-1.1	0.3	17.6	0.17	-1.5	0.2
+220.2	67.2	233	18.0	0.2		-1.1	0.5	17.5	0.15	-1.9	0.5
+265.4	56.5	154	16.3	1.4		-1.1	0.4	17.8	0.21	-1.6	0.2
+261.9	58.5	178	16.4	0.9		nan		nan	nan		nan		nan		nan
+79.2	-47.1	182	nan		nan		nan		nan	nan		nan		nan		nan
+5.60	-14.2	26	nan		nan		nan		nan	nan		nan		nan		nan
+287.5	-83.2	86	18.5	0.1		-0.6	0.3	18.5	0.17	-1.1	0.2
+220.5	50.4	23	19.4	0.3		-0.4	0.5	19.4	0.24	-0.9	0.2
+149.4	-38.1	35	nan		nan		nan		nan	nan		nan		nan		nan
+243.5	42.3	86	17.5	0.2		-0.9	0.2	18.4	0.16	-1.2	0.1
+159.4	54.4	97	17.9	0.5		-1.0	0.3	18.2	0.18	-1.4	0.2
+152.5	37.4	32	19.4	0.4		-0.5	0.4	19.2	0.21	-0.9	0.2
+105.0	44.8	76	18.9	0.2		-0.5	0.2	18.7	0.20	-0.9	0.2
+158.6	56.8	38	nan		nan		nan		nan	nan		nan		nan		nan
+266.3	-49.74	32	18.9	0.6		nan		nan	nan		nan		nan		nan
