@@ -106,6 +106,11 @@ class MadDM_interface(master_interface.MasterCmd):
     options_configuration = dict(master_interface.MasterCmd.options_configuration)
     options_configuration['pppc4dmid_path'] = './PPPC4DMID'
     options_configuration['dragon_path'] = None
+    options_configuration['maddm_first_indirect'] = True
+    
+    _set_options = list(master_interface.MasterCmd._set_options)
+    _set_options.append('dragon_data_from_galprop')
+    
     
     def post_install_PPPC4DMID(self):
         if os.path.exists(pjoin(MG5DIR, 'PPPC4DMID')):
@@ -454,6 +459,15 @@ class MadDM_interface(master_interface.MasterCmd):
         self._ID_procs = base_objects.ProcessDefinitionList()
         self._ID_matrix_elements = helas_objects.HelasMultiProcess()
         self._ID_amps = diagram_generation.AmplitudeList()
+        
+    def check_save(self, args):
+        
+        if args[1] == 'maddm_first_indirect':
+            args.insert(1, pjoin(MG5DIR, 'input', 'mg5_configuration.txt'))
+            print args
+            return args
+        else:
+            return super(MadDM_interface, self).check_save(args)
         
     
     def help_generate(self):
@@ -1070,7 +1084,7 @@ class MadDM_interface(master_interface.MasterCmd):
         opt = self.options
         
         # Check if first time:
-        if (opt['dragon_path'] is not  None):
+        if not opt['maddm_first_indirect']:
             return
         
         logger.info("First time that you asked for indirect detection. Now asking for dependency tool:", '$MG:BOLD')
@@ -1080,7 +1094,7 @@ class MadDM_interface(master_interface.MasterCmd):
         rename = {'dragon_data_from_galprop': 'dragon_data'}
         key_to_opts = {'PPPC4DMID':'pppc4dmid_path',
                        'dragon': 'dragon_path',
-                       'dragon_data_from_galprop':None,
+                       'dragon_data_from_galprop': None,
                        'pythia8': 'pythia8_path'}
         
         for key, value in to_install.items():
@@ -1089,14 +1103,16 @@ class MadDM_interface(master_interface.MasterCmd):
                     key = rename[key]
                 self.exec_cmd('install %s' % key)
             # Not install
-            elif value == 'off':
-                self.exec_cmd("set %s ''" % key)
+            elif value == 'off' and key_to_opts[key]:
+                key =  key_to_opts[key]
+                self.exec_cmd("set %s '' " % key)
                 self.exec_cmd('save options %s' % key)
             elif key_to_opts[key]:
                 key =  key_to_opts[key]
                 self.exec_cmd("set %s %s" % (key,value))
                 self.exec_cmd('save options %s' % key) 
-            
+        self.exec_cmd('set maddm_first_indirect False')
+        self.exec_cmd('save options maddm_first_indirect')
                 
             
   

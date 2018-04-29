@@ -2593,7 +2593,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         self.paths['flux'] = pjoin(self.me_dir,'Cards','pythia8_card.dat')
         self.paths['flux_default'] = pjoin(self.me_dir,'Cards','pythia8_card_default.dat')
     
-    # TODO HERE!
+
     def default(self, line):
         """Default action if line is not recognized"""
         
