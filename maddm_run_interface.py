@@ -37,7 +37,6 @@ except ImportError:
     pass
 
 try:
-    raise ImportError
     from scipy.interpolate import interp1d
     from scipy.integrate import quad
     from scipy.special import gammainc
@@ -49,7 +48,6 @@ else:
     HAS_SCIPY = True
 
 try:
-    raise ImportError
     import numpy as np    
 except ImportError:
     logger.warning('numpy module not found! Indirect detection features will be disabled.')
