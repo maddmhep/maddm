@@ -38,7 +38,7 @@ except ImportError:
 
 try:
     from scipy.interpolate import interp1d
-    from scipy.integrate import quad
+    from scipy.integrate import quad, brute
     from scipy.special import gammainc
 except ImportError, error:
     print error
@@ -479,13 +479,19 @@ class Fermi_bounds:
     # otherwise it calculates the likelihood and p-value for the given point 
     def Fermi_sigmav_lim(self, mDM, x = '' , dndlogx = '' , marginalize = True, sigmav_th = False , maj_dirac='', \
                                sigmavmin=1e-35, sigmavmax=1e-15, step_size_scaling=1.0, cl_val = 0.95):
-
+        stop = False
         if not HAS_NUMPY:
             logger.warning("Fermi limit ignored due to missing numpy module")
-            return -1
+            stop = True
         if not HAS_SCIPY:
             logger.warning("Fermi limit ignored due to missing scipy module")
-            return -1        
+            stop = True
+            
+        if stop:
+            if sigmav_th:
+                return -1, -1
+            else:
+                return -1      
         
         np.seterr(divide='ignore', invalid='ignore')   # Keep numpy from complaining about dN/dE = 0...                                                                
         j0 , nBin = self.j0 , self.nBin
@@ -541,7 +547,7 @@ class Fermi_bounds:
                  sigmav_ul= -1
                  print " WARNING: increase range (sigmavmin,sigmavmax) and/or step_size_scaling!"
         
-             return sigmav_ul    
+             return sigmav_ul, -1    
 
         elif sigmav_th:
              pred_sigma = pred*sigmav_th/sigmav0
