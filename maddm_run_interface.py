@@ -29,26 +29,30 @@ import models.check_param_card as param_card_mod
         
 #import darkmatter as darkmatter
 
-
+logger = logging.getLogger('madgraph.plugin.maddm')
 
 try:
     import pymultinest
 except ImportError:
-    print('WARNING: Multinest module not found! All multinest parameter scanning features will be disabled.')
-
+    pass
 
 try:
-    from scipy.interpolate import interp1d, quad, minimize_scalar, brute, fmin, gammainc
-except ImportError:
-    print('WARNING: scipy module not found! Indirect detection features will be disabled.')
+    raise ImportError
+    from scipy.interpolate import interp1d
+    from scipy.integrate import quad
+    from scipy.special import gammainc
+except ImportError, error:
+    print error
+    logger.warning('scipy module not found! Some Indirect detection features will be disabled.')
     HAS_SCIPY = False 
 else:
     HAS_SCIPY = True
 
 try:
+    raise ImportError
     import numpy as np    
 except ImportError:
-    print('WARNING: numpy module not found! Indirect detection features will be disabled.')
+    logger.warning('numpy module not found! Indirect detection features will be disabled.')
     HAS_NUMPY = False
 else:
     HAS_NUMPY = True
@@ -56,7 +60,7 @@ else:
 class ModuleMissing(Exception): pass
 
 pjoin = os.path.join
-logger = logging.getLogger('madgraph.plugin.maddm')
+
 logger_tuto = logging.getLogger('tutorial_plugin')
 #logger.setLevel(10) #level 20 = INFO
 
@@ -122,14 +126,18 @@ class ExpConstraints:
             self._sigma_ID[item] = -1.0
             self._sigma_ID_width[item] = -1.0
 
-        self.load_constraints()
+        if HAS_NUMPY:
+            self.load_constraints()
+
 
         logger.info('Loaded experimental constraints. To change, use the set command')
         logger.info('Omega h^2 = %.4e +- %.4e' %(self._oh2_planck, self._oh2_planck_width))
-        logger.info('Spin Independent cross section: %s' % self._dd_si_limit_file)
-        logger.info('Spin Dependent cross section (p): %s' % self._dd_sd_proton_limit_file)
-        logger.info('Spin Dependent cross section (n): %s' % self._dd_sd_neutron_limit_file)
-
+        if HAS_NUMPY:
+            logger.info('Spin Independent cross section: %s' % self._dd_si_limit_file)
+            logger.info('Spin Dependent cross section (p): %s' % self._dd_sd_proton_limit_file)
+            logger.info('Spin Dependent cross section (n): %s' % self._dd_sd_neutron_limit_file)
+        else:
+            logger.info('Spin (in)dependent not available due to the missing python module: numpy')
 #        for chan in self._allowed_final_states:
 #            logger.info('Indirect Detection cross section for final state %s at velocity %.2e: %s'\
 #                        % (chan, self._id_limit_vel[chan] ,self._id_limit_file[chan]))
@@ -157,6 +165,10 @@ class ExpConstraints:
 
     #Returns a value in cm^2
     def SI_max(self, mdm):
+        if not HAS_NUMPY:
+            logger.warning("missing numpy module for SI limit")
+            return __infty__
+        
         if (mdm < np.min(self._dd_si_limit_mDM) or mdm > np.max(self._dd_si_limit_mDM)):
             logger.warning('Dark matter mass value '+str(mdm)+' is outside the range of SI limit')
             return __infty__
@@ -165,6 +177,10 @@ class ExpConstraints:
 
     #Returns a value in cm^2
     def SD_max(self,mdm, nucleon):
+        if not HAS_NUMPY:
+            logger.warning("missing numpy module for SD limit")
+            return __infty__
+            
         if nucleon not in ['n','p']:
             logger.error('nucleon can only be p or n')
             return __infty__
@@ -184,6 +200,9 @@ class ExpConstraints:
 
     #Returns a value in cm^3/s
     def ID_max(self,mdm, channel):
+        if not HAS_NUMPY:
+            logger.warning("missing numpy module for ID limit")
+            return __infty__
         if (mdm < np.min(self._id_limit_mdm[channel]) or mdm > np.max(self._id_limit_mdm[channel])):
             logger.warning('Dark matter mass value %.2e for channel %s is outside the range of ID limit' % (mdm, channel))
             return __infty__
@@ -321,7 +340,8 @@ class Fermi_bounds:
         self.dSph_ll_files_path =  pjoin(MDMDIR, 'Fermi_Data', 'likelihoods')
         self.dwarves_list = ['coma_berenices', 'draco', 'segue_1', 'ursa_major_II', 'ursa_minor', 'reticulum_II' ] # dSphs with the 6 highest Jfactors
         self.dwarveslist_all = self.extract_dwarveslist() 
-        self.dw_in = self.dw_dic()
+        if HAS_NUMPY:
+            self.dw_in = self.dw_dic()
         self.ll_tot = ''
 
     # This function reads the list of dwarves from the Jfactor.dat file
@@ -2392,7 +2412,9 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
     def set_default_indirect(self):
         """set the default value for relic="""
         
-        if self.availmode['has_indirect_detection']:
+        if not HAS_NUMPY:
+            self.switch['indirect'] = 'Not Avail. (numpy missing)'
+        elif self.availmode['has_indirect_detection']:
             self.switch['indirect'] = 'sigmav'     
         else:
             self.switch['indirect'] = 'Not Avail.'
@@ -2404,7 +2426,9 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         if hasattr(self, 'allowed_indirect'):
             return getattr(self, 'allowed_indirect')
 
-        if self.availmode['has_indirect_detection']:
+        if not HAS_NUMPY:
+            self.allowed_indirect =  ['OFF']
+        elif self.availmode['has_indirect_detection']:
             self.allowed_indirect =  ['OFF', 'sigmav', 'flux_source', 'flux_earth']
         else:
             return []
