@@ -38,7 +38,8 @@ except ImportError:
 
 try:
     from scipy.interpolate import interp1d
-    from scipy.integrate import quad, brute
+    from scipy.integrate import quad
+    from scipy.optimize import brute, fmin, minimize_scalar
     from scipy.special import gammainc
 except ImportError, error:
     print error
@@ -547,7 +548,7 @@ class Fermi_bounds:
                  sigmav_ul= -1
                  print " WARNING: increase range (sigmavmin,sigmavmax) and/or step_size_scaling!"
         
-             return sigmav_ul, -1    
+             return sigmav_ul    
 
         elif sigmav_th:
              pred_sigma = pred*sigmav_th/sigmav0
