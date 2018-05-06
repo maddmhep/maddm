@@ -10,12 +10,7 @@ import auxiliary as aux
 import stat
 import shutil
 
-from scipy.interpolate import interp1d
-from scipy.integrate import quad
-from scipy.optimize import minimize_scalar
-from scipy.optimize import brute
-from scipy.optimize import fmin
-from scipy.special import gammainc
+
 
 import MGoutput
 from madgraph import MadGraph5Error
@@ -34,15 +29,31 @@ import models.check_param_card as param_card_mod
         
 #import darkmatter as darkmatter
 
-import numpy as np
+
 
 try:
     import pymultinest
-except:
+except ImportError:
     print('WARNING: Multinest module not found! All multinest parameter scanning features will be disabled.')
 
 
-#import types
+try:
+    from scipy.interpolate import interp1d, quad, minimize_scalar, brute, fmin, gammainc
+except ImportError:
+    print('WARNING: scipy module not found! Indirect detection features will be disabled.')
+    HAS_SCIPY = False 
+else:
+    HAS_SCIPY = True
+
+try:
+    import numpy as np    
+except ImportError:
+    print('WARNING: numpy module not found! Indirect detection features will be disabled.')
+    HAS_NUMPY = False
+else:
+    HAS_NUMPY = True
+        
+class ModuleMissing(Exception): pass
 
 pjoin = os.path.join
 logger = logging.getLogger('madgraph.plugin.maddm')
@@ -267,6 +278,10 @@ class Spectra:
     # this function extracts the values of the spectra interpolated linearly between two values mdm_1 and mdm_2                                              
     # mdm is the DM candidate mass, spectrum is gammas, positron etc, channel is the SM annihilation e.g. bbar, hh etc.                        
     def interpolate_spectra(self, sp_dic, mdm = '', spectrum = '' , channel = '' , earth = False , prof = 'Ein' , prop = 'MED' , halo_func = 'MF1'):
+        
+        if not HAS_SCIPY:
+            raise ModuleMissing('scipy module is required for this functionality.')
+        
         M   = sp_dic['Masses']
         dm_min =  max([m for m in M if m <= mdm])  # extracting lower mass limit to interpolate from                                                                  
         dm_max =  min([m for m in M if m >= mdm])  # extracting upper mass limit to interpolate from                                                                    
@@ -363,6 +378,10 @@ class Fermi_bounds:
     def eflux(self,spectrum, emin=1e2, emax=1e5, quiet=False):
         """ Integrate a generic spectrum, multiplied by E, to get the energy flux.                                                                                             
         """
+        
+        if not HAS_SCIPY:
+            raise ModuleMissing('scipy module is required for this functionality.')
+        
         espectrum = lambda e: spectrum(e)*e
         tol = min(espectrum(emin),espectrum(emax))*1e-10
         try:
@@ -373,6 +392,9 @@ class Fermi_bounds:
 
     def marg_like_dw(self,dw_in_i,pred,marginalize):
       
+        if not HAS_SCIPY:
+            raise ModuleMissing('scipy module is required for this functionality.')
+        
         j0, nBin = self.j0 , self.nBin
 
         j,jerr,like_inter = dw_in_i['Jfac'], dw_in_i['Jfac_err'], dw_in_i['likelihood']
@@ -402,6 +424,9 @@ class Fermi_bounds:
         return ll_max, jsigma
 
     def res_tot_dw(self,pred,marginalize):
+
+        if not HAS_SCIPY:
+            raise ModuleMissing('scipy module is required for this functionality.')
 
         dw_in = self.dw_in
         ll_tot = 0.0
@@ -437,6 +462,13 @@ class Fermi_bounds:
     def Fermi_sigmav_lim(self, mDM, x = '' , dndlogx = '' , marginalize = True, sigmav_th = False , maj_dirac='', \
                                sigmavmin=1e-35, sigmavmax=1e-15, step_size_scaling=1.0, cl_val = 0.95):
 
+        if not HAS_NUMPY:
+            logger.warning("Fermi limit ignored due to missing numpy module")
+            return -1
+        if not HAS_SCIPY:
+            logger.warning("Fermi limit ignored due to missing scipy module")
+            return -1        
+        
         np.seterr(divide='ignore', invalid='ignore')   # Keep numpy from complaining about dN/dE = 0...                                                                
         j0 , nBin = self.j0 , self.nBin
         
@@ -1226,8 +1258,8 @@ class MADDMRunCmd(cmd.CmdShell):
             sp_name = sp + '_spectrum_pythia8.dat'
             out_dir = pjoin(self.dir_path,'Indirect', 'Events', run_name, sp_name )
             if sp == 'gammas': # x values are the same for all the spectra
-                  x = np.loadtxt(out_dir , unpack = True )[0]
-                  self.Spectra.spectra['x'] = [ np.power(10,num) for num in x]     # from log[10,x] to x
+                x = np.loadtxt(out_dir , unpack = True )[0]
+                self.Spectra.spectra['x'] = [ np.power(10,num) for num in x]     # from log[10,x] to x
             self.Spectra.spectra[sp] = np.loadtxt(out_dir , unpack = True )[1].tolist()                                  
        
 
@@ -1237,6 +1269,10 @@ class MADDMRunCmd(cmd.CmdShell):
 
         if not self.options['pppc4dmid_path']:
             logger.error('PPPC4DMID not installed. Please install by typing "install PPPC4DMID".')
+            return
+
+        if not HAS_SCIPY:
+            logger.error('using PPPC4DMID requires scipy module. Please install it (for example with "pip install scipy")')
             return
 
         if 'PPPC4DMID' in self.maddm_card['indirect_flux_source_method'] or 'inclusive' in self.maddm_card['sigmav_method']:

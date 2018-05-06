@@ -115,6 +115,11 @@ class MadDM_interface(master_interface.MasterCmd):
     def post_install_PPPC4DMID(self):
         if os.path.exists(pjoin(MG5DIR, 'PPPC4DMID')):
             self.options['pppc4dmid_path'] = pjoin(MG5DIR, 'PPPC4DMID')
+        
+        if not maddm_run_interface.HAS_SCIPY:
+            logger.critical("PPC4DMID module requires scipy to be working. Please install those python module. (they are not present)")
+            logger.info("you can try to use \"pip install scipy\"")
+            
         return
     
     def set_configuration(self, config_path=None, final=True, **opts):
