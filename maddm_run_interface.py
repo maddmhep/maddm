@@ -1688,8 +1688,8 @@ class MADDMRunCmd(cmd.CmdShell):
 
         if self.mode['relic']:
             logger.info("\n***** Relic Density")
-
-            logger.info( self.form_s('Relic Density') + '= ' + self.form_n(omega    )   + '      '  +  pass_relic )
+            print 'OMEGA IS ', omega 
+            logger.info( self.form_s('Relic Density') + '= ' + self.form_n(omega)   + '      '  +  pass_relic )
             logger.info( self.form_s('x_f'          ) + '= ' + self.form_s(self.form_n(x_f      ) ) )
             logger.info( self.form_s('sigmav(xf)'   ) + '= ' + self.form_s(self.form_n(sigma_xf ) ) )
             logger.info( self.form_s('xsi'          ) + '= ' + self.form_s(self.form_n(xsi      ) ) )
@@ -1977,11 +1977,11 @@ class MADDMRunCmd(cmd.CmdShell):
                 th_mess    = self.det_message_screen(sig_th    , ul)
                 line = self.form_s(what) + self.form_s('Thermal = '+ self.form_n(sig_th))  + '   ' + self.form_s(th_mess)
                 line = line +              '\t' + self.form_s('All DM = '  + self.form_n(sig_alldm) ) + '   ' + self.form_s(alldm_mess)
-                line = line + '\t' + '{:16}'.format(exp+' ul') + ' = ' +  self.form_n(ul)
+                line = line + '\t' + '{0:16}'.format(exp+' ul') + ' = ' +  self.form_n(ul)
 
             else:                                                                                                                                                           
                 line = self.form_s(what)  + self.form_s('All DM = ' + self.form_n(sig_alldm) ) + '   ' + self.form_s(alldm_mess)                               
-                line = line + '\t' + '{:16}'.format(exp+' ul') + ' = ' +  self.form_n(ul)
+                line = line + '\t' + '{0:16}'.format(exp+' ul') + ' = ' +  self.form_n(ul)
 
         elif not direc and no_lim:
 
@@ -2002,11 +2002,11 @@ class MADDMRunCmd(cmd.CmdShell):
         #    os.symlink(pjoin(self.dir_path,'Indirect','Events'), pjoin(self.dir_path, 'output' , 'Output_Indirect') )
                     
         def form_s(stringa):
-            formatted = '{:22}'.format(stringa)
+            formatted = '{0:22}'.format(stringa)
             return  formatted
         
         def form_n(num):
-            formatted = '{:3.2e}'.format(num)
+            formatted = '{0:3.2e}'.format(num)
             return formatted
 
         out = open(pjoin(self.dir_path, 'output', point, 'MadDM_results.txt'),'w')
@@ -2124,10 +2124,10 @@ class MADDMRunCmd(cmd.CmdShell):
         elif   n1 <= 0            : return 'No Theory Prediction'        
     
     def form_s(self,stringa):
-        formatted = '{:20}'.format(stringa)
+        formatted = '{0:20}'.format(stringa)
         return  formatted
     def form_n(self,num):
-        formatted = '{:3.2e}'.format(num)
+        formatted = '{0:3.2e}'.format(num)
         return formatted
     
     def ask_run_configuration(self, mode=None, force=False):
