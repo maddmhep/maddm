@@ -10,12 +10,7 @@ import auxiliary as aux
 import stat
 import shutil
 
-from scipy.interpolate import interp1d
-from scipy.integrate import quad
-from scipy.optimize import minimize_scalar
-from scipy.optimize import brute
-from scipy.optimize import fmin
-from scipy.special import gammainc
+
 
 import MGoutput
 from madgraph import MadGraph5Error
@@ -34,18 +29,37 @@ import models.check_param_card as param_card_mod
         
 #import darkmatter as darkmatter
 
-import numpy as np
+logger = logging.getLogger('madgraph.plugin.maddm')
 
 try:
     import pymultinest
-except:
-    print('WARNING: Multinest module not found! All multinest parameter scanning features will be disabled.')
+except ImportError:
+    pass
 
+try:
+    from scipy.interpolate import interp1d
+    from scipy.integrate import quad
+    from scipy.optimize import brute, fmin, minimize_scalar
+    from scipy.special import gammainc
+except ImportError, error:
+    print error
+    logger.warning('scipy module not found! Some Indirect detection features will be disabled.')
+    HAS_SCIPY = False 
+else:
+    HAS_SCIPY = True
 
-#import types
+try:
+    import numpy as np 
+except ImportError:
+    logger.warning('numpy module not found! Indirect detection features will be disabled.')
+    HAS_NUMPY = False
+else:
+    HAS_NUMPY = True
+        
+class ModuleMissing(Exception): pass
 
 pjoin = os.path.join
-logger = logging.getLogger('madgraph.plugin.maddm')
+
 logger_tuto = logging.getLogger('tutorial_plugin')
 #logger.setLevel(10) #level 20 = INFO
 
@@ -111,14 +125,18 @@ class ExpConstraints:
             self._sigma_ID[item] = -1.0
             self._sigma_ID_width[item] = -1.0
 
-        self.load_constraints()
+        if HAS_NUMPY:
+            self.load_constraints()
+
 
         logger.info('Loaded experimental constraints. To change, use the set command')
         logger.info('Omega h^2 = %.4e +- %.4e' %(self._oh2_planck, self._oh2_planck_width))
-        logger.info('Spin Independent cross section: %s' % self._dd_si_limit_file)
-        logger.info('Spin Dependent cross section (p): %s' % self._dd_sd_proton_limit_file)
-        logger.info('Spin Dependent cross section (n): %s' % self._dd_sd_neutron_limit_file)
-
+        if HAS_NUMPY:
+            logger.info('Spin Independent cross section: %s' % self._dd_si_limit_file)
+            logger.info('Spin Dependent cross section (p): %s' % self._dd_sd_proton_limit_file)
+            logger.info('Spin Dependent cross section (n): %s' % self._dd_sd_neutron_limit_file)
+        else:
+            logger.info('Spin (in)dependent not available due to the missing python module: numpy')
 #        for chan in self._allowed_final_states:
 #            logger.info('Indirect Detection cross section for final state %s at velocity %.2e: %s'\
 #                        % (chan, self._id_limit_vel[chan] ,self._id_limit_file[chan]))
@@ -146,6 +164,10 @@ class ExpConstraints:
 
     #Returns a value in cm^2
     def SI_max(self, mdm):
+        if not HAS_NUMPY:
+            logger.warning("missing numpy module for SI limit")
+            return __infty__
+        
         if (mdm < np.min(self._dd_si_limit_mDM) or mdm > np.max(self._dd_si_limit_mDM)):
             logger.warning('Dark matter mass value '+str(mdm)+' is outside the range of SI limit')
             return __infty__
@@ -154,6 +176,10 @@ class ExpConstraints:
 
     #Returns a value in cm^2
     def SD_max(self,mdm, nucleon):
+        if not HAS_NUMPY:
+            logger.warning("missing numpy module for SD limit")
+            return __infty__
+            
         if nucleon not in ['n','p']:
             logger.error('nucleon can only be p or n')
             return __infty__
@@ -173,6 +199,9 @@ class ExpConstraints:
 
     #Returns a value in cm^3/s
     def ID_max(self,mdm, channel):
+        if not HAS_NUMPY:
+            logger.warning("missing numpy module for ID limit")
+            return __infty__
         if (mdm < np.min(self._id_limit_mdm[channel]) or mdm > np.max(self._id_limit_mdm[channel])):
             logger.warning('Dark matter mass value %.2e for channel %s is outside the range of ID limit' % (mdm, channel))
             return __infty__
@@ -267,6 +296,10 @@ class Spectra:
     # this function extracts the values of the spectra interpolated linearly between two values mdm_1 and mdm_2                                              
     # mdm is the DM candidate mass, spectrum is gammas, positron etc, channel is the SM annihilation e.g. bbar, hh etc.                        
     def interpolate_spectra(self, sp_dic, mdm = '', spectrum = '' , channel = '' , earth = False , prof = 'Ein' , prop = 'MED' , halo_func = 'MF1'):
+        
+        if not HAS_SCIPY:
+            raise ModuleMissing('scipy module is required for this functionality.')
+        
         M   = sp_dic['Masses']
         dm_min =  max([m for m in M if m <= mdm])  # extracting lower mass limit to interpolate from                                                                  
         dm_max =  min([m for m in M if m >= mdm])  # extracting upper mass limit to interpolate from                                                                    
@@ -306,7 +339,8 @@ class Fermi_bounds:
         self.dSph_ll_files_path =  pjoin(MDMDIR, 'Fermi_Data', 'likelihoods')
         self.dwarves_list = ['coma_berenices', 'draco', 'segue_1', 'ursa_major_II', 'ursa_minor', 'reticulum_II' ] # dSphs with the 6 highest Jfactors
         self.dwarveslist_all = self.extract_dwarveslist() 
-        self.dw_in = self.dw_dic()
+        if HAS_NUMPY and HAS_SCIPY:
+            self.dw_in = self.dw_dic()
         self.ll_tot = ''
 
     # This function reads the list of dwarves from the Jfactor.dat file
@@ -363,6 +397,10 @@ class Fermi_bounds:
     def eflux(self,spectrum, emin=1e2, emax=1e5, quiet=False):
         """ Integrate a generic spectrum, multiplied by E, to get the energy flux.                                                                                             
         """
+        
+        if not HAS_SCIPY:
+            raise ModuleMissing('scipy module is required for this functionality.')
+        
         espectrum = lambda e: spectrum(e)*e
         tol = min(espectrum(emin),espectrum(emax))*1e-10
         try:
@@ -373,6 +411,9 @@ class Fermi_bounds:
 
     def marg_like_dw(self,dw_in_i,pred,marginalize):
       
+        if not HAS_SCIPY:
+            raise ModuleMissing('scipy module is required for this functionality.')
+        
         j0, nBin = self.j0 , self.nBin
 
         j,jerr,like_inter = dw_in_i['Jfac'], dw_in_i['Jfac_err'], dw_in_i['likelihood']
@@ -402,6 +443,9 @@ class Fermi_bounds:
         return ll_max, jsigma
 
     def res_tot_dw(self,pred,marginalize):
+
+        if not HAS_SCIPY:
+            raise ModuleMissing('scipy module is required for this functionality.')
 
         dw_in = self.dw_in
         ll_tot = 0.0
@@ -436,7 +480,20 @@ class Fermi_bounds:
     # otherwise it calculates the likelihood and p-value for the given point 
     def Fermi_sigmav_lim(self, mDM, x = '' , dndlogx = '' , marginalize = True, sigmav_th = False , maj_dirac='', \
                                sigmavmin=1e-35, sigmavmax=1e-15, step_size_scaling=1.0, cl_val = 0.95):
-
+        stop = False
+        if not HAS_NUMPY:
+            logger.warning("Fermi limit ignored due to missing numpy module")
+            stop = True
+        if not HAS_SCIPY:
+            logger.warning("Fermi limit ignored due to missing scipy module")
+            stop = True
+            
+        if stop:
+            if sigmav_th:
+                return -1, -1
+            else:
+                return -1      
+        
         np.seterr(divide='ignore', invalid='ignore')   # Keep numpy from complaining about dN/dE = 0...                                                                
         j0 , nBin = self.j0 , self.nBin
         
@@ -1226,8 +1283,8 @@ class MADDMRunCmd(cmd.CmdShell):
             sp_name = sp + '_spectrum_pythia8.dat'
             out_dir = pjoin(self.dir_path,'Indirect', 'Events', run_name, sp_name )
             if sp == 'gammas': # x values are the same for all the spectra
-                  x = np.loadtxt(out_dir , unpack = True )[0]
-                  self.Spectra.spectra['x'] = [ np.power(10,num) for num in x]     # from log[10,x] to x
+                x = np.loadtxt(out_dir , unpack = True )[0]
+                self.Spectra.spectra['x'] = [ np.power(10,num) for num in x]     # from log[10,x] to x
             self.Spectra.spectra[sp] = np.loadtxt(out_dir , unpack = True )[1].tolist()                                  
        
 
@@ -1237,6 +1294,10 @@ class MADDMRunCmd(cmd.CmdShell):
 
         if not self.options['pppc4dmid_path']:
             logger.error('PPPC4DMID not installed. Please install by typing "install PPPC4DMID".')
+            return
+
+        if not HAS_SCIPY:
+            logger.error('using PPPC4DMID requires scipy module. Please install it (for example with "pip install scipy")')
             return
 
         if 'PPPC4DMID' in self.maddm_card['indirect_flux_source_method'] or 'inclusive' in self.maddm_card['sigmav_method']:
@@ -1627,8 +1688,8 @@ class MADDMRunCmd(cmd.CmdShell):
 
         if self.mode['relic']:
             logger.info("\n***** Relic Density")
-
-            logger.info( self.form_s('Relic Density') + '= ' + self.form_n(omega    )   + '      '  +  pass_relic )
+            print 'OMEGA IS ', omega 
+            logger.info( self.form_s('Relic Density') + '= ' + self.form_n(omega)   + '      '  +  pass_relic )
             logger.info( self.form_s('x_f'          ) + '= ' + self.form_s(self.form_n(x_f      ) ) )
             logger.info( self.form_s('sigmav(xf)'   ) + '= ' + self.form_s(self.form_n(sigma_xf ) ) )
             logger.info( self.form_s('xsi'          ) + '= ' + self.form_s(self.form_n(xsi      ) ) )
@@ -1916,11 +1977,11 @@ class MADDMRunCmd(cmd.CmdShell):
                 th_mess    = self.det_message_screen(sig_th    , ul)
                 line = self.form_s(what) + self.form_s('Thermal = '+ self.form_n(sig_th))  + '   ' + self.form_s(th_mess)
                 line = line +              '\t' + self.form_s('All DM = '  + self.form_n(sig_alldm) ) + '   ' + self.form_s(alldm_mess)
-                line = line + '\t' + '{:16}'.format(exp+' ul') + ' = ' +  self.form_n(ul)
+                line = line + '\t' + '{0:16}'.format(exp+' ul') + ' = ' +  self.form_n(ul)
 
             else:                                                                                                                                                           
                 line = self.form_s(what)  + self.form_s('All DM = ' + self.form_n(sig_alldm) ) + '   ' + self.form_s(alldm_mess)                               
-                line = line + '\t' + '{:16}'.format(exp+' ul') + ' = ' +  self.form_n(ul)
+                line = line + '\t' + '{0:16}'.format(exp+' ul') + ' = ' +  self.form_n(ul)
 
         elif not direc and no_lim:
 
@@ -1941,11 +2002,11 @@ class MADDMRunCmd(cmd.CmdShell):
         #    os.symlink(pjoin(self.dir_path,'Indirect','Events'), pjoin(self.dir_path, 'output' , 'Output_Indirect') )
                     
         def form_s(stringa):
-            formatted = '{:22}'.format(stringa)
+            formatted = '{0:22}'.format(stringa)
             return  formatted
         
         def form_n(num):
-            formatted = '{:3.2e}'.format(num)
+            formatted = '{0:3.2e}'.format(num)
             return formatted
 
         out = open(pjoin(self.dir_path, 'output', point, 'MadDM_results.txt'),'w')
@@ -2063,10 +2124,10 @@ class MADDMRunCmd(cmd.CmdShell):
         elif   n1 <= 0            : return 'No Theory Prediction'        
     
     def form_s(self,stringa):
-        formatted = '{:20}'.format(stringa)
+        formatted = '{0:20}'.format(stringa)
         return  formatted
     def form_n(self,num):
-        formatted = '{:3.2e}'.format(num)
+        formatted = '{0:3.2e}'.format(num)
         return formatted
     
     def ask_run_configuration(self, mode=None, force=False):
@@ -2356,10 +2417,22 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
     def set_default_indirect(self):
         """set the default value for relic="""
         
-        if self.availmode['has_indirect_detection']:
+        if not HAS_NUMPY:
+            self.switch['indirect'] = 'Not Avail. (numpy missing)'
+        elif self.availmode['has_indirect_detection']:
             self.switch['indirect'] = 'sigmav'     
         else:
             self.switch['indirect'] = 'Not Avail.'
+
+    def print_options_indirect(self):
+        """print statement for the options"""
+        
+        if not self.availmode['has_indirect_detection']:
+            return "Please install module"
+        elif not HAS_NUMPY:
+            return "numpy not available"
+        else:
+            return self.print_options('indirect', keep_default=True)
 
     def get_allowed_indirect(self):
         """Specify which parameter are allowed for relic="""
@@ -2368,10 +2441,13 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         if hasattr(self, 'allowed_indirect'):
             return getattr(self, 'allowed_indirect')
 
-        if self.availmode['has_indirect_detection']:
+        if not HAS_NUMPY:
+            self.allowed_indirect =  ['OFF']
+        elif self.availmode['has_indirect_detection']:
             self.allowed_indirect =  ['OFF', 'sigmav', 'flux_source', 'flux_earth']
         else:
-            return []
+            self.allowed_indirect = []
+        return self.allowed_indirect
 
     
     def check_value_indirect(self, value):
@@ -2599,7 +2675,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         
         try:
             return cmd.ControlSwitch.default(self, line, raise_error=True)
-        except cmd.NotValidInput:
+        except cmd.NotValidInput, error:
             return common_run.AskforEditCard.default(self, line)     
         
     def trigger_7(self, line):
