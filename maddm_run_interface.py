@@ -49,7 +49,7 @@ else:
     HAS_SCIPY = True
 
 try:
-    raise ImportError   
+    import numpy as np 
 except ImportError:
     logger.warning('numpy module not found! Indirect detection features will be disabled.')
     HAS_NUMPY = False

@@ -994,7 +994,6 @@ class MadDM_interface(master_interface.MasterCmd):
         """
         
         if not maddm_run_interface.HAS_NUMPY and user:
-            misc.sprint(argument)
             logger.warning("numpy module not detected on your machine. \n"+
                            "Running indirect detection will not be possible as long as numpy is not installed (try 'pip install numpy')" 
                            )
