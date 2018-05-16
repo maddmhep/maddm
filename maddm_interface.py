@@ -117,7 +117,7 @@ class MadDM_interface(master_interface.MasterCmd):
             self.options['pppc4dmid_path'] = pjoin(MG5DIR, 'PPPC4DMID')
         
         if not maddm_run_interface.HAS_SCIPY:
-            logger.critical("PPC4DMID module requires scipy to be working. Please install those python module. (they are not present)")
+            logger.critical("Fermi-LAT limit calculation for indirect detection requires numpy and scipy. Please install the missing modules.")
             logger.info("you can try to use \"pip install scipy\"")
             
         return
@@ -985,7 +985,7 @@ class MadDM_interface(master_interface.MasterCmd):
             has_diagram = True
         return has_diagram
 
-    def generate_indirect(self, argument):
+    def generate_indirect(self, argument, user=True):
         """User level function which performs indirect detection functions
            Generates the DM DM > X where X is anything user specified.
            Also works for loop induced processes as well as NLO-QCD.
@@ -993,6 +993,14 @@ class MadDM_interface(master_interface.MasterCmd):
         related to syntax: generate indirect a g / n3
         """
         
+        if not maddm_run_interface.HAS_NUMPY and user:
+            misc.sprint(argument)
+            logger.warning("numpy module not detected on your machine. \n"+
+                           "Running indirect detection will not be possible as long as numpy is not installed (try 'pip install numpy')" 
+                           )
+            ans = self.ask("Do you want to generate the diagrams anyway?", 'n', ['y','n'])
+            if ans == 'n':
+                return
         
         self.install_indirect()
 
@@ -1047,7 +1055,7 @@ class MadDM_interface(master_interface.MasterCmd):
 
             for final_state in final_states:
                 try: 
-                    self.exec_cmd('add indirect %s --noloop' % final_state,postcmd=False)
+                    self.generate_indirect([final_state, '--noloop'], user=False)
                 except diagram_generation.NoDiagramException:
                     continue
                     logger.info('no diagram for %s' % final_state)

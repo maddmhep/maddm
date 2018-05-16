@@ -49,7 +49,7 @@ else:
     HAS_SCIPY = True
 
 try:
-    import numpy as np    
+    raise ImportError   
 except ImportError:
     logger.warning('numpy module not found! Indirect detection features will be disabled.')
     HAS_NUMPY = False
@@ -339,7 +339,7 @@ class Fermi_bounds:
         self.dSph_ll_files_path =  pjoin(MDMDIR, 'Fermi_Data', 'likelihoods')
         self.dwarves_list = ['coma_berenices', 'draco', 'segue_1', 'ursa_major_II', 'ursa_minor', 'reticulum_II' ] # dSphs with the 6 highest Jfactors
         self.dwarveslist_all = self.extract_dwarveslist() 
-        if HAS_NUMPY:
+        if HAS_NUMPY and HAS_SCIPY:
             self.dw_in = self.dw_dic()
         self.ll_tot = ''
 
@@ -2424,6 +2424,16 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         else:
             self.switch['indirect'] = 'Not Avail.'
 
+    def print_options_indirect(self):
+        """print statement for the options"""
+        
+        if not self.availmode['has_indirect_detection']:
+            return "Please install module"
+        elif not HAS_NUMPY:
+            return "numpy not available"
+        else:
+            return self.print_options('indirect', keep_default=True)
+
     def get_allowed_indirect(self):
         """Specify which parameter are allowed for relic="""
         
@@ -2436,7 +2446,8 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         elif self.availmode['has_indirect_detection']:
             self.allowed_indirect =  ['OFF', 'sigmav', 'flux_source', 'flux_earth']
         else:
-            return []
+            self.allowed_indirect = []
+        return self.allowed_indirect
 
     
     def check_value_indirect(self, value):
@@ -2664,7 +2675,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         
         try:
             return cmd.ControlSwitch.default(self, line, raise_error=True)
-        except cmd.NotValidInput:
+        except cmd.NotValidInput, error:
             return common_run.AskforEditCard.default(self, line)     
         
     def trigger_7(self, line):
