@@ -25,6 +25,7 @@ from madgraph.loop import loop_exporters
 from madgraph.core.base_objects import Process
 import madgraph.interface.reweight_interface as rwgt_interface
 import madgraph.various.banner as bannermod
+from madgraph.core import base_objects
 
 
 class MYStringIO(StringIO):
@@ -1163,6 +1164,34 @@ class ProcessExporterIndirectD(object):
         self.cmd=cmd
         return super(ProcessExporterIndirectD, self).pass_information_from_cmd(cmd)
              
+             
+             
+    def convert_model(self, model, wanted_lorentz = [],
+                             wanted_couplings = []):
+        """ Create a full valid MG4 model from a MG5 model (coming from UFO)"""
+
+        # make sure that mass/width external parameter without assoicated particle
+        # are removed. This should not be necessary since 2.6.5
+        
+        def_part = [p['pdg_code'] for p in self.model['particles']]
+        misc.sprint(def_part)
+        misc.sprint(self.model['parameters'].keys())
+        for param in self.model['parameters'][('external',)][:]:
+            
+            
+            if param.lhablock in ['MASS','DECAY']:
+                misc.sprint(param.lhablock, param.lhacode)
+                if param.lhacode[0] not in def_part:
+                    misc.sprint('REMOVE',param.lhacode)
+                    self.model['parameters'][('external',)].remove(param)
+                    param = base_objects.ModelVariable(param.name, str(param.value), 'real')
+                    self.model['parameters'][tuple()].append(param)
+        
+        
+        super(ProcessExporterIndirectD, self).convert_model(model, 
+                                                wanted_lorentz, wanted_couplings)
+
+
     #===========================================================================
     # create the run_card
     #=========================================================================== 
