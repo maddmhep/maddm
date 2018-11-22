@@ -892,7 +892,8 @@ class MADDMRunCmd(cmd.CmdShell):
             parameters, values =  param_card_iterator.param_order , param_card_iterator.itertag
             self.param_card_iterator = []
 
-            self.save_remove_output(scan = True) ## this is to remove or save spectra, not the scan summary file!
+            if self.mode['indirect']:
+                self.save_remove_output(scan = True) ## this is to remove or save spectra, not the scan summary file!
 
             # *** Initialize a list containing the desired variables in the summary output of the scan
             order = ['run']
@@ -978,7 +979,8 @@ class MADDMRunCmd(cmd.CmdShell):
                         # logger.warning('--> try again WY0: %.2e' % width)
                         #<=-------------- Mihailo commented out max_col = 10
                         #logger.info('Results for the point \n' + param_card_iterator.write_summary(None, order, lastline=True,nbcol=10)[:-1])#, max_col=10)[:-1])
-                        self.save_remove_output(scan = True)
+                        if self.mode['indirect']:
+                            self.save_remove_output(scan = True)
 
 
 
