@@ -1174,15 +1174,9 @@ class ProcessExporterIndirectD(object):
         # are removed. This should not be necessary since 2.6.5
         
         def_part = [p['pdg_code'] for p in self.model['particles']]
-        misc.sprint(def_part)
-        misc.sprint(self.model['parameters'].keys())
-        for param in self.model['parameters'][('external',)][:]:
-            
-            
+        for param in self.model['parameters'][('external',)][:]:            
             if param.lhablock in ['MASS','DECAY']:
-                misc.sprint(param.lhablock, param.lhacode)
                 if param.lhacode[0] not in def_part:
-                    misc.sprint('REMOVE',param.lhacode)
                     self.model['parameters'][('external',)].remove(param)
                     param = base_objects.ModelVariable(param.name, str(param.value), 'real')
                     self.model['parameters'][tuple()].append(param)
