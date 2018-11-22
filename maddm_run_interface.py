@@ -2869,7 +2869,17 @@ When you are done with such edition, just press enter (or write 'done' or '0')
         self.maddm.write(self.paths['maddm'], write_hidden=True)
 
 
+    def postcmd(self, stop, line):
+        """temporary to support 2.6.3"""
+        
+        stop = super(MadDMSelector, self).postcmd(stop, line)
+        curr_version = misc.get_pkg_info()['version'] 
+        if misc.get_older_version(curr_version, '2.6.4') != '2.6.4':
+            common_run.AskforEditCard.postcmd(self, stop, line)
+        return stop
+    
     def check_card_consistency(self):
+
         
         super(MadDMSelector, self).check_card_consistency()
 
@@ -2877,8 +2887,10 @@ When you are done with such edition, just press enter (or write 'done' or '0')
         #logger.debug('Updating the Jfactor file')
         #self.write_jfactors()
 
+
+
         # If direct detection is ON ensure that quark mass are not zero
-        if self.run_options['direct'] != 'OFF':
+        if self.switch['direct'] != 'OFF':
             to_change = []
             for i in range(1,7):
                 if self.param_card.get_value('mass', i) == 0.:
@@ -2888,6 +2900,16 @@ When you are done with such edition, just press enter (or write 'done' or '0')
                 quark_masses = {1: 4.8e-3, 2: 2.3e-3,  3: 95e-3, 4: 1.275, 5: 4.18, 6: 173.21}
                 for i in to_change:
                     self.do_set('param_card mass %s %s' % (i, quark_masses[i]))
+                    
+        def_key = [k.lhacode for k in self.param_card['mass']]
+        for key in self.param_card_default['mass']:
+            if key.lhacode not in def_key:
+                misc.sprint('ADD', key.lhacode)
+                to_add = check_param_card.Parameter(block='mass', lhacode=key.lhacode, value=1e10, comment='for DD')
+                self.param_card['mass'].append(to_add)
+                self.do_set('param_card mass %s %s' % (key.lhacode, 1e10))
+                self.do_set('param_card decay %s %s' % (key.lhacode, 0))
+                self.param_card.write(self.paths['param'])
         
         
     def reload_card(self, path):
