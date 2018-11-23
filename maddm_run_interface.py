@@ -1203,6 +1203,11 @@ class MADDMRunCmd(cmd.CmdShell):
             
             
             py8 = self.mg5.options['pythia8_path']
+            if not py8:
+                logger.critical('Indirect detection: py8 code is not installed (or linked). Skip flux calculation')
+                logger.info('you can install pythia8 via the command: \'install pythia8\'')
+                return
+                
             files.cp(pjoin(py8, 'share','Pythia8','examples','Makefile'), 
                pjoin(self.dir_path,'bin','internal'))
             files.cp(pjoin(py8, 'share','Pythia8','examples','Makefile.inc'), 
