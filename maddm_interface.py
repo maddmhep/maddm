@@ -1140,21 +1140,26 @@ class MadDM_interface(master_interface.MasterCmd):
         else:
             EFT = 'COMPLEX'
 
-        eff_dm_name = eff_model_dm_names[int(DM['spin'])]
-        mg5_command = 'add model %s %s=%s --recreate --keep_decay' % (pjoin(MDMDIR, 'EffOperators', EFT),
+        spin = int(DM['spin'])
+        if spin not in eff_model_dm_names:
+            logger.warning('This type of spin is NOT supported for direct-detection')
+        else:
+            eff_dm_name = eff_model_dm_names[int(DM['spin'])]
+            mg5_command = 'add model %s %s=%s --recreate --keep_decay' % (pjoin(MDMDIR, 'EffOperators', EFT),
                                                      eff_dm_name,DM.get('name'))
         
-        # We want to preserve the following variable while updating the model
-        backup_amp = self._curr_amps
-        backup_param_card = self._param_card
-        backup_dm_candidate = self._dm_candidate
-        backup_coannihilation = self._coannihilation
+            # We want to preserve the following variable while updating the model
+            backup_amp = self._curr_amps
+            backup_param_card = self._param_card
+            backup_dm_candidate = self._dm_candidate
+            backup_coannihilation = self._coannihilation
         
-        self.exec_cmd(mg5_command, postcmd=False)
-        self._curr_amps = backup_amp
-        self._param_card = backup_param_card 
-        self._dm_candidate = backup_dm_candidate
-        self._coannihilation = backup_coannihilation
+        
+            self.exec_cmd(mg5_command, postcmd=False)
+            self._curr_amps = backup_amp
+            self._param_card = backup_param_card 
+            self._dm_candidate = backup_dm_candidate
+            self._coannihilation = backup_coannihilation
 
         # update the param_card value
         txt = self._curr_model.write_param_card()
@@ -1173,7 +1178,7 @@ class MadDM_interface(master_interface.MasterCmd):
  
         self._param_card = param_card        
         if not isinstance(self._curr_model, model_reader.ModelReader):
-            self._curr_model = model_reader.ModelReader(self._curr_model) 
+            self._curr_model = model_reader.ModelReader(self._curr_model)
         self._curr_model.set_parameters_and_couplings(self._param_card) 
         
 import madgraph.interface.common_run_interface as common_run
