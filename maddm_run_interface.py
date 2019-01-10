@@ -572,6 +572,14 @@ pb2cm2  = 1.00E-36
 cm22pb  = 1.00E36
 pb2cm3 = 2.99E-26
 
+def secure_float_f77(d):
+    try:
+        return float(d)
+    except ValueError:
+        m=re.search(r'''([+-]?[\d.]*)([+-]\d*)''', d)
+        if m:
+            return float(m.group(1))*10**(float(m.group(2)))
+        raise
 
 
 #===============================================================================
@@ -813,7 +821,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 else:
                     if self._two2twoLO:
                         if 'sigma*v' in line: 
-                            sigv_temp = float(splitline[1])
+                            sigv_temp = secure_float_f77(splitline[1])
                             oname = splitline[0].split(':',1)[1] .split('_')
                             oname = oname[0]+'_'+oname[1] #To eliminate the annoying suffix coming from the '/' notation
                             result['taacsID#'     + oname] = sigv_temp 
@@ -825,7 +833,7 @@ class MADDMRunCmd(cmd.CmdShell):
                             elif oname.split('_')[1] not in self.limits._allowed_final_states:
                                 result['lim_taacsID#'+oname] = -1
                             sigv_indirect += sigv_temp
-                    result[splitline[0].split(':')[0]] = float(splitline[1])
+                    result[splitline[0].split(':')[0]] = secure_float_f77(splitline[1])
 
                     
         result['taacsID'] = sigv_indirect
@@ -1030,15 +1038,16 @@ class MADDMRunCmd(cmd.CmdShell):
         
         if not self.in_scan_mode: 
             logger.info('Running indirect detection')
-            
-        if not hasattr(self, 'me_cmd'):
-            self.me_cmd = Indirect_Cmd(pjoin(self.dir_path, 'Indirect'), force_run=True)
-            #force_run = True means no crash associated with RunWeb -> we check this later
-        elif self.me_cmd.me_dir != pjoin(self.dir_path, 'Indirect'):
-            self.me_cmd.do_quit()
-            self.me_cmd = Indirect_Cmd(pjoin(self.dir_path, 'Indirect'), force_run=True)
-            #force_run = True means no crash associated with RunWeb -> we check this later
-            
+        
+        if not  self._two2twoLO:   
+            if not hasattr(self, 'me_cmd'):
+                self.me_cmd = Indirect_Cmd(pjoin(self.dir_path, 'Indirect'), force_run=True)
+                #force_run = True means no crash associated with RunWeb -> we check this later
+            elif self.me_cmd.me_dir != pjoin(self.dir_path, 'Indirect'):
+                self.me_cmd.do_quit()
+                self.me_cmd = Indirect_Cmd(pjoin(self.dir_path, 'Indirect'), force_run=True)
+                #force_run = True means no crash associated with RunWeb -> we check this later
+                
         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
 
         if self.maddm_card['sigmav_method'] != 'inclusive':
@@ -2986,8 +2995,8 @@ When you are done with such edition, just press enter (or write 'done' or '0')
         #For setting the exp. constraints
         elif args[0] == 'dd_si_limits':
             if len(args) >2:
-                self.limits._sigma_SI = float(args[1])
-                self.limits._sigma_SI_width = float(args[2])
+                self.limits._sigma_SI = secure_float_f77(args[1])
+                self.limits._sigma_SI_width = secure_float_f77(args[2])
             else:
                 logger.info('The file you use for direct detection limits will be interpreted as:')
                 logger.info('Column 1 - dark matter mass in GeV')
@@ -3026,8 +3035,8 @@ When you are done with such edition, just press enter (or write 'done' or '0')
 
         elif args[0] == 'relic_limits':
             logger.info('The info is interpreted as: <Oh^2>, CL width')
-            self.limits._oh2_planck = float(args[1])
-            self.limits._oh2_planck_width = float(args[2])
+            self.limits._oh2_planck = secure_float_f77(args[1])
+            self.limits._oh2_planck_width = secure_float_f77(args[2])
 
         elif args[0] == 'id_limits':
              if len(args)!= 4:
@@ -3040,13 +3049,13 @@ When you are done with such edition, just press enter (or write 'done' or '0')
 
              if len(args) > 4:
                  if args[2] in self.limits._allowed_final_states:
-                    self.limits._id_limit_vel[args[2]] = float(args[1])
-                    self.limits._sigma_ID[args[2]] = float(args[3])
-                    self.limits._sigma_ID_width[args[2]] = float(args[4])
+                    self.limits._id_limit_vel[args[2]] = secure_float_f77(args[1])
+                    self.limits._sigma_ID[args[2]] = secure_float_f77(args[3])
+                    self.limits._sigma_ID_width[args[2]] = secure_float_f77(args[4])
                  else:
                      logger.error('Final state not allowed for ID limits!')
              else:
-                 vel = float(args[1])
+                 vel = secure_float_f77(args[1])
                  channel = args[2]
                  id_file = args[3]
                  self.limits._id_limit_vel[channel] = vel
@@ -3109,8 +3118,8 @@ class MadDMCard(banner_mod.RunCard):
                     continue
                 spline = line.split()
                 jfact = spline[0]
-                dist = float(spline[1])
-                val = float(spline[2].rstrip())
+                dist = secure_float_f77(spline[1])
+                val = secure_float_f77(spline[2].rstrip())
                 temp[jfact] = val
                 temp2[jfact]= dist
             self['jfactors'] = temp
@@ -3546,7 +3555,7 @@ class Multinest(object):
                     half_gauss = spline[2]
                     self.options['loglikelihood'][type] = half_gauss
                     if len(spline)==4:
-                        width_val = float(spline[3])
+                        width_val = secure_float_f77(spline[3])
                         self.options['half_gauss_width'][type] = width_val
                 else:
                     spline = line.split('#')[0].split()
@@ -3558,7 +3567,7 @@ class Multinest(object):
                         var_name = spline[1]
                         min = spline[2]
                         max = spline[3]
-                        self.options['parameters'].append([var_name, float(min), float(max)])
+                        self.options['parameters'].append([var_name, secure_float_f77(min), secure_float_f77(max)])
                     elif opt1 =='output_variables':
                         for j in range(1, len(spline)):
                             if spline[j] not in self.output_observables:

@@ -486,7 +486,7 @@ class MadDM_interface(master_interface.MasterCmd):
         logger.info("        add process DM  DM > Z Y @ DM2SM # annihilation" )
         logger.info("        add process DMi  DMj > DMk DMl @ DM2DM # DM-diffusion for co-annihilation")
         logger.info("")
-        logger.info("syntax: generate|add direct_detection", '$MG:color:BLUE')
+        logger.info("syntax: generate|add direct_detection [/ X]", '$MG:color:BLUE')
         logger.info(" -- generate direct detection matrix element excluding any particle(s) X") 
         logger.info("    to appear as s/t channel in any diagram")        
         logger.info("    - FOR ADVANCED USER", '$MG:BOLD')
@@ -916,7 +916,7 @@ class MadDM_interface(master_interface.MasterCmd):
         eff_operators_SD = self.eff_operators_SD[dm_spin]
         
         logger.info("Generating X Nucleon > X Nucleon diagrams from the full lagrangian...")
-        has_direct = self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'QED')
+        has_direct = self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'QED', excluded_particles)
 
         if not has_direct:
             logger.warning("No Direct Detection Feynman Diagram")
