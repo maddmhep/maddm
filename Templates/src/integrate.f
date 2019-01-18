@@ -97,7 +97,7 @@ c    by going only to b in the integration grid and neglecting the rest.
           grid=10.d0*b
 
 c         write(*,*) 'width: ', beta_res_width(1)
-
+          call find_resonances()
 c    Make sure that the array is large enough to store the grid
          if (grid_npts.lt.ngrid_init) then
              write(*,*) 'Error: grid array not large enough!'
