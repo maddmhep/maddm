@@ -3,6 +3,7 @@ c integrate.f
       double precision simpson, simpson_adaptive
 c init.f
       double precision get_Y_eq, get_gstar, get_Wij_ann, Wij_ann_integrand
+      double precision get_Wij_ann_nogrid
 c interpolate.f
       integer getindex
       double precision get_Wij_value, get_taacs_value, lineint, bessk, bessk1
