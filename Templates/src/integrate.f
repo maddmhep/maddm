@@ -133,7 +133,7 @@ c                do kk = 1, pts_to_add_adaptive
                         endif
                     endif
 
-                    additional_pt = width - (exp(real(beta_res_width(ii))/10.d0*exp(real(jj)))-1.d0)
+                    additional_pt = beta_res(ii) - (exp(real(beta_res_width(ii))/10.d0*exp(real(jj)))-1.d0)
                     if (additional_pt.gt.a) then
                         grid(grid_pos) = additional_pt
                         grid_pos=grid_pos+1
