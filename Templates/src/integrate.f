@@ -471,8 +471,10 @@ c-------------------------------------------------------------------------c
           endif
           return
         endif
-c        if(dabs(hnext) .lt. hmin) pause
-c     &     'stepsize smaller than minimum in odeint'
+        if(dabs(hnext) .lt. hmin) then
+           write(*,*) 'too small step'
+           stop 1
+        endif 
         h = hnext
         enddo
 c      pause 'too many steps in odeint'
@@ -682,7 +684,7 @@ c Enter here to inherit the previous grid and its answers
 
 c Set up for stratification
         if (mds.ne.0) then
-          ng = (dble(ncall)/2.d0+0.25d0)**(1.d0/dble(ndim))
+          ng = int((dble(ncall)/2.d0+0.25d0)**(1.d0/dble(ndim)))
           mds = 1
           if ((2*ng-ndmx).ge.0) then
             mds = -1

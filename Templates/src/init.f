@@ -285,7 +285,6 @@ c external function used in this subroutine
 
 c set beta_pass to pass beta to Wij_integrand
       beta_pass = beta
-
 c loop over all the dm particles
       do x1=1, ndmparticles
         do x2=x1, ndmparticles
@@ -333,6 +332,7 @@ c external function used in this subroutine
 c set beta_pass to pass beta to Wij_integrand
       beta_pass = beta
 
+      get_Wij_ann_nogrid =  0d0
 c loop over all the dm particles
       do x1=1, ndmparticles
         do x2=x1, ndmparticles
