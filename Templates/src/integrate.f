@@ -471,10 +471,10 @@ c-------------------------------------------------------------------------c
           endif
           return
         endif
-        if(dabs(hnext) .lt. hmin) then
-           write(*,*) 'too small step'
-           stop 1
-        endif 
+c        if(dabs(hnext) .lt. hmin) then
+c           write(*,*) 'too small step'
+c           stop 1
+c        endif 
         h = hnext
         enddo
 c      pause 'too many steps in odeint'
