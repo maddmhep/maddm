@@ -2540,9 +2540,17 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         pythia8_card_path = pjoin(opts['mother_interface'].dir_path, 'Cards', 'pythia8_card.dat')
 
         cards = [param_card_path, 'maddm', 'multinest', pythia8_card_path]
+        
+        tmp_allow_arg = list(self.allow_arg)
+        opts = dict(opts)
+        opts['allow_arg'] = []
+        
         common_run.AskforEditCard.__init__(self, question, cards,
-                                            *args, **opts)
+                                            *args, **opts )
+
+        self.allow_arg += tmp_allow_arg
         self.question = self.create_question()
+
                
     def write_switch(self, path=None):
         """store value of the switch for the default at next run"""
