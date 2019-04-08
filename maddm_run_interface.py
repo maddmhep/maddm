@@ -74,7 +74,7 @@ class ExpConstraints:
 
     def __init__(self):
 
-        self._allowed_final_states = ['qqx', 'ccx', 'gg', 'bbx', 'ttx', 'e+e-', 'mu+mu-', 'ta+ta-', 'w+w-', 'zz', 'hh', 
+        self._allowed_final_states = ['qqx', 'ccx', 'gg', 'bbx', 'ttx', 'emep', 'mummup', 'tamtap', 'wpwm', 'zz', 'hh', 
                                       'hess2013','hess2016', 'aaER16','aaIR90','aaNFWcR3','aaNFWR41']
 
         self._oh2_planck = 0.1198
@@ -88,10 +88,10 @@ class ExpConstraints:
                                'gg'    :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_gg.dat'),
                                'bbx'   :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_bb.dat'),
                                'ttx'   :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_tt.dat'),
-                               'e+e-'  :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_ee.dat'),
-                               'mu+mu-':pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_mumu.dat'),
-                               'ta+ta-':pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_tautau.dat'),
-                               'w+w-'  :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_WW.dat'),
+                               'emep'  :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_ee.dat'),
+                               'mummup':pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_mumu.dat'),
+                               'tamtap':pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_tautau.dat'),
+                               'wpwm'  :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_WW.dat'),
                                'zz'    :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_ZZ.dat'),
                                'hh'    :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_hh.dat'),
 
@@ -103,8 +103,8 @@ class ExpConstraints:
                                'aaNFWcR3':pjoin(MDMDIR,'ExpData', 'Fermi_lines_2015_NFWcontracted_R3.dat'),
                                'aaNFWR41':pjoin(MDMDIR,'ExpData', 'Fermi_lines_2015_NFW_R41.dat')}
 
-        self._id_limit_vel = {'qqx':2.0E-5,   'ccx':2.0E-5, 'gg':2.0E-5, 'bbx':2.0E-5,'ttx':2.0E-5,'e+e-':2.0E-5,'mu+mu-':2.0E-5,'ta+ta-':2.0E-5,
-                              'w+w-':2.0E-5,  'zz':2.0E-5,  'hh':2.0E-5,
+        self._id_limit_vel = {'qqx':2.0E-5,   'ccx':2.0E-5, 'gg':2.0E-5, 'bbx':2.0E-5,'ttx':2.0E-5,'emep':2.0E-5,'mummup':2.0E-5,'tamtap':2.0E-5,
+                              'wpwm':2.0E-5,  'zz':2.0E-5,  'hh':2.0E-5,
                               'aaER16':1.0E-3,'aaIR90':1.0E-3,'aaNFWcR3':1.0E-3,'aaNFWR41':1.0E-3 ,
                               'hess2013': 1.0E-3 , 'hess2016': 1.0E-3 } 
 
@@ -243,7 +243,7 @@ class Spectra:
         self.channels      = ['ee', 'mumu', 'tautau', 'qq', 'cc', 'bb', 'tt', 'ZZ', 'WW', 'hh', 'gammagamma', 'gg']
 
         self.map_allowed_final_state_PPPC = {'qqx':'qq', 'ccx':'cc', 'gg':'gg', 'bbx':'bb', 'ttx':'tt',
-                                             'e+e-':'ee', 'mu+mu-':'mumu', 'ta+ta-':'tautau', 'w+w-':'WW', 'zz':'ZZ', 'hh':'hh' }
+                                             'emep':'ee', 'mummup':'mumu', 'tamtap':'tautau', 'wpwm':'WW', 'zz':'ZZ', 'hh':'hh' }
 
     def check_mass(self,mdm):
         if (mdm < 5.0 or mdm > 100000):
@@ -1746,7 +1746,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
           detailled_keys = [k for k in self.last_results.keys() if k.startswith('taacsID#')]
           logger.info('<sigma v> method: %s ' % self.maddm_card['sigmav_method'] )
-          logger.info('DM particle halo velocity: %s/c ' % halo_vel) # the velocity should be the same                                                           
+          logger.info('DM particle halo velocity: %s/c ' % halo_vel) # the velocity should be the same
 
           skip = []
           if halo_vel > (3*10**(-6)) and halo_vel < ( 1.4*10**(-4) ): # range of validity of Fermi limits
@@ -1770,7 +1770,7 @@ class MADDMRunCmd(cmd.CmdShell):
                         skip.append(f_original)
                         continue 
                     if finalstate in self.limits._allowed_final_states :
-                        s_ul   = self.limits.ID_max(mdm, finalstate)    
+                        s_ul   = self.limits.ID_max(mdm, finalstate)
                         self.last_results['Fermi_lim_'+key] = self.limits.ID_max(mdm, finalstate)
                     else:  s_ul   = '-1'
 
@@ -2822,7 +2822,7 @@ When you are done with such edition, just press enter (or write 'done' or '0')
 
             self.maddm.do_help(args[start])
             
-        ### CHECK if a help_xxx exist (only for those wihtout a do_xxx)
+        ### CHECK if a help exist (only for those wihtout a do_xxx)
         if len(args) == 1:
             if not hasattr(self, 'do_%s' % args[0]) and hasattr(self, 'help_%s' % args[0]):
                 getattr(self, 'help_%s' %args[0])()
