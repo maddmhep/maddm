@@ -197,6 +197,7 @@ c parameters used in this subroutine only
       integer i, ii
       double precision next_beta(nres), tmp_beta
       integer res_step(nres)
+      integer nres_points_local, max_width_factor
 
 c output to the screen to show progress
       if (print_out) then
@@ -206,11 +207,14 @@ c output to the screen to show progress
         flag3 = .true.
       endif
 
+      nres_points_local = 3
+      max_width_factor = 3 ! this is e^N-1 times the width for the further point
+
       do ii=1, nres
-         res_step(ii) = - nres_points
+         res_step(ii) = - nres_points_local
          tmp_beta = -1d0
          do while (tmp_beta.lt.0d0)
-            tmp_beta = beta_res(ii) - (exp(real(beta_res_width(ii))/10.d0*exp(real(-1*res_step(ii))))-1.d0)
+            tmp_beta = beta_res(ii) - beta_res_width(ii)*(DEXP(1d0*res_step(ii)*max_width_factor/nres_points_local)-1)
             res_step(ii) = res_step(ii) + 1
          enddo
 c         write(*,*) 'resonances',ii,beta_res(ii), beta_res_width(ii), res_step(ii)
@@ -220,7 +224,7 @@ c         write(*,*) 'resonances',ii,beta_res(ii), beta_res_width(ii), res_step(
 c setting up step sizes
       beta_step = 0.01d0
       beta_step_min =  5e-4
-      beta_step_max = 0.05
+      beta_step_max = 0.1
 c starting the calculation of the Wij's
       nWij = 1
       betas(nWij) = 0.001d0
@@ -231,12 +235,10 @@ c continue to do beta steps until we are near beta = 1
         nWij = nWij+1
         tmp_beta = betas(nWij-1) + beta_step
         do ii=1, nres
-           if (res_step(ii).lt.0)then
-              next_beta(ii) = beta_res(ii) - (exp(real(beta_res_width(ii))/10.d0*exp(real(-1*res_step(ii))))-1.d0)
-           elseif(res_step(ii).eq.0)then
-               next_beta(ii) = beta_res(ii)
-           elseif(res_step(ii).le.nres_points)then
-               next_beta(ii) = beta_res(ii) + (exp(real(beta_res_width(ii))/10.d0*exp(real(res_step(ii))))-1.d0)
+           if (res_step(ii).le.0)then
+              next_beta(ii) = beta_res(ii) - beta_res_width(ii)*(DEXP(1d0*res_step(ii)*max_width_factor/nres_points_local)-1)
+           elseif(res_step(ii).le.nres_points_local)then
+               next_beta(ii) = beta_res(ii) + beta_res_width(ii)*(DEXP(1d0*res_step(ii)*max_width_factor/nres_points_local)-1)
            else
               next_beta(ii) = 1d0
             endif

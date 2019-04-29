@@ -89,6 +89,8 @@ c-------------------------------------------------------------------------c
       double precision left, right, whole, end_pt, start_pt, width
 
       integer ii, jj, kk, grid_pos
+      integer nres_points_local,max_width_factor
+      
 
 c    Set up the integration grid
 c    Initialize to 10*b, so that we can identify the relevant points
@@ -116,14 +118,18 @@ c add the resonance positions first
                 grid_pos = grid_pos+1
             endif
        enddo
+       
+       nres_points_local = 20
+       max_width_factor = 2 ! allow to go as far as e^N-1 times the width for the extra point
 
 c then add more points around the resonance
        do ii=1, nres
           if (beta_res(ii).ge.a.and.beta_res(ii).lt.b.and.beta_res(ii).ge.0.d0) then
-              do jj=1, nres_points
+              do jj=1, nres_points_local
 c                pts_to_add_adaptive = ceiling(real(pts_to_add_adaptive / 2))
 c                do kk = 1, pts_to_add_adaptive
-                    additional_pt = beta_res(ii) + (exp(real(beta_res_width(ii))/10.d0*exp(real(jj)))-1.d0)
+                    additional_pt = beta_res(ii) + beta_res_width(ii)*(DEXP(1d0*jj**max_width_factor/nres_points_local)-1)
+c                    additional_pt = beta_res(ii) + (exp(real(beta_res_width(ii))/10.d0*exp(real(jj)))-1.d0)
                     if (additional_pt.lt.b) then
                         grid(grid_pos) = additional_pt
                         grid_pos=grid_pos+1
@@ -133,7 +139,7 @@ c                do kk = 1, pts_to_add_adaptive
                         endif
                     endif
 
-                    additional_pt = beta_res(ii) - (exp(real(beta_res_width(ii))/10.d0*exp(real(jj)))-1.d0)
+                    additional_pt = beta_res(ii) - beta_res_width(ii)*(DEXP(1d0*jj**max_width_factor/nres_points_local)-1)
                     if (additional_pt.gt.a) then
                         grid(grid_pos) = additional_pt
                         grid_pos=grid_pos+1
