@@ -1,9 +1,10 @@
-fort= gfortran
+include ../Source/make_opts
+fort= $(FC)
 
 libname = matrix_elements
 incdir = ../include
 
-flags = -O -fno-align-commons -ffixed-line-length-132 -I$(incdir)
+flags = $(FFLAGS) -I$(incdir)
 
 objs = smatrix.o $(patsubst %.f,%.o,$(wildcard *.f))
 

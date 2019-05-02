@@ -1,10 +1,11 @@
+include ../Source/make_opts
 prog = maddm
-fort= gfortran
+fort= $(FC)
 
 libdir = ../lib/
 incdir = ../include
 
-flags = -O -fno-align-commons -ffixed-line-length-132 -L$(libdir) -I$(incdir) -fbounds-check
+flags = $(FFLAGS) -L$(libdir) -I$(incdir)
 
 libs = -lmatrix_elements -ldhelas -lmodel
 

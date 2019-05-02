@@ -202,7 +202,7 @@ c-------------------------------------------------------------------------c
       external func
       integer gr_npts, ii
       double precision grid_simp(gr_npts)
-
+      double precision tmp1, tmp2, tmp3
       simpson = 0.d0
       ii = 1
 
@@ -221,8 +221,16 @@ c-------------------------------------------------------------------------c
 c            write(101,*) start_pt, func(start_pt)
 c           write(*,*) 'start, end', start_pt, end_pt
 c           write(*,*) 'func: ', func(0.d0), func(0.00001d0)
-           simpson = simpson+ (end_pt - start_pt)/6.d0*(func(start_pt) + 4.d0*func(0.5d0*
+
+           tmp1 = (func(start_pt) + 4.d0*func(0.5d0*
      .                                  (start_pt+end_pt)) + func(end_pt) )
+           if (tmp1.lt.1e-20*simpson)then
+              exit
+           else if (tmp1.gt.1d-300) then
+           simpson = simpson+ (end_pt - start_pt)/6.d0*tmp1
+           else 
+              exit
+           endif
 c            simpson = simpson+ (end_pt - start_pt)/8.d0*(max(0.d0, func(start_pt))
 c     .             + 3.d0*max(0.d0,func(0.33d0*(2.d0*start_pt+end_pt)))
 c     .             + 3.d0*max(0.d0,func(0.33d0*(start_pt+2.d0*end_pt)))  + max(0.d0,func(end_pt)))

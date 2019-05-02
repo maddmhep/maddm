@@ -255,10 +255,16 @@ c need to be weighted by a momentum factor for each \chi_{i}, \chi_{j} pair
       enddo
 
 c integrand for the thermally averaged annihilation cross section
+      if (2.d0*x_pass*(1.d0-1.d0/(1.d0-beta**2)**(0.5d0)).lt.-695)then
+         taacs_integrand_canon =mdm(1)**2*beta/(1.d0-beta**2)**2 * Wij_sum / (2.d0*T*K2_sum**2)
+     .    * 0d0
+     .    * (1.d0 + 3.d0*T/(8.d0*dsqrt(s)) - 15.d0*T**2/(128.d0*s) + 105.d0*T**3/(1024.d0*s**1.5d0))
+     .    / (1.d0 + 15.d0*T/(8.d0*mdm(1)) + 105.d0*T**2/(128.d0*mdm(1)**2) - 315.d0*T**3/(1024.d0*mdm(1)**3))**2
+      else
       taacs_integrand_canon = mdm(1)**2*beta/(1.d0-beta**2)**2 * Wij_sum / (2.d0*T*K2_sum**2)
      .    * dsqrt(2.d0/(pi*dsqrt(s)*T))*mdm(1)*dexp(2.d0*x_pass*(1.d0-1.d0/(1.d0-beta**2)**(0.5d0)))
      .    * (1.d0 + 3.d0*T/(8.d0*dsqrt(s)) - 15.d0*T**2/(128.d0*s) + 105.d0*T**3/(1024.d0*s**1.5d0))
      .    / (1.d0 + 15.d0*T/(8.d0*mdm(1)) + 105.d0*T**2/(128.d0*mdm(1)**2) - 315.d0*T**3/(1024.d0*mdm(1)**3))**2
-
+      endif
       return
       end

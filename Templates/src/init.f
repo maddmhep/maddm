@@ -107,9 +107,13 @@ c input parameters
 c Y_eq = 45/(4*pi^4) g_i/g_*S x^2 K_2(x), with x=m_i/T
 c K_2(x) is expanded for large values of x ( > 10)
       if (mass.gt.5.d0*temp) then
+        if (mass/temp.gt.706)then
+           get_Y_eq = 0d0
+        else
         get_Y_eq = 45.d0/(4.d0*pi**4)*(dof/rel_dofs)*(mass/temp)**(1.5d0)
      .        * dsqrt(pi/2.d0)*dexp(-mass/temp) * (1.d0 + 15.d0/(8.d0*(mass/temp))
      .        + 105.d0/(128.d0*(mass/temp)**2) - 315.d0/(1024.d0*(mass/temp)**3))
+      endif
       else if (mass.gt.temp/5.d0) then
         get_Y_eq = 45.d0/(4.d0*pi**4)*(dof/rel_dofs)*(mass/temp)**2
      .        * bessk(2,mass/temp)
