@@ -44,9 +44,9 @@ c Binary search
 c interpolate the array with a line
       if (group.eq.1) then
 c         write(*,*) 'bypass interpolation'
-        get_Wij_value = get_Wij_ann_nogrid(beta)
-c        get_Wij_value = (Wij_ann(i,j,index+1)-Wij_ann(i,j,index))/(betas(index+1)-betas(index))
-c     .        *(beta-betas(index))+Wij_ann(i,j,index)
+c        get_Wij_value = get_Wij_ann_nogrid(beta)
+        get_Wij_value = (Wij_ann(i,j,index+1)-Wij_ann(i,j,index))/(betas(index+1)-betas(index))
+     .        *(beta-betas(index))+Wij_ann(i,j,index)
       else if (group.eq.2) then
         get_Wij_value = (Wij_dm2dm(i,j,k,index+1)-Wij_dm2dm(i,j,k,index))/(betas(index+1)-betas(index))
      .        *(beta-betas(index))+Wij_dm2dm(i,j,k,index)

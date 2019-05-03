@@ -211,12 +211,16 @@ c output to the screen to show progress
         flag3 = .true.
       endif
 
-      nres_points_local = 3
-      max_width_factor = 3 ! this is e^N-1 times the width for the further point
+      nres_points_local = 100
+      max_width_factor = 5 ! this is e^N-1 times the width for the further point
 
       do ii=1, nres
          res_step(ii) = - nres_points_local
          tmp_beta = -1d0
+         if (beta_res(ii).lt.0d0) then
+            res_step(ii) = nres_points_local +1
+            cycle
+         endif
          do while (tmp_beta.lt.0d0)
             tmp_beta = beta_res(ii) - beta_res_width(ii)*(DEXP(1d0*res_step(ii)*max_width_factor/nres_points_local)-1)
             res_step(ii) = res_step(ii) + 1
@@ -226,8 +230,8 @@ c         write(*,*) 'resonances',ii,beta_res(ii), beta_res_width(ii), res_step(
 
 
 c setting up step sizes
-      beta_step = 0.01d0
-      beta_step_min =  5e-4
+      beta_step = 0.005d0
+      beta_step_min =  1e-3
       beta_step_max = 0.1
 c starting the calculation of the Wij's
       nWij = 1
