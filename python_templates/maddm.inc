@@ -81,13 +81,17 @@ c dm paraeters
       common/dmparms_logical/ solved_ODE, found_xf, dm_sm_scattering, print_out, dmsm_warning
 
 c relic density integrals
+      integer fitsize
+      parameter (fitsize=2500)
       integer nWij
       common/num_Wijs/ nWij
-      double precision betas(1000), beta_step_min, beta_step_max
+      double precision betas(fitsize), beta_step_min, beta_step_max
       common/beta_steps/ betas, beta_step_min,beta_step_max
-      double precision Wij_ann(maxdms,maxdms,1000), Wij_dm2dm(maxdms,maxdms,max_dm2dm,1000)
-      double precision Wij_scattering(maxdms,maxdms,max_dm2dm,1000), x_taacs(1000), taacs_ann(maxdms,maxdms,1000)
-      double precision taacs_dm2dm(maxdms,maxdms,max_dm2dm,1000), taacs_scattering(maxdms,maxdms,max_dm2dm,1000)
+      double precision Wij_ann(maxdms,maxdms,fitsize), Wij_dm2dm(maxdms,maxdms,max_dm2dm,fitsize)
+      double precision Wij_scattering(maxdms,maxdms,max_dm2dm,fitsize), x_taacs(fitsize)
+      double precision taacs_ann(maxdms,maxdms,fitsize)
+      double precision taacs_dm2dm(maxdms,maxdms,max_dm2dm,fitsize)
+      double precision taacs_scattering(maxdms,maxdms,max_dm2dm,fitsize)
       common/dmintegrals/ Wij_ann, Wij_dm2dm, Wij_scattering, x_taacs, taacs_ann, taacs_dm2dm, taacs_scattering
 
 c number of annihilation particles and associated diagrams

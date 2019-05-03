@@ -212,7 +212,7 @@ c output to the screen to show progress
       endif
 
       nres_points_local = 100
-      max_width_factor = 5 ! this is e^N-1 times the width for the further point
+      max_width_factor = 6 ! this is e^N-1 times the width for the further point
 
       do ii=1, nres
          res_step(ii) = - nres_points_local
@@ -230,9 +230,9 @@ c         write(*,*) 'resonances',ii,beta_res(ii), beta_res_width(ii), res_step(
 
 
 c setting up step sizes
-      beta_step = 0.005d0
-      beta_step_min =  1e-3
-      beta_step_max = 0.1
+      beta_step = 1e-3
+      beta_step_min =  1e-6
+      beta_step_max = 1e-2
 c starting the calculation of the Wij's
       nWij = 1
       betas(nWij) = 0.001d0
@@ -252,17 +252,21 @@ c continue to do beta steps until we are near beta = 1
             endif
             tmp_beta = min(tmp_beta, next_beta(ii),1d0)
          enddo
-         do ii=1, nres
-            if (next_beta(ii).eq.tmp_beta) then
-               res_step(ii) = res_step(ii)+1
-            endif
-         enddo
         betas(nWij) = tmp_beta
         Wij_total = get_Wij_ann(betas(nWij))
 
 
 c if the new Wij is 100% larger than the previous Wij, then reduce the stepsize
         if (((dabs(Wij_total-Wij_hold)/Wij_hold).gt.1.d0).and.(beta_step.gt.beta_step_min)) then
+c           write(*,*) 'reduce', betas(nWij), beta_step, ((dabs(Wij_total-Wij_hold)/Wij_hold)), Wij_total, Wij_hold
+
+           if (((dabs(Wij_total-Wij_hold)/Wij_hold).gt.2.d0))then
+c              write(*,*) 'rewind',  betas(nWij-1)
+              nWij = nWij-1
+              beta_step = beta_step/2.d0
+             cycle
+           endif
+
           beta_step = beta_step/2.d0
           if (beta_step .lt. beta_step_min) then
             beta_step = beta_step_min
@@ -271,11 +275,23 @@ c if the new Wij is 100% larger than the previous Wij, then reduce the stepsize
 
 c if the new Wij is within 10% of the previous Wij, then increase the stepsize
         if (((dabs(Wij_total-Wij_hold)/Wij_hold).lt.0.1d0).and.(beta_step.lt.beta_step_max)) then
-          beta_step = beta_step*2.d0
+          beta_step = beta_step*2d0
           if (beta_step .gt. beta_step_max) then
             beta_step = beta_step_max
           endif
+c          write(*,*) 'increase', betas(nWij), beta_step
         endif
+
+         do ii=1, nres
+            if (next_beta(ii).eq.tmp_beta) then
+               res_step(ii) = res_step(ii)+1
+               beta_step = max(beta_step,1e-3)
+c               if (beta_step.eq.1e-3) then
+c                  write(*,*) 'reset'
+c               endif
+            endif
+         enddo
+
 
 c Hold the Wij_value so that if the Wij integral is too small we have a stored value ot use
         Wij_hold = Wij_total
@@ -301,7 +317,7 @@ c Calculate the final Wij at beta = 0.999
       betas(nWij) = 0.999d0
       Wij_total = get_Wij_ann(betas(nWij))
 
-      if (print_out) write(*,*) 'Done!'
+      if (print_out)  write(*,*) 'Done!', nWij
       Wij_ann_calc = .true.
 
       return
