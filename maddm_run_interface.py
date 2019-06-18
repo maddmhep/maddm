@@ -265,13 +265,13 @@ class Spectra:
             return
 
         if not corr:
-            dic =  np.load(PPPCDIR+'/PPPC_Tables_noEW.npy').item()
+            dic =  np.load(PPPCDIR+'/PPPC_Tables_noEW.npy', allow_pickle = True).item()
             logger.info('PPPC4DMID Spectra at source loaded')
             Spectra.PPPCdata = dic
             Spectra.PPPC_type = ('source', corr)
             return dic
         elif corr == 'ew':
-            dic =  np.load(PPPCDIR+'/PPPC_Tables_noEW.npy').item()
+            dic =  np.load(PPPCDIR+'/PPPC_Tables_noEW.npy', allow_pickle= True).item()
             logger.info('PPPC4DMID Spectra at source (with EW corrections) loaded')
             Spectra.PPPCdata = dic
             Spectra.PPPC_type = ('source', corr)
@@ -287,7 +287,7 @@ class Spectra:
             return
         
         else:
-            dic = np.load(PPPCDIR+'/PPPC_Tables_epEarth_'+prof+'.npy').item()
+            dic = np.load(PPPCDIR+'/PPPC_Tables_epEarth_'+prof+'.npy' , allow_pickle= True).item()
             Spectra.PPPCdata = dic
             Spectra.PPPC_type = ('earth', prof)
             
@@ -934,10 +934,10 @@ class MADDMRunCmd(cmd.CmdShell):
  
             # *** Indirect detection
             if self.mode['indirect']:
-                halo_vel = self.maddm_card['vave_indirect']
-                if halo_vel > (3*10**(-6)) and halo_vel < ( 1.4*10**(-4) ):  # cannot calculate Fermi limits
+                    halo_vel = self.maddm_card['vave_indirect']
+                    #if halo_vel > (3*10**(-6)) and halo_vel < ( 1.4*10**(-4) ):  # cannot calculate Fermi limits
                  
-                #if not self._two2twoLO:
+                    #if not self._two2twoLO:
                     detailled_keys = [k for k in self.last_results if k.startswith('taacsID#') ]
                     if len(detailled_keys)>1:
                         for key in detailled_keys:
@@ -945,7 +945,8 @@ class MADDMRunCmd(cmd.CmdShell):
                             clean_key = clean_key_list[0]+"_"+clean_key_list[1]
 
                             order +=[clean_key]
-                            order +=['lim_'+clean_key]
+                            if halo_vel > (3*10**(-6)) and halo_vel < ( 1.4*10**(-4) ):
+				order +=['lim_'+clean_key]
 
                     order.append('taacsID')
                     order.append('tot_SM_xsec')
@@ -1910,7 +1911,7 @@ class MADDMRunCmd(cmd.CmdShell):
             out_dir = dir_point # all the various output must be saved here ==  pjoin(events, run_name )     
    
             if 'off' in save_switch:
-                if 'inclusive' not in self.maddm_card['sigmav_method'] : # here, need to remove everyhting i.e. the whole run_xx folder
+                if 'inclusive' not in self.maddm_card['sigmav_method'] : # here, need to remove everything i.e. the whole run_xx folder
                     shutil.rmtree(out_dir)
                                       
             elif 'all' in save_switch :
@@ -1921,7 +1922,7 @@ class MADDMRunCmd(cmd.CmdShell):
                         shutil.move(f_path , pjoin(self.dir_path , 'output', run_name, F) )
 
                  
-                if 'inclusive' in self.maddm_card['sigmav_method']: # saving spectra onyl in inclusive mode since madevent/resh have their own pythia8 spectra             
+                if 'inclusive' in self.maddm_card['sigmav_method']: # saving spectra only in inclusive mode since madevent/resh have their own pythia8 spectra             
                     self.save_spec_flux(out_dir = pjoin(self.dir_path , 'output', run_name), \
                                             spec_source = spec_source, flux_source = flux_source, flux_earth = flux_earth)
                  
