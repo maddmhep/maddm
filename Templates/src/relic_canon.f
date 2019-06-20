@@ -81,7 +81,7 @@ c           If using the freezeout approximation
             endif
 
 			x_1 = x_1 - dx_step
-            if (x_1.le.1d0) then
+           if (x_1.le.1d0) then
 			    write(*,*) 'Freezeout occurs too early! Relic density too big to comprehend. Seeting Omegah^2 = -1.0 \n'
 			    relic_canon=-1.0
 			    return

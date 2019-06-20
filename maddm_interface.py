@@ -1086,7 +1086,7 @@ class MadDM_interface(master_interface.MasterCmd):
                     self.do_add('process %s' % proc)
                 except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
                     if allow_loop_induce:
-                        proc = '%s %s > %s %s [noborn=QCD] @ID ' % (name, antiname, ' '.join(argument), coupling)
+                        proc = '%s %s > %s %s [noborn=QED] @ID ' % (name, antiname, ' '.join(argument), coupling)
                         self.do_add('process %s' % proc)
   
   
