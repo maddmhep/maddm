@@ -139,8 +139,8 @@ class MadDM_interface(master_interface.MasterCmd):
         super(MadDM_interface, self).preloop(*args, **opts)
         self.prompt = 'MadDM>'
     
-    def change_principal_cmd(self, name):
-        out = super(MadDM_interface, self).change_principal_cmd(name)
+    def change_principal_cmd(self, name, *args, **opts):
+        out = super(MadDM_interface, self).change_principal_cmd(name,*args, **opts)
         self.prompt = 'MadDM>'
         return out
     
