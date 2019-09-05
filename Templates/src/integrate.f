@@ -89,6 +89,8 @@ c-------------------------------------------------------------------------c
       double precision left, right, whole, end_pt, start_pt, width
 
       integer ii, jj, kk, grid_pos
+      integer nres_points_local,max_width_factor
+      
 
 c    Set up the integration grid
 c    Initialize to 10*b, so that we can identify the relevant points
@@ -97,7 +99,7 @@ c    by going only to b in the integration grid and neglecting the rest.
           grid=10.d0*b
 
 c         write(*,*) 'width: ', beta_res_width(1)
-
+          call find_resonances()
 c    Make sure that the array is large enough to store the grid
          if (grid_npts.lt.ngrid_init) then
              write(*,*) 'Error: grid array not large enough!'
@@ -116,14 +118,18 @@ c add the resonance positions first
                 grid_pos = grid_pos+1
             endif
        enddo
+       
+       nres_points_local = 20
+       max_width_factor = 2 ! allow to go as far as e^N-1 times the width for the extra point
 
 c then add more points around the resonance
        do ii=1, nres
           if (beta_res(ii).ge.a.and.beta_res(ii).lt.b.and.beta_res(ii).ge.0.d0) then
-              do jj=1, nres_points
+              do jj=1, nres_points_local
 c                pts_to_add_adaptive = ceiling(real(pts_to_add_adaptive / 2))
 c                do kk = 1, pts_to_add_adaptive
-                    additional_pt = beta_res(ii) + (exp(real(beta_res_width(ii))/10.d0*exp(real(jj)))-1.d0)
+                    additional_pt = beta_res(ii) + beta_res_width(ii)*(DEXP(1d0*jj**max_width_factor/nres_points_local)-1)
+c                    additional_pt = beta_res(ii) + (exp(real(beta_res_width(ii))/10.d0*exp(real(jj)))-1.d0)
                     if (additional_pt.lt.b) then
                         grid(grid_pos) = additional_pt
                         grid_pos=grid_pos+1
@@ -133,7 +139,7 @@ c                do kk = 1, pts_to_add_adaptive
                         endif
                     endif
 
-                    additional_pt = width - (exp(real(beta_res_width(ii))/10.d0*exp(real(jj)))-1.d0)
+                    additional_pt = beta_res(ii) - beta_res_width(ii)*(DEXP(1d0*jj**max_width_factor/nres_points_local)-1)
                     if (additional_pt.gt.a) then
                         grid(grid_pos) = additional_pt
                         grid_pos=grid_pos+1
@@ -196,7 +202,7 @@ c-------------------------------------------------------------------------c
       external func
       integer gr_npts, ii
       double precision grid_simp(gr_npts)
-
+      double precision tmp1, tmp2, tmp3
       simpson = 0.d0
       ii = 1
 
@@ -215,8 +221,16 @@ c-------------------------------------------------------------------------c
 c            write(101,*) start_pt, func(start_pt)
 c           write(*,*) 'start, end', start_pt, end_pt
 c           write(*,*) 'func: ', func(0.d0), func(0.00001d0)
-           simpson = simpson+ (end_pt - start_pt)/6.d0*(func(start_pt) + 4.d0*func(0.5d0*
+
+           tmp1 = (func(start_pt) + 4.d0*func(0.5d0*
      .                                  (start_pt+end_pt)) + func(end_pt) )
+           if (tmp1.lt.1e-20*simpson)then
+              exit
+           else if (tmp1.gt.1d-300) then
+           simpson = simpson+ (end_pt - start_pt)/6.d0*tmp1
+           else 
+              exit
+           endif
 c            simpson = simpson+ (end_pt - start_pt)/8.d0*(max(0.d0, func(start_pt))
 c     .             + 3.d0*max(0.d0,func(0.33d0*(2.d0*start_pt+end_pt)))
 c     .             + 3.d0*max(0.d0,func(0.33d0*(start_pt+2.d0*end_pt)))  + max(0.d0,func(end_pt)))
@@ -471,8 +485,10 @@ c-------------------------------------------------------------------------c
           endif
           return
         endif
-c        if(dabs(hnext) .lt. hmin) pause
-c     &     'stepsize smaller than minimum in odeint'
+        if(dabs(hnext) .lt. hmin) then
+           write(*,*) 'too small step'
+           stop 1
+        endif 
         h = hnext
         enddo
 c      pause 'too many steps in odeint'
@@ -682,7 +698,7 @@ c Enter here to inherit the previous grid and its answers
 
 c Set up for stratification
         if (mds.ne.0) then
-          ng = (dble(ncall)/2.d0+0.25d0)**(1.d0/dble(ndim))
+          ng = int((dble(ncall)/2.d0+0.25d0)**(1.d0/dble(ndim)))
           mds = 1
           if ((2*ng-ndmx).ge.0) then
             mds = -1

@@ -637,6 +637,7 @@ C         call getfsmasses_scattering(pmass,i,j,k)
         write(*,*) 'Invalid value of p_or_E'
         write(*,*) 'p_or_E = 1 for initial momentum'
         write(*,*) 'p_or_E = 0 for initial energy'
+      cross_check_process = 0d0
         return
       endif
 
@@ -768,6 +769,10 @@ c calculate the matrix element
           msq = smatrix_ann(p_ext,i_pass,j_pass,k_pass)
         else if (group_pass.eq.2) then
           msq = smatrix_dm2dm(p_ext,i_pass,j_pass,k_pass)
+        else
+           msq = 0d0
+           write(*,*) 'undefined msq'
+           stop 1
 C         else if (group_pass.eq.3) then
 C           msq = smatrix_scattering(p_ext,i_pass,j_pass,k_pass)
         endif

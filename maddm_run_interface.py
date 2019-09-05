@@ -74,7 +74,7 @@ class ExpConstraints:
 
     def __init__(self):
 
-        self._allowed_final_states = ['qqx', 'ccx', 'gg', 'bbx', 'ttx', 'e+e-', 'mu+mu-', 'ta+ta-', 'w+w-', 'zz', 'hh', 
+        self._allowed_final_states = ['qqx', 'ccx', 'gg', 'bbx', 'ttx', 'emep', 'mummup', 'tamtap', 'wpwm', 'zz', 'hh', 
                                       'hess2013','hess2016', 'aaER16','aaIR90','aaNFWcR3','aaNFWR41']
 
         self._oh2_planck = 0.1198
@@ -88,10 +88,10 @@ class ExpConstraints:
                                'gg'    :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_gg.dat'),
                                'bbx'   :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_bb.dat'),
                                'ttx'   :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_tt.dat'),
-                               'e+e-'  :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_ee.dat'),
-                               'mu+mu-':pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_mumu.dat'),
-                               'ta+ta-':pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_tautau.dat'),
-                               'w+w-'  :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_WW.dat'),
+                               'emep'  :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_ee.dat'),
+                               'mummup':pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_mumu.dat'),
+                               'tamtap':pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_tautau.dat'),
+                               'wpwm'  :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_WW.dat'),
                                'zz'    :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_ZZ.dat'),
                                'hh'    :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_hh.dat'),
 
@@ -103,8 +103,8 @@ class ExpConstraints:
                                'aaNFWcR3':pjoin(MDMDIR,'ExpData', 'Fermi_lines_2015_NFWcontracted_R3.dat'),
                                'aaNFWR41':pjoin(MDMDIR,'ExpData', 'Fermi_lines_2015_NFW_R41.dat')}
 
-        self._id_limit_vel = {'qqx':2.0E-5,   'ccx':2.0E-5, 'gg':2.0E-5, 'bbx':2.0E-5,'ttx':2.0E-5,'e+e-':2.0E-5,'mu+mu-':2.0E-5,'ta+ta-':2.0E-5,
-                              'w+w-':2.0E-5,  'zz':2.0E-5,  'hh':2.0E-5,
+        self._id_limit_vel = {'qqx':2.0E-5,   'ccx':2.0E-5, 'gg':2.0E-5, 'bbx':2.0E-5,'ttx':2.0E-5,'emep':2.0E-5,'mummup':2.0E-5,'tamtap':2.0E-5,
+                              'wpwm':2.0E-5,  'zz':2.0E-5,  'hh':2.0E-5,
                               'aaER16':1.0E-3,'aaIR90':1.0E-3,'aaNFWcR3':1.0E-3,'aaNFWR41':1.0E-3 ,
                               'hess2013': 1.0E-3 , 'hess2016': 1.0E-3 } 
 
@@ -243,7 +243,7 @@ class Spectra:
         self.channels      = ['ee', 'mumu', 'tautau', 'qq', 'cc', 'bb', 'tt', 'ZZ', 'WW', 'hh', 'gammagamma', 'gg']
 
         self.map_allowed_final_state_PPPC = {'qqx':'qq', 'ccx':'cc', 'gg':'gg', 'bbx':'bb', 'ttx':'tt',
-                                             'e+e-':'ee', 'mu+mu-':'mumu', 'ta+ta-':'tautau', 'w+w-':'WW', 'zz':'ZZ', 'hh':'hh' }
+                                             'emep':'ee', 'mummup':'mumu', 'tamtap':'tautau', 'wpwm':'WW', 'zz':'ZZ', 'hh':'hh' }
 
     def check_mass(self,mdm):
         if (mdm < 5.0 or mdm > 100000):
@@ -265,13 +265,13 @@ class Spectra:
             return
 
         if not corr:
-            dic =  np.load(PPPCDIR+'/PPPC_Tables_noEW.npy').item()
+            dic =  np.load(PPPCDIR+'/PPPC_Tables_noEW.npy', allow_pickle = True).item()
             logger.info('PPPC4DMID Spectra at source loaded')
             Spectra.PPPCdata = dic
             Spectra.PPPC_type = ('source', corr)
             return dic
         elif corr == 'ew':
-            dic =  np.load(PPPCDIR+'/PPPC_Tables_noEW.npy').item()
+            dic =  np.load(PPPCDIR+'/PPPC_Tables_noEW.npy', allow_pickle= True).item()
             logger.info('PPPC4DMID Spectra at source (with EW corrections) loaded')
             Spectra.PPPCdata = dic
             Spectra.PPPC_type = ('source', corr)
@@ -287,7 +287,7 @@ class Spectra:
             return
         
         else:
-            dic = np.load(PPPCDIR+'/PPPC_Tables_epEarth_'+prof+'.npy').item()
+            dic = np.load(PPPCDIR+'/PPPC_Tables_epEarth_'+prof+'.npy' , allow_pickle= True).item()
             Spectra.PPPCdata = dic
             Spectra.PPPC_type = ('earth', prof)
             
@@ -934,10 +934,10 @@ class MADDMRunCmd(cmd.CmdShell):
  
             # *** Indirect detection
             if self.mode['indirect']:
-                halo_vel = self.maddm_card['vave_indirect']
-                if halo_vel > (3*10**(-6)) and halo_vel < ( 1.4*10**(-4) ):  # cannot calculate Fermi limits
+                    halo_vel = self.maddm_card['vave_indirect']
+                    #if halo_vel > (3*10**(-6)) and halo_vel < ( 1.4*10**(-4) ):  # cannot calculate Fermi limits
                  
-                #if not self._two2twoLO:
+                    #if not self._two2twoLO:
                     detailled_keys = [k for k in self.last_results if k.startswith('taacsID#') ]
                     if len(detailled_keys)>1:
                         for key in detailled_keys:
@@ -945,7 +945,8 @@ class MADDMRunCmd(cmd.CmdShell):
                             clean_key = clean_key_list[0]+"_"+clean_key_list[1]
 
                             order +=[clean_key]
-                            order +=['lim_'+clean_key]
+                            if halo_vel > (3*10**(-6)) and halo_vel < ( 1.4*10**(-4) ):
+                                    order +=['lim_'+clean_key]
 
                     order.append('taacsID')
                     order.append('tot_SM_xsec')
@@ -1746,7 +1747,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
           detailled_keys = [k for k in self.last_results.keys() if k.startswith('taacsID#')]
           logger.info('<sigma v> method: %s ' % self.maddm_card['sigmav_method'] )
-          logger.info('DM particle halo velocity: %s/c ' % halo_vel) # the velocity should be the same                                                           
+          logger.info('DM particle halo velocity: %s/c ' % halo_vel) # the velocity should be the same
 
           skip = []
           if halo_vel > (3*10**(-6)) and halo_vel < ( 1.4*10**(-4) ): # range of validity of Fermi limits
@@ -1770,7 +1771,7 @@ class MADDMRunCmd(cmd.CmdShell):
                         skip.append(f_original)
                         continue 
                     if finalstate in self.limits._allowed_final_states :
-                        s_ul   = self.limits.ID_max(mdm, finalstate)    
+                        s_ul   = self.limits.ID_max(mdm, finalstate)
                         self.last_results['Fermi_lim_'+key] = self.limits.ID_max(mdm, finalstate)
                     else:  s_ul   = '-1'
 
@@ -1910,7 +1911,7 @@ class MADDMRunCmd(cmd.CmdShell):
             out_dir = dir_point # all the various output must be saved here ==  pjoin(events, run_name )     
    
             if 'off' in save_switch:
-                if 'inclusive' not in self.maddm_card['sigmav_method'] : # here, need to remove everyhting i.e. the whole run_xx folder
+                if 'inclusive' not in self.maddm_card['sigmav_method'] : # here, need to remove everything i.e. the whole run_xx folder
                     shutil.rmtree(out_dir)
                                       
             elif 'all' in save_switch :
@@ -1921,7 +1922,7 @@ class MADDMRunCmd(cmd.CmdShell):
                         shutil.move(f_path , pjoin(self.dir_path , 'output', run_name, F) )
 
                  
-                if 'inclusive' in self.maddm_card['sigmav_method']: # saving spectra onyl in inclusive mode since madevent/resh have their own pythia8 spectra             
+                if 'inclusive' in self.maddm_card['sigmav_method']: # saving spectra only in inclusive mode since madevent/resh have their own pythia8 spectra             
                     self.save_spec_flux(out_dir = pjoin(self.dir_path , 'output', run_name), \
                                             spec_source = spec_source, flux_source = flux_source, flux_earth = flux_earth)
                  
@@ -2540,9 +2541,17 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         pythia8_card_path = pjoin(opts['mother_interface'].dir_path, 'Cards', 'pythia8_card.dat')
 
         cards = [param_card_path, 'maddm', 'multinest', pythia8_card_path]
+        
+        tmp_allow_arg = list(self.allow_arg)
+        opts = dict(opts)
+        opts['allow_arg'] = []
+        
         common_run.AskforEditCard.__init__(self, question, cards,
-                                            *args, **opts)
+                                            *args, **opts )
+
+        self.allow_arg += tmp_allow_arg
         self.question = self.create_question()
+
                
     def write_switch(self, path=None):
         """store value of the switch for the default at next run"""
@@ -2822,7 +2831,7 @@ When you are done with such edition, just press enter (or write 'done' or '0')
 
             self.maddm.do_help(args[start])
             
-        ### CHECK if a help_xxx exist (only for those wihtout a do_xxx)
+        ### CHECK if a help exist (only for those wihtout a do_xxx)
         if len(args) == 1:
             if not hasattr(self, 'do_%s' % args[0]) and hasattr(self, 'help_%s' % args[0]):
                 getattr(self, 'help_%s' %args[0])()
@@ -3185,7 +3194,7 @@ class MadDMCard(banner_mod.RunCard):
         self.add_param('dx_step', 1.0, hidden=True)
         
         self.add_param('ngrid_init', 50, hidden=True, comment="Initial number of points in the grid to integrate over (of dm velocity)")
-        self.add_param('nres_points', 50, hidden=True, comment="Number of points to add for one width around each resonance peak. (the code will add points which exponentially increase in distance from the pole)")
+        self.add_param('nres_points', 100, hidden=True, comment="Number of points to add for one width around each resonance peak. (the code will add points which exponentially increase in distance from the pole)")
         self.add_param('eps_wij', 0.01, hidden=True, comment="precision of the romberg integration for Wij (irrelevant if simpson's rule used)")
         self.add_param('iter_wij', 2, hidden=True, comment="minimum number of iterations in the romberg integration algorithm for both Wij (irrelevant if simpson's rule used)")
         

@@ -107,9 +107,13 @@ c input parameters
 c Y_eq = 45/(4*pi^4) g_i/g_*S x^2 K_2(x), with x=m_i/T
 c K_2(x) is expanded for large values of x ( > 10)
       if (mass.gt.5.d0*temp) then
+        if (mass/temp.gt.706)then
+           get_Y_eq = 0d0
+        else
         get_Y_eq = 45.d0/(4.d0*pi**4)*(dof/rel_dofs)*(mass/temp)**(1.5d0)
      .        * dsqrt(pi/2.d0)*dexp(-mass/temp) * (1.d0 + 15.d0/(8.d0*(mass/temp))
      .        + 105.d0/(128.d0*(mass/temp)**2) - 315.d0/(1024.d0*(mass/temp)**3))
+      endif
       else if (mass.gt.temp/5.d0) then
         get_Y_eq = 45.d0/(4.d0*pi**4)*(dof/rel_dofs)*(mass/temp)**2
      .        * bessk(2,mass/temp)
@@ -194,6 +198,11 @@ c parameters used in this subroutine only
       double precision Wij_hold, Wij_total, beta_step
       logical flag1, flag2, flag3
 
+      integer i, ii
+      double precision next_beta(nres), tmp_beta
+      integer res_step(nres)
+      integer nres_points_local, max_width_factor
+
 c output to the screen to show progress
       if (print_out) then
         write(*,*) 'Calculating all the Wijs'
@@ -202,9 +211,28 @@ c output to the screen to show progress
         flag3 = .true.
       endif
 
-c setting up step sizes
-      beta_step = 0.01d0
+      nres_points_local = 100
+      max_width_factor = 6 ! this is e^N-1 times the width for the further point
 
+      do ii=1, nres
+         res_step(ii) = - nres_points_local
+         tmp_beta = -1d0
+         if (beta_res(ii).lt.0d0) then
+            res_step(ii) = nres_points_local +1
+            cycle
+         endif
+         do while (tmp_beta.lt.0d0)
+            tmp_beta = beta_res(ii) - beta_res_width(ii)*(DEXP(1d0*res_step(ii)*max_width_factor/nres_points_local)-1)
+            res_step(ii) = res_step(ii) + 1
+         enddo
+c         write(*,*) 'resonances',ii,beta_res(ii), beta_res_width(ii), res_step(ii)
+      enddo
+
+
+c setting up step sizes
+      beta_step = 1e-3
+      beta_step_min =  1e-6
+      beta_step_max = 1e-2
 c starting the calculation of the Wij's
       nWij = 1
       betas(nWij) = 0.001d0
@@ -213,11 +241,32 @@ c starting the calculation of the Wij's
 c continue to do beta steps until we are near beta = 1
       do while (betas(nWij).le.0.99d0-beta_step)
         nWij = nWij+1
-        betas(nWij) = betas(nWij-1) + beta_step
+        tmp_beta = betas(nWij-1) + beta_step
+        do ii=1, nres
+           if (res_step(ii).le.0)then
+              next_beta(ii) = beta_res(ii) - beta_res_width(ii)*(DEXP(1d0*res_step(ii)*max_width_factor/nres_points_local)-1)
+           elseif(res_step(ii).le.nres_points_local)then
+               next_beta(ii) = beta_res(ii) + beta_res_width(ii)*(DEXP(1d0*res_step(ii)*max_width_factor/nres_points_local)-1)
+           else
+              next_beta(ii) = 1d0
+            endif
+            tmp_beta = min(tmp_beta, next_beta(ii),1d0)
+         enddo
+        betas(nWij) = tmp_beta
         Wij_total = get_Wij_ann(betas(nWij))
+
 
 c if the new Wij is 100% larger than the previous Wij, then reduce the stepsize
         if (((dabs(Wij_total-Wij_hold)/Wij_hold).gt.1.d0).and.(beta_step.gt.beta_step_min)) then
+c           write(*,*) 'reduce', betas(nWij), beta_step, ((dabs(Wij_total-Wij_hold)/Wij_hold)), Wij_total, Wij_hold
+
+           if (((dabs(Wij_total-Wij_hold)/Wij_hold).gt.2.d0))then
+c              write(*,*) 'rewind',  betas(nWij-1)
+              nWij = nWij-1
+              beta_step = beta_step/2.d0
+             cycle
+           endif
+
           beta_step = beta_step/2.d0
           if (beta_step .lt. beta_step_min) then
             beta_step = beta_step_min
@@ -226,11 +275,23 @@ c if the new Wij is 100% larger than the previous Wij, then reduce the stepsize
 
 c if the new Wij is within 10% of the previous Wij, then increase the stepsize
         if (((dabs(Wij_total-Wij_hold)/Wij_hold).lt.0.1d0).and.(beta_step.lt.beta_step_max)) then
-          beta_step = beta_step*2.d0
+          beta_step = beta_step*2d0
           if (beta_step .gt. beta_step_max) then
             beta_step = beta_step_max
           endif
+c          write(*,*) 'increase', betas(nWij), beta_step
         endif
+
+         do ii=1, nres
+            if (next_beta(ii).eq.tmp_beta) then
+               res_step(ii) = res_step(ii)+1
+               beta_step = max(beta_step,1e-3)
+c               if (beta_step.eq.1e-3) then
+c                  write(*,*) 'reset'
+c               endif
+            endif
+         enddo
+
 
 c Hold the Wij_value so that if the Wij integral is too small we have a stored value ot use
         Wij_hold = Wij_total
@@ -256,7 +317,7 @@ c Calculate the final Wij at beta = 0.999
       betas(nWij) = 0.999d0
       Wij_total = get_Wij_ann(betas(nWij))
 
-      if (print_out) write(*,*) 'Done!'
+      if (print_out)  write(*,*) 'Done!', nWij
       Wij_ann_calc = .true.
 
       return
@@ -284,7 +345,6 @@ c external function used in this subroutine
 
 c set beta_pass to pass beta to Wij_integrand
       beta_pass = beta
-
 c loop over all the dm particles
       do x1=1, ndmparticles
         do x2=x1, ndmparticles
@@ -305,6 +365,54 @@ c so the next beta step can be determined
       do x1=1, ndmparticles
         do x2=x1, ndmparticles
           get_Wij_ann = get_Wij_ann + Wij_ann(x1,x2,nWij)
+        enddo
+      enddo
+
+      return
+      end
+
+c-------------------------------------------------------------------------c
+      function get_Wij_ann_nogrid(beta)
+c-------------------------------------------------------------------------c
+c                                                                         c
+c  Given the input velocity beta, this function integrates the matrix     c
+c  elements generated by MadGraph over the solid angle for all            c
+c  combinations of \chi_i, \chi_j to all final states.                    c
+c                                                                         c
+c-------------------------------------------------------------------------c
+      implicit none
+      include 'maddm.inc'
+
+c input parameters
+      double precision beta
+      double precision Wij_ann_nogrid(maxdms,maxdms)
+c external function used in this subroutine
+      external Wij_ann_integrand
+
+c set beta_pass to pass beta to Wij_integrand
+      beta_pass = beta
+
+      get_Wij_ann_nogrid =  0d0
+c loop over all the dm particles
+      do x1=1, ndmparticles
+        do x2=x1, ndmparticles
+          dmi = x1
+          dmj = x2
+
+c integrate the 2 -> 2 process over x = (cos(theta)+1)/2.d0
+          call romberg(Wij_ann_integrand, 0.d0, 1.d0, Wij_ann_nogrid(x1,x2), eps_wij, iter_wij)
+
+c the Wijs for (DMi, DMj) are the same for (DMj, DMi)
+          if (x1.ne.x2) Wij_ann_nogrid(x2,x1) = Wij_ann_nogrid(x1,x2)
+        enddo
+      enddo
+
+c the return of this function will be the sum of all the Wij's 
+c so the next beta step can be determined
+      get_Wij_ann = 0.d0
+      do x1=1, ndmparticles
+        do x2=x1, ndmparticles
+          get_Wij_ann_nogrid = get_Wij_ann_nogrid + Wij_ann_nogrid(x1,x2)
         enddo
       enddo
 

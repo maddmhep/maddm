@@ -139,8 +139,8 @@ class MadDM_interface(master_interface.MasterCmd):
         super(MadDM_interface, self).preloop(*args, **opts)
         self.prompt = 'MadDM>'
     
-    def change_principal_cmd(self, name):
-        out = super(MadDM_interface, self).change_principal_cmd(name)
+    def change_principal_cmd(self, name, *args, **opts):
+        out = super(MadDM_interface, self).change_principal_cmd(name,*args, **opts)
         self.prompt = 'MadDM>'
         return out
     
@@ -1087,8 +1087,11 @@ class MadDM_interface(master_interface.MasterCmd):
                 except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
                     if allow_loop_induce:
                         proc = '%s %s > %s %s [noborn=QCD] @ID ' % (name, antiname, ' '.join(argument), coupling)
-                        self.do_add('process %s' % proc)
-  
+                        try:                    
+                            self.do_add('process %s' % proc)
+                        except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
+                            proc = '%s %s > %s %s [noborn=QED] @ID ' % (name, antiname, ' '.join(argument), coupling)
+                            self.do_add('process %s' % proc)
   
     def install_indirect(self):
         """Code to install the reduction library if needed"""

@@ -21,6 +21,7 @@ c input parameters
 c parameters used to find the index
       integer index, lowindex, highindex, mid
 
+      get_Wij_value = 0d0
 c If the xvalue is outside the given array then set the index to the boundary
       if (beta .lt. betas(1)) then
         index = 1
@@ -42,6 +43,8 @@ c Binary search
 
 c interpolate the array with a line
       if (group.eq.1) then
+c         write(*,*) 'bypass interpolation'
+c        get_Wij_value = get_Wij_ann_nogrid(beta)
         get_Wij_value = (Wij_ann(i,j,index+1)-Wij_ann(i,j,index))/(betas(index+1)-betas(index))
      .        *(beta-betas(index))+Wij_ann(i,j,index)
       else if (group.eq.2) then
@@ -80,7 +83,7 @@ c input parameters
 
 c parameters used to find the index
       integer x_index, lowindex, highindex, mid
-
+      get_taacs_value = 0d0
 c If the xvalue is outside the given array then set the index to the boundary
       if (x .lt. x_taacs(1)) then
         x_index = 1

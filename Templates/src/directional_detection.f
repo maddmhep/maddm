@@ -1831,7 +1831,7 @@ c form factor contribution terms for the spin dependent calculation.
       integer flag
       double precision x, eff 
 
-
+      efficiency = 0d0
       if(flag .eq. 0) then
          efficiency = 1.d0 ! for 100% detection efficiency
 
