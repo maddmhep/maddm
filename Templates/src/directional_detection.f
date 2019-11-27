@@ -928,10 +928,11 @@ c--------------------------------For CS2----------------------------------------
       Allocate (sigmaWN(n))
       
 !	Some variables
+      c         = 3.d+5 ! Speed of light in km/s
             
       MD0       = MD*(GeV/cs**2)
       E0        = (1.d0/2.d0)*MD0*((v0/c)**2)*GeVtoKeV ! most probable kinetic energy of WIMPs
-      
+
       sigmawnSI = sigmawn0SI*picobarn !WIMP-proton spin independent cross-section in cm^2
       sigmawpSI = sigmawp0SI*picobarn !WIMP-neutron spin independent cross-section in cm^2
 
@@ -947,7 +948,7 @@ c--------------------------------For CS2----------------------------------------
       AMU       = 0.932d0*(GeV/cs**2) ! Atomic Mass Units
       RhoD      = rhoDM*GeV*cs**(-2)*cm**(-3) !Density of Dark Matter in our local part of the Galaxy.
 
-      c         = 3.d+5 ! Speed of light in km/s
+
 
 c form factor contribution terms for the spin independent calculation.
       fn  = sqrt((pi/4.d0)*sigmawnSI*(1.d0/mu_n)**2.d0) ! cm/GeV
@@ -963,11 +964,13 @@ c form factor contribution terms for the spin dependent calculation.
 
 ! interaction for spin dependent WIMP-Nucleus cross-section
       IcSD    = (32.d0/pi)*((G_fermi)**2.d0)*(ap*avgsp + an*avgsn)**2.d0 
+      
 
       do i = 1, n 
          MT(i)      = 0.932d0*A(i)*(GeV/cs**2) ! Mass of target material. 
          r(i)       = (4.d0*MD0*MT(i))/(MD0 + MT(i))**2 ! Kinematic factor relating WIMP and target masses.
          vmin(i)    = sqrt(ER/(E0*r(i)))*v0 ! Minimum velocity required for recoil.
+
          muT(i)     = MD0*MT(i)/(MD0 + MT(i)) ! reduced mass of target and WIMP.
          muA        = MD0*AMU/(MD0 + AMU)
 
@@ -988,7 +991,7 @@ c form factor contribution terms for the spin dependent calculation.
          
          ss(i)      = kratio*(1.d0/(2.d0*E0*r(i)))*(exp(-((vearth*costheta -vmin(i))/v0)**2))
          st(i)      = (1.d0/(2.d0*E0*r(i)))*kratio*exp(-(vesc/v0)**2)
-         
+
          if((vmin(i) .lt. vesc) .and. (exp(-((vearth*costheta -vmin(i))/v0)**2) .gt. exp(-(vesc/v0)**2)))then
             s(i) = ss(i) - st(i) !Makes sure to calculate the distribution in the correct kinematic regime.
          else
@@ -998,7 +1001,7 @@ c form factor contribution terms for the spin dependent calculation.
       diff = diff + (Ab(i)/100.d0)*R0(i)*s(i)  
       enddo
             
-      
+
       if(flag .eq. 1) then
          write(*,*) '-----------------------------------'
          write(*,*) 'DM Mass is', MD0,'GeV/c^2'
