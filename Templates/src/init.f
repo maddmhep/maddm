@@ -14,6 +14,8 @@ c-------------------------------------------------------------------------c
       implicit none
       include 'maddm.inc'
       include 'coupl.inc'
+      double precision alphas
+      external alphas
 
 c parameters used in this subroutine only
       character*30 filename
@@ -49,6 +51,12 @@ c Setting up the DM masses and degrees of freedom
 
       include 'process_names.inc'
 
+c Run alpha_s for the relic
+
+      if (running_as) then      
+        call UPDATE_AS_PARAM2(0, alphas(2*mdm(1)))
+      endif
+      
 c initialize the arrays for the relativistic degrees of freedom
       filename = 'include/fermion.txt'
       call readinfile(filename,401,gstar_x,gstar_fermion)

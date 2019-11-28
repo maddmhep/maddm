@@ -20,7 +20,7 @@ c relic_coupled.f
 c relic_density.f
       double precision relic_density, approximate_xd
       logical running_as
-      common/idrelic/ running_as
+      common/idrelic_running/ running_as
 c tests.f
       double precision crossijk, cross_check_process
 c indirect_detection.f
