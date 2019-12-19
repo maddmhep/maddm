@@ -3381,6 +3381,9 @@ class Indirect_Cmd(me5_interface.MadEventCmdShell):
         return
     def do_madanalysis5_hadron(self, line):
         return
+    def create_root_file(self,*args, **opts):
+        return
+
 
     def make_make_all_html_results(self, folder_names = []):
         """keep track of the P results via an instance variable.
