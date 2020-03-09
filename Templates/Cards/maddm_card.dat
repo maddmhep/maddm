@@ -41,6 +41,10 @@
 # (see manual for more details). Slower, but more accurate.
   %(xd_approx)s       = xd_approx
 
+# choose whether to run the strong coupling up to the energy scale given by 2*m_chi
+# if False, alpha_s is read from the param_card
+  %(running_as)s       = running_as
+
 ###################################################################################
 #
 # Direct(ional) Detection 

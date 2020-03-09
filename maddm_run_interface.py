@@ -3188,6 +3188,7 @@ class MadDMCard(banner_mod.RunCard):
         
         self.add_param('eps_ode', 0.01)
         self.add_param('xd_approx', False)
+        self.add_param('running_as', True, comment='choose whether to run the strong coupling up to 2*m_chi energy scale', include=True)
         
         self.add_param('x_start', 50.0, hidden=True)
         self.add_param('x_end', 1000.0, hidden=True)
