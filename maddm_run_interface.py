@@ -3610,8 +3610,7 @@ class Multinest(object):
         else:
             try:
                 block, lhaid = self.param_blocks[name][0]
-                lhaid2 = lhaid[0]
-                self.maddm_run.param_card[block].get(lhaid2).value = val
+                self.maddm_run.param_card[block].get(lhaid).value = val
             except:
                 logger.error('change_parameter() can not find parameter %s in the param_card.dat file' % name)
                 sys.exit()
