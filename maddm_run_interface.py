@@ -1086,6 +1086,9 @@ class MADDMRunCmd(cmd.CmdShell):
                     with misc.MuteLogger(['madgraph','madevent','cmdprint'], [set_level]*3):
                         #mute logger          
                         if self.maddm_card['sigmav_method'] == 'madevent':
+                            misc.sprint(self.dir_path, pjoin(self.dir_path,'Cards','reweight_card.dat'))
+                            if os.path.exists(pjoin(self.dir_path,'Cards','reweight_card.dat')):
+                                os.remove(pjoin(self.dir_path,'Cards','reweight_card.dat'))
                             self.me_cmd.do_launch('%s -f' % self.run_name)
                         elif self.maddm_card['sigmav_method'] == 'reshuffling': 
                             cmd = ['launch %s' % self.run_name,
@@ -1109,18 +1112,26 @@ class MADDMRunCmd(cmd.CmdShell):
                     
                 elif key.startswith('xerr'):
                     self.last_results['err_taacsID#%s' %(clean_key)] = value * pb2cm3
-
-            self.run_pythia8_for_flux() 
-              
-            if self.maddm_card['indirect_flux_source_method'] == 'pythia8':
-                logger.info('Calculating Fermi limit using pythia8 gamma rays spectrum')
-            elif 'pythia' not in self.maddm_card['indirect_flux_source_method']:
-                logger.warning('Since pyhtia8 is run, using pythia8 gamma rays spectrum (not PPPC4DMID Tables)')
-
-            self.read_py8spectra()
+ 
+            if self.mode['indirect'] != 'sigmav':
+                if self.maddm_card['indirect_flux_source_method'].startswith('PPPC'):
+                    if self.read_PPPCspectra():
+                        logger.info('Calculating Fermi limit using PPPC4DMID spectra')
+                    else:
+                        logger.info('no PPC4DMID')
+                else:
+                    self.run_pythia8_for_flux()
+                    if self.maddm_card['indirect_flux_source_method'] == 'pythia8':
+                        logger.info('Calculating Fermi limit using pythia8 gamma rays spectrum')
+                    elif 'pythia' not in self.maddm_card['indirect_flux_source_method']:
+                        logger.warning('Since pyhtia8 is run, using pythia8 gamma rays spectrum (not PPPC4DMID Tables)')
+                    self.read_py8spectra()
+            else:
+                logger.warning('no gamma spectrum since in sigmav mode')      
 
         elif self.read_PPPCspectra():   # return False if PPPC4DMID not installed!
             logger.info('Calculating Fermi limit using PPPC4DMID spectra')
+
 
 
         # *** Multiply all the calculated indirect cross section by sqrt(3)/2 * 2 *(vave_indirect) value (since is relative velocity)
@@ -1381,6 +1392,7 @@ class MADDMRunCmd(cmd.CmdShell):
                   sum_spec.append(val)
 
               self.Spectra.spectra[sp_t] = sum_spec
+        return True
 
     
     def read_PPPC_positrons_earth(self):
@@ -1462,10 +1474,13 @@ class MADDMRunCmd(cmd.CmdShell):
 
     def calculate_fluxes(self):
         # declaring what to do
-        if 'pythia' in self.maddm_card['indirect_flux_source_method'] or self.maddm_card['sigmav_method'] != 'inclusive' :
-            logger.info('Calculating cosmic rays fluxes using pythia8 gammas and neutrinos spectra.')
-        elif 'PPPC' in self.maddm_card['indirect_flux_source_method'] and self.maddm_card['sigmav_method'] == 'inclusive':
+        if 'PPPC' in self.maddm_card['indirect_flux_source_method']:
             logger.info('Calculating cosmic rays fluxes using gammas and neutrinos spectra from the PPPC4DMID tables.')
+        elif 'pythia' in self.maddm_card['indirect_flux_source_method']:
+            logger.info('Calculating cosmic rays fluxes using pythia8 gammas and neutrinos spectra.')
+        else:
+            return
+             
         # self.Spectra.spectra = = {'x':[] , 'antiprotons':[], 'gammas':[], 'neutrinos_e':[], 'neutrinos_mu':[], 'neutrinos_tau':[], 'positrons':[] }
         cr_spectra = self.Spectra.spectra.keys()
         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
