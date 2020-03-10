@@ -2343,6 +2343,9 @@ class Indirect_PY8Card(banner_mod.PY8Card):
         self.add_param("130:mayDecay", True, hidden=True, comment="decays K_LO")
         self.add_param("310:mayDecay", True, hidden=True, comment="decays K_SO")
         self.add_param("2112:mayDecay", True, hidden=True, comment="decays neutron")
+        # disabling some events checks for bug below 100 GeV
+        self.add_param("Check:event", False, hidden=True, comment="avoid pythia crushing")
+        self.add_param("Check:beams", False, hidden=True, comment="avoid pythia crushing")
 
 
 class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
