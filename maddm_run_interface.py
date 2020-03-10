@@ -2484,7 +2484,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
     
     def check_value_indirect(self, value):
         """ allow diret=ON in top of standard mode """
-        
+     
         other_valid = ['source_PPPC4DMID', 'source_py8', 
                        'earth_PPPC4DMID+dragon',
                      'earth_PPPC4DMID', 'earth_py8+dragon'] 
@@ -2944,7 +2944,6 @@ When you are done with such edition, just press enter (or write 'done' or '0')
         def_key = [k.lhacode for k in self.param_card['mass']]
         for key in self.param_card_default['mass']:
             if key.lhacode not in def_key:
-                misc.sprint('ADD', key.lhacode)
                 to_add = check_param_card.Parameter(block='mass', lhacode=key.lhacode, value=1e10, comment='for DD')
                 self.param_card['mass'].append(to_add)
                 self.do_set('param_card mass %s %s' % (key.lhacode, 1e10))
@@ -3086,9 +3085,11 @@ When you are done with such edition, just press enter (or write 'done' or '0')
                  self.limits._id_limit_file[channel] = id_file
 
                  self.limits.load_constraints()
-
+        elif args[0].lower() in self.switch:
+            return self.default(line.strip())
         else:
             return super(MadDMSelector, self).do_set(line)
+
         if args[start+1] == 'default':
             default = self.maddm_def[args[start]]
             self.setDM(args[start], default)
