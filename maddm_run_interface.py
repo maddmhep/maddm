@@ -1086,8 +1086,7 @@ class MADDMRunCmd(cmd.CmdShell):
                     with misc.MuteLogger(['madgraph','madevent','cmdprint'], [set_level]*3):
                         #mute logger          
                         if self.maddm_card['sigmav_method'] == 'madevent':
-                            misc.sprint(self.dir_path, pjoin(self.dir_path,'Cards','reweight_card.dat'))
-                            if os.path.exists(pjoin(self.dir_path,'Cards','reweight_card.dat')):
+                            if os.path.exists(pjoin(self.dir_path,'Indirect','Cards','reweight_card.dat')):
                                 os.remove(pjoin(self.dir_path,'Cards','reweight_card.dat'))
                             self.me_cmd.do_launch('%s -f' % self.run_name)
                         elif self.maddm_card['sigmav_method'] == 'reshuffling': 
