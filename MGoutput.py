@@ -446,11 +446,13 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
 
         #need to define 
         #    self._bsm_final_states
-        #    
+        #
+        dm_code = [p.get('pdg_code') for p in self.dm_particles]
         bsm_particles = [p for p in self.model.get('particles')                
                          if p.get('pdg_code') > 25 and
-                         p not in self.dm_particles]
+                         p.get('pdg_code') not in dm_code]#self.dm_particles]
 
+        
         path = pjoin(self.dir_path, 'include', 'model_info.txt')
         # Open up the template and output file
         model_info_file = open(path, 'w')
