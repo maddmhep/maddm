@@ -10,6 +10,7 @@ c-------------------------------------------------------------------------c
       include 'maddm.inc'
       include 'input.inc'
       include 'coupl.inc'
+      include 'alfas.inc'
 
 c parameters used in this routine only
       Integer sm_flag, prnt_tag, k, ii
@@ -28,6 +29,8 @@ c include files generated my the python side that contains necessary information
 
 c Sets all the parameters used in MG/ME to the values in the param card
       call setpara('Cards/param_card.dat')
+      asmz=as
+      nloop=2
 
 c If the user wants to change any of the parameters from within the fortran code then
 c just change the variables given in 'input.inc' and simply run the subroutine coup()

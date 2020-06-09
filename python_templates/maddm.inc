@@ -19,6 +19,8 @@ c relic_coupled.f
       double precision taacs_coupled, taacs_integrand
 c relic_density.f
       double precision relic_density, approximate_xd
+      logical running_as
+      common/idrelic_running/ running_as
 c tests.f
       double precision crossijk, cross_check_process
 c indirect_detection.f

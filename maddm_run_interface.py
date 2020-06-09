@@ -1086,6 +1086,8 @@ class MADDMRunCmd(cmd.CmdShell):
                     with misc.MuteLogger(['madgraph','madevent','cmdprint'], [set_level]*3):
                         #mute logger          
                         if self.maddm_card['sigmav_method'] == 'madevent':
+                            if os.path.exists(pjoin(self.dir_path,'Indirect','Cards','reweight_card.dat')):
+                                os.remove(pjoin(self.dir_path,'Cards','reweight_card.dat'))
                             self.me_cmd.do_launch('%s -f' % self.run_name)
                         elif self.maddm_card['sigmav_method'] == 'reshuffling': 
                             cmd = ['launch %s' % self.run_name,
@@ -1109,18 +1111,26 @@ class MADDMRunCmd(cmd.CmdShell):
                     
                 elif key.startswith('xerr'):
                     self.last_results['err_taacsID#%s' %(clean_key)] = value * pb2cm3
-
-            self.run_pythia8_for_flux() 
-              
-            if self.maddm_card['indirect_flux_source_method'] == 'pythia8':
-                logger.info('Calculating Fermi limit using pythia8 gamma rays spectrum')
-            elif 'pythia' not in self.maddm_card['indirect_flux_source_method']:
-                logger.warning('Since pyhtia8 is run, using pythia8 gamma rays spectrum (not PPPC4DMID Tables)')
-
-            self.read_py8spectra()
+ 
+            if self.mode['indirect'] != 'sigmav':
+                if self.maddm_card['indirect_flux_source_method'].startswith('PPPC'):
+                    if self.read_PPPCspectra():
+                        logger.info('Calculating Fermi limit using PPPC4DMID spectra')
+                    else:
+                        logger.info('no PPC4DMID')
+                else:
+                    self.run_pythia8_for_flux()
+                    if self.maddm_card['indirect_flux_source_method'] == 'pythia8':
+                        logger.info('Calculating Fermi limit using pythia8 gamma rays spectrum')
+                    elif 'pythia' not in self.maddm_card['indirect_flux_source_method']:
+                        logger.warning('Since pyhtia8 is run, using pythia8 gamma rays spectrum (not PPPC4DMID Tables)')
+                    self.read_py8spectra()
+            else:
+                logger.warning('no gamma spectrum since in sigmav mode')      
 
         elif self.read_PPPCspectra():   # return False if PPPC4DMID not installed!
             logger.info('Calculating Fermi limit using PPPC4DMID spectra')
+
 
 
         # *** Multiply all the calculated indirect cross section by sqrt(3)/2 * 2 *(vave_indirect) value (since is relative velocity)
@@ -1381,6 +1391,7 @@ class MADDMRunCmd(cmd.CmdShell):
                   sum_spec.append(val)
 
               self.Spectra.spectra[sp_t] = sum_spec
+        return True
 
     
     def read_PPPC_positrons_earth(self):
@@ -1462,10 +1473,13 @@ class MADDMRunCmd(cmd.CmdShell):
 
     def calculate_fluxes(self):
         # declaring what to do
-        if 'pythia' in self.maddm_card['indirect_flux_source_method'] or self.maddm_card['sigmav_method'] != 'inclusive' :
-            logger.info('Calculating cosmic rays fluxes using pythia8 gammas and neutrinos spectra.')
-        elif 'PPPC' in self.maddm_card['indirect_flux_source_method'] and self.maddm_card['sigmav_method'] == 'inclusive':
+        if 'PPPC' in self.maddm_card['indirect_flux_source_method']:
             logger.info('Calculating cosmic rays fluxes using gammas and neutrinos spectra from the PPPC4DMID tables.')
+        elif 'pythia' in self.maddm_card['indirect_flux_source_method']:
+            logger.info('Calculating cosmic rays fluxes using pythia8 gammas and neutrinos spectra.')
+        else:
+            return
+             
         # self.Spectra.spectra = = {'x':[] , 'antiprotons':[], 'gammas':[], 'neutrinos_e':[], 'neutrinos_mu':[], 'neutrinos_tau':[], 'positrons':[] }
         cr_spectra = self.Spectra.spectra.keys()
         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
@@ -2329,6 +2343,9 @@ class Indirect_PY8Card(banner_mod.PY8Card):
         self.add_param("130:mayDecay", True, hidden=True, comment="decays K_LO")
         self.add_param("310:mayDecay", True, hidden=True, comment="decays K_SO")
         self.add_param("2112:mayDecay", True, hidden=True, comment="decays neutron")
+        # disabling some events checks for bug below 100 GeV
+        self.add_param("Check:event", False, hidden=True, comment="avoid pythia crushing")
+        self.add_param("Check:beams", False, hidden=True, comment="avoid pythia crushing")
 
 
 class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
@@ -2469,7 +2486,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
     
     def check_value_indirect(self, value):
         """ allow diret=ON in top of standard mode """
-        
+     
         other_valid = ['source_PPPC4DMID', 'source_py8', 
                        'earth_PPPC4DMID+dragon',
                      'earth_PPPC4DMID', 'earth_py8+dragon'] 
@@ -2929,7 +2946,6 @@ When you are done with such edition, just press enter (or write 'done' or '0')
         def_key = [k.lhacode for k in self.param_card['mass']]
         for key in self.param_card_default['mass']:
             if key.lhacode not in def_key:
-                misc.sprint('ADD', key.lhacode)
                 to_add = check_param_card.Parameter(block='mass', lhacode=key.lhacode, value=1e10, comment='for DD')
                 self.param_card['mass'].append(to_add)
                 self.do_set('param_card mass %s %s' % (key.lhacode, 1e10))
@@ -3071,9 +3087,11 @@ When you are done with such edition, just press enter (or write 'done' or '0')
                  self.limits._id_limit_file[channel] = id_file
 
                  self.limits.load_constraints()
-
+        elif args[0].lower() in self.switch:
+            return self.default(line.strip())
         else:
             return super(MadDMSelector, self).do_set(line)
+
         if args[start+1] == 'default':
             default = self.maddm_def[args[start]]
             self.setDM(args[start], default)
@@ -3188,6 +3206,7 @@ class MadDMCard(banner_mod.RunCard):
         
         self.add_param('eps_ode', 0.01)
         self.add_param('xd_approx', False)
+        self.add_param('running_as', True, comment='choose whether to run the strong coupling up to 2*m_chi energy scale', include=True)
         
         self.add_param('x_start', 50.0, hidden=True)
         self.add_param('x_end', 1000.0, hidden=True)
@@ -3381,6 +3400,9 @@ class Indirect_Cmd(me5_interface.MadEventCmdShell):
         return
     def do_madanalysis5_hadron(self, line):
         return
+    def create_root_file(self,*args, **opts):
+        return
+
 
     def make_make_all_html_results(self, folder_names = []):
         """keep track of the P results via an instance variable.
@@ -3607,8 +3629,7 @@ class Multinest(object):
         else:
             try:
                 block, lhaid = self.param_blocks[name][0]
-                lhaid2 = lhaid[0]
-                self.maddm_run.param_card[block].get(lhaid2).value = val
+                self.maddm_run.param_card[block].get(lhaid).value = val
             except:
                 logger.error('change_parameter() can not find parameter %s in the param_card.dat file' % name)
                 sys.exit()

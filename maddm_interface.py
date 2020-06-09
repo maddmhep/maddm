@@ -56,7 +56,7 @@ class MadDM_interface(master_interface.MasterCmd):
   "          ########\\\\//###########                                            \n"+\
   "         #########//\\\\############                    "+bcolors.FAIL+"arXiv:1308.4955        \n"+bcolors.ENDC+\
   "        #########//##\\\\############                   "+bcolors.FAIL+"arXiv:1505.04190        \n"+bcolors.ENDC+\
-  "       ########//#####\\\\###########                   "+bcolors.FAIL+"arXiv:1804.00444        \n"+bcolors.ENDC+\
+  "       ########//#####\\\\###########                   "+bcolors.FAIL+"arXiv:1804.00044        \n"+bcolors.ENDC+\
   "       ######################### ## ___________________________________________\n"+\
   "       ####################### 0  # "+bcolors.OKGREEN+" _     _               _  _____   _     _  \n"+bcolors.ENDC+\
   "       #############   0  ###    ## "+bcolors.OKGREEN+"| \   / |   ___    ___|| | ___ \ | \   / | \n"+bcolors.ENDC+\
@@ -179,7 +179,13 @@ class MadDM_interface(master_interface.MasterCmd):
                     if len(self._dm_candidate) == 1:
                         # No update of the model if 2(or more) DM since DD is not possible
                         self.update_model_with_EFT()
-            
+                    else:
+                        txt = self._curr_model.write_param_card()
+                        ff = open('/tmp/param_card.dat','w')
+                        ff.write(txt)
+                        ff.close()
+                        self.define_benchmark(answer=True, path='/tmp/param_card.dat')
+                        
             elif args[0] == 'coannihilator':
                 if not self._dm_candidate:
                     self.search_dm_candidate([])
@@ -369,7 +375,7 @@ class MadDM_interface(master_interface.MasterCmd):
                                   pwd=os.getcwd(),
                                   param_consistency=False
                                   )
-        else:
+        elif isinstance(answer, str):
             path = answer
             
         if not isinstance(self._curr_model, model_reader.ModelReader):

@@ -446,11 +446,13 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
 
         #need to define 
         #    self._bsm_final_states
-        #    
+        #
+        dm_code = [p.get('pdg_code') for p in self.dm_particles]
         bsm_particles = [p for p in self.model.get('particles')                
                          if p.get('pdg_code') > 25 and
-                         p not in self.dm_particles]
+                         p.get('pdg_code') not in dm_code]#self.dm_particles]
 
+        
         path = pjoin(self.dir_path, 'include', 'model_info.txt')
         # Open up the template and output file
         model_info_file = open(path, 'w')
@@ -1038,6 +1040,7 @@ class ProcessExporterIndirectD(object):
         # modify history to make an proc_card_mg5 more similar to the real process
         # hidden specific MadDM flag and or replace them by equivalent
 
+        
         new_history = self.modify_history(history)
         
         super(ProcessExporterIndirectD, self).finalize(matrix_elements, new_history, mg5options, flaglist)
@@ -1103,9 +1106,17 @@ class ProcessExporterIndirectD(object):
                         continue  
                     
                 if line.startswith('generate indirect'):
-                    new_history +=  [p.get('process').nice_string(
-                        prefix='add process ' if i>0 else 'generate ') 
-                                     for i,p in enumerate(self.cmd._curr_amps)]
+                    # using curr_amps has the issue if two ME are mapped into a single one
+                    # using proc_def has the issue that some process might not have any diagram
+                    # therefore using self._curr_matrix_elements
+                    
+                    i = 0
+                    for group in self.cmd._curr_matrix_elements:
+                        for me in group.get('matrix_elements'):
+                            for p in me.get('processes'):
+                                prefix = 'generate ' if i==0 else 'add process '
+                                new_history.append(p.nice_string(prefix=prefix))
+                                i=1
                     continue
             
             if line.startswith('add'):
@@ -1116,9 +1127,18 @@ class ProcessExporterIndirectD(object):
                     if not line[index:].startswith(('@1995','@ID')):
                         continue  
                 if line.startswith('add indirect'):
-                    new_history +=  [p.get('process').nice_string(
-                        prefix='generate ' if (i==0 and next_generate) else 'add process ') 
-                                     for i,p in enumerate(self.cmd._curr_amps)]
+                    # using curr_amps has the issue if two ME are mapped into a single one
+                    # using proc_def has the issue that some process might not have any diagram
+                    # therefore using self._curr_matrix_elements
+                    
+                    i = 0
+                    for group in self.cmd._curr_matrix_elements:
+                        for me in group.get('matrix_elements'):
+                            for p in me.get('processes'):
+                                prefix = 'generate ' if (i==0 and next_generate) else 'add process '
+                                new_history.append(p.nice_string(prefix=prefix))
+                                i=1
+                    
                     next_generate = False
                     continue
                 
