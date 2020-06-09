@@ -555,6 +555,12 @@ class Fermi_bounds:
              result = self.res_tot_dw(pred_sigma,marginalize)
              return result[2] , result[0]
 
+class Fermi_line:
+    ''' this class holds all the functionalities regarding the Fermi-LAT upper limits on gamma ray line searches (1506.00013)
+        it allows to evaluate the upper limits on gamma-gamma, gamma-Z, gamma-h cross sections, as well as the likelihoods
+    '''
+    pass
+
 class bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
