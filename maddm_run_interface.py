@@ -38,7 +38,7 @@ except ImportError:
 
 try:
     from scipy.interpolate import interp1d
-    from scipy.integrate import quad, dblquad
+    from scipy.integrate import quad, dblquad, tplquad
     from scipy.optimize import brute, fmin, minimize_scalar
     from scipy.special import gammainc
 except ImportError, error:
@@ -559,7 +559,93 @@ class Fermi_line:
     ''' this class holds all the functionalities regarding the Fermi-LAT upper limits on gamma ray line searches (1506.00013)
         it allows to evaluate the upper limits on gamma-gamma, gamma-Z, gamma-h cross sections, as well as the likelihoods
     '''
-    pass
+    KPC_TO_CM = 3.086e21
+
+    def __init__(self):
+        ''' set paths of likelihood files, set rho_sun and r_sun as used by Fermi-LAT '''
+        self.r3_like_file     =  pjoin(MDMDIR, 'Fermi_line_likelihoods', 'R3_gamma_lines_ULflux_like.dat')
+        self.r16_like_file    =  pjoin(MDMDIR, 'Fermi_line_likelihoods', 'R16_gamma_lines_ULflux_like.dat')
+        self.rho_sun = 0.4 # GeV cm^{-3}
+        self.r_sun = 8.5 # kpc
+
+    def nfw_func(self, y, gamma):
+        ''' This is the functional form of the NFW density profile:
+                - it does not contain the normalisation density rho_s
+                - it does not contain r_s, but y := r/r_s
+            The classic NFW profile is: rho_s*nfw_func(y = r/r_s)
+        '''
+        return np.power(y, -gamma) * np.power(1 + y, gamma-3.)
+
+    def einasto_func(self, y, alpha):
+        ''' Same as above '''
+        return np.exp(-2/alpha * (np.power(y, alpha) - 1))
+
+    def burkert_func(self, y):
+        ''' Same as above '''
+        return np.power( (1 + y) * (1 + np.power(y, 2)), -1)
+
+    def set_profile(self, profile, r_s, **kwargs):
+        ''' sets the profile to be used in the J-factor computation:
+                - normalises the profile according to Fermi-LAT conventions: rho(r_sun) = rho_sun
+                - returns rho_s, r_s, profile (as a functional depending on y = r/r_s)
+            it sets a default for kwargs that have not been provided.
+        '''
+        profile_dict = {
+            'nfw': lambda y: self.nfw_func(y, kwargs.get("gamma", 1.0)),
+            'einasto': lambda y: self.einasto_func(y, kwargs.get("alpha", 0.17)),
+            'burkert': lambda y: self.burkert_func(y)
+        }
+        try:
+            profile_func = profile_dict[profile]
+        except KeyError:
+            logger.error("'%s' density profile does not exist" % (profile))
+        rho_s = self.rho_sun / profile_func(r_sun / r_s)
+        return rho_s, r_s, profile_func
+
+    def Jcone_FL(ang, profile_func, x_sun):
+        ''' it computes the conic part of the J-factor:
+                - ang: is the angle between the main axis of the cone and its slant height
+                - x_sun := r_sun/r_s
+        '''
+        def coefft(t):
+            ''' useful redefinition, t := cos(theta), where theta is the integration variable '''
+            return np.power(x_sun, 2)*(1 - np.power(t,2))
+        def func(y, t):
+            ''' integrand function for the integral without singularity '''
+            return np.power(profile_func(y),2) * y * np.power(np.power(y,2) - coefft(t), -0.5)
+        def func_sing(t):
+            ''' integrand function for the singular integral over y '''
+            return lambda y: np.power(profile_func(y),2) * y * np.power(y + np.sqrt(coefft(t)), -0.5)
+        def inte_func(t):
+            ''' integration over r for the singular region. It will then be integrated over t '''
+            return integrate.quad(func_sing(t), np.sqrt(coefft(t)), x_sun, weight = 'alg', wvar = (-0.5,0))[0]
+        return 2*np.pi*integrate.dblquad(func, np.cos(ang), 1., lambda t: x_sun, lambda t: np.inf)[0] + 2*2*np.pi*integrate.quad(inte_func, np.cos(ang), 1.)[0]
+
+    def Jmask_FL(ang, ang_lat, ang_long, profile_func, x_sun):
+        ''' it computes the mask over the J-factor:
+                - ang: is the angle between the main axis of the cone and its slant height
+                - ang_lat: latitude angle covered by the mask: the mask covers: |latitude| < ang_lat
+                - ang_long: minimum longitude covered by the mask: the mask covers: ang_long < |longitude| < pi/2
+                - x_sun := r_sun/r_s
+        '''
+        if(ang_long >= ang or ang_lat == 0): # the mask is zero both if it is outside the cone integration region or if the latitude has zero amplitude
+            return 0.
+        bprime = np.amin([ang_lat, ang, np.arctan(np.sqrt(np.power(np.sin(ang),2) - np.power(np.sin(ang_long),2)/np.cos(ang)))]) # actually, it should be abs(cos(ang)), but it is always positive
+        def lprime(b):
+            return np.arcsin(np.cos(ang)*np.sqrt(np.power(np.tan(ang),2) - np.power(np.tan(b),2)))
+        def func(y, l, b):
+            ''' integrand function, b is the longitude and l is the latitude '''
+            return np.cos(b) * np.power(profile_func(np.sqrt(y*y + x_sun*x_sun - 2*y*x_sun*np.cos(b)*np.cos(l))),2)
+        return 2*integrate.tplquad(func, -bprime, bprime, lambda b: ang_long, lprime, lambda b, l: 0, lambda b, l: np.inf)[0]
+
+    def J_FL(ang, ang_lat, ang_long, rho_s, r_s, profile_func, mask = True):
+        ''' if mask = False, then the mask is set to zero '''
+        if mask:
+            Jmask_value = self.Jmask_FL(ang = ang, ang_lat = ang_lat, ang_long = ang_long, profile_func = profile_func, x_sun = self.r_sun/r_s)
+        else:
+            Jmask_value = 0.
+        return self.KPC_TO_CM * np.power(rho_s, 2)*r_s * (self.Jcone_FL(ang = ang, profile_func = profile_func, x_sun = self.r_sun/r_s) - Jmask_value)
+
 
 class bcolors:
     HEADER = '\033[95m'
