@@ -38,7 +38,7 @@ except ImportError:
 
 try:
     from scipy.interpolate import interp1d
-    from scipy.integrate import quad
+    from scipy.integrate import quad, dblquad
     from scipy.optimize import brute, fmin, minimize_scalar
     from scipy.special import gammainc
 except ImportError, error:
