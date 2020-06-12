@@ -565,8 +565,17 @@ class Fermi_line:
         ''' set paths of likelihood files, set rho_sun and r_sun as used by Fermi-LAT '''
         self.r3_like_file     =  pjoin(MDMDIR, 'Fermi_line_likelihoods', 'R3_gamma_lines_ULflux_like.dat')
         self.r16_like_file    =  pjoin(MDMDIR, 'Fermi_line_likelihoods', 'R16_gamma_lines_ULflux_like.dat')
+        self.j_r3 = 1.39e23 # GeV^2 cm^{-5}
+        self.j_r16 = 9.39e22 # GeV^2 cm^{-5}
+        self.ul_file_list = { # the key is the angle of the ROI (in degrees)
+            3.: (self.r3_like_file, self.j_r3),
+            16.: (self.r16_like_file, self.j_r16)
+        }
         self.rho_sun = 0.4 # GeV cm^{-3}
         self.r_sun = 8.5 # kpc
+        # latitude and longitude of the mask placed by Fermi-LAT
+        self.mask_lat = 5. * np.pi/180 # radians
+        self.mask_long = 6. * np.pi/180 # radians
 
     def nfw_func(self, y, gamma):
         ''' This is the functional form of the NFW density profile:
@@ -598,13 +607,14 @@ class Fermi_line:
         try:
             profile_func = profile_dict[profile]
         except KeyError:
-            logger.error("'%s' density profile does not exist" % (profile))
-        rho_s = self.rho_sun / profile_func(r_sun / r_s)
+            logger.warning("'%s' density profile does not exist" % (profile))
+            raise Exception # something
+        rho_s = self.rho_sun / profile_func(self.r_sun / r_s)
         return rho_s, r_s, profile_func
 
     def Jcone_FL(ang, profile_func, x_sun):
         ''' it computes the conic part of the J-factor:
-                - ang: is the angle between the main axis of the cone and its slant height
+                - ang: is the angle between the main axis of the cone and its slant height (in radians)
                 - x_sun := r_sun/r_s
         '''
         def coefft(t):
@@ -618,14 +628,14 @@ class Fermi_line:
             return lambda y: np.power(profile_func(y),2) * y * np.power(y + np.sqrt(coefft(t)), -0.5)
         def inte_func(t):
             ''' integration over r for the singular region. It will then be integrated over t '''
-            return integrate.quad(func_sing(t), np.sqrt(coefft(t)), x_sun, weight = 'alg', wvar = (-0.5,0))[0]
-        return 2*np.pi*integrate.dblquad(func, np.cos(ang), 1., lambda t: x_sun, lambda t: np.inf)[0] + 2*2*np.pi*integrate.quad(inte_func, np.cos(ang), 1.)[0]
+            return quad(func_sing(t), np.sqrt(coefft(t)), x_sun, weight = 'alg', wvar = (-0.5,0))[0]
+        return 2*np.pi*dblquad(func, np.cos(ang), 1., lambda t: x_sun, lambda t: np.inf)[0] + 2*2*np.pi*quad(inte_func, np.cos(ang), 1.)[0]
 
     def Jmask_FL(ang, ang_lat, ang_long, profile_func, x_sun):
         ''' it computes the mask over the J-factor:
-                - ang: is the angle between the main axis of the cone and its slant height
-                - ang_lat: latitude angle covered by the mask: the mask covers: |latitude| < ang_lat
-                - ang_long: minimum longitude covered by the mask: the mask covers: ang_long < |longitude| < pi/2
+                - ang: is the angle between the main axis of the cone and its slant height (in radians)
+                - ang_lat: latitude angle covered by the mask: the mask covers: |latitude| < ang_lat (in radians)
+                - ang_long: minimum longitude covered by the mask: the mask covers: ang_long < |longitude| < pi/2 (in radians)
                 - x_sun := r_sun/r_s
         '''
         if(ang_long >= ang or ang_lat == 0): # the mask is zero both if it is outside the cone integration region or if the latitude has zero amplitude
@@ -636,7 +646,7 @@ class Fermi_line:
         def func(y, l, b):
             ''' integrand function, b is the longitude and l is the latitude '''
             return np.cos(b) * np.power(profile_func(np.sqrt(y*y + x_sun*x_sun - 2*y*x_sun*np.cos(b)*np.cos(l))),2)
-        return 2*integrate.tplquad(func, -bprime, bprime, lambda b: ang_long, lprime, lambda b, l: 0, lambda b, l: np.inf)[0]
+        return 2*tplquad(func, -bprime, bprime, lambda b: ang_long, lprime, lambda b, l: 0, lambda b, l: np.inf)[0]
 
     def J_FL(ang, ang_lat, ang_long, rho_s, r_s, profile_func, mask = True):
         ''' if mask = False, then the mask is set to zero '''
@@ -645,6 +655,50 @@ class Fermi_line:
         else:
             Jmask_value = 0.
         return self.KPC_TO_CM * np.power(rho_s, 2)*r_s * (self.Jcone_FL(ang = ang, profile_func = profile_func, x_sun = self.r_sun/r_s) - Jmask_value)
+
+    def flux_gamma_line(mdm, sigmav, jfact):
+        ''' returns the integrated flux for the process dm dm > a a '''
+        return sigmav * jfact / (4 * np.pi * mdm * mdm)
+
+    def rescale_limit(mdm, jfact_new, roi):
+        ''' returns the upper limit on the flux and on sigmav, rescaled according a new value of the J-factor for a given ROI (expressed in degrees) '''
+        try:
+            ul_file, j_roi = self.ul_file_list[roi]
+        except KeyError:
+            logger.warning("ROI of amplitude %f is not allowed" % (roi))
+            raise Exception # something
+        energy, ul_flux = np.loadtxt(ul_file, usecols = (0,1), unpack = True)
+        if mdm < energy[0] or mdm > energy[-1]:
+            logger.warning("Dark matter mass is out of the range allowed")
+            raise Exception # something
+        for en, ul_f in zip(energy, ul_flux):
+            if mdm <= en: # the energy of each line of the file is the upper limit of the energy bin
+                ul_flux_new = ul_flux * jfact_new / j_roi
+                return ul_flux_new, ul_flux_new * 4 * np.pi * mdm * mdm / jfact_new
+
+    def loglike_linear(flux, A):
+        return A * flux
+
+    def loglike_parabolic(flux, x_zero, sigma):
+        return np.power(flux - x_zero, 2) / np.power(sigma, 2)
+
+    def loglike(mdm, sigmav, jfact, roi):
+        ''' returns the -2*log(like) evaluated at the flux, for a certain ROI (in degrees) '''
+        try:
+            ul_file, = self.ul_file_list[roi]
+        except KeyError:
+            logger.warning("ROI of amplitude %f is not allowed" % (roi))
+            raise Exception # something
+        energy, x_zero, sigma = np.loadtxt(ul_file, usecols = (0,2,3), unpack = True)
+        if mdm < energy[0] or mdm > energy[-1]:
+            logger.warning("Dark matter mass is out of the range allowed")
+            raise Exception # something
+        for en, x_z, sig in zip(energy, x_zero, sigma):
+            if mdm <= en: # the energy of each line of the file is the upper limit of the energy bin
+                if sigma == 0.:
+                    return self.loglike_linear(flux = self.flux_gamma_line(mdm = mdm, sigmav = sigmav, jfact = jfact), A = x_z)
+                else:
+                    return self.loglike_parabolic(flux = self.flux_gamma_line(mdm = mdm, sigmav = sigmav, jfact = jfact), x_zero = x_z, sigma = sig)
 
 
 class bcolors:
