@@ -678,7 +678,7 @@ class Fermi_line:
             if np.abs(e - mdm) < delta or this_bin == -1:
                 delta = np.abs(e - mdm)
                 this_bin = i_bin
-        # HOW TO RESCALE THE LIMIT?
+        # HOW TO RESCALE THE LIMIT!?
         ul_flux_new = ul_flux[this_bin] * jfact_new / j_roi
         return ul_flux_new, ul_flux_new * 4 * np.pi * mdm * mdm / jfact_new # ASK WHETER TO SET mdm = energy[this_bin] to have the same sigmav as paper in case the J-factor is the same
 
