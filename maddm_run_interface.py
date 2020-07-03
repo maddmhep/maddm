@@ -638,7 +638,7 @@ class Fermi_line:
                 - ang_long: minimum longitude covered by the mask: the mask covers: ang_long < |longitude| < pi/2 (in radians)
                 - x_sun := r_sun/r_s
         '''
-        if(ang_long >= ang or ang_lat == 0): # the mask is zero both if it is outside the cone integration region or if the latitude has zero amplitude
+        if ang_long >= ang or ang_lat == 0: # the mask is zero both if it is outside the cone integration region or if the latitude has zero amplitude
             return 0.
         bprime = np.amin([ang_lat, ang, np.arctan(np.sqrt(np.power(np.sin(ang),2) - np.power(np.sin(ang_long),2)/np.cos(ang)))]) # actually, it should be abs(cos(ang)), but it is always positive
         def lprime(b):
@@ -668,19 +668,26 @@ class Fermi_line:
             logger.warning("ROI of amplitude %f is not allowed" % (roi))
             raise Exception # something
         energy, ul_flux = np.loadtxt(ul_file, usecols = (0,1), unpack = True)
+        # find the energy bin, by minimising abs(E_i - m)
         if mdm < energy[0] or mdm > energy[-1]:
             logger.warning("Dark matter mass is out of the range allowed")
             raise Exception # something
-        for en, ul_f in zip(energy, ul_flux):
-            if mdm <= en: # the energy of each line of the file is the upper limit of the energy bin
-                ul_flux_new = ul_flux * jfact_new / j_roi
-                return ul_flux_new, ul_flux_new * 4 * np.pi * mdm * mdm / jfact_new
+        this_bin = -1
+        delta = -1
+        for i_bin, e in enumerate(energy):
+            if np.abs(e - mdm) < delta or this_bin == -1:
+                delta = np.abs(e - mdm)
+                this_bin = i_bin
+        # HOW TO RESCALE THE LIMIT?
+        ul_flux_new = ul_flux[this_bin] * jfact_new / j_roi
+        return ul_flux_new, ul_flux_new * 4 * np.pi * mdm * mdm / jfact_new # ASK WHETER TO SET mdm = energy[this_bin] to have the same sigmav as paper in case the J-factor is the same
 
     def loglike_linear(flux, A):
         return A * flux
 
     def loglike_parabolic(flux, x_zero, sigma):
-        return np.power(flux - x_zero, 2) / np.power(sigma, 2)
+        ''' set loglike = 0 for flux < xzero in order to avoid non-zero loglike for flux = 0 (and likelihood depending on mass in that case) '''
+        return np.power(flux - x_zero, 2) / np.power(sigma, 2) if flux >= xzero else 0.
 
     def loglike(mdm, sigmav, jfact, roi):
         ''' returns the -2*log(like) evaluated at the flux, for a certain ROI (in degrees) '''
