@@ -568,14 +568,14 @@ class Fermi_line:
         self.j_r3 = 1.39e23 # GeV^2 cm^{-5}
         self.j_r16 = 9.39e22 # GeV^2 cm^{-5}
         self.ul_file_list = { # the key is the angle of the ROI (in degrees)
-            3.: (self.r3_like_file, self.j_r3),
-            16.: (self.r16_like_file, self.j_r16)
+            3.: (np.loadtxt(self.r3_like_file, unpack = True), self.j_r3),
+            16.: (np.loadtxt(self.r16_like_file, unpack = True), self.j_r16)
         }
         self.rho_sun = 0.4 # GeV cm^{-3}
         self.r_sun = 8.5 # kpc
         # latitude and longitude of the mask placed by Fermi-LAT
-        self.mask_lat = 5. * np.pi/180 # radians
-        self.mask_long = 6. * np.pi/180 # radians
+        self.mask_lat = 5. * np.pi/180. # radians
+        self.mask_long = 6. * np.pi/180. # radians
 
     def nfw_func(self, y, gamma):
         ''' This is the functional form of the NFW density profile:
@@ -612,7 +612,7 @@ class Fermi_line:
         rho_s = self.rho_sun / profile_func(self.r_sun / r_s)
         return rho_s, r_s, profile_func
 
-    def Jcone_FL(ang, profile_func, x_sun):
+    def Jcone_FL(self, ang, profile_func, x_sun):
         ''' it computes the conic part of the J-factor:
                 - ang: is the angle between the main axis of the cone and its slant height (in radians)
                 - x_sun := r_sun/r_s
@@ -631,7 +631,7 @@ class Fermi_line:
             return quad(func_sing(t), np.sqrt(coefft(t)), x_sun, weight = 'alg', wvar = (-0.5,0))[0]
         return 2*np.pi*dblquad(func, np.cos(ang), 1., lambda t: x_sun, lambda t: np.inf)[0] + 2*2*np.pi*quad(inte_func, np.cos(ang), 1.)[0]
 
-    def Jmask_FL(ang, ang_lat, ang_long, profile_func, x_sun):
+    def Jmask_FL(self, ang, ang_lat, ang_long, profile_func, x_sun):
         ''' it computes the mask over the J-factor:
                 - ang: is the angle between the main axis of the cone and its slant height (in radians)
                 - ang_lat: latitude angle covered by the mask: the mask covers: |latitude| < ang_lat (in radians)
@@ -648,7 +648,7 @@ class Fermi_line:
             return np.cos(b) * np.power(profile_func(np.sqrt(y*y + x_sun*x_sun - 2*y*x_sun*np.cos(b)*np.cos(l))),2)
         return 2*tplquad(func, -bprime, bprime, lambda b: ang_long, lprime, lambda b, l: 0, lambda b, l: np.inf)[0]
 
-    def J_FL(ang, ang_lat, ang_long, rho_s, r_s, profile_func, mask = True):
+    def J_FL(self, ang, ang_lat, ang_long, rho_s, r_s, profile_func, mask = True):
         ''' if mask = False, then the mask is set to zero '''
         if mask:
             Jmask_value = self.Jmask_FL(ang = ang, ang_lat = ang_lat, ang_long = ang_long, profile_func = profile_func, x_sun = self.r_sun/r_s)
@@ -656,56 +656,58 @@ class Fermi_line:
             Jmask_value = 0.
         return self.KPC_TO_CM * np.power(rho_s, 2)*r_s * (self.Jcone_FL(ang = ang, profile_func = profile_func, x_sun = self.r_sun/r_s) - Jmask_value)
 
-    def flux_gamma_line(mdm, sigmav, jfact):
+    def flux_gamma_line(self, mdm, sigmav, jfact):
         ''' returns the integrated flux for the process dm dm > a a '''
         return sigmav * jfact / (4 * np.pi * mdm * mdm)
 
-    def rescale_limit(mdm, jfact_new, roi):
+    def get_energy_bin(self, mdm, energy_means):
+        ''' find the energy bin, by minimising abs(E_i - m) and returns the index '''
+        if mdm < energy_means[0] or mdm > energy_means[-1]:
+            logger.warning("Dark matter mass is out of the range allowed")
+            raise Exception # something
+        this_bin = -1
+        delta = -1
+        for i_bin, e in enumerate(energy_means):
+            if np.abs(e - mdm) < delta or this_bin == -1:
+                delta = np.abs(e - mdm)
+                this_bin = i_bin
+        return this_bin
+
+    def rescale_limit(self, mdm, jfact_new, roi):
         ''' returns the upper limit on the flux and on sigmav, rescaled according a new value of the J-factor for a given ROI (expressed in degrees) '''
         try:
             ul_file, j_roi = self.ul_file_list[roi]
         except KeyError:
             logger.warning("ROI of amplitude %f is not allowed" % (roi))
             raise Exception # something
-        energy, ul_flux = np.loadtxt(ul_file, usecols = (0,1), unpack = True)
-        # find the energy bin, by minimising abs(E_i - m)
-        if mdm < energy[0] or mdm > energy[-1]:
-            logger.warning("Dark matter mass is out of the range allowed")
-            raise Exception # something
-        this_bin = -1
-        delta = -1
-        for i_bin, e in enumerate(energy):
-            if np.abs(e - mdm) < delta or this_bin == -1:
-                delta = np.abs(e - mdm)
-                this_bin = i_bin
+        energy, ul_flux = ul_file[0], ul_file[1]
+        this_bin = self.get_energy_bin(mdm = mdm, energy_means = energy)
         # HOW TO RESCALE THE LIMIT!?
         ul_flux_new = ul_flux[this_bin] * jfact_new / j_roi
         return ul_flux_new, ul_flux_new * 4 * np.pi * mdm * mdm / jfact_new # ASK WHETER TO SET mdm = energy[this_bin] to have the same sigmav as paper in case the J-factor is the same
 
-    def loglike_linear(flux, A):
+    def loglike_linear(self, flux, A):
         return A * flux
 
-    def loglike_parabolic(flux, x_zero, sigma):
-        ''' set loglike = 0 for flux < xzero in order to avoid non-zero loglike for flux = 0 (and likelihood depending on mass in that case) '''
-        return np.power(flux - x_zero, 2) / np.power(sigma, 2) if flux >= xzero else 0.
+    def loglike_parabolic(self, flux, x_zero, sigma):
+        ''' set loglike = 0 for flux < x_zero in order to avoid non-zero loglike for flux = 0 (and likelihood depending on mass in that case) '''
+        return np.power(flux - x_zero, 2) / np.power(sigma, 2) if flux >= x_zero else 0.
 
-    def loglike(mdm, sigmav, jfact, roi):
+    def loglike(self, mdm, sigmav, jfact, roi):
         ''' returns the -2*log(like) evaluated at the flux, for a certain ROI (in degrees) '''
         try:
-            ul_file, = self.ul_file_list[roi]
+            ul_file = self.ul_file_list[roi][0]
         except KeyError:
-            logger.warning("ROI of amplitude %f is not allowed" % (roi))
-            raise Exception # something
-        energy, x_zero, sigma = np.loadtxt(ul_file, usecols = (0,2,3), unpack = True)
-        if mdm < energy[0] or mdm > energy[-1]:
-            logger.warning("Dark matter mass is out of the range allowed")
-            raise Exception # something
-        for en, x_z, sig in zip(energy, x_zero, sigma):
-            if mdm <= en: # the energy of each line of the file is the upper limit of the energy bin
-                if sigma == 0.:
-                    return self.loglike_linear(flux = self.flux_gamma_line(mdm = mdm, sigmav = sigmav, jfact = jfact), A = x_z)
-                else:
-                    return self.loglike_parabolic(flux = self.flux_gamma_line(mdm = mdm, sigmav = sigmav, jfact = jfact), x_zero = x_z, sigma = sig)
+            logger.warning("ROI of amplitude %f is not allowed, ignore likelihood computation" % (roi))
+            return -1.
+        energy, x_zero, sigma = ul_file[0], ul_file[2], ul_file[3]
+        this_bin = self.get_energy_bin(mdm = mdm, energy_means = energy)
+        if sigma[this_bin] == 0.:
+            logger.warning("m = %.3e linear, x_zero = %.3e" % (mdm, x_zero[this_bin]))
+            return self.loglike_linear(flux = self.flux_gamma_line(mdm = mdm, sigmav = sigmav, jfact = jfact), A = x_zero[this_bin])
+        else:
+            logger.warning("m = %.3e parabolic, x_zero = %.3e, sigma = %.3e" % (mdm, x_zero[this_bin], sigma[this_bin]))
+            return self.loglike_parabolic(flux = self.flux_gamma_line(mdm = mdm, sigmav = sigmav, jfact = jfact), x_zero = x_zero[this_bin], sigma = sigma[this_bin])
 
 
 class bcolors:
@@ -804,6 +806,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
         self.Spectra = Spectra()
         self.Fermi   = Fermi_bounds()
+        self.Fermi_line = Fermi_line()
         self.MadDM_version = '3.0'
 
     def preloop(self,*args,**opts):
@@ -1298,6 +1301,9 @@ class MADDMRunCmd(cmd.CmdShell):
         # ****** Calculating Fermi Limits
         self.calculate_fermi_limits(mdm)
 
+        # ****** Calculating Fermi line limits
+        self.calculate_fermi_line_limits(mdm)
+
         
         # ****** Calculating Fluxes at detection
         if self.mode['indirect'].startswith('flux') :
@@ -1362,6 +1368,51 @@ class MADDMRunCmd(cmd.CmdShell):
             
                logger.debug('sigmav = %s , p-th=%s , like-th=%s , p-nonth=%s , like-nonth=%s '  %(sigmav, pvalue_th , like_th , pvalue_nonth , like_nonth ) )
 
+    def calculate_fermi_line_limits(self, mdm):
+        ''' setup the computation of Fermi-LAT gamma-line limits '''
+        ##########
+        # TEST
+        ##########
+        # suppose parameters can be read out from the maddm card:
+        # profile name
+        # roi
+        # parameters of the profile
+        card = {
+            'profile': 'nfw',
+            'roi': 3.,
+            'alpha': -1,
+            'gamma': 1.3,
+            'r_s': 20,
+        }
+        rho_s, r_s, profile_func = self.Fermi_line.set_profile(
+            profile = card['profile'],
+            r_s = card['r_s'],
+            gamma = card['gamma'])
+        J_fact = self.Fermi_line.J_FL(
+            ang = card['roi']*np.pi/180.,
+            ang_lat = 5. * np.pi/180.,
+            ang_long = 6. * np.pi/180.,
+            profile_func = profile_func,
+            rho_s = rho_s,
+            r_s = r_s)
+        flux = self.Fermi_line.flux_gamma_line(
+            mdm = mdm,
+            sigmav = 1e-36,
+            jfact = J_fact)
+        ll = self.Fermi_line.loglike(
+            mdm = mdm,
+            sigmav = 1e-36,
+            jfact = J_fact,
+            roi = card['roi'])
+        logger.warning('''
+==========
+profile = %s, roi = %f deg
+alpha = %f, gamma = %f, r_s = %f kpc
+rho_s = %.3e GeV cm^{-3}
+J_fact = %.3e GeV^2 cm^{-5}
+flux   = %.3e cm^2 s^{-1}
+-2logL = %.3e
+==========''' % (card['profile'], card['roi'], card['alpha'], card['gamma'], card['r_s'], rho_s, J_fact, flux, ll))
 
     def run_pythia8_for_flux(self):
         """ compile and run pythia8 for the flux"""
