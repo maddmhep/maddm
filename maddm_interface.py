@@ -680,6 +680,8 @@ class MadDM_interface(master_interface.MasterCmd):
         
         if self._curr_amps:
             super(MadDM_interface, self).do_output(line)
+            if args[0] != 'maddm':
+                return
         
         if self._ID_procs:
 
