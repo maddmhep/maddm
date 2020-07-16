@@ -555,27 +555,19 @@ class Fermi_bounds:
              result = self.res_tot_dw(pred_sigma,marginalize)
              return result[2] , result[0]
 
-class Fermi_line:
-    ''' this class holds all the functionalities regarding the Fermi-LAT upper limits on gamma ray line searches (1506.00013)
-        it allows to evaluate the upper limits on gamma-gamma, gamma-Z, gamma-h cross sections, as well as the likelihoods
-    '''
+class Gamma_line:
+    ''' this class holds all the generic functionalities regarding the upper limits on gamma ray line searches '''
     KPC_TO_CM = 3.086e21
 
-    def __init__(self):
-        ''' set paths of likelihood files, set rho_sun and r_sun as used by Fermi-LAT '''
-        self.r3_like_file     =  pjoin(MDMDIR, 'Fermi_line_likelihoods', 'R3_gamma_lines_ULflux_like.dat')
-        self.r16_like_file    =  pjoin(MDMDIR, 'Fermi_line_likelihoods', 'R16_gamma_lines_ULflux_like.dat')
-        self.j_r3 = 1.39e23 # GeV^2 cm^{-5}
-        self.j_r16 = 9.39e22 # GeV^2 cm^{-5}
-        self.ul_file_list = { # the key is the angle of the ROI (in degrees)
-            3.: (np.loadtxt(self.r3_like_file, unpack = True), self.j_r3),
-            16.: (np.loadtxt(self.r16_like_file, unpack = True), self.j_r16)
-        }
-        self.rho_sun = 0.4 # GeV cm^{-3}
-        self.r_sun = 8.5 # kpc
-        # latitude and longitude of the mask placed by Fermi-LAT
-        self.mask_lat = 5. * np.pi/180. # radians
-        self.mask_long = 6. * np.pi/180. # radians
+    def __init__(self, rho_sun, r_sun, mask_lat, mask_long, mask_ang_1, ul_dict):
+        self.rho_sun = rho_sun # GeV cm^{-3}
+        self.r_sun = r_sun # kpc
+        # latitude and longitude of the mask
+        self.mask_lat = mask_lat * np.pi/180. # radians
+        self.mask_long = mask_long * np.pi/180. # radians
+        # circular mask
+        self.mask_ang_1 = mask_ang_1 * np.pi/180. # radians
+        self.ul_dict = ul_dict
 
     def nfw_func(self, y, gamma):
         ''' This is the functional form of the NFW density profile:
@@ -612,11 +604,14 @@ class Fermi_line:
         rho_s = self.rho_sun / profile_func(self.r_sun / r_s)
         return rho_s, r_s, profile_func
 
-    def Jcone_FL(self, ang, profile_func, x_sun):
+    def J_cone(ang_1, ang_2, profile_func, x_sun):
         ''' it computes the conic part of the J-factor:
-                - ang: is the angle between the main axis of the cone and its slant height (in radians)
+                - ang_1: is the angle between the main axis of the cone and the slant height of the masked conic region (in radians)
+                - ang_2: is the angle between the main axis of the cone and its slant height (in radians)
                 - x_sun := r_sun/r_s
         '''
+        if ang_1 >= ang_2:
+            return 0.
         def coefft(t):
             ''' useful redefinition, t := cos(theta), where theta is the integration variable '''
             return np.power(x_sun, 2)*(1 - np.power(t,2))
@@ -629,32 +624,60 @@ class Fermi_line:
         def inte_func(t):
             ''' integration over r for the singular region. It will then be integrated over t '''
             return quad(func_sing(t), np.sqrt(coefft(t)), x_sun, weight = 'alg', wvar = (-0.5,0))[0]
-        return 2*np.pi*dblquad(func, np.cos(ang), 1., lambda t: x_sun, lambda t: np.inf)[0] + 2*2*np.pi*quad(inte_func, np.cos(ang), 1.)[0]
+        return 2*np.pi*dblquad(func, np.cos(ang_2), np.cos(ang_1), lambda t: x_sun, lambda t: np.inf)[0] + 2*2*np.pi*quad(inte_func, np.cos(ang_2), np.cos(ang_1))[0]
 
-    def Jmask_FL(self, ang, ang_lat, ang_long, profile_func, x_sun):
+    def J_mask(ang_1, ang_2, ang_lat, ang_long, profile_func, x_sun):
         ''' it computes the mask over the J-factor:
-                - ang: is the angle between the main axis of the cone and its slant height (in radians)
+                - ang_1: is the angle between the main axis of the cone and the slant height of the masked conic region (in radians)
+                - ang_2: is the angle between the main axis of the cone and its slant height (in radians)
                 - ang_lat: latitude angle covered by the mask: the mask covers: |latitude| < ang_lat (in radians)
                 - ang_long: minimum longitude covered by the mask: the mask covers: ang_long < |longitude| < pi/2 (in radians)
                 - x_sun := r_sun/r_s
         '''
-        if ang_long >= ang or ang_lat == 0: # the mask is zero both if it is outside the cone integration region or if the latitude has zero amplitude
+        if ang_long >= ang_2 or ang_lat == 0: # the mask is zero both if it is outside the cone integration region or if the latitude has zero amplitude
             return 0.
-        bprime = np.amin([ang_lat, ang, np.arctan(np.sqrt(np.power(np.sin(ang),2) - np.power(np.sin(ang_long),2)/np.cos(ang)))]) # actually, it should be abs(cos(ang)), but it is always positive
-        def lprime(b):
+        # useful definitions
+        def coeffbl(b, l):
+            ''' useful redefinition '''
+            return np.power(x_sun, 2)*(1 - np.power(np.cos(b) * np.cos(l),2))
+        def func_normal(b, l):
+            ''' integrand function for the integral without singularity '''
+            return lambda y: np.power(profile_func(y),2) * y * np.power(np.power(y,2) - coeffbl(b, l), -0.5)
+        def func_sing(b, l):
+            ''' integrand function for the singular integral over y '''
+            return lambda y: np.power(profile_func(y),2) * y * np.power(y + np.sqrt(coeffbl(b, l)), -0.5)
+        def func(l, b):
+            ''' integrand function already integrated over r, b is the longitude and l is the latitude '''
+            return np.cos(b) * (2.*quad(func_sing(b, l), np.sqrt(coeffbl(b, l)), x_sun, weight = 'alg', wvar = (-0.5,0))[0] + quad(func_normal(b, l), x_sun, np.inf)[0])
+        def b_prime(ang):
+            return np.arctan(np.sqrt(np.power(np.sin(ang),2) - np.power(np.sin(ang_long),2)/np.cos(ang)))
+        def l_prime(ang, b):
             return np.arcsin(np.cos(ang)*np.sqrt(np.power(np.tan(ang),2) - np.power(np.tan(b),2)))
-        def func(y, l, b):
-            ''' integrand function, b is the longitude and l is the latitude '''
-            return np.cos(b) * np.power(profile_func(np.sqrt(y*y + x_sun*x_sun - 2*y*x_sun*np.cos(b)*np.cos(l))),2)
-        return 2*tplquad(func, -bprime, bprime, lambda b: ang_long, lprime, lambda b, l: 0, lambda b, l: np.inf)[0]
+        B_2 = np.amin([ang_lat, b_prime(ang_2)])
+        B_3 = np.amin([ang_lat, ang_1, b_prime(ang_2)])
+        if ang_long > ang_1: # condition 1
+            if ang_lat > ang_1 and b_prime(ang_2) > ang_1: # condition 1 + 4
+                return 4*dblquad(func, 0., B_2, lambda b: ang_long, lambda b: l_prime(ang_2, b))[0]
+            else: # condition 1 only
+                return 4*dblquad(func, 0., B_3, lambda b: ang_long, lambda b: l_prime(ang_2, b))[0]
+        else: # condition 2
+            B_1 = np.amin([ang_lat, b_prime(ang_1)])
+            if ang_lat > ang_1 and b_prime(ang_2) > ang_1: # condition 2 + 4 (includes condition 3 as well)
+                return 4*(dblquad(func, 0, B_1, lambda b: l_prime(ang_1, b), lambda b: l_prime(ang_2, b))[0] + dblquad(func, b_prime(ang_1), B_2, lambda b: ang_long, lambda b: l_prime(ang_2, b))[0])
+            elif ang_lat > b_prime(ang_1): # condition 2 + 3
+                return 4*(dblquad(func, 0, B_1, lambda b: l_prime(ang_1, b), lambda b: l_prime(ang_2, b))[0] + dblquad(func, b_prime(ang_1), B_3, lambda b: ang_long, lambda b: l_prime(ang_2, b))[0])
+            else: # condition 2 only
+                return 4*dblquad(func, 0, B_1, lambda b: l_prime(ang_1, b), lambda b: l_prime(ang_2, b))[0]
 
-    def J_FL(self, ang, ang_lat, ang_long, rho_s, r_s, profile_func, mask = True):
-        ''' if mask = False, then the mask is set to zero '''
+    def J(ang_2, ang_lat, ang_long, rho_s, r_s, profile_func, mask = True, ang_1 = 0.):
+        ''' if mask = False, then the mask is set to zero; while the circular mask can be included by setting ang_1 != 0 '''
         if mask:
-            Jmask_value = self.Jmask_FL(ang = ang, ang_lat = ang_lat, ang_long = ang_long, profile_func = profile_func, x_sun = self.r_sun/r_s)
+            if ang_long == 0. and ang_1 == 0.:
+                ang_1 = ang_lat
+            J_mask_value = self.J_mask(ang_1 = ang_1, ang_2 = ang_2, ang_lat = ang_lat, ang_long = ang_long, profile_func = profile_func, x_sun = self.r_sun/r_s)
         else:
-            Jmask_value = 0.
-        return self.KPC_TO_CM * np.power(rho_s, 2)*r_s * (self.Jcone_FL(ang = ang, profile_func = profile_func, x_sun = self.r_sun/r_s) - Jmask_value)
+            J_mask_value = 0.
+        return self.KPC_TO_CM * np.power(rho_s, 2)*r_s * (self.J_cone(ang_1 = ang_1, ang_2 = ang_2, profile_func = profile_func, x_sun = self.r_sun/r_s) - J_mask_value)
 
     def flux_gamma_line(self, mdm, sigmav, jfact):
         ''' returns the integrated flux for the process dm dm > a a '''
@@ -664,7 +687,7 @@ class Fermi_line:
         ''' find the energy bin, by minimising abs(E_i - m) and returns the index '''
         if mdm < energy_means[0] or mdm > energy_means[-1]:
             logger.warning("Dark matter mass is out of the range allowed")
-            raise Exception # something
+            return None # something
         this_bin = -1
         delta = -1
         for i_bin, e in enumerate(energy_means):
@@ -674,17 +697,50 @@ class Fermi_line:
         return this_bin
 
     def rescale_limit(self, mdm, jfact_new, roi):
-        ''' returns the upper limit on the flux and on sigmav, rescaled according a new value of the J-factor for a given ROI (expressed in degrees) '''
+        ''' returns the upper limit on sigmav, rescaled according a new value of the J-factor for a given ROI (expressed in degrees).
+            The limits are taken from the ExpConstraint class, the interpolation function is rescaled according
+            to the new J-factor and then it is evaluated at the mass of the dark matter.
+        '''
         try:
-            ul_file, j_roi = self.ul_file_list[roi]
+            like_file, ul_file, j_roi = self.ul_dict[roi]
         except KeyError:
             logger.warning("ROI of amplitude %f is not allowed" % (roi))
             raise Exception # something
-        energy, ul_flux = ul_file[0], ul_file[1]
-        this_bin = self.get_energy_bin(mdm = mdm, energy_means = energy)
-        # HOW TO RESCALE THE LIMIT!?
-        ul_flux_new = ul_flux[this_bin] * jfact_new / j_roi
-        return ul_flux_new, ul_flux_new * 4 * np.pi * mdm * mdm / jfact_new # ASK WHETER TO SET mdm = energy[this_bin] to have the same sigmav as paper in case the J-factor is the same
+        id_constraints = ExpConstraint()
+        sigmav_ul = id_constraints.ID_max(mdm = mdm, channel = ul_file)
+        return sigmav_ul * j_roi / jfact_new
+
+class Fermi_line(Gamma_line):
+    ''' this class holds all the functionalities regarding the Fermi-LAT upper limits on gamma ray line searches (1506.00013)
+        it allows to evaluate the upper limits on gamma-gamma, gamma-Z, gamma-h cross sections, as well as the likelihoods
+    '''
+    def __init__(self):
+        ''' set paths of likelihood files, set rho_sun and r_sun as used by Fermi-LAT '''
+        # likelihood files
+        r3_like_file  = pjoin(MDMDIR, 'Fermi_line_likelihoods', 'R3_gamma_lines_ULflux_like.dat')
+        r16_like_file = pjoin(MDMDIR, 'Fermi_line_likelihoods', 'R16_gamma_lines_ULflux_like.dat')
+        # J-factors
+        j_r3  = 1.39e23 # GeV^2 cm^{-5}
+        j_r16 = 9.39e22 # GeV^2 cm^{-5}
+        j_r41 = 9.16e22 # GeV^2 cm^{-5}
+        # sigma*v limits labels
+        ul_sigmav_r3  = "aaNFWcR3"
+        ul_sigmav_r16 = "aaER16"
+        ul_sigmav_r41 = "aaNFWR41"
+        # summary dictionary (like_file, j-factor, sigmav_ul_file)
+        ul_dict = { # the key is the angle of the ROI (in degrees)
+            3. : (np.loadtxt(r3_like_file, unpack = True), ul_sigmav_r3, j_r3),
+            16.: (np.loadtxt(r16_like_file, unpack = True), ul_sigmav_r16, j_r16),
+            41.: (None, ul_sigmav_r41, j_r41)
+        }
+        super().__init__(
+            rho_sun    = 0.4, # GeV cm^{-3}
+            r_sun      = 8.5, # kpc
+            mask_lat   = 5., # deg
+            mask_long  = 6., # deg
+            mask_ang_1 = 0., # deg
+            ul_dict    = ul_dict
+        )
 
     def loglike_linear(self, flux, A):
         return A * flux
@@ -696,12 +752,18 @@ class Fermi_line:
     def loglike(self, mdm, sigmav, jfact, roi):
         ''' returns the -2*log(like) evaluated at the flux, for a certain ROI (in degrees) '''
         try:
-            ul_file = self.ul_file_list[roi][0]
+            like_file = self.ul_dict[roi][0]
         except KeyError:
             logger.warning("ROI of amplitude %f is not allowed, ignore likelihood computation" % (roi))
             return -1.
-        energy, x_zero, sigma = ul_file[0], ul_file[2], ul_file[3]
+        if not like_file:
+            logger.warning("No likelihood available for ROI of amplitude %f." % (roi))
+            return -1.
+        energy, x_zero, sigma = like_file[0], like_file[2], like_file[3]
         this_bin = self.get_energy_bin(mdm = mdm, energy_means = energy)
+        if not this_bin:
+            # out of mass range
+            return -1.
         if sigma[this_bin] == 0.:
             logger.warning("m = %.3e linear, x_zero = %.3e" % (mdm, x_zero[this_bin]))
             return self.loglike_linear(flux = self.flux_gamma_line(mdm = mdm, sigmav = sigmav, jfact = jfact), A = x_zero[this_bin])
@@ -709,6 +771,28 @@ class Fermi_line:
             logger.warning("m = %.3e parabolic, x_zero = %.3e, sigma = %.3e" % (mdm, x_zero[this_bin], sigma[this_bin]))
             return self.loglike_parabolic(flux = self.flux_gamma_line(mdm = mdm, sigmav = sigmav, jfact = jfact), x_zero = x_zero[this_bin], sigma = sigma[this_bin])
 
+class HESS_line(Gamma_line):
+    ''' this class holds all the functionalities regarding the HESS upper limits on gamma ray line searches (1805.05741)
+        it allows to evaluate the upper limits on gamma-gamma, gamma-Z, gamma-h cross sections
+    '''
+    def __init__(self):
+        ''' set paths of likelihood files, set rho_sun and r_sun as used by HESS '''
+        # J-factors
+        j_r1  = 4.66e21 # GeV^2 cm^{-5}
+        # sigma*v limits labels
+        ul_sigmav_r1  = "hess2018"
+        # summary dictionary (like_file, j-factor, sigmav_ul_file)
+        ul_dict = { # the key is the angle of the ROI (in degrees)
+            1. : (None, ul_sigmav_r1, j_r1)
+        }
+        super().__init__(
+            rho_sun    = 0.39, # GeV cm^{-3}
+            r_sun      = 8.5, # kpc
+            mask_lat   = 0.3, # deg
+            mask_long  = 0., # deg
+            mask_ang_1 = 0., # deg
+            ul_dict    = ul_dict
+        )
 
 class bcolors:
     HEADER = '\033[95m'
