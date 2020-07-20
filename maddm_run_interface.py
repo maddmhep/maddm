@@ -97,6 +97,7 @@ class ExpConstraints:
 
                                'hess2013': pjoin(MDMDIR,'ExpData', 'hess_I_2013_einasto.dat'),
                                'hess2016': pjoin(MDMDIR,'ExpData', 'hess_2016_einasto.dat'),
+                               'hess2018': pjoin(MDMDIR,'ExpData', 'hess_2018_einasto.dat'),
 
                                'aaER16':pjoin(MDMDIR,'ExpData', 'Fermi_lines_2015_Einasto_R16.dat'),
                                'aaIR90':pjoin(MDMDIR,'ExpData', 'Fermi_lines_2015_Isothermal_R90.dat'),
@@ -106,7 +107,7 @@ class ExpConstraints:
         self._id_limit_vel = {'qqx':2.0E-5,   'ccx':2.0E-5, 'gg':2.0E-5, 'bbx':2.0E-5,'ttx':2.0E-5,'emep':2.0E-5,'mummup':2.0E-5,'tamtap':2.0E-5,
                               'wpwm':2.0E-5,  'zz':2.0E-5,  'hh':2.0E-5,
                               'aaER16':1.0E-3,'aaIR90':1.0E-3,'aaNFWcR3':1.0E-3,'aaNFWR41':1.0E-3 ,
-                              'hess2013': 1.0E-3 , 'hess2016': 1.0E-3 } 
+                              'hess2013': 1.0E-3 , 'hess2016': 1.0E-3 , 'hess2018': 1.0E-3} 
 
         self._id_limit_mdm = dict()
         self._id_limit_sigv = dict()
@@ -555,56 +556,122 @@ class Fermi_bounds:
              result = self.res_tot_dw(pred_sigma,marginalize)
              return result[2] , result[0]
 
+class DensityProfile:
+    ''' this class allows to define and correctly normalise the density profiles '''
+    NORMALIZATION = { # as tuple (rho_sun, r_sun) # GeV cm^{-3}, kpc
+        "Fermi-LAT_2015": (0.4, 8.5),
+        "HESS_2018": (0.39, 8.5)
+    }
+    
+    def __init__(self, name, functional_form, r_s, normalization):
+        ''' normalization can be either a string for a default normalisation
+            or a tuple as (rho_sun, r_sun).
+            functional_form is the functional_form of the profile:
+                - it does not contain the normalisation density rho_s
+                - it does not contain r_s, but y := r/r_s
+                - it depends solely on y.
+        '''
+        self.name = name
+        self.r_s = r_s
+        self._functional_form = functional_form
+        if not isinstance(normalization, tuple):
+            self.rho_sun, self.r_sun = self.NORMALIZATION[normalization]
+        else:
+            self.rho_sun, self.r_sun = normalization
+        self.rho_s = self.rho_sun / self._functional_form(self.r_sun / self.r_s)
+
+    def functional_form(self):
+        return self._functional_form
+
+    def full_form(self):
+        return lambda r: self.rho_s * self._functional_form(r / self.r_s)
+
+    def __call__(self, r):
+        return self.full_form().__call__(r)
+
+    def __eq__(self, other):
+        if not isinstance(other, DensityProfile):
+            raise TypeError("'==' not supported between instances of 'DensityProfile' and '%s'" % other.__class__.__name__)
+        if self.name == other.name and self._functional_form == other._functional_form:
+            return True
+        else:
+            return False
+
+    def __str__(self):
+        return "%s(r_s = %.2e)" % (self.name, self.r_s)
+
+class NFW(DensityProfile):
+    def __init__(self, r_s, gamma, normalization):
+        self.gamma = gamma
+        functional_form = lambda y: np.power(y, -gamma) * np.power(1 + y, gamma-3.)
+        super(NFW, self).__init__(name = "NFW", functional_form = functional_form, r_s = r_s, normalization = normalization)
+
+    def __eq__(self, other):
+        if super(NFW, self).__eq__(other) and self.gamma = other.gamma:
+            return True
+        else:
+            return False
+
+    def __str__(self):
+        return super(NFW, self).__str__() + "\b, gamma = %.2e)" % self.gamma
+
+class Einasto(DensityProfile):
+    def __init__(self, r_s, alpha, normalization):
+        self.alpha = alpha
+        functional_form = lambda y: np.exp(-2/alpha * (np.power(y, alpha) - 1))
+        super(Einasto, self).__init__(name = "Einasto", functional_form = functional_form, r_s = r_s, normalization = normalization)
+
+    def __eq__(self, other):
+        if super(Einasto, self).__eq__(other) and self.alpha = other.alpha:
+            return True
+        else:
+            return False
+
+    def __str__(self):
+        return super(Einasto, self).__str__() + "\b, alpha = %.2e)" % self.alpha
+
+class Burkert(DensityProfile):
+    def __init__(self, r_s, normalization):
+        functional_form = lambda y: np.power( (1 + y) * (1 + np.power(y, 2)), -1)
+        super(Burkert, self).__init__(name = "Burkert", functional_form = functional_form, r_s = r_s, normalization = normalization)
+
 class Gamma_line:
     ''' this class holds all the generic functionalities regarding the upper limits on gamma ray line searches '''
     KPC_TO_CM = 3.086e21
 
     def __init__(self, rho_sun, r_sun, mask_lat, mask_long, mask_ang_1, ul_dict):
-        self.rho_sun = rho_sun # GeV cm^{-3}
-        self.r_sun = r_sun # kpc
         # latitude and longitude of the mask
         self.mask_lat = mask_lat * np.pi/180. # radians
         self.mask_long = mask_long * np.pi/180. # radians
         # circular mask
         self.mask_ang_1 = mask_ang_1 * np.pi/180. # radians
         self.ul_dict = ul_dict
+        # flag: if False, then use new profiles and recompute J-factor for each ROI
+        self.use_default = True
 
-    def nfw_func(self, y, gamma):
-        ''' This is the functional form of the NFW density profile:
-                - it does not contain the normalisation density rho_s
-                - it does not contain r_s, but y := r/r_s
-            The classic NFW profile is: rho_s*nfw_func(y = r/r_s)
-        '''
-        return np.power(y, -gamma) * np.power(1 + y, gamma-3.)
+    def set_no_default(self):
+        self.use_default = False
 
-    def einasto_func(self, y, alpha):
-        ''' Same as above '''
-        return np.exp(-2/alpha * (np.power(y, alpha) - 1))
+    # def set_profile(self, profile, r_s, **kwargs):
+    #     ''' sets the profile to be used in the J-factor computation:
+    #             - normalises the profile according to Fermi-LAT conventions: rho(r_sun) = rho_sun
+    #             - returns rho_s, r_s, profile (as a functional depending on y = r/r_s)
+    #         it sets a default for kwargs that have not been provided.
+    #     '''
+    #     profile_dict = {
+    #         'nfw': lambda y: self.nfw_func(y, kwargs.get("gamma", 1.0)),
+    #         'einasto': lambda y: self.einasto_func(y, kwargs.get("alpha", 0.17)),
+    #         'burkert': lambda y: self.burkert_func(y)
+    #     }
+    #     try:
+    #         profile_func = profile_dict[profile]
+    #     except KeyError:
+    #         logger.warning("'%s' density profile does not exist" % (profile))
+    #         raise Exception # something
+    #     rho_s = self.rho_sun / profile_func(self.r_sun / r_s)
+    #     return rho_s, r_s, profile_func
 
-    def burkert_func(self, y):
-        ''' Same as above '''
-        return np.power( (1 + y) * (1 + np.power(y, 2)), -1)
-
-    def set_profile(self, profile, r_s, **kwargs):
-        ''' sets the profile to be used in the J-factor computation:
-                - normalises the profile according to Fermi-LAT conventions: rho(r_sun) = rho_sun
-                - returns rho_s, r_s, profile (as a functional depending on y = r/r_s)
-            it sets a default for kwargs that have not been provided.
-        '''
-        profile_dict = {
-            'nfw': lambda y: self.nfw_func(y, kwargs.get("gamma", 1.0)),
-            'einasto': lambda y: self.einasto_func(y, kwargs.get("alpha", 0.17)),
-            'burkert': lambda y: self.burkert_func(y)
-        }
-        try:
-            profile_func = profile_dict[profile]
-        except KeyError:
-            logger.warning("'%s' density profile does not exist" % (profile))
-            raise Exception # something
-        rho_s = self.rho_sun / profile_func(self.r_sun / r_s)
-        return rho_s, r_s, profile_func
-
-    def J_cone(ang_1, ang_2, profile_func, x_sun):
+    def J_cone(self, ang_1, ang_2, profile_func, x_sun):
         ''' it computes the conic part of the J-factor:
                 - ang_1: is the angle between the main axis of the cone and the slant height of the masked conic region (in radians)
                 - ang_2: is the angle between the main axis of the cone and its slant height (in radians)
@@ -626,7 +693,7 @@ class Gamma_line:
             return quad(func_sing(t), np.sqrt(coefft(t)), x_sun, weight = 'alg', wvar = (-0.5,0))[0]
         return 2*np.pi*dblquad(func, np.cos(ang_2), np.cos(ang_1), lambda t: x_sun, lambda t: np.inf)[0] + 2*2*np.pi*quad(inte_func, np.cos(ang_2), np.cos(ang_1))[0]
 
-    def J_mask(ang_1, ang_2, ang_lat, ang_long, profile_func, x_sun):
+    def J_mask(self, ang_1, ang_2, ang_lat, ang_long, profile_func, x_sun):
         ''' it computes the mask over the J-factor:
                 - ang_1: is the angle between the main axis of the cone and the slant height of the masked conic region (in radians)
                 - ang_2: is the angle between the main axis of the cone and its slant height (in radians)
@@ -664,20 +731,40 @@ class Gamma_line:
             B_1 = np.amin([ang_lat, b_prime(ang_1)])
             if ang_lat > ang_1 and b_prime(ang_2) > ang_1: # condition 2 + 4 (includes condition 3 as well)
                 return 4*(dblquad(func, 0, B_1, lambda b: l_prime(ang_1, b), lambda b: l_prime(ang_2, b))[0] + dblquad(func, b_prime(ang_1), B_2, lambda b: ang_long, lambda b: l_prime(ang_2, b))[0])
-            elif ang_lat > b_prime(ang_1): # condition 2 + 3
+            elif ang_lat > b_prime(ang_1) and not np.isclose(b_prime(ang_1), ang_lat, atol = 0., rtol = 1e-4): # condition 2 + 3, also use isclose, because in the case equality we prevent the computation of one integral (with a little approximation).
                 return 4*(dblquad(func, 0, B_1, lambda b: l_prime(ang_1, b), lambda b: l_prime(ang_2, b))[0] + dblquad(func, b_prime(ang_1), B_3, lambda b: ang_long, lambda b: l_prime(ang_2, b))[0])
             else: # condition 2 only
                 return 4*dblquad(func, 0, B_1, lambda b: l_prime(ang_1, b), lambda b: l_prime(ang_2, b))[0]
 
-    def J(ang_2, ang_lat, ang_long, rho_s, r_s, profile_func, mask = True, ang_1 = 0.):
+    def J(self, ang_2, ang_lat, ang_long, profile, mask = True, ang_1 = 0.):
         ''' if mask = False, then the mask is set to zero; while the circular mask can be included by setting ang_1 != 0 '''
         if mask:
-            if ang_long == 0. and ang_1 == 0.:
+            if ang_long == 0. and ang_1 < ang_lat:
                 ang_1 = ang_lat
-            J_mask_value = self.J_mask(ang_1 = ang_1, ang_2 = ang_2, ang_lat = ang_lat, ang_long = ang_long, profile_func = profile_func, x_sun = self.r_sun/r_s)
+            J_mask_value = self.J_mask(ang_1 = ang_1, ang_2 = ang_2, ang_lat = ang_lat, ang_long = ang_long, profile_func = profile.functional_form(), x_sun = profile.r_sun/profile.r_s)
         else:
             J_mask_value = 0.
-        return self.KPC_TO_CM * np.power(rho_s, 2)*r_s * (self.J_cone(ang_1 = ang_1, ang_2 = ang_2, profile_func = profile_func, x_sun = self.r_sun/r_s) - J_mask_value)
+        return self.KPC_TO_CM * np.power(profile.rho_s, 2)*profile.r_s * (self.J_cone(ang_1 = ang_1, ang_2 = ang_2, profile_func = profile.functional_form(), x_sun = profile.r_sun/profile.r_s) - J_mask_value)
+
+    def get_J(self, roi, profile = None):
+        ''' get the J-factor for the roi specified. First, it checks the flag use_default:
+            in case it is True, it returns the default J-factor from the ul_dict dictionary,
+            in case it is False, it checks if there is an already computed J-factor in the
+            ul_dict dictionary, otherwise it recomputes it for the profile specified.
+        '''
+        j_new = self.ul_dict[roi][3]
+        if self.use_default:
+            return j_roi
+        elif j_new:
+            return j_new
+        else:
+            self.ul_dict[roi][3] = self.J(
+                                    ang_1 = self.mask_ang,
+                                    ang_2 = roi,
+                                    ang_lat = self.mask_lat,
+                                    ang_long = self.mask_long,
+                                    profile_func = profile)
+            return self.ul_dict[roi][3]
 
     def flux_gamma_line(self, mdm, sigmav, jfact):
         ''' returns the integrated flux for the process dm dm > a a '''
@@ -696,19 +783,22 @@ class Gamma_line:
                 this_bin = i_bin
         return this_bin
 
-    def rescale_limit(self, mdm, jfact_new, roi):
+    def get_sigmav_ul(self, mdm, roi, profile_new = None):
         ''' returns the upper limit on sigmav, rescaled according a new value of the J-factor for a given ROI (expressed in degrees).
             The limits are taken from the ExpConstraint class, the interpolation function is rescaled according
             to the new J-factor and then it is evaluated at the mass of the dark matter.
         '''
         try:
-            like_file, ul_file, j_roi = self.ul_dict[roi]
+            ul_file = self.ul_dict[roi][1]
         except KeyError:
             logger.warning("ROI of amplitude %f is not allowed" % (roi))
             raise Exception # something
         id_constraints = ExpConstraint()
         sigmav_ul = id_constraints.ID_max(mdm = mdm, channel = ul_file)
-        return sigmav_ul * j_roi / jfact_new
+        if jfact_new:
+            return sigmav_ul * j_roi / jfact_new
+        else:
+            return sigmav_ul
 
 class Fermi_line(Gamma_line):
     ''' this class holds all the functionalities regarding the Fermi-LAT upper limits on gamma ray line searches (1506.00013)
@@ -719,23 +809,25 @@ class Fermi_line(Gamma_line):
         # likelihood files
         r3_like_file  = pjoin(MDMDIR, 'Fermi_line_likelihoods', 'R3_gamma_lines_ULflux_like.dat')
         r16_like_file = pjoin(MDMDIR, 'Fermi_line_likelihoods', 'R16_gamma_lines_ULflux_like.dat')
-        # J-factors
-        j_r3  = 1.39e23 # GeV^2 cm^{-5}
-        j_r16 = 9.39e22 # GeV^2 cm^{-5}
-        j_r41 = 9.16e22 # GeV^2 cm^{-5}
         # sigma*v limits labels
         ul_sigmav_r3  = "aaNFWcR3"
         ul_sigmav_r16 = "aaER16"
         ul_sigmav_r41 = "aaNFWR41"
-        # summary dictionary (like_file, j-factor, sigmav_ul_file)
+        # density profiles
+        profile_r3  = NFW(r_s = 20.0, gamma = 1.3, normalization = "Fermi-LAT_2015")
+        profile_r16 = Einasto(r_s = 20.0, alpha = 0.17, normalization = "Fermi-LAT_2015")
+        profile_r41 = NFW(r_s = 20.0, gamma = 1.0, normalization = "Fermi-LAT_2015")
+        # J-factors
+        j_r3  = 1.39e23 # GeV^2 cm^{-5}
+        j_r16 = 9.39e22 # GeV^2 cm^{-5}
+        j_r41 = 9.16e22 # GeV^2 cm^{-5}
+        # summary dictionary [like_file, sigmav_ul_label, default_profile, default_j-factor, new_j-factor]
         ul_dict = { # the key is the angle of the ROI (in degrees)
-            3. : (np.loadtxt(r3_like_file, unpack = True), ul_sigmav_r3, j_r3),
-            16.: (np.loadtxt(r16_like_file, unpack = True), ul_sigmav_r16, j_r16),
-            41.: (None, ul_sigmav_r41, j_r41)
+            3. : [np.loadtxt(r3_like_file, unpack = True),  ul_sigmav_r3,  profile_r3,  j_r3,  None],
+            16.: [np.loadtxt(r16_like_file, unpack = True), ul_sigmav_r16, profile_r16, j_r16, None],
+            41.: [None,                                     ul_sigmav_r41, profile_r41, j_r41, None]
         }
-        super().__init__(
-            rho_sun    = 0.4, # GeV cm^{-3}
-            r_sun      = 8.5, # kpc
+        super(Fermi_line, self).__init__(
             mask_lat   = 5., # deg
             mask_long  = 6., # deg
             mask_ang_1 = 0., # deg
@@ -781,13 +873,11 @@ class HESS_line(Gamma_line):
         j_r1  = 4.66e21 # GeV^2 cm^{-5}
         # sigma*v limits labels
         ul_sigmav_r1  = "hess2018"
-        # summary dictionary (like_file, j-factor, sigmav_ul_file)
+        # summary dictionary [like_file, sigmav_ul_label, default_profile, default_j-factor, new_j-factor]
         ul_dict = { # the key is the angle of the ROI (in degrees)
-            1. : (None, ul_sigmav_r1, j_r1)
+            1. : [None, ul_sigmav_r1, j_r1]
         }
-        super().__init__(
-            rho_sun    = 0.39, # GeV cm^{-3}
-            r_sun      = 8.5, # kpc
+        super(HESS_line, self).__init__(
             mask_lat   = 0.3, # deg
             mask_long  = 0., # deg
             mask_ang_1 = 0., # deg
