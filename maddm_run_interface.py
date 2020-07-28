@@ -652,25 +652,6 @@ class Gamma_line:
     def set_no_default(self):
         self.use_default = False
 
-    # def set_profile(self, profile, r_s, **kwargs):
-    #     ''' sets the profile to be used in the J-factor computation:
-    #             - normalises the profile according to Fermi-LAT conventions: rho(r_sun) = rho_sun
-    #             - returns rho_s, r_s, profile (as a functional depending on y = r/r_s)
-    #         it sets a default for kwargs that have not been provided.
-    #     '''
-    #     profile_dict = {
-    #         'nfw': lambda y: self.nfw_func(y, kwargs.get("gamma", 1.0)),
-    #         'einasto': lambda y: self.einasto_func(y, kwargs.get("alpha", 0.17)),
-    #         'burkert': lambda y: self.burkert_func(y)
-    #     }
-    #     try:
-    #         profile_func = profile_dict[profile]
-    #     except KeyError:
-    #         logger.warning("'%s' density profile does not exist" % (profile))
-    #         raise Exception # something
-    #     rho_s = self.rho_sun / profile_func(self.r_sun / r_s)
-    #     return rho_s, r_s, profile_func
-
     def J_cone(self, ang_1, ang_2, profile_func, x_sun):
         ''' it computes the conic part of the J-factor:
                 - ang_1: is the angle between the main axis of the cone and the slant height of the masked conic region (in radians)
@@ -736,15 +717,60 @@ class Gamma_line:
             else: # condition 2 only
                 return 4*dblquad(func, 0, B_1, lambda b: l_prime(ang_1, b), lambda b: l_prime(ang_2, b))[0]
 
+    def J_simpler(self, ang_2, ang_lat, profile_func, x_sun, ang_1 = 0.):
+    ''' it computes the J-factor for some particular values of the parameters, which make the computation more stable and faster:
+            - ang_1: is the angle between the main axis of the cone and the slant height of the masked conic region (in radians)
+            - ang_2: is the angle between the main axis of the cone and its slant height (in radians)
+            - ang_lat: latitude angle covered by the mask: the mask covers: |latitude| < ang_lat (in radians)
+            - x_sun := r_sun/r_s
+    '''
+    if ang_1 >= ang_2 or ang_lat >= ang_2:
+        return 0.
+    def coefft(t):
+        ''' useful redefinition, t := cos(theta), where theta is the integration variable '''
+        return np.power(x_sun, 2)*(1 - np.power(t,2))
+    def phi_prime(t):
+        ''' useful redefinition for integration over phi. '''
+        return np.arctan(np.sqrt( 1/np.power(np.tan(ang_lat), 2) - (1 + 1/np.power(np.tan(ang_lat), 2)) * np.power(t, 2) ))
+    def func(y, t):
+        ''' integrand function for the integral without singularity '''
+        return phi_prime(t) * np.power(profile_func(y),2) * y * np.power(np.power(y,2) - coefft(t), -0.5)
+    def func_sing(t):
+        ''' integrand function for the singular integral over y '''
+        return lambda y: np.power(profile_func(y),2) * y * np.power(y + np.sqrt(coefft(t)), -0.5)
+    def inte_func(t):
+        ''' integration over r for the singular region. It will then be integrated over t '''
+        return phi_prime(t) * quad(func_sing(t), np.sqrt(coefft(t)), x_sun, weight = 'alg', wvar = (-0.5,0))[0]
+    theta_prime = np.amax([ang_1, ang_lat])
+    return 4 * (dblquad(func, np.cos(ang_2), np.cos(theta_prime), lambda t: x_sun, lambda t: np.inf)[0] + 2*quad(inte_func, np.cos(ang_2), np.cos(theta_prime))[0])
+
     def J(self, ang_2, ang_lat, ang_long, profile, mask = True, ang_1 = 0.):
         ''' if mask = False, then the mask is set to zero; while the circular mask can be included by setting ang_1 != 0 '''
-        if mask:
-            if ang_long == 0. and ang_1 < ang_lat:
-                ang_1 = ang_lat
-            J_mask_value = self.J_mask(ang_1 = ang_1, ang_2 = ang_2, ang_lat = ang_lat, ang_long = ang_long, profile_func = profile.functional_form(), x_sun = profile.r_sun/profile.r_s)
+        if ang_1 >= ang_2:
+            return 0.
+        if mask and ang_lat != 0. and ang_long < ang_2:
+            def b_prime(ang):
+                return np.arctan(np.sqrt(np.power(np.sin(ang),2) - np.power(np.sin(ang_long),2)/np.cos(ang)))
+            if (ang_long == 0.) or (ang_long <= ang_1 and ang_lat <= b_prime(ang_1)):
+                return self.KPC_TO_CM * np.power(profile.rho_s, 2)*profile.r_s * self.J_simpler(ang_1 = ang_1, ang_2 = ang_2, ang_lat = ang_lat, profile_func = profile.functional_form(), x_sun = profile.r_sun/profile.r_s)
+            else:
+                if ang_lat >= b_prime(ang_2): # compute the mask with the simpler formula, by inverting latitude and longitude, exploiting spherical symmetry of the density profiles
+                    J_mask_value = self.J_simpler(ang_1 = ang_1, ang_2 = ang_2, ang_lat = ang_long, profile_func = profile.functional_form(), x_sun = profile.r_sun/profile.r_s)
+                else:
+                    J_mask_value = self.J_mask(ang_1 = ang_1, ang_2 = ang_2, ang_lat = ang_lat, ang_long = ang_long, profile_func = profile.functional_form(), x_sun = profile.r_sun/profile.r_s)
+                return self.KPC_TO_CM * np.power(profile.rho_s, 2)*profile.r_s * (self.J_cone(ang_1 = ang_1, ang_2 = ang_2, profile_func = profile.functional_form(), x_sun = profile.r_sun/profile.r_s) - J_mask_value)
+        else: # no mask = only cone integral
+            return self.KPC_TO_CM * np.power(profile.rho_s, 2)*profile.r_s * self.J_cone(ang_1 = ang_1, ang_2 = ang_2, profile_func = profile.functional_form(), x_sun = profile.r_sun/profile.r_s)
+            
+    def check_profile(self, roi, profile):
+        ''' Check the profile with the default one for the ROI, returning True or False. '''
+        if self.use_default:
+            return True
+        def_profile = self.ul_dict[roi][2]
+        if def_profile == profile:
+            return True
         else:
-            J_mask_value = 0.
-        return self.KPC_TO_CM * np.power(profile.rho_s, 2)*profile.r_s * (self.J_cone(ang_1 = ang_1, ang_2 = ang_2, profile_func = profile.functional_form(), x_sun = profile.r_sun/profile.r_s) - J_mask_value)
+            return False
 
     def get_J(self, roi, profile = None):
         ''' get the J-factor for the roi specified. First, it checks the flag use_default:
@@ -783,10 +809,11 @@ class Gamma_line:
                 this_bin = i_bin
         return this_bin
 
-    def get_sigmav_ul(self, mdm, roi, profile_new = None):
-        ''' returns the upper limit on sigmav, rescaled according a new value of the J-factor for a given ROI (expressed in degrees).
+    def get_sigmav_ul(self, mdm, roi, profile = None):
+        ''' Returns the upper limit on sigmav, rescaled according a new value of the J-factor for a given ROI (expressed in degrees).
             The limits are taken from the ExpConstraint class, the interpolation function is rescaled according
             to the new J-factor and then it is evaluated at the mass of the dark matter.
+            Returns also True if the profile is optimised for the ROI, otherwise False.
         '''
         try:
             ul_file = self.ul_dict[roi][1]
@@ -795,10 +822,8 @@ class Gamma_line:
             raise Exception # something
         id_constraints = ExpConstraint()
         sigmav_ul = id_constraints.ID_max(mdm = mdm, channel = ul_file)
-        if jfact_new:
-            return sigmav_ul * j_roi / jfact_new
-        else:
-            return sigmav_ul
+        jfact = self.get_J(roi = roi, profile = profile)
+        return sigmav_ul * j_roi / jfact, self.check_profile(roi = roi, profile = profile)
 
 class Fermi_line(Gamma_line):
     ''' this class holds all the functionalities regarding the Fermi-LAT upper limits on gamma ray line searches (1506.00013)
@@ -841,7 +866,7 @@ class Fermi_line(Gamma_line):
         ''' set loglike = 0 for flux < x_zero in order to avoid non-zero loglike for flux = 0 (and likelihood depending on mass in that case) '''
         return np.power(flux - x_zero, 2) / np.power(sigma, 2) if flux >= x_zero else 0.
 
-    def loglike(self, mdm, sigmav, jfact, roi):
+    def loglike(self, mdm, sigmav, roi, profile = None):
         ''' returns the -2*log(like) evaluated at the flux, for a certain ROI (in degrees) '''
         try:
             like_file = self.ul_dict[roi][0]
@@ -851,6 +876,7 @@ class Fermi_line(Gamma_line):
         if not like_file:
             logger.warning("No likelihood available for ROI of amplitude %f." % (roi))
             return -1.
+        jfact = self.get_J(roi = roi, profile = profile)
         energy, x_zero, sigma = like_file[0], like_file[2], like_file[3]
         this_bin = self.get_energy_bin(mdm = mdm, energy_means = energy)
         if not this_bin:
@@ -869,13 +895,15 @@ class HESS_line(Gamma_line):
     '''
     def __init__(self):
         ''' set paths of likelihood files, set rho_sun and r_sun as used by HESS '''
-        # J-factors
-        j_r1  = 4.66e21 # GeV^2 cm^{-5}
         # sigma*v limits labels
         ul_sigmav_r1  = "hess2018"
+        # density profiles
+        profile_r1 = Einasto(r_s = 20.0, alpha = 0.17, normalization = "HESS_2018")
+        # J-factors
+        j_r1  = 4.66e21 # GeV^2 cm^{-5}
         # summary dictionary [like_file, sigmav_ul_label, default_profile, default_j-factor, new_j-factor]
         ul_dict = { # the key is the angle of the ROI (in degrees)
-            1. : [None, ul_sigmav_r1, j_r1]
+            1. : [None, ul_sigmav_r1, profile_r1, j_r1, None]
         }
         super(HESS_line, self).__init__(
             mask_lat   = 0.3, # deg
