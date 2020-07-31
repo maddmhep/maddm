@@ -1115,7 +1115,7 @@ class ProcessExporterIndirectD(object):
                         for me in group.get('matrix_elements'):
                             for p in me.get('processes'):
                                 prefix = 'generate ' if i==0 else 'add process '
-                                new_history.append(p.nice_string(prefix=prefix))
+                                new_history.append('%s %s' %(prefix, p.input_string()))
                                 i=1
                     continue
             
