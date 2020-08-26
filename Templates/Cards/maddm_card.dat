@@ -101,6 +101,44 @@
 # velocity in halo
    %(vave_indirect)s   = vave_indirect  ! average velocity of DM in halos in natural units (e.g. 1E-3 for our galaxy, 1E-5 for dSph galaxies)
 
+# --------------------
+# Line analysis
+# --------------------
+
+# choice of the dark matter density profile
+   %(profile)s = profile ! nfwg, einasto, nfw, isothermal, burkert
+
+# profile common parameters
+   %(r_s)s = r_s # kpc
+
+# nfwg specific parameters
+   %(gamma)s = gamma
+
+# einasto specific parameters
+   %(alpha)s = alpha
+
+
+# normalization (rho_s)
+
+# specify a predefined normalization (or none otherwise)
+   %(predefined_normalization)s = predefined_normalization ! none, fermi_2015, hess_2018
+
+# OR set parameters explicitly (if set none previously)  
+   %(r_sun)s = r_sun # kpc
+   %(rho_s_or_sun)s = rho_s_or_sun # GeV cm^-3 # this is either rho_s or rho_sun
+
+# set True if you want to compute rho_s using r_sun and rho_sun
+# set False if you want to specify rho_s directly
+   %(use_rho_sun)s = use_rho_sun ! True, False
+
+#  - fermi_2015: rho_s_or_sun = 0.4, r_sun = 8.5, use_rho_sun = True
+#  - hess_2018: rho_s_or_sun = 0.39, r_sun = 8.5, use_rho_sun = True
+
+
+# specify a ROI for Fermi-LAT 2015
+# set default to use the ROI for which your profile is optimized
+   %(roi_fermi_2015)s = roi_fermi_2015 ! default, r3, r16, r41, r90
+
 ###################################################################################
 #
 # GLOBAL PARAMETER
