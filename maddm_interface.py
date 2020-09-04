@@ -156,6 +156,9 @@ class MadDM_interface(master_interface.MasterCmd):
         self._ID_amps = diagram_generation.AmplitudeList() 
         #self.dm = darkmatter.darkmatter()
         self._force_madevent_for_ID = False
+        self._has_indirect_detection = False
+        self._has_indirect_spectral = False
+        self._spectral_final_states = ["a a", "a z", "a h"]
 
 
 ################################################################################        
@@ -513,8 +516,14 @@ class MadDM_interface(master_interface.MasterCmd):
         logger.info("        note: only for 2to2lo")
         logger.info("        add process DM  N > DM N @ ID")
         logger.info("")
+        logger.info("syntax: generate|add indirect_spectral_features [final_states]", '$MG:color:BLUE')    
+        logger.info(" -- generate indirect detection matrix elements for final states a X (X = a, z, h)")
+        logger.info("       now allowed: '%s'" % "', '".join(self._spectral_final_states))
+        logger.info("    syntax: generate|add indirect_spectral_features F1 F2", '$MG:color:BLUE') 
+        logger.info("    -- generate indirect detection matrix element for a given final state (F1 F2) among the allowed ones")
+        logger.info("")
         logger.info("**************** MG5AMC OPTION ***************************")
-        super(MadDM_interface, self).help_define()
+        super(MadDM_interface, self).help_generate()
 
     help_add = help_generate
     
@@ -544,6 +553,8 @@ class MadDM_interface(master_interface.MasterCmd):
                 return self.generate_direct(excluded)
         elif len(args) and args[0] in ["indirect_detection", "indirect"]:
             self.generate_indirect(args[1:])
+        elif len(args) and args[0] in ["indirect_spectral_features", "spectral"]:
+            self.generate_spectral(args[1:])
 
         else:
             if '@' in line:
@@ -564,7 +575,7 @@ class MadDM_interface(master_interface.MasterCmd):
             out = {"standard options": out}
         
         if len(args) == 1:
-            options = ['relic_density', 'direct_detection', 'indirect_detection']#, 'capture']
+            options = ['relic_density', 'direct_detection', 'indirect_detection', 'indirect_spectral_features']#, 'capture']
             out['maddm options'] = self.list_completion(text, options , line)
         return self.deal_multiple_categories(out, formatting)
 
@@ -577,7 +588,7 @@ class MadDM_interface(master_interface.MasterCmd):
             out = {"standard options": out}
         
         if len(args) == 1:
-            options = ['relic_density', 'direct_detection', 'indirect_detection']#, 'capture']
+            options = ['relic_density', 'direct_detection', 'indirect_detection', 'indirect_spectral_features']#, 'capture']
             out['maddm options'] = self.list_completion(text, options , line)
         return self.deal_multiple_categories(out, formatting)
 
@@ -706,7 +717,8 @@ class MadDM_interface(master_interface.MasterCmd):
             import MGoutput
             proc_path = pjoin(path, 'matrix_elements', 'proc_characteristics')
             proc_charac = MGoutput.MADDMProcCharacteristic(proc_path)
-            proc_charac['has_indirect_detection'] = True
+            proc_charac['has_indirect_detection'] = self._has_indirect_detection
+            proc_charac['has_indirect_spectral'] = self._has_indirect_spectral
             proc_charac.write(proc_path)
             
 
@@ -991,10 +1003,11 @@ class MadDM_interface(master_interface.MasterCmd):
             has_diagram = True
         return has_diagram
 
-    def generate_indirect(self, argument, user=True):
+    def generate_indirect(self, argument, user=True, spectral=False):
         """User level function which performs indirect detection functions
            Generates the DM DM > X where X is anything user specified.
            Also works for loop induced processes as well as NLO-QCD.
+           Arg spectral=True means that it was launched by generate_spectral(argument).
            Currently works only with canonical mode and one dm candidate.
         related to syntax: generate indirect a g / n3
         """
@@ -1009,7 +1022,11 @@ class MadDM_interface(master_interface.MasterCmd):
         
         self.install_indirect()
 
-        
+        if spectral:
+            self._has_indirect_spectral  = True
+        else:
+            self._has_indirect_detection = True
+
         if not self._dm_candidate:
             self.search_dm_candidate()
             if not self._dm_candidate:
@@ -1023,7 +1040,7 @@ class MadDM_interface(master_interface.MasterCmd):
             self.generate_relic([])
 
         if '2to2lo' in argument:
-            self._ID_procs ='2to2lo'
+            self._ID_procs = '2to2lo'
             return
         
         if not self.options['pythia8_path']:
@@ -1037,30 +1054,35 @@ class MadDM_interface(master_interface.MasterCmd):
         
         if (len(' '.join(argument).split('/')[0].split())!=2):
             self._force_madevent_for_ID = True
+        
         # Generates events for all the DM annihilation channels (also BSM)
         if argument == []:
+            if spectral:
+                noloop_opt = ''
+                final_states = self._spectral_final_states
+            else:
+                noloop_opt = '--noloop'
+                dm_cand = [ dic['pdg_code'] for dic in self._dm_candidate ] 
+                DM_scattering = []
 
-            dm_cand = [ dic['pdg_code'] for dic in self._dm_candidate ] 
-            DM_scattering = []
+                for pdg in dm_cand:
+                    DM_scattering.append(pdg) , DM_scattering.append(-pdg)
 
-            for pdg in dm_cand:
-                DM_scattering.append(pdg) , DM_scattering.append(-pdg)
+                bsm_all  = [ 'all', '/', '1','2','3','4','5','6','-1','-2','-3','-4','-5','-6','21','22','23','24','-24','25','11','12','13','14','15','16','-11','-12',
+                        '-13','-14','-15','-16']
 
-            bsm_all  = [ 'all', '/', '1','2','3','4','5','6','-1','-2','-3','-4','-5','-6','21','22','23','24','-24','25','11','12','13','14','15','16','-11','-12',
-                    '-13','-14','-15','-16']
+                for m in DM_scattering:
+                    bsm_all.append(m)
+                bsm = " ".join(str(x) for x in bsm_all)
 
-            for m in DM_scattering:
-                bsm_all.append(m)
-            bsm = " ".join(str(x) for x in bsm_all)
+                self.exec_cmd('define q_mdm = 1 2 3 4 -1 -2 -3 -4',postcmd=False)
+                self.exec_cmd('define bsm = %s'  % bsm,postcmd=False)
 
-            self.exec_cmd('define q_mdm = 1 2 3 4 -1 -2 -3 -4',postcmd=False)
-            self.exec_cmd('define bsm = %s'  % bsm,postcmd=False)
-
-            final_states = ['bsm bsm','q_mdm q_mdm','21 21', '5 -5', '6 -6', '22 22', '23 23', '24 -24','25 25', '11 -11', '13 -13', '15 -15', '12 -12', '14 -14', '16 -16']
+                final_states = ['bsm bsm','q_mdm q_mdm','21 21', '5 -5', '6 -6', '22 22', '23 23', '24 -24','25 25', '11 -11', '13 -13', '15 -15', '12 -12', '14 -14', '16 -16']
 
             for final_state in final_states:
                 try: 
-                    self.generate_indirect([final_state, '--noloop'], user=False)
+                    self.generate_indirect([final_state, noloop_opt], user=False, spectral=spectral)
                 except diagram_generation.NoDiagramException:
                     continue
                     logger.info('no diagram for %s' % final_state)
@@ -1072,7 +1094,7 @@ class MadDM_interface(master_interface.MasterCmd):
         if '--noloop' in argument:
             argument.remove('--noloop')
             allow_loop_induce=False
-
+        
         # flip indirect/standard process definition
         with misc.TMP_variable(self, ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps'], 
                                      [self._ID_procs, self._ID_matrix_elements, self._ID_amps]):
@@ -1098,7 +1120,18 @@ class MadDM_interface(master_interface.MasterCmd):
                         except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
                             proc = '%s %s > %s %s [noborn=QED] @ID ' % (name, antiname, ' '.join(argument), coupling)
                             self.do_add('process %s' % proc)
-  
+    
+    def generate_spectral(self, argument):
+        """ Performs indirect detection in the final states aa, az, ah, the processes are loop-induced.
+            The user can specify a single final state to analyze.
+            It calls generate_indirect with new final states.
+        """
+        # loop-induced computation works only with sigmav = madevent
+        self._force_madevent_for_ID = True
+        if not any([' '.join(sorted(argument)) == fs for fs in self._spectral_final_states]) and len(argument) != 0:
+            raise self.InvalidCmd("Invalid final state '%s', valid final states are '%s'" % (' '.join(argument), "', '".join(self._spectral_final_states)))
+        self.generate_indirect(argument = argument, spectral = True, user = True)
+
     def install_indirect(self):
         """Code to install the reduction library if needed"""
         
