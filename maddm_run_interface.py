@@ -26,7 +26,7 @@ import madgraph.interface.common_run_interface as common_run
 import madgraph.interface.madevent_interface as me5_interface
 import madgraph.iolibs.files as files
 import models.check_param_card as param_card_mod
-        
+
 #import darkmatter as darkmatter
 
 logger = logging.getLogger('madgraph.plugin.maddm')
@@ -72,10 +72,10 @@ __mnestlog0__ = -1.0E90
 
 class ExpConstraints:
 
-    def __init__(self):
+    def __init__(self, pdg_particle_map):
 
-        self._allowed_final_states = ['qqx', 'ccx', 'gg', 'bbx', 'ttx', 'emep', 'mummup', 'tamtap', 'wpwm', 'zz', 'hh']#, 'hess2013', 'hess2016', 'hess2018', 'aaER16', 'aaIR90', 'aaNFWcR3', 'aaNFWR41'] 
-        self._allowed_line_final_states = ['aa', 'az', 'ah']
+        self._allowed_final_states = ['(1)(-1)', '(2)(-2)', '(3)(-3)', '(4)(-4)', '(21)(21)', '(5)(-5)', '(6)(-6)', '(11)(-11)', '(13)(-13)', '(15)(-15)', '(24)(-24)', '(23)(23)', '(25)(25)']
+        self.pdg_particle_map = pdg_particle_map
 
         self._oh2_planck = 0.1198
         self._oh2_planck_width = 0.0015
@@ -83,32 +83,43 @@ class ExpConstraints:
         self._dd_si_limit_file = pjoin(MDMDIR, 'ExpData', 'Xenont1T_data_2017.dat')
         self._dd_sd_proton_limit_file = pjoin(MDMDIR, 'ExpData', 'Pico60_sd_proton.dat') # <---------CHANGE THE FILE!!!
         self._dd_sd_neutron_limit_file = pjoin(MDMDIR, 'ExpData', 'Lux_2017_sd_neutron.dat')
-        self._id_limit_file = {'qqx'   :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_qq.dat'),
-                               'ccx'   :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_cc.dat'),
-                               'gg'    :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_gg.dat'),
-                               'bbx'   :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_bb.dat'),
-                               'ttx'   :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_tt.dat'),
-                               'emep'  :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_ee.dat'),
-                               'mummup':pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_mumu.dat'),
-                               'tamtap':pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_tautau.dat'),
-                               'wpwm'  :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_WW.dat'),
-                               'zz'    :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_ZZ.dat'),
-                               'hh'    :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_hh.dat'),
+        self._id_limit_file = {'(1)(-1)'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_qq.dat'), # same qqx
+                               '(2)(-2)'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_qq.dat'), # same qqx
+                               '(3)(-3)'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_qq.dat'), # same qqx
+                               '(4)(-4)'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_cc.dat'),
+                               '(5)(-5)'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_bb.dat'),
+                               '(6)(-6)'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_tt.dat'),
+                               '(11)(-11)': pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_ee.dat'),
+                               '(13)(-13)': pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_mumu.dat'),
+                               '(15)(-15)': pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_tautau.dat'),
+                               '(21)(21)' : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_gg.dat'),
+                               '(23)(23)' : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_ZZ.dat'),
+                               '(24)(-24)': pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_WW.dat'),
+                               '(25)(25)' : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_hh.dat'),
 
-                               'hess2013': pjoin(MDMDIR,'ExpData', 'hess_I_2013_einasto.dat'),
-                               'hess2016': pjoin(MDMDIR,'ExpData', 'hess_2016_einasto.dat'),
-                               'hess2018R1': pjoin(MDMDIR,'ExpData', 'HESS_2018_lines_flux_Einasto_R1.dat'), # Flux limits
+                               '(22)(22)_hess2013_sigmav'    : pjoin(MDMDIR,'ExpData', 'hess_I_2013_einasto.dat'),
+                               '(22)(22)_hess2016_sigmav'    : pjoin(MDMDIR,'ExpData', 'hess_2016_einasto.dat'),
+                               '(22)(22)_hess2018R1_flux'    : pjoin(MDMDIR,'ExpData', 'HESS_2018_lines_flux_R1_Einasto.dat'), # Flux limits
+                               '(22)(22)_hess2018R1_sigmav'  : pjoin(MDMDIR,'ExpData', 'HESS_2018_lines_sigmav_R1_Einasto.dat'), # <sigma v> limits
+                               
+                               '(22)(22)_fermi2015R3_flux'   : pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_flux_R3_NFWcontracted.dat'), # Flux limits
+                               '(22)(22)_fermi2015R3_sigmav' : pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_sigmav_R3_NFWcontracted.dat'), # <sigma v> limits
+                               '(22)(22)_fermi2015R16_flux'  : pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_flux_R16_Einasto.dat'), # Flux limits
+                               '(22)(22)_fermi2015R16_sigmav': pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_sigmav_R16_Einasto.dat'), # <sigma v> limits
+                               '(22)(22)_fermi2015R41_flux'  : pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_flux_R41_NFW.dat'), # Flux limits
+                               '(22)(22)_fermi2015R41_sigmav': pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_sigmav_R41_NFW.dat'), # <sigma v> limits
+                               '(22)(22)_fermi2015R90_flux'  : pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_flux_R90_Isothermal.dat'), # Flux limits
+                               '(22)(22)_fermi2015R90_sigmav': pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_sigmav_R90_Isothermal.dat')} # <sigma v> limits
 
-                               'fermi2015R16':pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_flux_Einasto_R16.dat'), # Flux limits
-                               'fermi2015R90':pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_flux_Isothermal_R90.dat'), # Flux limits
-                               'fermi2015R3':pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_flux_NFWcontracted_R3.dat'), # Flux limits
-                               'fermi2015R41':pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_flux_NFW_R41.dat')} # Flux limits
-
-        self._id_limit_vel = {'qqx':2.0E-5,   'ccx':2.0E-5, 'gg':2.0E-5, 'bbx':2.0E-5,'ttx':2.0E-5,'emep':2.0E-5,'mummup':2.0E-5,'tamtap':2.0E-5,
-                              'wpwm':2.0E-5,  'zz':2.0E-5,  'hh':2.0E-5,
-                              'aa': 1.0E-3, 'az': 1.0E-3, 'ah': 1.0E-3, 'affx': 1.0E-3}
-                              #'aaER16':1.0E-3,'aaIR90':1.0E-3,'aaNFWcR3':1.0E-3,'aaNFWR41':1.0E-3 ,
-                              #'hess2013': 1.0E-3 , 'hess2016': 1.0E-3 , 'hess2018': 1.0E-3} 
+        self._id_limit_vel = {'(1)(-1)':2.0E-5, '(2)(-2)':2.0E-5, '(3)(-3)':2.0E-5, '(4)(-4)':2.0E-5, '(21)(21)':2.0E-5, '(5)(-5)':2.0E-5,'(6)(-6)':2.0E-5,
+                              '(11)(-11)':2.0E-5, '(13)(-13)':2.0E-5, '(15)(-15)':2.0E-5, '(24)(-24)':2.0E-5, '(23)(23)':2.0E-5, '(25)(25)':2.0E-5,
+                              '(22)(22)_hess2013_sigmav'  : 250/299792.458, '(22)(22)_hess2016_sigmav'    : 250/299792.458, 
+                              '(22)(22)_hess2018R1_flux'  : 250/299792.458, '(22)(22)_hess2018R1_sigmav'  : 250/299792.458, 
+                              '(22)(22)_fermi2015R16_flux': 250/299792.458, '(22)(22)_fermi2015R16_sigmav': 250/299792.458, 
+                              '(22)(22)_fermi2015R90_flux': 250/299792.458, '(22)(22)_fermi2015R90_sigmav': 250/299792.458, 
+                              '(22)(22)_fermi2015R3_flux' : 250/299792.458, '(22)(22)_fermi2015R3_sigmav' : 250/299792.458, 
+                              '(22)(22)_fermi2015R41_flux': 250/299792.458, '(22)(22)_fermi2015R41_sigmav': 250/299792.458
+                              }
 
         self._id_limit_mdm = dict()
         self._id_limit_sigv = dict()
@@ -204,11 +215,15 @@ class ExpConstraints:
         if not HAS_NUMPY:
             logger.warning("missing numpy module for ID limit")
             return __infty__
-        if (mdm < np.min(self._id_limit_mdm[channel]) or mdm > np.max(self._id_limit_mdm[channel])):
-            logger.warning('Dark matter mass value %.2e for channel %s is outside the range of ID limit' % (mdm, channel))
-            return __infty__
-        else:
-            return np.interp(mdm, self._id_limit_mdm[channel], self._id_limit_sigv[channel])
+        try:
+            if (mdm < np.min(self._id_limit_mdm[channel]) or mdm > np.max(self._id_limit_mdm[channel])):
+                logger.warning('Dark matter mass value %.2e for channel %s is outside the range of ID limit' % (mdm, channel))
+                return __infty__
+            else:
+                return np.interp(mdm, self._id_limit_mdm[channel], self._id_limit_sigv[channel])
+        except KeyError:
+            # logger.warning("No limit for channel '%s'" % self.pdg_particle_map.format_particles(channel))
+            return -1
 
 ################################################################################
 ##    Spectra
@@ -244,8 +259,10 @@ class Spectra:
 
         self.channels      = ['ee', 'mumu', 'tautau', 'qq', 'cc', 'bb', 'tt', 'ZZ', 'WW', 'hh', 'gammagamma', 'gg']
 
-        self.map_allowed_final_state_PPPC = {'qqx':'qq', 'ccx':'cc', 'gg':'gg', 'bbx':'bb', 'ttx':'tt',
-                                             'emep':'ee', 'mummup':'mumu', 'tamtap':'tautau', 'wpwm':'WW', 'zz':'ZZ', 'hh':'hh' }
+        # self.map_allowed_final_state_PPPC = {'qqx':'qq', 'ccx':'cc', 'gg':'gg', 'bbx':'bb', 'ttx':'tt',
+                                             # 'emep':'ee', 'mummup':'mumu', 'tamtap':'tautau', 'wpwm':'WW', 'zz':'ZZ', 'hh':'hh' }
+        self.map_allowed_final_state_PPPC = {'(1)(-1)':'qq', '(2)(-2)':'qq', '(3)(-3)':'qq', '(4)(-4)':'cc', '(21)(21)':'gg', '(5)(-5)':'bb', '(6)(-6)':'tt',
+                                             '(11)(-11)':'ee', '(13)(-13)':'mumu', '(15)(-15)':'tautau', '(24)(-24)':'WW', '(23)(23)':'ZZ', '(25)(25)':'hh' }
 
     def check_mass(self,mdm):
         if (mdm < 5.0 or mdm > 100000):
@@ -596,10 +613,14 @@ class DensityProfile(object):
             self.rho_s, self.r_sun = normalization
             self.rho_sun = self.rho_s * self._functional_form(self.r_sun / self.r_s)
 
+    def get_name(self):
+        return self.name
+
     def __call__(self, r):
         return self.full_form().__call__(r)
 
     def is_optimized(self, other):
+        ''' check if the profile is optimised for a certain ROI: same name and same parameters (related to the profile) '''
         if not isinstance(other, DensityProfile):
             raise TypeError("'is_optimized' not supported between instances of 'DensityProfile' and '%s'" % other.__class__.__name__)
         return self.name == other.name
@@ -636,10 +657,12 @@ class PROFILES:
             super(PROFILES.NFW, self).__init__(name = "NFW", functional_form = functional_form, r_s = r_s, normalization = normalization, use_rho_sun = use_rho_sun)
 
         def is_optimized(self, other):
-            return super(PROFILES.NFW, self).is_optimized(other = other) and self.gamma == other.gamma
+            test = super(PROFILES.NFW, self).is_optimized(other = other)
+            return self.gamma == other.gamma if test else False
 
         def eq_but_norm(self, other):
-            return super(PROFILES.NFW, self).eq_but_norm(other = other) and self.gamma == other.gamma
+            test = super(PROFILES.NFW, self).eq_but_norm(other = other)
+            return self.gamma == other.gamma if test else False
 
         def __str__(self):
             return super(PROFILES.NFW, self).__str__() + "\b, gamma = %.2e)" % self.gamma
@@ -657,10 +680,12 @@ class PROFILES:
             super(PROFILES.Einasto, self).__init__(name = "Einasto", functional_form = functional_form, r_s = r_s, normalization = normalization, use_rho_sun = use_rho_sun)
 
         def is_optimized(self, other):
-            return super(PROFILES.Einasto, self).is_optimized(other = other) and self.alpha == other.alpha
+            test = super(PROFILES.Einasto, self).is_optimized(other = other)
+            return self.alpha == other.alpha if test else False
 
         def eq_but_norm(self, other):
-            return super(PROFILES.Einasto, self).eq_but_norm(other = other) and self.alpha == other.alpha
+            test = super(PROFILES.Einasto, self).eq_but_norm(other = other)
+            return self.alpha == other.alpha if test else False
 
         def __str__(self):
             return super(PROFILES.Einasto, self).__str__() + "\b, alpha = %.2e)" % self.alpha
@@ -873,9 +898,22 @@ class GammaLineExperiment(object):
         ''' Returns the upper limit on flux for a given ROI (expressed in degrees).
             The limits are taken from the ExpConstraint class, the interpolation function is evaluated at the energy of the peak.
         '''
-        ul_label = self.info_dict[roi][2]
+        ul_label = self.info_dict[roi][2] + '_flux'
         flux_ul = id_constraints.ID_max(mdm = e_peak, channel = ul_label)
         return flux_ul
+
+    def get_sigmav_ul(self, e_peak, roi, profile, id_constraints, not_aa = False):
+        ''' Returns the upper limit on flux for a given ROI (expressed in degrees).
+            The limits are taken from the ExpConstraint class, the interpolation function is evaluated at the energy of the peak.
+        '''
+        default_profile, _, ul_label = self.info_dict[roi][:3]
+        if profile.eq_but_norm(default_profile):
+            ul_label += '_sigmav'
+            coeff = 0.5 if not_aa else 1.
+            sigmav_ul = id_constraints.ID_max(mdm = e_peak, channel = ul_label) * coeff * np.power(default_profile.rho_s / profile.rho_s, 2)
+            return sigmav_ul if sigmav_ul > 0 else -1
+        else:
+            return -1
 
 ## Fermi-LAT 2015
 log_masses = [-0.939, -0.818, -0.69, -0.562, -0.438, -0.313, -0.188, -0.0638, 0.0608, 0.188, 0.313, 0.438, 0.562, 0.687, 0.812, 0.936, 1.06, 1.19, 1.31, 1.44, 1.56, 1.69, 1.81, 1.94, 2.06, 2.19, 2.31, 2.44, 2.56, 2.69]
@@ -904,19 +942,19 @@ GammaLineExperiment(
         info_dict            = { # the key is the angle of the ROI (in degrees)
                         3.  : [PROFILES.NFW(r_s = 20.0, gamma = 1.3, normalization = "fermi_2015"),
                                {PROFILES.NFW(r_s = 20.0, gamma = 1.3, normalization = "fermi_2015") : 1.39e+23}, # GeV^2 cm^{-5}
-                               "fermi2015R3",
+                               "(22)(22)_fermi2015R3",
                                np.loadtxt(pjoin(MDMDIR, 'Fermi_line_likelihoods', 'R3_gamma_lines_ULflux_like.dat'), unpack = True)],
                         16. : [PROFILES.Einasto(r_s = 20.0, alpha = 0.17, normalization = "fermi_2015"),
                                {PROFILES.Einasto(r_s = 20.0, alpha = 0.17, normalization = "fermi_2015") : 9.39e+22}, # GeV^2 cm^{-5}
-                               "fermi2015R16",
+                               "(22)(22)_fermi2015R16",
                                np.loadtxt(pjoin(MDMDIR, 'Fermi_line_likelihoods', 'R16_gamma_lines_ULflux_like.dat'), unpack = True)],
                         41. : [PROFILES.NFW(r_s = 20.0, gamma = 1.0, normalization = "fermi_2015"),
                                {PROFILES.NFW(r_s = 20.0, gamma = 1.0, normalization = "fermi_2015") : 9.16e+22}, # GeV^2 cm^{-5}
-                               "fermi2015R41",
+                               "(22)(22)_fermi2015R41",
                                None],
                         90. : [PROFILES.Isothermal(r_s = 5.0, normalization = "fermi_2015"),
                                {PROFILES.Isothermal(r_s = 5.0, normalization = "fermi_2015") : 6.94e+22}, # GeV^2 cm^{-5}
-                               "fermi2015R90",
+                               "(22)(22)_fermi2015R90",
                                None]
                         },
         check_profile_output = lambda is_optimized, roi: {True: "", False: "ROI %d is not optimized for this profile!" % roi}.get(is_optimized),
@@ -932,7 +970,7 @@ GammaLineExperiment(
         info_dict            = { # the key is the angle of the ROI (in degrees)
                         1. : [PROFILES.Einasto(r_s = 20.0, alpha = 0.17, normalization = "hess_2018"),
                               {PROFILES.Einasto(r_s = 20.0, alpha = 0.17, normalization = "hess_2018") : 4.66e21}, # GeV^2 cm^{-5}
-                              "hess2018R1"]
+                              "(22)(22)_hess2018R1"]
                         },
         check_profile_output = lambda is_optimized, roi: {True: "", False: "The chosen profile is not the default for this ROI"}.get(is_optimized),
         arxiv_number         = "1805.05741"
@@ -941,25 +979,17 @@ GammaLineExperiment(
 
 class GammaLineSpectrum(object):
     ''' class to handle gamma line spectra, peaks, peaks merging, fluxes '''
-    PDG_NUMBERING = {
-        'd': 1, 'dx': -1, 'u': 2, 'ux': -2, 's': 3, 'sx': -3, 'c': 4, 'cx': -4, 'b': 5, 'bx': -5, 't': 6, 'tx': -6,
-        'em': 11, 'ep': -11, 've': 12, 'vex': -12, 'mum': 13, 'mup': -13, 'vm': 14, 'vmx': -14, 'tam': 15, 'tap': -15, 'vt': 16, 'vtx': -16,
-        'g': 21, 'a': 22, 'z': 23, 'wp': 24, 'wm': -24, 'h': 25
-    }
-
-    def __init__(self):
-        self.two_body_final_particles = ['a', 'z', 'h']
-        self.three_body_final_particles = [] # for future implementations
+    def __init__(self, pdg_particle_map):
+        self.pdg_particle_map = pdg_particle_map
 
     def set_param_card(self, param_card):
         self.param_card = param_card
-        self.set_mass_dict()
 
-    def set_mass_dict(self):
-        # 2 body final states
-        self.two_body_mass   = dict({'%s%s' % ('a', fs): self.param_card.get_value("mass", abs(self.PDG_NUMBERING[fs])) for fs in self.two_body_final_particles}.items() + {'%s%s' % (fs, 'a'): self.param_card.get_value("mass", abs(self.PDG_NUMBERING[fs])) for fs in self.two_body_final_particles}.items())
-        # 3 body final states # for future implementations
-        self.three_body_mass = dict({'%s%s' % ('a', fs): self.param_card.get_value("mass", abs(self.PDG_NUMBERING[fs])) for fs in self.three_body_final_particles}.items() + {'%s%s' % (fs, 'a'): self.param_card.get_value("mass", abs(self.PDG_NUMBERING[fs])) for fs in self.three_body_final_particles}.items())
+    def get_mass_dict(self, finalstate):
+        particles = self.pdg_particle_map.find_particles(finalstate)
+        particles.remove('(22)')
+        particles = set(particles)
+        return {p: self.param_card.get_value("mass", int(p.strip('()'))) for p in particles}
 
     def e_peak_two_body(self, mdm, mx):
         ''' find energy of the peak for final state ax, with x = a, z, h '''
@@ -980,23 +1010,24 @@ class GammaLineSpectrum(object):
         ''' find lines peaks, FWHM and shape of the spectrum. Return a dictionary with key final_state and _peak, _FWHM, _shape '''
         line_energies = {}
         for fs in computed_final_states:
-            try:
-                mx        = self.two_body_mass[fs]
+            mass_dict = self.get_mass_dict(fs)
+            if len(mass_dict) == 1:
+                mx        = mass_dict.values()[0]
                 e_peak_fs = self.e_peak_two_body(mdm, mx)
-            except KeyError:
+            elif len(mass_dict) == 2:
                 # for future implementations
-                # mx        = self.three_body_mass[fs]
-                # e_peak_fs = e_peak_three_body(mdm, mx)
-                raise KeyError("Can't find the final state '%s'" % fs)
+                pass
+            else:
+                raise KeyError("Can analyze only 2-body and 3-body final states, not '%s'" % self.pdg_particle_map.format_particles(fs))
             # check if the line is in the detection range of the experiment
             fwhm_fs = line_exp.energy_resolution(e_peak_fs) * e_peak_fs
             if e_peak_fs <= 0.:
                 continue # exclude negative energy peaks, meaning of a forbidden process
             line_energies[fs + '_peak']  = e_peak_fs
             line_energies[fs + '_FWHM']  = fwhm_fs # full width at half maximum of each line
-            coeff = 1. if fs != 'aa' else 2.
+            coeff = 1. if fs != '(22)(22)' else 2.
             line_energies[fs + '_shape'] = self.gaussian_spectra(e_peak = e_peak_fs, full_width_half_max = fwhm_fs, coeff = coeff)
-        logger.warning(line_energies)
+        logger.debug(line_energies)
         return line_energies
 
     def merge_lines(self, line_energies, line_exp):
@@ -1009,7 +1040,7 @@ class GammaLineSpectrum(object):
             for line_2 in signals[signals.index(line_1)+1:]:
                 diff_energies = np.abs(line_energies[line_1 + '_peak'] - line_energies[line_2 + '_peak'])
                 # this is a tuple: for each couple the first term is a boolean to indicate if they can be merged and the second is the difference between the signals peaks and each FWHM: to be used to decide among more couples which one must be summed first.
-                comparisons["%s-%s" % (line_1, line_2)] = (diff_energies < FWHM_PART*line_energies[line_1 + '_FWHM'] and diff_energies < FWHM_PART*line_energies[line_2 + '_FWHM'], np.amin([diff_energies - line_energies[line_1 + '_FWHM'], diff_energies - line_energies[line_2 + '_FWHM']]))
+                comparisons["%s--%s" % (line_1, line_2)] = (diff_energies < FWHM_PART*line_energies[line_1 + '_FWHM'] and diff_energies < FWHM_PART*line_energies[line_2 + '_FWHM'], np.amin([diff_energies - line_energies[line_1 + '_FWHM'], diff_energies - line_energies[line_2 + '_FWHM']]))
         # check if the couples which can be merged haven't got any common final state: in case, take the case for which the second term of the tuple is minimum.
         lines_to_merge = [] # list of the final states to be merged 'final_state_1-final_state_2'
         # order the dictionary according to the differences between the signals peaks and each FWHM:
@@ -1021,8 +1052,8 @@ class GammaLineSpectrum(object):
             lines_to_merge.append(comp_lines)
         # the lines_to_merge list contains the labels of the lines to be merged.
         for lm in lines_to_merge:
-            label  = lm.replace('-', '+') # new label made of the sum of the various final states that have been merged.
-            l1, l2 = lm.split('-')
+            label  = lm.replace('--', '+') # new label made of the sum of the various final states that have been merged.
+            l1, l2 = lm.split('--')
             final_spectrum[label + '_shape'] = lambda e: line_energies[l1 + '_shape'](e) + line_energies[l2 + '_shape'](e)
             min_result                       = minimize_scalar(lambda e: - final_spectrum[label + '_shape'](e), method = 'bounded', bounds = tuple(sorted([line_energies[l1 + '_peak'], line_energies[l2 + '_peak']])))
             final_spectrum[label + '_peak']  = min_result.x
@@ -1045,8 +1076,55 @@ class GammaLineSpectrum(object):
             return final_spectrum
         else:
             # something has been merged, so check if we can merge comething more in the new spectrum.
-            logger.warning(final_spectrum)
+            logger.debug(final_spectrum)
             return self.merge_lines(final_spectrum, line_exp)
+
+# PDG-particle map
+class PDGParticleMap(dict):
+    ''' builds a map {pdg : particle label} and allows lookup of pdg/particle '''
+    def __init__(self, *args, **kwargs):
+        super(PDGParticleMap, self).__init__(*args)
+        model = kwargs.get('model', None)
+        if model:
+            self.set_model_map(model)
+
+    def set_model_map(self, model):
+        for pdg_code, particle in model.get('particle_dict').iteritems():
+            self[str(pdg_code)] = particle.get_name() 
+
+    def get_pdg(self, particle):
+        this_pdg = [pdg for pdg, name in self.iteritems() if name == particle]
+        if len(this_pdg) == 0:
+            raise MadDM_interface.InvalidCmd("No particle '%s' in the model." % particle)
+        elif len(this_pdg) > 1:
+            logger.warning("Particle '%s' has different pdg codes in this model, please check the model." % particle)
+        return int(this_pdg[0])
+
+    def __getitem__(self, pdg):
+        try:
+            return super(PDGParticleMap, self).__getitem__(str(pdg))
+        except KeyError:
+            logger.error("No PDG code '%d' in the model, please check the model." % pdg)
+            return '(?)'
+
+    def find_particles(self, string):
+        return re.findall(r"\(-?\d+\)", string)
+
+    def format_particles(self, string):
+        ''' given a string with pdg codes, substitutes them with the particle labels
+            finds pdg codes with a regex expression, builds a set of unique codes, substitutes
+        '''
+        matches = self.find_particles(string)
+        pdg_list = set(map(lambda s: s.strip('()'), matches))
+        for pdg in pdg_list:
+            string = string.replace('(%s)' % pdg, self[pdg])
+        return string
+
+    def format_process(self, string):
+        initial_particles, final_particles = string.split('_')
+        initial_particles = ' '.join(self.find_particles(initial_particles))
+        final_particles = ' '.join(self.find_particles(final_particles))
+        return self.format_particles(initial_particles) + ' > ' + self.format_particles(final_particles)
 
 
 class bcolors:
@@ -1140,14 +1218,18 @@ class MADDMRunCmd(cmd.CmdShell):
         self.multinest_running = False
         self.auto_width = set() # keep track of width set on Auto
 
-        self.limits = ExpConstraints()
+        self.pdg_particle_map = PDGParticleMap(self.proc_characteristics['pdg_particle_map'].items())
+
+        self.limits = ExpConstraints(self.pdg_particle_map)
         self.options = options
 
         self.Spectra = Spectra()
         self.Fermi   = Fermi_bounds()
         self.line_experiments = GAMMA_LINE_EXPERIMENTS
-        self.gamma_line_spectrum = GammaLineSpectrum()
+        self.gamma_line_spectrum = GammaLineSpectrum(self.pdg_particle_map)
         self.MadDM_version = '3.0'
+
+        self.processes_names_map = self.proc_characteristics['processes_names_map']
 
     def preloop(self,*args,**opts):
         super(Indirect_Cmd,self).preloop(*args,**opts)
@@ -1319,14 +1401,16 @@ class MADDMRunCmd(cmd.CmdShell):
                             sigv_temp = secure_float_f77(splitline[1])
                             oname = splitline[0].split(':',1)[1] .split('_')
                             oname = oname[0]+'_'+oname[1] #To eliminate the annoying suffix coming from the '/' notation
+                            oname = self.processes_names_map[oname] # conversion to pdg codes
                             result['taacsID#'     + oname] = sigv_temp 
                             result['err_taacsID#' + oname] = 0 
-                            if oname.split('_')[1] in ['uux','ddx','ssx']:
-                                result['lim_taacsID#'+oname] = self.limits.ID_max(mdm, 'qqx')
-                            elif oname.split('_')[1] in self.limits._allowed_final_states:
-                                result['lim_taacsID#'+oname] = self.limits.ID_max(mdm, oname.split('_')[1]) 
-                            elif oname.split('_')[1] not in self.limits._allowed_final_states:
-                                result['lim_taacsID#'+oname] = -1
+                            # if oname.split('_')[1] in ['uux','ddx','ssx']:
+                            #     result['lim_taacsID#'+oname] = self.limits.ID_max(mdm, 'qqx')
+                            # elif oname.split('_')[1] in self.limits._allowed_final_states:
+                            #     result['lim_taacsID#'+oname] = self.limits.ID_max(mdm, oname.split('_')[1]) 
+                            # elif oname.split('_')[1] not in self.limits._allowed_final_states:
+                            #     result['lim_taacsID#'+oname] = -1
+                            result['lim_taacsID#' + oname] = self.limits.ID_max(mdm, oname.split('_')[1])
                             sigv_indirect += sigv_temp
                     result[splitline[0].split(':')[0]] = secure_float_f77(splitline[1])
 
@@ -1364,11 +1448,12 @@ class MADDMRunCmd(cmd.CmdShell):
 #                self.launch_indirect(force)
 
         if self.mode['indirect'] or self.mode['spectral']:
-            if self.mode['spectral']:
-                spectral = True
-                if self.maddm_card['sigmav_method'] != 'madevent':
-                    self.maddm_card['sigmav_method'] = 'madevent'
-                    logger.warning('Force sigmav_method = madevent to compute loop-induced processes')
+            # inquire the force_madevent how it works, then see if it is necessary to add this flag
+            # it must also be added to MGoutput.py and must be handled by maddm_interface.py
+            # if self.proc_characteristics['indirect_loop_induced']:
+            #     if self.maddm_card['sigmav_method'] != 'madevent':
+            #         self.maddm_card['sigmav_method'] = 'madevent'
+            #         logger.warning('Force sigmav_method = madevent to compute loop-induced processes')
             self.launch_indirect(force)
             if self.mode['indirect']:
                 self.launch_indirect_computations(mdm)
@@ -1436,20 +1521,33 @@ class MADDMRunCmd(cmd.CmdShell):
                     order += [key]
  
             # *** Indirect detection
-            if self.mode['indirect']:
+            if self.mode['indirect'] or self.mode['spectral']:
                     halo_vel = self.maddm_card['vave_indirect']
                     #if halo_vel > (3*10**(-6)) and halo_vel < ( 1.4*10**(-4) ):  # cannot calculate Fermi limits
                  
                     #if not self._two2twoLO:
                     detailled_keys = [k for k in self.last_results if k.startswith('taacsID#') ]
+                    # halo velocity condition
+                    fermi_dsph_vel = halo_vel > (3*10**(-6)) and halo_vel < ( 1.4*10**(-4) ) # range of validity of Fermi limits
+                    line_gc_vel = halo_vel > 200/299792.458 and halo_vel < 250/299792.458 # range of validity of line limits
                     if len(detailled_keys)>1:
                         for key in detailled_keys:
                             clean_key_list = key.split("_")
                             clean_key = clean_key_list[0]+"_"+clean_key_list[1]
 
                             order +=[clean_key]
-                            if halo_vel > (3*10**(-6)) and halo_vel < ( 1.4*10**(-4) ):
-                                    order +=['lim_'+clean_key]
+                            # add the lim key only if it has been computed
+                            if fermi_dsph_vel and line_gc_vel:
+                                order +=['lim_'+clean_key]
+                            elif fermi_dsph_vel and not line_gc_vel:
+                                if self.is_spectral_finalstate(clean_key_list[1]):
+                                    continue
+                                order +=['lim_'+clean_key]
+                            elif not fermi_dsph_vel and line_gc_vel:
+                                if not self.is_spectral_finalstate(clean_key_list[1]):
+                                    continue
+                                order +=['lim_'+clean_key]
+
 
                     order.append('taacsID')
                     order.append('tot_SM_xsec')
@@ -1460,7 +1558,7 @@ class MADDMRunCmd(cmd.CmdShell):
                     else:
                        order = order + ['pvalue_nonth','like_nonth']
 
-                    if self.mode['indirect'].startswith('flux'):
+                    if str(self.mode['indirect']).startswith('flux'):
                        #for channel in self.Spectra.spectra.keys(): #['neutrinos_e', 'neutrinos_mu' , 'neutrinos_tau']
                        for channel in ['gammas','neutrinos_e', 'neutrinos_mu' , 'neutrinos_tau']:
                            if 'antip' in channel or 'pos' in channel: continue
@@ -1468,13 +1566,13 @@ class MADDMRunCmd(cmd.CmdShell):
 
                     # add keys related to lines
                     # density profile (no 'profile_name' because it is a string)
-                    order += ['profile_r_s', 'profile_rho_s', 'profile_gamma', 'profile_alpha']
+                    # order += ['profile_r_s', 'profile_rho_s', 'profile_gamma', 'profile_alpha']
                     # observables for each experiment
                     for line_exp in self.line_experiments:
                         str_part = "line_%s_" % line_exp.get_name()
                         order.append(str_part + "Jfactor")
                         order.append(str_part + "roi")
-                        for i in range(len(self.limits._allowed_line_final_states)):
+                        for i in range(len([k for k in self.last_results.keys() if self.is_spectral_finalstate(k.split('_')[-1])])):
                             order.append(str_part + "peak_%d"        % (i+1))
                             # order.append(str_part + "peak_%d_states" % (i+1))
                             order.append(str_part + "flux_%d"        % (i+1))
@@ -1485,6 +1583,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
             run_name = str(self.run_name).rsplit('_',1)[0]
             summary_file = pjoin(self.dir_path, 'output','scan_%s.txt' % run_name)
+
             self.write_scan_output(out_path = summary_file , keys = order, header = True )
             self.write_scan_output(out_path = summary_file , keys = order )
             with misc.TMP_variable(self, 'in_scan_mode', True):
@@ -1542,6 +1641,9 @@ class MADDMRunCmd(cmd.CmdShell):
 
         mnest.launch(resume = resume_chain)
         mnest.write_log()
+
+    def is_spectral_finalstate(self, finalstate):
+        return '(22)' in finalstate
 
     def launch_indirect(self, force, spectral = False):
         """running the indirect detection"""
@@ -1604,25 +1706,32 @@ class MADDMRunCmd(cmd.CmdShell):
                         if self.maddm_card['sigmav_method'] == 'madevent':
                             if os.path.exists(pjoin(self.dir_path,'Indirect','Cards','reweight_card.dat')):
                                 os.remove(pjoin(self.dir_path,'Cards','reweight_card.dat'))
-                            self.me_cmd.do_launch('%s -f' % self.run_name)
+                            # self.me_cmd.do_launch('%s -f' % self.run_name)
+                            self.me_cmd.Presults = {}
+                            self.me_cmd.Presults['xsec/something_n1n1_aa'] = 10.3
+                            self.me_cmd.Presults['xsec/something_n1n1_ah'] = 4.6
+                            self.me_cmd.Presults['xsec/something_n1n1_az'] = 9.1
                         elif self.maddm_card['sigmav_method'] == 'reshuffling': 
                             cmd = ['launch %s' % self.run_name,
                                'reweight=indirect',
                                'edit reweight --replace_line="change velocity" --before_line="launch" change velocity %s' % vave_temp]
                             self.me_cmd.import_command_file(cmd)
-                  
+            
+            fermi_dsph_vel = self.maddm_card['vave_indirect'] > (3*10**(-6)) and self.maddm_card['vave_indirect'] < ( 1.4*10**(-4) ) # range of validity of Fermi limits
+            line_gc_vel = self.maddm_card['vave_indirect'] > 200/299792.458 and self.maddm_card['vave_indirect'] < 250/299792.458 # range of validity of line limits
+            
+            def compute_limit(finalstate):
+                is_spectral = self.is_spectral_finalstate(finalstate)
+                return (fermi_dsph_vel and not is_spectral) or (line_gc_vel and is_spectral)
+
             for key, value in self.me_cmd.Presults.iteritems():
                 clean_key_list = key.split("/")
-                clean_key =clean_key_list[len(clean_key_list)-1].split('_')[1] +'_'+  clean_key_list[len(clean_key_list)-1].split('_')[2] 
+                clean_key =clean_key_list[len(clean_key_list)-1].split('_')[1] +'_'+  clean_key_list[len(clean_key_list)-1].split('_')[2]
+                clean_key = self.processes_names_map[clean_key] # conversion to pdg codes
                 if key.startswith('xsec'):
                     self.last_results['taacsID#%s' %(clean_key)] = value* pb2cm3
                     self.last_results['taacsID'] += value* pb2cm3
-                    if clean_key.split('_')[1] in ['uux','ddx','ssx']:
-                        self.last_results['lim_taacsID#'+clean_key] = self.limits.ID_max(mdm, 'qqx')
-                    elif clean_key.split('_')[1] in self.limits._allowed_final_states:
-                        self.last_results['lim_taacsID#'+clean_key] = self.limits.ID_max(mdm, clean_key.split('_')[1])
-                    elif clean_key.split('_')[1] not in self.limits._allowed_final_states:
-                        self.last_results['lim_taacsID#'+clean_key] = -1
+                    self.last_results['lim_taacsID#'+clean_key] = self.limits.ID_max(mdm, clean_key.split('_')[1]) if compute_limit(clean_key.split('_')[1]) else -1
                     
                 elif key.startswith('xerr'):
                     self.last_results['err_taacsID#%s' %(clean_key)] = value * pb2cm3
@@ -1660,7 +1769,7 @@ class MADDMRunCmd(cmd.CmdShell):
         self.calculate_fermi_limits(mdm)
         
         # ****** Calculating Fluxes at detection
-        if self.mode['indirect'].startswith('flux') :
+        if str(self.mode['indirect']).startswith('flux'):
             self.neu_oscillations() # neutrinos oscillations                                                                                                                   
 
         # ****** Calculating Fluxes Earth                                                                                                                       
@@ -1730,16 +1839,6 @@ class MADDMRunCmd(cmd.CmdShell):
 
     def calculate_line_limits(self, mdm):
         ''' setup the computation of gamma-line limits from Fermi-LAT and HESS '''  
-        if HAS_SCIPY is False:
-            logger.warning("scipy module not available, line limits computation is disabled.")
-            return
-        halo_vel = self.maddm_card['vave_indirect']
-        if not (halo_vel > 0. and halo_vel < 1e-3): # CHANGE ALSO IN THE TEXT BELOW AND IN THE RESULT PRINTING
-            logger.error('The DM velocity in the galactic center is not in the [0. - 10^-3]/c range - will not calculate line limits!')        
-            logger.error('Please rerun with the correct velocity to re-calculate the line limits.')
-            return 0   
-        logger.info("Calculating line limits from " + ', '.join([line_exp.get_name().replace('_', ' ') for line_exp in self.line_experiments]))
-        sigmavs = {k.split("_")[-1]: v for k, v in self.last_results.items() if k.startswith('taacsID#') and k.split("_")[-1] in self.limits._allowed_line_final_states}
         profiles = {
             'nfwg'      : PROFILES.NFW,
             'nfw'       : lambda **kwargs: (kwargs.pop('gamma', None), PROFILES.NFW(gamma = 1.0, **kwargs))[1], # to make canonical nfw keeping the freedom of kwargs, we need to pop "gamma" from kwargs and set it explicitly: make a lambda and built a tuple inside it: kwargs.pop modifies the dictionary and PROFILES.NFW(gamma=1.0, **kwargs) uses the modified kwargs because the tuple is instantiated and then processed, the [1] element is then returned from the lambda
@@ -1775,9 +1874,27 @@ class MADDMRunCmd(cmd.CmdShell):
         )
         # fill last_results with the profile parameters
         self.last_results["density_profile"] = density_profile
-        for k, v in density_profile.get_parameters_items():
-            self.last_results[k] = v
-
+        # for k, v in density_profile.get_parameters_items():
+        #     self.last_results[k] = v
+        # check scipy
+        if HAS_SCIPY is False:
+            logger.warning("scipy module not available, line limits computation is disabled.")
+            return
+        # check halo velocity
+        halo_vel = self.maddm_card['vave_indirect']
+        if not (halo_vel > 200/299792.458 and halo_vel < 250/299792.458):
+            logger.error('The DM velocity in the galactic center is not in the [%.3e - %.3e] c range - will not calculate line limits!' % (200/299792.458, 250/299792.458))        
+            logger.error('Please rerun with the correct velocity to re-calculate the line limits.')
+            for line_exp in self.line_experiments:
+                str_part = "line_%s_" % line_exp.get_name()    
+                self.last_results[str_part + "Jfactor"] = -1
+            return 0   
+        logger.info("Calculating line limits from " + ', '.join([line_exp.get_name().replace('_', ' ') for line_exp in self.line_experiments]))
+        # <sigma v> of the various final states
+        sigmavs = {k.split("_")[-1]: v for k, v in self.last_results.iteritems() if k.startswith('taacsID#') and self.is_spectral_finalstate(k.split("_")[-1])}
+        # dict for <sigma v> ul
+        sigmav_ul = {k: list() for k in self.last_results.iterkeys() if "lim_taacsID#" in k and self.is_spectral_finalstate(k.split('_')[-1])} # if there is at least one '(22)' then we treat it as a spectral final state
+        # compute the main results
         for line_exp in self.line_experiments:
             str_part = "line_%s_" % line_exp.get_name()
             # fill last_results with all the keys (with value -1, which means 'not computed') of line analysis
@@ -1792,16 +1909,26 @@ class MADDMRunCmd(cmd.CmdShell):
             spectra_per_final_state = collections.OrderedDict(sorted([(k.replace('_peak', ''), v) for k, v in final_spectrum.items() if 'peak' in k], key = lambda item: item[1]))
             self.last_results[str_part + "Jfactor"    ] = line_exp.get_J(roi = self.last_results[str_part + 'roi'], profile = density_profile)
             self.last_results[str_part + "roi_warning"] = line_exp.check_profile(roi = self.last_results[str_part + 'roi'], profile = density_profile)            
-            for i, item in enumerate(spectra_per_final_state.items()):
-                merged, line = item
+            for i, (merged, line) in enumerate(spectra_per_final_state.items()):
                 self.last_results[str_part + "peak_%d"        % (i+1)] = line
-                self.last_results[str_part + "peak_%d_states" % (i+1)] = merged
+                self.last_results[str_part + "peak_%d_states" % (i+1)] = self.pdg_particle_map.format_particles(merged)
                 total_flux = 0.
                 for fs in merged.split('+'):
-                    not_aa     = True if fs != 'aa' else False
+                    not_aa     = fs != '(22)(22)'
                     total_flux += line_exp.flux(mdm = mdm, sigmav = sigmavs[fs], jfact = self.last_results[str_part + "Jfactor"], not_aa = not_aa)
                 self.last_results[str_part + "flux_%d"    % (i+1)] = total_flux
                 self.last_results[str_part + "flux_UL_%d" % (i+1)] = line_exp.get_flux_ul(e_peak = line, roi = self.last_results[str_part + 'roi'], id_constraints = self.limits)
+            # compute <sigma v> ul to display only if the profile chosen in equal to the default one for the ROIs
+            # fill a list with the limits from each experiment and then take the minimum
+            for k, v in sigmav_ul.iteritems():
+                final_state = k.split('_')[-1]
+                not_aa = final_state != '(22)(22)'
+                v.append(line_exp.get_sigmav_ul(e_peak = line_energies[final_state + '_peak'], roi = self.last_results[str_part + 'roi'], profile = density_profile, id_constraints = self.limits, not_aa = not_aa))
+        # get the <sigma v> ul: drop the -1 and get the minimum, in case everything is -1 then the list is empty, so return -1
+        logger.debug(sigmav_ul)
+        for k, v in sigmav_ul.items():
+            lim_list = [lim for lim in v if lim != -1]
+            self.last_results[k] = -1 if len(lim_list) == 0 else np.amin(lim_list)
         # in case all of the line peaks are out of range of detection for a certain experiment:
         # find_lines(...) will return an empty dict
         # merge_lines(...) will return an empty dict
@@ -1966,9 +2093,9 @@ class MADDMRunCmd(cmd.CmdShell):
                      ch = self.Spectra.map_allowed_final_state_PPPC[CH]  # ch is the name of the channels in the Tables
                   
                   # Mapping liht quarks to qq in the Tables
-                  elif CH == 'ssx' : ch = 'qq'
-                  elif CH == 'uux' : ch = 'qq' 
-                  elif CH == 'ddx' : ch = 'qq'
+                  # elif CH == 'ssx' : ch = 'qq'
+                  # elif CH == 'uux' : ch = 'qq' 
+                  # elif CH == 'ddx' : ch = 'qq'
                   else: continue
                   ch_BR =  self.last_results[CH_k]                                                                                                           
                   if ch_BR > 0:                                                                                                                                              
@@ -2020,10 +2147,10 @@ class MADDMRunCmd(cmd.CmdShell):
             C = CH.split('_')[1]
             if C in self.Spectra.map_allowed_final_state_PPPC.keys():
                ch = self.Spectra.map_allowed_final_state_PPPC[C]  # ch is the name of the channels in the Tables                                                           
-                  # Mapping light quarks to qq in the Tables                                                                                                                      
-            elif C == 'ssx' : ch = 'qq'
-            elif C == 'uux' : ch = 'qq'
-            elif C == 'ddx' : ch = 'qq'
+            #       # Mapping light quarks to qq in the Tables                                                                                                                      
+            # elif C == 'ssx' : ch = 'qq'
+            # elif C == 'uux' : ch = 'qq'
+            # elif C == 'ddx' : ch = 'qq'
             else: continue
 
             ch_BR = self.last_results[CH]
@@ -2080,7 +2207,7 @@ class MADDMRunCmd(cmd.CmdShell):
         # self.Spectra.spectra = = {'x':[] , 'antiprotons':[], 'gammas':[], 'neutrinos_e':[], 'neutrinos_mu':[], 'neutrinos_tau':[], 'positrons':[] }
         cr_spectra = self.Spectra.spectra.keys()
         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
-        if self.mode['indirect'].startswith('flux'):
+        if str(self.mode['indirect']).startswith('flux'):
 
              x = np.array (self.Spectra.spectra['x'] )
              E = x*mdm
@@ -2254,7 +2381,10 @@ class MADDMRunCmd(cmd.CmdShell):
         if out_path and header:
             nice_keys = []
             for k in keys:
-                k = k.replace('taacsID#','')
+                if 'taacsID#' in k:
+                    k = k.replace('taacsID#','')
+                    this_proc = [(proc_pdg, proc_names) for proc_names, proc_pdg in self.processes_names_map.iteritems() if proc_pdg in k][0]
+                    k = k.replace(this_proc[0], this_proc[1])
                 k = k.replace('taacsID','tot_Xsec')
                 nice_keys.append(k)
             
@@ -2359,46 +2489,61 @@ class MADDMRunCmd(cmd.CmdShell):
             detailled_keys = [k for k in self.last_results.keys() if k.startswith('taacsID#')]
             logger.info('<sigma v> method: %s ' % self.maddm_card['sigmav_method'] )
             logger.info('DM particle halo velocity: %s/c ' % halo_vel) # the velocity should be the same
-            logger.info('Print <sigma v> with Fermi dSph limits (if available)')
+            logger.info('Print <sigma v> with Fermi dSph limits and %s line limits (if available)' % ', '.join([exp.get_name().replace('_', ' ') for exp in self.line_experiments]))
   
             sigtot_alldm     = self.last_results['taacsID']
             sigtot_SM_alldm  = self.last_results['tot_SM_xsec']
             sigtot_th        = sigtot_alldm * xsi2
             sigtot_SM_th     = sigtot_SM_alldm * xsi2
   
-            skip = []
-            if halo_vel > (3*10**(-6)) and halo_vel < ( 1.4*10**(-4) ): # range of validity of Fermi limits
+            def print_sigmav_with_limits(detailled_keys, sigmav_lim, exp_label, no_lim_flag):
+                ''' sigmav_lim, exp_label and no_lim_flag are lambda which are calculated from the key '''
+                skip = []
                 light_s = False
                 if len(detailled_keys)>0:
-                    #logger.info('Using generic Fermi dSph limits for light quarks (u,d,s)' )
+                    # logger.info('Using generic Fermi dSph limits for light quarks (u,d,s)' )
                     for key in detailled_keys:
                         clean_key_list = key.split("#")
                         clean_key = clean_key_list[1] #clean_key_list[0]+"_"+clean_key_list[1]
                         finalstate = clean_key.split("_")[1]
-                        f_original = clean_key.split("_")[1]
-                        if 'ss' in finalstate or 'uu' in finalstate or 'dd' in finalstate:
-                            finalstate = 'qqx'
+                        if '(3)(-3)' in finalstate or '(2)(-2)' in finalstate or '(1)(-1)' in finalstate:
+                            # finalstate = 'qqx'
                             light_s    = True
                         ## The inclusive method does not give the sigma for the BSM states production
                         s_alldm   = self.last_results[key]
                         s_thermal = s_alldm*xsi2
     
                         if s_alldm <= 10**(-100): 
-                            skip.append(f_original)
-                            continue 
-    
-                        if finalstate in self.limits._allowed_line_final_states:
-                            s_ul   = -1
-                            no_lim = True
-                        else:
-                            s_ul   = self.limits.ID_max(mdm, finalstate)
-                            no_lim = False
+                            skip.append(self.pdg_particle_map.format_particles(finalstate))
+                            continue
 
-                        self.last_results['Fermi_lim_'+key] = s_ul
-                        self.print_ind(clean_key, s_thermal, s_alldm, s_ul,  thermal= dm_scen, no_lim = no_lim) 
-                                                                                          
+                        # if self.is_spectral_finalstate(finalstate):
+                        #     s_ul   = -1
+                        #     no_lim = True
+                        # else:
+                        #     s_ul   = self.limits.ID_max(mdm, finalstate)
+                        #     no_lim = False
+
+                        # self.last_results['Fermi_lim_'+key] = s_ul
+                        # self.print_ind(clean_key, s_thermal, s_alldm, s_ul,  thermal= dm_scen, no_lim = no_lim) 
+                        s_ul = sigmav_lim(key)
+                        exp = exp_label(finalstate)
+                        no_lim = no_lim_flag(finalstate)
+                        self.print_ind(self.pdg_particle_map.format_process(clean_key), s_thermal, s_alldm, s_ul, exp = exp, thermal= dm_scen, no_lim = no_lim) 
+
                 if len(skip) >=1:        
-                    logger.info('Skipping zero cross section processes for: %s', ', '.join(skip))                      
+                    logger.info('Skipping zero cross section processes for: %s', ', '.join(skip))
+                return light_s
+
+            fermi_dsph_vel = halo_vel > (3*10**(-6)) and halo_vel < ( 1.4*10**(-4) ) # range of validity of Fermi limits
+            line_gc_vel = halo_vel > 200/299792.458 and halo_vel < 250/299792.458 # range of validity of line limits
+            
+            if fermi_dsph_vel and line_gc_vel:
+                light_s = print_sigmav_with_limits(detailled_keys,
+                                                   sigmav_lim = lambda key: self.last_results['lim_' + key],
+                                                   exp_label = lambda finalstate: {False: 'Fermi dSph', True: 'Line'}.get(self.is_spectral_finalstate(finalstate), None),
+                                                   no_lim_flag = lambda finalstate: False)
+                                                                                         
                 if light_s:
                     logger.info('Using generic Fermi dSph limits for light quarks (u,d,s)' )                                                                                               
     
@@ -2425,37 +2570,78 @@ class MADDMRunCmd(cmd.CmdShell):
                     #np_names = {'gammas':'g'      , 'neutrinos_e':'nue' , 'neutrinos_mu':'numu' , 'neutrinos_tau':'nutau'}
                     for chan in ['gammas','neutrinos_e', 'neutrinos_mu' , 'neutrinos_tau']:
                         logger.info( self.form_s(chan + ' Flux') + '=\t' + self.form_s(self.form_n (self.last_results['flux_%s' % chan]) ))
-  
-  
-            else:  
-                logger.warning('Printing only <sigma v>: Fermi dSph limits cannot be calculated since DM halo velocity not compatible with dwarfs.')
-                if len(detailled_keys)>0:
-                    for key in detailled_keys:
-                        clean_key_list = key.split("#")
-                        clean_key = clean_key_list[1]                                                                                           
-                        finalstate = clean_key.split("_")[1]
-                        f_original = clean_key.split("_")[1]
-                        if 'ss' in finalstate or 'uu' in finalstate or 'dd' in finalstate:
-                            finalstate = 'qqx'
-     
-                        s_alldm = self.last_results[key]
-                        s_thermal  = s_alldm*xsi2
-    
-                        if s_alldm <= 10**(-100):
-                            logger.info('Skipping zero cross section processes for ' + f_original )
-                            continue
-     
-                        #if not self.param_card_iterator:
-                        self.print_ind(clean_key, s_thermal, s_alldm, -1, thermal = dm_scen, no_lim = True)
-  
-            if self.mode['spectral']:
-                logger.info('')
-                if halo_vel > 0. and halo_vel < 1e-3:
+                
+                if self.mode['spectral']:
+                    logger.info('')
                     logger.info('*** Line limits from ' + ', '.join([line_exp.get_name().replace('_', ' ') for line_exp in self.line_experiments]))
-                    self.print_line_results()
-                else:
-                    logger.warning('Line limits cannot be calculated since DM halo velocity not compatible with galactic center.')
-              
+                    self.print_line_results(xsi2)
+  
+            elif fermi_dsph_vel and not line_gc_vel:
+                light_s = print_sigmav_with_limits(detailled_keys,
+                                                   sigmav_lim = lambda key: self.last_results['lim_' + key],
+                                                   exp_label = lambda finalstate: 'Fermi dSph',
+                                                   no_lim_flag = lambda finalstate: self.is_spectral_finalstate(finalstate))
+                
+                if light_s:
+                    logger.info('Using generic Fermi dSph limits for light quarks (u,d,s)' )
+
+                if self.mode['indirect']:
+                    fermi_ul = self.last_results['Fermi_sigmav']
+    
+                    if len(detailled_keys) > 1 :
+                        logger.info('*** Total limits calculated with Fermi dSph likelihood:')
+                        if self.maddm_card['sigmav_method']!= 'inclusive':     
+                            self.print_ind('DM DM > all',sigtot_th , sigtot_alldm, fermi_ul,  thermal= dm_scen)
+                        else: 
+                            self.print_ind('DM DM > SM SM', sigtot_SM_th , sigtot_SM_alldm, fermi_ul,  thermal= dm_scen)
+    
+                    elif len(detailled_keys) == 1:
+                        logger.info('*** Total limits calculated with Fermi dSph likelihood:')
+                        if self.maddm_card['sigmav_method']!= 'inclusive':
+                            self.print_ind('DM DM > all',sigtot_th , sigtot_alldm, self.last_results['Fermi_sigmav'],  thermal= dm_scen)
+                        else:
+                            self.print_ind('DM DM > SM SM', sigtot_SM_th , sigtot_SM_alldm, self.last_results['Fermi_sigmav'],  thermal= dm_scen)
+    
+                if str(self.mode['indirect']).startswith('flux'):
+                    logger.info('')
+                    logger.info('*** Fluxes at earth [particle/(cm^2 sr)]:')
+                    #np_names = {'gammas':'g'      , 'neutrinos_e':'nue' , 'neutrinos_mu':'numu' , 'neutrinos_tau':'nutau'}
+                    for chan in ['gammas','neutrinos_e', 'neutrinos_mu' , 'neutrinos_tau']:
+                        logger.info( self.form_s(chan + ' Flux') + '=\t' + self.form_s(self.form_n (self.last_results['flux_%s' % chan]) ))
+                
+                if self.mode['spectral']:
+                    logger.info('')
+                    logger.warning('Line limits cannot be calculated since DM halo velocity not compatible GC.')
+
+            elif not fermi_dsph_vel and line_gc_vel:  
+                print_sigmav_with_limits(detailled_keys,
+                                         sigmav_lim = lambda key: self.last_results['lim_' + key],
+                                         exp_label = lambda finalstate: 'Line',
+                                         no_lim_flag = lambda finalstate: not self.is_spectral_finalstate(finalstate))
+
+                if self.mode['indirect']:
+                    logger.info('')
+                    logger.warning('Fermi dSph limits cannot be calculated since DM halo velocity not compatible with dwarfs.')
+                
+                if self.mode['spectral']:
+                    logger.info('')
+                    logger.info('*** Line limits from ' + ', '.join([line_exp.get_name().replace('_', ' ') for line_exp in self.line_experiments]))
+                    self.print_line_results(xsi2)
+
+            else:
+                print_sigmav_with_limits(detailled_keys,
+                                         sigmav_lim = lambda key: -1,
+                                         exp_label = lambda finalstate: None,
+                                         no_lim_flag = lambda finalstate: True)
+
+                if self.mode['indirect']:
+                    logger.info('')
+                    logger.warning('Fermi dSph limits cannot be calculated since DM halo velocity not compatible with dwarfs.')
+
+                if self.mode['spectral']:
+                    logger.info('')
+                    logger.warning('Line limits cannot be calculated since DM halo velocity not compatible GC.')
+
             logger.info('\n')  
             logger.info('')
 
@@ -2606,7 +2792,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 aux.write_data_to_file(e , dPhidlogE  , filename = out_dir + '/positrons_dphide_' + spec_method +'.dat' , header = header )
 
     
-    def print_ind(self,what, sig_th, sig_alldm, ul,  thermal=False ,direc = False , exp='Fermi', no_lim = False):
+    def print_ind(self,what, sig_th, sig_alldm, ul,  thermal=False ,direc = False , exp='Fermi_dSph', no_lim = False):
         ''' to print the output on screen. Set no_lim = True to avoid printing the experimental ul (e.g. Fermi dSph ul for wrong dm velocity) '''
         
         alldm_mess = self.det_message_screen(sig_alldm , ul)
@@ -2634,12 +2820,24 @@ class MADDMRunCmd(cmd.CmdShell):
 
         logger.info(line)
     
-    def print_line_results(self):
+    def print_line_results(self, xsi2):
         ''' method to print and format the line analysis results '''
+        def colored_message(n1, n2):
+            ''' don't use det_message_screen because you can't ensure alignment:
+                there the colors are already inside the string, so they are kept into account
+                while filling the available space;
+                so return the color and the message separately to handle alignment.
+            '''
+            if n2 <= 0:
+                return "NO LIMIT", bcolors.GRAY
+            elif n1 > n2 and n2 > 0:
+                return "EXCLUDED", bcolors.FAIL
+            elif n2 > n1:
+                return "ALLOWED", bcolors.OKGREEN
         logger.info("Density profile: %s" % self.last_results["density_profile"])
         for line_exp in self.line_experiments:
             str_part = "line_%s_" % line_exp.get_name()
-            logger.info("==== %s %s====" % (line_exp.get_name().replace('_', ' '), "="*max([0, 80 - len(line_exp.get_name())])))
+            logger.info("==== %s %s====" % (line_exp.get_name().replace('_', ' '), "="*max([0, 100 - len(line_exp.get_name())])))
             logger.info("ROI: %.1f" % self.last_results[str_part + "roi"])
             str_part_peak = str_part + 'peak'
             energy_peaks = collections.OrderedDict(sorted([(k, v) for k, v in self.last_results.items() if str_part_peak in k and '_states' not in k and v != -1], key = lambda item: item[1])) # key = "line_<exp_name>_peak_<num>", value = energy peak
@@ -2655,7 +2853,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 # for each peak, the first column has a length = len("peak" + "<peak_number>" + "(<label_merged>)")
                 first_col_len = max([len("peak_%d(%s)" % (int(k.split('_')[-1]), self.last_results[k + '_states'])) for k in energy_peaks.keys()])
                 row_format = r"{" + "0:%ds" % first_col_len + r"}"
-                first_rule = "{0:s}   {1:^11s}   {2:^16s}   {3:^10s}".format(" "*first_col_len, "Energy(GeV)", "Flux(cm^-2 s^-1)", "UL flux")
+                first_rule = "{0:s}   {2:^11s}   {3:^16s} {1:8s}   {4:^16s} {1:8s}   {5:^10s}".format(" "*first_col_len, "", "Energy(GeV)", "Flux(cm^-2 s^-1)", "Flux(thermal)", "UL flux")
                 logger.info("-"*len(first_rule))
                 logger.info(first_rule)
                 logger.info("-"*len(first_rule))
@@ -2663,8 +2861,9 @@ class MADDMRunCmd(cmd.CmdShell):
                     num = int(k.split('_')[-1])
                     flux    = self.last_results[str_part + "flux_%d"    % num]
                     flux_UL = self.last_results[str_part + "flux_UL_%d" % num]
-                    allowed_or_excluded = self.det_message_screen(flux, flux_UL)
-                    logger.info(row_format.format("peak_%d(%s)" % (num, self.last_results[k + "_states"])) + "   {0:^11.4e}   {1:^16.4e}   {2:^10.4e}   {3:s}".format(peak, flux, flux_UL, allowed_or_excluded))
+                    allowed_or_excluded, color       = colored_message(flux, flux_UL)
+                    allowed_or_excluded_th, color_th = colored_message(flux*xsi2, flux_UL)
+                    logger.info(row_format.format("peak_%d(%s)" % (num, self.last_results[k + "_states"])) + "   {0:^11.4e}   {1:^16.4e} {6:s}{2:<8s}{8:s}   {3:^16.4e} {7:s}{4:<8s}{8:s}   {5:^10.4e}".format(peak, flux, allowed_or_excluded, flux*xsi2, allowed_or_excluded_th, flux_UL, color, color_th, bcolors.ENDC))
                 logger.info("-"*len(first_rule))
 
     def save_summary_single(self, relic = False, direct = False , indirect = False , spectral = False , fluxes_source = False , fluxes_earth = False):
@@ -2728,11 +2927,12 @@ class MADDMRunCmd(cmd.CmdShell):
             out.write('#############################################\n\n')
 
             out.write('# Annihilation cross section computed with the method: ' + sigmav_meth)
-            out.write('# [<sigma v>, Fermi dSph limit (if available, else -1)]\n')
+            out.write('\n# [<sigma v>, Fermi dSph and %s line limits (if available, else -1)]' % ', '.join([exp.get_name().replace('_', ' ') for exp in self.line_experiments]) + '\n')
 
             lista = [ proc for proc in self.last_results.keys() if 'taacsID#' in proc and 'lim_' not in proc and 'err' not in proc]                                      
             for name in lista:                                                                                                                                     
-                proc = name.replace('taacsID#','')                                                                                                                 
+                proc = name.replace('taacsID#','')
+                proc = [proc_names for proc_names, proc_pdg in self.processes_names_map.iteritems() if proc == proc_pdg][0]
                 proc_th , proc_ul = self.last_results[name] , self.last_results['lim_'+name]                                                                          
                 out.write(form_s(proc)      + '= '+ form_s('['+ form_n(proc_th)+',' + form_n(proc_ul)+']') + '\n')
 
@@ -2775,26 +2975,28 @@ class MADDMRunCmd(cmd.CmdShell):
             # line limits
             if spectral:
                 out.write('\n# Gamma-line spectrum and line limits\n')
-                out.write('# <sigma*v>[cm^3 s^-1], flux[cm^-2 s^-1], J-factor[GeV^2 cm^-5], peak[GeV], ROI[deg]')
-                density_profile_string = self.last_results['density_profile'].__str__()
-                i_found = density_profile_string.find('\b')
-                while(i_found != -1):
-                    density_profile_string = density_profile_string[:i_found-1] + density_profile_string[i_found+1:]
-                    i_found = density_profile_string.find(r'\b')
-                out.write('\n' + form_s("Density_profile") + '= %s\n' % density_profile_string)
+                out.write('# <sigma*v>[cm^3 s^-1], flux[cm^-2 s^-1], J-factor[GeV^2 cm^-5], peak[GeV], ROI[deg], rho_s[GeV], r_s[kpc]')
+                out.write('\n' + form_s("Density_profile") + '= %s\n' % self.last_results["density_profile"].get_name())
+                for k, v in self.last_results["density_profile"].get_parameters_items():
+                    out.write(form_s(k.replace('profile_', '')) + '= ' + form_n(v) + '\n')
                 for line_exp in self.line_experiments:
                     str_part = "line_%s_" % line_exp.get_name()
                     out.write('# %s (ArXiv:%s)\n' % (line_exp.get_name().replace('_', ' '), line_exp.arxiv_number))
                     out.write(form_s("ROI") + '= %1.1f\n' % self.last_results[str_part + "roi"])
                     out.write(form_s("J-factor") + '= ' + form_n(self.last_results[str_part + "Jfactor"]) + '\n')
                     str_part_peak = str_part + 'peak'
-                    energy_peaks = collections.OrderedDict(sorted([(k, v) for k, v in self.last_results.items() if str_part_peak in k and '_states' not in k and v != -1], key = lambda item: item[1])) # key = "line_<exp_name>_peak_<num>", value = energy peak
+                    energy_peaks = collections.OrderedDict(sorted([(k, v) for k, v in self.last_results.iteritems() if str_part_peak in k and '_states' not in k and v != -1], key = lambda item: item[1])) # key = "line_<exp_name>_peak_<num>", value = energy peak
                     if len(energy_peaks) is 0:
-                        out.write('# No peaks found: out of detection range.\n')
-                        continue
+                        # this happens when all the peaks are -1, so either if peaks are out of detection range or halo velocity is not compatible with galactic center
+                        # if velocity is in the range, print out that peaks are not in the detection range, otherwise print out all -1
+                        if (self.maddm_card['vave_indirect'] > 200/299792.458 and self.maddm_card['vave_indirect'] < 250/299792.458):
+                            out.write('# No peaks found: out of detection range.\n')
+                            continue
+                        else: # recompute energy_peaks without assuming values != -1
+                            energy_peaks = collections.OrderedDict(sorted([(k, v) for k, v in self.last_results.iteritems() if str_part_peak in k and '_states' not in k], key = lambda item: item[1])) # key = "line_<exp_name>_peak_<num>", value = energy peak
                     peaks_string  = ''
                     fluxes_string = ''
-                    for k, peak in energy_peaks.items():
+                    for k, peak in energy_peaks.iteritems():
                         num     = int(k.split('_')[-1])
                         flux    = self.last_results[str_part + "flux_%d"    % num]
                         flux_UL = self.last_results[str_part + "flux_UL_%d" % num]
@@ -2831,7 +3033,7 @@ class MADDMRunCmd(cmd.CmdShell):
         formatted = '{0:20}'.format(stringa)
         return  formatted
     def form_n(self,num):
-        formatted = '{0:3.2e}'.format(num)
+        formatted = '{0:8.2e}'.format(num)
         return formatted
     
     def ask_run_configuration(self, mode=None, force=False):
@@ -3026,7 +3228,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
     to_control= [('relic', 'Compute the Relic Density'),
                       ('direct', 'Compute direct(ional) detection'),
                       ('indirect', 'Compute indirect detection/flux'),
-                      ('spectral', 'Compute indirect detection in a X (X = a, h, z)'),
+                      ('spectral', 'Compute indirect detection in a X'),
                       ('nestscan', 'Run Multinest scan'),
                 ]
     to_init_card = ['param', 'maddm','pythia8']
@@ -3785,7 +3987,7 @@ When you are done with such edition, just press enter (or write 'done' or '0')
              if len(args)!= 4:
                  logger.warning('You need to provide the following <ave. velocity> <ann. channel> <file path>')
                  logger.warning('or  <ave. velocity> <ann. channel> <obs. cross section> <obs. uncertainty>')
-                 logger.warning('Annihilation channel can be: '+ str(self.limits._allowed_final_states))
+                 logger.warning('Annihilation channel can be (in pdg numbers): '+ str(self.limits._allowed_final_states))
              logger.info('The file you use for indirect detection limits will be interpreted as:')
              logger.info('Column 1 - dark matter mass in GeV')
              logger.info('Column 2 - upper limit on the total annihilation cross section in cm^3/s at specified average velocity')
