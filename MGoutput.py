@@ -57,6 +57,8 @@ class MADDMProcCharacteristic(banner_mod.ProcCharacteristic):
         self.add_param('dm_candidate', [0])
         self.add_param('coannihilator', [0])
         self.add_param('model', '')
+        self.add_param('pdg_particle_map', {'':''})
+        self.add_param('processes_names_map', {'':''})
 
 #-------------------------------------------------------------------------#
 class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
