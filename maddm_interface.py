@@ -199,7 +199,7 @@ class MadDM_interface(master_interface.MasterCmd):
                 if len(args) == 1:
                     self.search_coannihilator()                    
                 elif '--usepdg' in args:
-                    self._coannihilation = [self._curr_model.get_particle(a) for a in args[1:] if a!= '--usepdg']
+                    self._coannihilation = [self._curr_model.get_particle(int(a)) for a in args[1:] if a!= '--usepdg']
                 elif len(args)>2 and isdigit and args[2].startswith('/'):
                     self.search_coannihilator(gap=args[1], excluded=[a.replace('/', '') for a in args[2:]])
                 elif len(args)>1 and not isdigit and args[1].startswith('/'):
@@ -210,7 +210,7 @@ class MadDM_interface(master_interface.MasterCmd):
                     self._coannihilation = [self._curr_model.get_particle(a) for a in args[1:]]
                 #avoid duplication
                 if None in self._coannihilation:
-                    raise self.InvalidCmd('Some of the particle name are invalid. Please retry.')
+                    raise self.InvalidCmd('Some of the particle name are invalid (%s). Please retry.' % args[1+self._coannihilation.index(None)])
                 all_name = [c.get('name') for c in self._coannihilation]
                 self._coannihilation = [c for i,c in enumerate(self._coannihilation) if c.get('name') not in all_name[:i]]
 #                self._dm_candidate += self._coannihilation 
