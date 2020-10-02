@@ -138,9 +138,10 @@
    %(indirect_flux_source_method)s   = indirect_flux_source_method ! pythia8, PPPC4DMID or PPPC4DMID_ew
    %(indirect_flux_earth_method)s    =  indirect_flux_earth_method ! dragon or PPPC4DMID_ep
 
-# velocity in halo
-   %(vave_indirect)s   = vave_indirect  ! average velocity of DM in halos in natural units (e.g. 1E-3 for our galaxy, 1E-5 for dSph galaxies)
-
+# setting for DM velocity
+   %(vave_indirect_cont)s   = vave_indirect_cont  ! average velocity of DM for continuum searches (default: Fermi-LAT dSph searches)
+   %(vave_indirect_line)s   = vave_indirect_line  ! average velocity of DM for line searches (default: GC line search analysis) 
+   
 # PPPC4DMID_ep settings for dm halo profile, propagation method and halo function
    %(dm_profile)s      = dm_profile ! NFW, Moo , Iso , Ein 
    %(prop_method)s     = prop_method ! MIN, MED, MAX
