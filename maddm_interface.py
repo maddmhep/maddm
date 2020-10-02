@@ -150,16 +150,20 @@ class MadDM_interface(master_interface.MasterCmd):
         self._coannihilation = []
         self._param_card = None
         self.coannihilation_diff = 1
-        self._ID_procs = base_objects.ProcessDefinitionList()
-        self._ID_LI_procs = base_objects.ProcessDefinitionList()
-        self._ID_matrix_elements = helas_objects.HelasMultiProcess()
-        self._ID_LI_matrix_elements = helas_objects.HelasMultiProcess()
-        self._ID_amps = diagram_generation.AmplitudeList()
-        self._ID_LI_amps = diagram_generation.AmplitudeList()
+        self._two2twoLO = False
+        # procs, matrix_elements, amps --> lists with 2 elements [tree, loop-induced]
+        self._ID_cont_procs           = [base_objects.ProcessDefinitionList() for i in range(2)]
+        self._ID_line_procs           = [base_objects.ProcessDefinitionList() for i in range(2)]
+        self._ID_cont_matrix_elements = [helas_objects.HelasMultiProcess() for i in range(2)]
+        self._ID_line_matrix_elements = [helas_objects.HelasMultiProcess() for i in range(2)]
+        self._ID_cont_amps            = [diagram_generation.AmplitudeList() for i in range(2)]
+        self._ID_line_amps            = [diagram_generation.AmplitudeList() for i in range(2)]
         #self.dm = darkmatter.darkmatter()
-        self._force_madevent_for_ID = False
+        self._forbid_fast = False
+        self._unphysical_particles = []
         self._pdg_particle_map = maddm_run_interface.PDGParticleMap()
         self._has_indirect = False
+        self._indirect_gg  = False
         self._has_spectral = False
 
 
@@ -468,16 +472,13 @@ class MadDM_interface(master_interface.MasterCmd):
         """ensure that all processes are cleaned from memory.
         typically called from import model and generate XXX command
         """
-
         super(MadDM_interface, self).clean_process()
-        
-        # flip indirect/standard process definition
-        self._ID_procs = base_objects.ProcessDefinitionList()
-        self._ID_LI_procs = base_objects.ProcessDefinitionList()
-        self._ID_matrix_elements = helas_objects.HelasMultiProcess()
-        self._ID_LI_matrix_elements = helas_objects.HelasMultiProcess()
-        self._ID_amps = diagram_generation.AmplitudeList()
-        self._ID_LI_amps = diagram_generation.AmplitudeList()
+        self._ID_cont_procs           = [base_objects.ProcessDefinitionList() for i in range(2)]
+        self._ID_line_procs           = [base_objects.ProcessDefinitionList() for i in range(2)]
+        self._ID_cont_matrix_elements = [helas_objects.HelasMultiProcess() for i in range(2)]
+        self._ID_line_matrix_elements = [helas_objects.HelasMultiProcess() for i in range(2)]
+        self._ID_cont_amps            = [diagram_generation.AmplitudeList() for i in range(2)]
+        self._ID_line_amps            = [diagram_generation.AmplitudeList() for i in range(2)]
         
     def check_save(self, args):
         
@@ -569,6 +570,13 @@ class MadDM_interface(master_interface.MasterCmd):
     def add_model(self,*args,**opts):
         super(MadDM_interface, self).add_model(*args, **opts)
         self._pdg_particle_map.set_model_map(self._curr_model)
+        self._unphysical_particles = ['999000007', '999000008', '999000009', '999000010'] # particles of __REAL model
+        for p in self._curr_model.get('particles'):
+            if p.get('type') != '':
+                if not p.get('self_antipart'):
+                    self._unphysical_particles += [str(p.get('pdg_code')), str(-p.get('pdg_code'))]
+                else:
+                    self._unphysical_particles += [str(p.get('pdg_code'))]
 
     def complete_generate(self, text, line, begidx, endidx, formatting=True):
         """Complete particle information + handle maddm options"""
@@ -695,21 +703,29 @@ class MadDM_interface(master_interface.MasterCmd):
         
         if self._curr_amps:
             super(MadDM_interface, self).do_output(line)
+
+        if self._two2twoLO:
+            proc_charac['two2twoLO'] = self._two2twoLO
         
-        if self._ID_amps or self._ID_LI_amps:
+        if any(proc for proc in self._ID_cont_procs + self._ID_line_procs):
             path = self._done_export[0]
-            self.output_indirect(path = path, loop_induced = False)
-            self.output_indirect(path = path, loop_induced = True)
+            self.output_indirect(path, 'Indirect_tree_cont', self._ID_cont_procs[0], self._ID_cont_matrix_elements[0], self._ID_cont_amps[0], loop_induced = False)
+            self.output_indirect(path, 'Indirect_tree_line', self._ID_line_procs[0], self._ID_line_matrix_elements[0], self._ID_line_amps[0], loop_induced = False)
+            self.output_indirect(path, 'Indirect_LI_cont', self._ID_cont_procs[1], self._ID_cont_matrix_elements[1], self._ID_cont_amps[1], loop_induced = True)
+            self.output_indirect(path, 'Indirect_LI_line', self._ID_line_procs[1], self._ID_line_matrix_elements[1], self._ID_line_amps[1], loop_induced = True)
             # find processes names map
-            lo_processes_names_map = self.extract_processes_names(self._ID_amps)
-            li_processes_names_map = self.extract_processes_names(self._ID_LI_amps)
+            tree_cont_processes_names_map = self.extract_processes_names(self._ID_cont_amps[0])
+            tree_line_processes_names_map = self.extract_processes_names(self._ID_line_amps[0])
+            li_cont_processes_names_map = self.extract_processes_names(self._ID_cont_amps[1])
+            li_line_processes_names_map = self.extract_processes_names(self._ID_line_amps[1])
             import MGoutput
             proc_path = pjoin(path, 'matrix_elements', 'proc_characteristics')
             proc_charac = MGoutput.MADDMProcCharacteristic(proc_path)
             proc_charac['has_indirect_detection'] = self._has_indirect
-            proc_charac['has_indirect_spectral'] = self._has_spectral
-            proc_charac['pdg_particle_map'] = self._pdg_particle_map
-            proc_charac['processes_names_map'] = dict(lo_processes_names_map.items() + li_processes_names_map.items())
+            proc_charac['has_indirect_spectral']  = self._has_spectral
+            proc_charac['forbid_fast']            = self._forbid_fast
+            proc_charac['pdg_particle_map']       = self._pdg_particle_map
+            proc_charac['processes_names_map']    = dict(tree_cont_processes_names_map.items() + tree_line_processes_names_map.items() + li_cont_processes_names_map.items() + li_line_processes_names_map.items())
             proc_charac.write(proc_path)
 
     def extract_processes_names(self, amplitude_list):
@@ -722,39 +738,34 @@ class MadDM_interface(master_interface.MasterCmd):
             proc_names.append('_'.join(amplitude['process'].shell_string().split('_')[-2:]))
         return dict(zip(proc_names, proc_pdg))
 
-    def output_indirect(self, path, loop_induced):
+    def output_indirect(self, path, directory, ID_procs, ID_matrix_elements, ID_amps, loop_induced = False):
         ''' Output commands for indirect_detection or loop-induced '''
-        ID_procs = self._ID_procs if not loop_induced else self._ID_LI_procs
-        ID_matrix_elements = self._ID_matrix_elements if not loop_induced else self._ID_LI_matrix_elements
-        ID_amps = self._ID_amps if not loop_induced else self._ID_LI_amps
-
-        if (ID_procs == '2to2lo' and not loop_induced) or not ID_procs or not ID_amps:
-            # if equal to '2to2lo' when 'loop_induced' is not active or if it's empty
+        if not ID_procs:
             return
 
-        # force the code to use madevent in case of loop_induced processes
+        # force the code to use madevent/reshuffling in case of loop_induced processes
         if loop_induced:
-            self._force_madevent_for_ID = True
+            self._forbid_fast = True
 
-        # UNCOMMENT THE NEXT LINE WHEN loop_induced AND normal indirect CAN GO TOGETHER
-        indirect_name = 'Indirect'# if not loop_induced else 'Indirect_loop_induced'
         import aloha.aloha_lib as aloha_lib
         aloha_lib.KERNEL = aloha_lib.Computation()
+
+        # import pdb; pdb.set_trace()
 
         with misc.TMP_variable(self,
             ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps', '_done_export'],
             [ID_procs, ID_matrix_elements, ID_amps, None]):
-            super(MadDM_interface, self).do_output('indirect %s/%s' % (path, indirect_name))
+            super(MadDM_interface, self).do_output('indirect %s/%s' % (path, directory))
             
         #ensure to sync the param_card
-        os.remove(pjoin(path, indirect_name, 'Cards', 'param_card.dat'))
+        os.remove(pjoin(path, directory, 'Cards', 'param_card.dat'))
         files.ln(pjoin(path, 'Cards', 'param_card.dat'), 
-                 pjoin(path, indirect_name, 'Cards'))
+                 pjoin(path, directory, 'Cards'))
 
         #ensure to sync the param_card
-        os.remove(pjoin(path, indirect_name, 'Cards', 'param_card.dat'))
+        os.remove(pjoin(path, directory, 'Cards', 'param_card.dat'))
         files.ln(pjoin(path, 'Cards', 'param_card.dat'), 
-             pjoin(path, indirect_name, 'Cards'))
+             pjoin(path, directory, 'Cards'))
             
 
     def find_output_type(self, path):
@@ -828,18 +839,18 @@ class MadDM_interface(master_interface.MasterCmd):
         #  looped over all the different combinations of DM particles.         #
         #--------------------------------------------------------------------"""
 
-        #Here we define bsm multiparticle as a special case for exlusion only in the
+        #Here we define _bsm_ multiparticle as a special case for exlusion only in the
         #final state. This is different than the standard / notation which will exclude
         #the particles from the propagators as well.
         #Since we use the exluded_particles everywhere, we just use the presence of
-        #the bsm in the array to initialize a flag and then remove it from the excluded
+        #the _bsm_ in the array to initialize a flag and then remove it from the excluded
         #particles array so as not to conflict with the use in other places.
-        self.define_multiparticles('bsm',[p for p in self._curr_model.get('particles')\
-                         if abs(p.get('pdg_code')) > 25])
-        if 'bsm' in excluded_particles:
+        self.define_multiparticles('_bsm_',[p for p in self._curr_model.get('particles')\
+                         if abs(p.get('pdg_code')) > 25 and str(p.get('pdg_code')) not in self._unphysical_particles])
+        if '_bsm_' in excluded_particles:
             exclude_bsm = True
-            while 'bsm' in excluded_particles:
-                excluded_particles.remove('bsm')
+            while '_bsm_' in excluded_particles:
+                excluded_particles.remove('_bsm_')
         else:
             exclude_bsm = False
 
@@ -864,13 +875,15 @@ class MadDM_interface(master_interface.MasterCmd):
                          if abs(p.get('pdg_code')) > 25 and \
                          (p.get('name') not in excluded_particles or p.get('antiname') not in excluded_particles) and\
                          p.get('width') != 'ZERO' and
-                         abs(p.get('pdg_code')) not in ids_veto]
+                         abs(p.get('pdg_code')) not in ids_veto and
+                         str(p.get('pdg_code')) not in self._unphysical_particles]
+
         if not exclude_bsm:
             if bsm_final_states:
                 logger.info("DM is allowed to annihilate into the following BSM particles: %s",
                          ' '.join([p.get('name') for p in bsm_final_states]))
                 logger.info("use generate relic_density / X to forbid the decay the annihilation to X")
-                logger.info("if you want to forbid DM to annihilate into BSM particles do relic_density / bsm")
+                logger.info("if you want to forbid DM to annihilate into BSM particles do relic_density / _bsm_")
         else:
             bsm_final_states=[]
 
@@ -947,6 +960,10 @@ class MadDM_interface(master_interface.MasterCmd):
            The function also merges the dark matter model with the effective        
            vertex model.          
         """
+        # remove the particles created by the __REAL model from the unphysical particles
+        # because they are important for direct detection
+        unphysical_particles_minus_REAL = [p for p in self._unphysical_particles if p not in ['999000007', '999000008', '999000009', '999000010']]
+        logger.error(unphysical_particles_minus_REAL)
 
         if not self._dm_candidate:
             self.search_dm_candidate(excluded_particles)
@@ -954,7 +971,7 @@ class MadDM_interface(master_interface.MasterCmd):
                 return
             else:
                 self.history.append('add direct_detection %s %s' % ( '/' if excluded_particles else '',
-                                                      ' '.join(excluded_particles)))
+                                                      ' '.join(excluded_particles + unphysical_particles_minus_REAL)))
 
         if len(self._dm_candidate) > 1:
             logger.warning("More than one DM candidate. Can not run Direct Detection.")
@@ -969,7 +986,7 @@ class MadDM_interface(master_interface.MasterCmd):
         eff_operators_SD = self.eff_operators_SD[dm_spin]
         
         logger.info("Generating X Nucleon > X Nucleon diagrams from the full lagrangian...")
-        has_direct = self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'QED', excluded_particles)
+        has_direct = self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'QED', excluded_particles + unphysical_particles_minus_REAL)
 
         if not has_direct:
             logger.warning("No Direct Detection Feynman Diagram")
@@ -977,20 +994,20 @@ class MadDM_interface(master_interface.MasterCmd):
         
         logger.info("Generating X Nucleon > X Nucleon diagrams from the effective lagrangian...")
         #ONLY EFFECTIVE LAGRANGIAN
-        self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'SI',excluded_particles)
+        self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'SI',excluded_particles + unphysical_particles_minus_REAL)
 
         logger.info("INFO: Generating X Nucleon > X Nucleon diagrams from the effective+full lagrangian...")
         #EFFECTIVE + FULL
-        self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'SI+QED',excluded_particles)
+        self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'SI+QED',excluded_particles + unphysical_particles_minus_REAL)
         
         if (eff_operators_SD != False):
             logger.info("Doing the spin dependent part...")
             logger.info("Generating X Nucleon > X Nucleon diagrams from the effective lagrangian...")
 
-            self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'SD',excluded_particles)
+            self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'SD',excluded_particles + unphysical_particles_minus_REAL)
             #EFFECTIVE + FULL
             logger.info("Generating X Nucleon > X Nucleon diagrams from the effective + full lagrangian...")
-            self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'SD+QED',excluded_particles)
+            self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'SD+QED',excluded_particles + unphysical_particles_minus_REAL)
 
     #-----------------------------------------------------------------------#
     @misc.mute_logger(['madgraph','aloha','cmdprint'], [30,30,30])
@@ -1038,15 +1055,13 @@ class MadDM_interface(master_interface.MasterCmd):
             has_diagram = True
         return has_diagram
 
-    def generate_indirect(self, argument, user=True, spectral=False):
+    def generate_indirect(self, argument, user=True):
         """User level function which performs indirect detection functions
            Generates the DM DM > X where X is anything user specified.
            Also works for loop induced processes as well as NLO-QCD.
-           Arg spectral=True means that it was launched by generate_spectral(argument).
            Currently works only with canonical mode and one dm candidate.
         related to syntax: generate indirect a g / n3
         """
-        
         if not maddm_run_interface.HAS_NUMPY and user:
             logger.warning("numpy module not detected on your machine. \n"+
                            "Running indirect detection will not be possible as long as numpy is not installed (try 'pip install numpy')" 
@@ -1069,75 +1084,124 @@ class MadDM_interface(master_interface.MasterCmd):
             logger.info('For indirect detection we need to generate relic density matrix-element','$MG:BOLD')
             self.generate_relic([])
 
-        if not spectral:
-            self._has_indirect = True
-        else:
-            self._has_spectral = True
-
+        self._has_indirect = True
+        
+        # check the '2to2lo' option: forbid it if loop-induced processes have been considered
         if '2to2lo' in argument:
-            self._ID_procs = '2to2lo'
+            if not self._ID_cont_procs[1] and not self._ID_line_procs[1]:
+                self._two2twoLO = True
+            else:
+                logger.error("Can't use '2to2lo' option for indirect detection if loop-induced processes are considered.")
+            return
+
+        # check if there are photons in final states: if so, redirect the user to use 'indirect_spectral_features'
+        if any(self._pdg_particle_map.get_pdg(arg) == 22 for arg in ' '.join(argument).split('/')[0].split()) and len(' '.join(argument).split('/')[0]) != 0:
+            logger.error("Processes with at least one photon in the final state must be generated through 'indirect_spectral_features' command.")
             return
         
+        # Generates events for all the DM annihilation channels (also BSM)
+        # it uses the '--noloop' option
+        if argument == []:
+            bsm_content = self.indirect_bsm_multiparticle()
+            self.exec_cmd('define _q_mdm_ = 1 2 3 4 -1 -2 -3 -4', postcmd=False)
+            # set final states: notice that '22 22' has been removed, because now it is handles by 'indirect_spectral_features'
+            final_states = ['_q_mdm_ _q_mdm_', '21 21', '5 -5', '6 -6', '23 23', '24 -24', '25 25', '11 -11', '13 -13', '15 -15', '12 -12', '14 -14', '16 -16']
+            final_states += ['_bsm_ _bsm_'] if bsm_content else []
+            for final_state in final_states:
+                try: 
+                    self.indirect_processes_generation([final_state, '--noloop'], self._ID_cont_procs, self._ID_cont_matrix_elements, self._ID_cont_amps)
+                except diagram_generation.NoDiagramException:
+                    continue
+                    logger.info('no diagram for %s' % final_state)
+            return
+
+        self.indirect_processes_generation(argument, self._ID_cont_procs, self._ID_cont_matrix_elements, self._ID_cont_amps)
+    
+    def generate_spectral(self, argument):
+        """ Performs indirect detection in the final states 'a a', 'a z', 'a h' and 'a _bsm_'.
+            The processes are loop-induced if the model does not provide effective vertices.
+            The user can specify a single final state to analyze.
+        """
+        if not maddm_run_interface.HAS_NUMPY and user:
+            logger.warning("numpy module not detected on your machine. \n"+
+                           "Running indirect detection will not be possible as long as numpy is not installed (try 'pip install numpy')" 
+                           )
+            ans = self.ask("Do you want to generate the diagrams anyway?", 'n', ['y','n'])
+            if ans == 'n':
+                return
+
+        self.install_indirect()
+
+        if not self._dm_candidate:
+            self.search_dm_candidate()
+            if not self._dm_candidate:
+                return
+            else:
+                self.history.append('add indirect_spectral_features %s' % ' '.join(argument))
+
+        if len(self._curr_proc_defs) == 0 or \
+           all(p.get('id') != self.process_tag['DM2SM'] for p in self._curr_proc_defs):
+            logger.info('For indirect detection we need to generate relic density matrix-element','$MG:BOLD')
+            self.generate_relic([])
+
+        self._has_spectral = True
+
+        # check if at least one photon is present in the final state
+        if not any(self._pdg_particle_map.get_pdg(arg) == 22 for arg in ' '.join(argument).split('/')[0].split()) and len(' '.join(argument).split('/')[0]) != 0:
+            logger.error("There must be at least one photon in the final state.")
+            return
+
+        # Generates events for all the DM annihilation channels (also BSM)
+        if argument == []:
+            bsm_content = self.indirect_bsm_multiparticle()
+            final_states = ['22 22', '22 23', '22 25']
+            final_states += ['22 _bsm_'] if bsm_content else []
+            for final_state in final_states:
+                try: 
+                    self.indirect_processes_generation([final_state], self._ID_line_procs, self._ID_line_matrix_elements, self._ID_line_amps)
+                except diagram_generation.NoDiagramException:
+                    continue
+                    logger.info('no diagram for %s' % final_state)
+            return
+
+        self.indirect_processes_generation(argument, self._ID_line_procs, self._ID_line_matrix_elements, self._ID_line_amps)
+
+    def indirect_bsm_multiparticle(self):
+        ''' it defines the '_bsm_' particle for indirect detection processes generation,
+            and it returns its content.
+        '''
+        dm_cand = [ dic['pdg_code'] for dic in self._dm_candidate ] 
+        DM_scattering = []
+
+        for pdg in dm_cand:
+            DM_scattering.append(pdg) , DM_scattering.append(-pdg)
+
+        bsm_all  = [ 'all', '/', '1','2','3','4','5','6','-1','-2','-3','-4','-5','-6','21','22','23','24','-24','25','11','12','13','14','15','16','-11','-12',
+                '-13','-14','-15','-16']
+        bsm_all += self._unphysical_particles
+
+        for m in DM_scattering:
+            bsm_all.append(m)
+        bsm = " ".join(str(x) for x in bsm_all)
+
+        self.exec_cmd('define _bsm_ = %s' % bsm, postcmd=False)
+        return self._multiparticles['_bsm_']
+
+    def indirect_processes_generation(self, argument, ID_procs, ID_matrix_elements, ID_amps):
+        ''' generate the processes for indirect detection, either for continuum spectrum (generate_indirect) or line spectrum (generate_spectral).
+            'ID_' variables are the lists which will contains the processes/matrix elements/amplitudes definitions: [0]tree level, [1]loop-induced.
+        '''
         if not self.options['pythia8_path']:
             logger.warning('''In order to have distribution related to indirect detection:
              Pythia8 needs to be linked to the code. You can install it by typing 'install pythia8'.
              You can compute the rate (no distribution) by typing 'add indirect 2to2lo'. ''')
         #    return
 
-        #Check if the argument contains only two particles in the final state
-        #if not, force the code to use madevent
-        
+        # Check if the argument contains only two particles in the final state
+        # if not, force the code to use madevent/reshuffling
         if (len(' '.join(argument).split('/')[0].split())!=2):
-            self._force_madevent_for_ID = True
-        
-        # Generates events for all the DM annihilation channels (also BSM)
-        if argument == []:
-            dm_cand = [ dic['pdg_code'] for dic in self._dm_candidate ] 
-            DM_scattering = []
+            self._forbid_fast = True 
 
-            for pdg in dm_cand:
-                DM_scattering.append(pdg) , DM_scattering.append(-pdg)
-
-            bsm_all  = [ 'all', '/', '1','2','3','4','5','6','-1','-2','-3','-4','-5','-6','21','22','23','24','-24','25','11','12','13','14','15','16','-11','-12',
-                    '-13','-14','-15','-16']
-            bsm_all += ['82', '250', '251', '9000001', '9000002', '9000003', '9000004', '999000007', '999000008', '999000009', '999000010', '-82', '-251', '-9000004', '-9000003', '-9000002', '-9000001']
-
-            for m in DM_scattering:
-                bsm_all.append(m)
-            bsm = " ".join(str(x) for x in bsm_all)
-
-            # what if 'bsm' is already a particle defined in the model? --> InvalidCmd
-            i_bsm = 1
-            while(True):
-                bsm_name = 'bsm'*i_bsm
-                try:
-                    self.exec_cmd('define %s = %s' % (bsm_name, bsm), postcmd=False)
-                    break
-                except self.InvalidCmd:
-                    i_bsm += 1
-                    continue
-
-            bsm_content = self._multiparticles[bsm_name]
-
-            if spectral:
-                noloop_opt = ''
-                final_states = ['22 22', '22 23', '22 25']
-                final_states += ['22 %s' % bsm_name] if bsm_content else []
-            else:
-                noloop_opt = '--noloop'
-                self.exec_cmd('define q_mdm = 1 2 3 4 -1 -2 -3 -4',postcmd=False)
-                final_states = ['q_mdm q_mdm','21 21', '5 -5', '6 -6', '22 22', '23 23', '24 -24','25 25', '11 -11', '13 -13', '15 -15', '12 -12', '14 -14', '16 -16']
-                final_states += ['%s %s' % bsm_name] if bsm_content else []
-            for final_state in final_states:
-                try: 
-                    self.generate_indirect([final_state, noloop_opt], user=False, spectral=spectral)
-                except diagram_generation.NoDiagramException:
-                    continue
-                    logger.info('no diagram for %s' % final_state)
-
-            return
-
-    
         allow_loop_induce=True
         if '--noloop' in argument:
             argument.remove('--noloop')
@@ -1158,58 +1222,23 @@ class MadDM_interface(master_interface.MasterCmd):
             try:
                 # flip indirect/standard process definition
                 with misc.TMP_variable(self, ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps'], 
-                                     [self._ID_procs, self._ID_matrix_elements, self._ID_amps]):
+                                     [ID_procs[0], ID_matrix_elements[0], ID_amps[0]]):
                     self.do_add('process %s' % proc)
             except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
                 if allow_loop_induce:
                     with misc.TMP_variable(self, ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps'], 
-                                     [self._ID_LI_procs, self._ID_LI_matrix_elements, self._ID_LI_amps]):
-                        try:
+                                     [ID_procs[1], ID_matrix_elements[1], ID_amps[1]]):
+                        proc = '%s %s > %s %s [noborn=QCD] @ID ' % (name, antiname, ' '.join(argument), coupling)
+                        try:                    
                             self.do_add('process %s' % proc)
                         except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
-                            proc = '%s %s > %s %s [noborn=QCD] @ID ' % (name, antiname, ' '.join(argument), coupling)
-                            try:                    
-                                self.do_add('process %s' % proc)
-                            except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
-                                proc = '%s %s > %s %s [noborn=QED] @ID ' % (name, antiname, ' '.join(argument), coupling)
-                                self.do_add('process %s' % proc)
+                            proc = '%s %s > %s %s [noborn=QED] @ID ' % (name, antiname, ' '.join(argument), coupling)
+                            self.do_add('process %s' % proc)
 
-        ### OLD: LOOP-INDUCED + LEADING ORDER NOT ALLOWED
-        # # flip indirect/standard process definition
-        # with misc.TMP_variable(self, ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps'], 
-        #                              [self._ID_procs if not spectral else self._ID_LI_procs, self._ID_matrix_elements, self._ID_amps]):
-        #     # First try LO matrix-element
-        #     coupling = "SIEFFS=0 SIEFFF=0 SIEFFV=0 SDEFFF=0 SDEFFV=0"
-        #     done= []
-        #     for dm in self._dm_candidate:
-        #         name = dm.get('name')
-        #         antiname = dm.get('antiname')
-        #         if name in done:
-        #             continue
-        #         done += [name, antiname]
-        #         #We put the coupling order restrictions after the @ID in order to
-        #         #apply it to the entire matrix element.
-        #         proc = '%s %s > %s @ID %s' % (name, antiname, ' '.join(argument), coupling)
-        #         try:
-        #             self.do_add('process %s' % proc)
-        #         except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
-        #             if allow_loop_induce:
-        #                 proc = '%s %s > %s %s [noborn=QCD] @ID ' % (name, antiname, ' '.join(argument), coupling)
-        #                 try:                    
-        #                     self.do_add('process %s' % proc)
-        #                 except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
-        #                     proc = '%s %s > %s %s [noborn=QED] @ID ' % (name, antiname, ' '.join(argument), coupling)
-        #                     self.do_add('process %s' % proc)
-
-    
-    def generate_spectral(self, argument):
-        """ Performs indirect detection in the final states 'a a', 'a z', 'a h' and 'a bsm' the processes are loop-induced.
-            The user can specify a single final state to analyze.
-            It calls generate_indirect with new final states.
-        """
-        if not any([self._pdg_particle_map.get_pdg(arg) == 22 for arg in argument]) and len(argument) != 0:
-            raise self.InvalidCmd("There must be at least one photon in the final state.")
-        self.generate_indirect(argument = argument, spectral = True, user = True)
+        # check if the _two2twoLO option is True while we have generated a LI process
+        if self._two2twoLO and ID_procs[1]:
+            logger.error("Can't use '2to2lo' option for indirect detection if loop-induced processes are considered. Please run indirect detection without that option.")
+            self._two2twoLO = False
 
     def install_indirect(self):
         """Code to install the reduction library if needed"""
