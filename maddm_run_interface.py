@@ -985,6 +985,10 @@ class GammaLineSpectrum(object):
 
     FWHM_PART = 1.0 # coefficient to multiply to the FWHM before making any comparison: it expresses the fraction of the FWHM to be used for comparison: the signal can be summed only if their peak difference is less that both the FWHM*FWHM_PART
     FWHM_MERGED_FRAC = 1.5 # coefficient to multiply to the FWHM after having done all the possible merging: it expresses the maximum fraction of FWHM (with respect to the experiment's one) allowed for the merged line to be considered a line
+    ERROR_TEST = collections.OrderedDict([ # order the error function in the order of testing, errors are concatenated as stri
+        ('1', lambda self_: self_.error__not_a_line),
+        ('2', lambda self_: self_.error__not_to_far_apart)
+    ])
 
     def __init__(self, pdg_particle_map):
         self.pdg_particle_map = pdg_particle_map
@@ -1077,20 +1081,33 @@ class GammaLineSpectrum(object):
                 if peak < line_exp.detection_range[0] - fwhm/2. or peak > line_exp.detection_range[1] + fwhm/2.:
                     del final_spectrum[label + '_peak']
                     del final_spectrum[label + '_FWHM']
-                    del final_spectrum[label + '_max_FWHM']
                     del final_spectrum[label + '_shape']
                     continue
-            # check if the FWHM of each peak is compatible with the experimental one at that energy peak
-                if fwhm < line_exp.energy_resolution(peak) * self.FWHM_MERGED_FRAC:
-                    final_spectrum[label + '_not_a_line'] = "This peak is broader than a typical line signal for this experiment: it can't be considered a line."
-                else:
-                    final_spectrum[label + '_not_a_line'] = ""
+                # check if there are other errors related to the peak
+                final_spectrum[label + '_error'] = ''
+                for code, error_func in self.ERROR_TEST.items():
+                    if error_func(self).__call__(line_exp, final_spectrum, label):
+                        final_spectrum[label + '_error'] += code
             logger.debug(final_spectrum)
             return final_spectrum
         else:
             # something has been merged, so check if we can merge something more in the new spectrum.
             logger.debug(final_spectrum)
             return self.merge_lines(final_spectrum, line_exp)
+
+    def error__not_a_line(self, line_exp, final_spectrum, label):
+        ''' check if the FWHM of each peak is compatible with the experimental one at that energy peak '''
+        peak = final_spectrum[label + '_peak']
+        fwhm = final_spectrum[label + '_FWHM']
+        logger.debug("peak = %f, fwhm = %f, fwhm_max = %f" % (peak, fwhm, line_exp.energy_resolution(peak) * self.FWHM_MERGED_FRAC))
+        return fwhm > line_exp.energy_resolution(peak) * peak * self.FWHM_MERGED_FRAC
+
+    def error__not_to_far_apart(self, line_exp, final_spectrum, label):
+        # check for incompatible errors (peaks with those errors should not be tested)
+        if any(code in final_spectrum[label + '_error'] for code in ['1']):
+            return False
+        # yet to be implemented
+        return False
 
 # PDG-particle map
 class PDGParticleMap(dict):
@@ -1362,10 +1379,11 @@ class MADDMRunCmd(cmd.CmdShell):
             self.run_name = args[args.index('-n')+1]
             if os.path.exists(pjoin(self.dir_path, 'output', self.run_name)):
                 shutil.rmtree(pjoin(self.dir_path, 'output', self.run_name))
-                try:
-                    shutil.rmtree(pjoin(self.dir_path, 'Indirect','Events', self.run_name))
-                except Exception:
-                    pass
+                for indirect_directory in self.indirect_directories.keys():
+                    try:
+                        shutil.rmtree(pjoin(self.dir_path, indirect_directory, 'Events', self.run_name))
+                    except Exception:
+                        pass
         else:
             i = 1
             while os.path.exists(pjoin(self.dir_path, 'output', 'run_%02d' %i)) or\
@@ -1436,7 +1454,7 @@ class MADDMRunCmd(cmd.CmdShell):
         np_names = ['g','nue','numu','nutau']
 
         if str(self.mode['indirect']).startswith('flux'):
-            for chan in np_names:
+            for chan in np_names + ['gammas','neutrinos_e', 'neutrinos_mu' , 'neutrinos_tau']: # set -1 to the possible cases
                 result['flux_%s' % chan] = -1.0
 
         # Calculating the xsi factor. Set == 1 if relic is not evaluated
@@ -1536,15 +1554,15 @@ class MADDMRunCmd(cmd.CmdShell):
  
             # *** Indirect detection
             if self.mode['indirect'] or self.mode['spectral']:
-                halo_vel_dsph = self.maddm_card['vave_indirect_cont']
-                halo_vel_gc = self.maddm_card['vave_indirect_line']
+                halo_vel_cont = self.maddm_card['vave_indirect_cont']
+                halo_vel_line = self.maddm_card['vave_indirect_line']
                 #if halo_vel > (3*10**(-6)) and halo_vel < ( 1.4*10**(-4) ):  # cannot calculate Fermi limits
              
                 #if not self._two2twoLO:
                 detailled_keys = [k for k in self.last_results if k.startswith('taacsID#') ]
                 # halo velocity condition
-                fermi_dsph_vel = halo_vel_dsph > (3*10**(-6)) and halo_vel_dsph < ( 1.4*10**(-4) ) # range of validity of Fermi limits
-                line_gc_vel = halo_vel_gc > 200/299792.458 and halo_vel_gc < 250/299792.458 # range of validity of line limits
+                fermi_dsph_vel = halo_vel_cont > (3*10**(-6)) and halo_vel_cont < ( 1.4*10**(-4) ) # range of validity of Fermi limits
+                line_gc_vel = halo_vel_line > 200/299792.458 and halo_vel_line < 250/299792.458 # range of validity of line limits
                 if len(detailled_keys)>1:
                     for key in detailled_keys:
                         clean_key_list = key.split("_")
@@ -1681,7 +1699,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 self.me_cmd = Indirect_Cmd(pjoin(self.dir_path, indirect_directory), force_run=True)
                 #force_run = True means no crash associated with RunWeb -> we check this later
             elif self.me_cmd.me_dir != pjoin(self.dir_path, indirect_directory):
-                self.me_cmd.do_quit(1)
+                self.me_cmd.do_quit('') # put an argument otherwise it crashes
                 self.me_cmd = Indirect_Cmd(pjoin(self.dir_path, indirect_directory), force_run=True)
                 #force_run = True means no crash associated with RunWeb -> we check this later
                 
@@ -1725,16 +1743,12 @@ class MADDMRunCmd(cmd.CmdShell):
                             if os.path.exists(pjoin(self.dir_path,indirect_directory,'Cards','reweight_card.dat')):
                                 os.remove(pjoin(self.dir_path,'Cards','reweight_card.dat'))
                             # self.me_cmd.do_launch('%s -f' % self.run_name)
-                            self.me_cmd.Presults = {}
                             if indirect_directory == 'Indirect_tree_cont':
-                                self.me_cmd.Presults['xsec/something_n1n1_bbx'] = 1500.5
-                                self.me_cmd.Presults['xsec/something_n1n1_ttx'] = 0.
-                                self.me_cmd.Presults['xsec/something_n1n1_zz'] = 978.1
-                                self.me_cmd.Presults['xsec/something_n1n1_wpwm'] = 9455.1
-                                self.me_cmd.Presults['xsec/something_n1n1_tamtap'] = 420.6
+                                self.me_cmd.do_launch('%s -f' % self.run_name)
                             if indirect_directory == 'Indirect_LI_cont':
-                                self.me_cmd.Presults['xsec/something_n1n1_gg'] = 15.3
+                                self.me_cmd.do_launch('%s -f' % self.run_name)
                             if indirect_directory == 'Indirect_LI_line':
+                                self.me_cmd.Presults = {}
                                 self.me_cmd.Presults['xsec/something_n1n1_aa'] = 10.3
                                 self.me_cmd.Presults['xsec/something_n1n1_ah'] = 4.6
                                 self.me_cmd.Presults['xsec/something_n1n1_az'] = 9.1
@@ -1748,10 +1762,6 @@ class MADDMRunCmd(cmd.CmdShell):
             line_gc_vel = self.maddm_card['vave_indirect_line'] > 200/299792.458 and self.maddm_card['vave_indirect_line'] < 250/299792.458 # range of validity of line limits
             velocity_in_range = {'cont': fermi_dsph_vel, 'line': line_gc_vel}.get(indirect_directory.split('_')[-1], True)
             
-            # def compute_limit(finalstate):
-            #     is_spectral = self.is_spectral_finalstate(finalstate)
-            #     return (fermi_dsph_vel and not is_spectral) or (line_gc_vel and is_spectral)
-
             for key, value in self.me_cmd.Presults.iteritems():
                 clean_key_list = key.split("/")
                 clean_key =clean_key_list[len(clean_key_list)-1].split('_')[1] +'_'+  clean_key_list[len(clean_key_list)-1].split('_')[2]
@@ -1764,28 +1774,10 @@ class MADDMRunCmd(cmd.CmdShell):
                     
                 elif key.startswith('xerr'):
                     self.last_results['err_taacsID#%s' %(clean_key)] = value * pb2cm3
- 
-            if self.mode['indirect'] != 'sigmav' and self.mode['indirect']:
-                if self.maddm_card['indirect_flux_source_method'].startswith('PPPC'):
-                    if self.read_PPPCspectra():
-                        logger.info('Calculating Fermi dSph limit using PPPC4DMID spectra')
-                    else:
-                        logger.info('no PPC4DMID')
-                else:
-                    self.run_pythia8_for_flux()
-                    if self.maddm_card['indirect_flux_source_method'] == 'pythia8':
-                        logger.info('Calculating Fermi dSph limit using pythia8 gamma rays spectrum')
-                    elif 'pythia' not in self.maddm_card['indirect_flux_source_method']:
-                        logger.warning('Since pyhtia8 is run, using pythia8 gamma rays spectrum (not PPPC4DMID Tables)')
-                    self.read_py8spectra()
-            elif self.mode['indirect'] == 'sigmav':
-                logger.warning('no gamma spectrum since in sigmav mode')      
-
-        elif self.read_PPPCspectra():   # return False if PPPC4DMID not installed!
-            logger.info('Calculating Fermi dSph limit using PPPC4DMID spectra')
-
+            
         logger.debug(self.last_results)
 
+        # the following is done above
         # *** Multiply all the calculated indirect cross section by sqrt(3)/2 * 2 *(vave_indirect) value (since is relative velocity)
         # for key,value in (self.last_results).iteritems():
         #     if 'taacs' in key and 'lim' not in key and 'err' not in key or 'xsec' in key:
@@ -1793,6 +1785,33 @@ class MADDMRunCmd(cmd.CmdShell):
         #         self.last_results[key] = new_value
 
     def launch_indirect_computations(self, mdm):
+        ''' do indirect detection calculations for continuum spectra '''
+        # check that whether we are in fast mode at least for one of the directories computed
+        cont_spectra_directories = [d for d, v in self.indirect_directories.items() if 'cont' in d and v]
+        fast_mode = any(self._two2twoLO and 'tree' in directory for directory in cont_spectra_directories)
+        # compute spectra with Pythia or PPPC only in the continuum case
+        if not fast_mode:
+            if self.mode['indirect'] != 'sigmav':
+                if self.maddm_card['indirect_flux_source_method'].startswith('PPPC'):
+                    if self.read_PPPCspectra():
+                        logger.info('Calculating Fermi dSph limit using PPPC4DMID spectra')
+                    else:
+                        logger.info('no PPPC4DMID')
+                else:
+                    for id_dir in cont_spectra_directories:
+                        self.run_pythia8_for_flux(id_dir)
+                    if self.maddm_card['indirect_flux_source_method'] == 'pythia8':
+                        logger.info('Calculating Fermi dSph limit using pythia8 gamma rays spectrum')
+                    elif 'pythia' not in self.maddm_card['indirect_flux_source_method']:
+                        logger.warning('Since pythia8 is run, using pythia8 gamma rays spectrum (not PPPC4DMID Tables)')
+                    for id_dir in cont_spectra_directories:
+                        self.read_py8spectra(id_dir)
+            elif self.mode['indirect'] == 'sigmav':
+                logger.warning('no gamma spectrum since in sigmav mode')      
+
+        elif self.read_PPPCspectra():   # if not fast mode, use PPPC. return False if PPPC4DMID not installed!
+            logger.info('Calculating Fermi dSph limit using PPPC4DMID spectra')
+
         # ****** Calculating Fermi dSph Limits
         self.calculate_fermi_limits(mdm)
         
@@ -1940,9 +1959,9 @@ class MADDMRunCmd(cmd.CmdShell):
             for i, (merged, line) in enumerate(spectra_per_final_state.items()):
                 self.last_results[str_part + "peak_%d"            % (i+1)] = line
                 self.last_results[str_part + "peak_%d_states"     % (i+1)] = self.pdg_particle_map.format_particles(merged)
-                not_a_line = final_spectrum[merged + '_not_a_line']
-                self.last_results[str_part + "peak_%d_not_a_line" % (i+1)] = not_a_line
-                if not_a_line:
+                error_code = final_spectrum[merged + '_error']
+                self.last_results[str_part + "peak_%d_error" % (i+1)] = error_code
+                if error_code:
                     self.last_results[str_part + "flux_%d"    % (i+1)] = -1
                     self.last_results[str_part + "flux_UL_%d" % (i+1)] = -1
                 else:
@@ -1957,6 +1976,9 @@ class MADDMRunCmd(cmd.CmdShell):
             for k, v in sigmav_ul.iteritems():
                 final_state = k.split('_')[-1]
                 not_aa = final_state != '(22)(22)'
+                if final_state + '_peak' not in line_energies.keys():
+                    v.append(-1)
+                    continue
                 v.append(line_exp.get_sigmav_ul(e_peak = line_energies[final_state + '_peak'], roi = self.last_results[str_part + 'roi'], profile = density_profile, id_constraints = self.limits, not_aa = not_aa))
         # get the <sigma v> ul: drop the -1 and get the minimum, in case everything is -1 then the list is empty, so return -1
         logger.debug(sigmav_ul)
@@ -1968,7 +1990,7 @@ class MADDMRunCmd(cmd.CmdShell):
         # merge_lines(...) will return an empty dict
         # self.last_results["line_%s_peak_%d" % (exp_name, i+1)], self.last_results["line_%s_flux_%d" % (exp_name, i+1)], self.last_results["line_%s_flux_UL_%d" % (exp_name, i+1)] will be all -1
 
-    def run_pythia8_for_flux(self):
+    def run_pythia8_for_flux(self, indirect_directory):
         """ compile and run pythia8 for the flux"""
         
         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
@@ -2000,7 +2022,7 @@ class MADDMRunCmd(cmd.CmdShell):
         
         # Now write the card.
         if not self.in_scan_mode: 
-            pythia_cmd_card = pjoin(self.dir_path, 'Indirect' ,'Source', "spectrum.cmnd")
+            pythia_cmd_card = pjoin(self.dir_path, indirect_directory ,'Source', "spectrum.cmnd")
             # Start by reading, starting from the default one so that the 'user_set'
             # tag are correctly set.
             PY8_Card = Indirect_PY8Card(pjoin(self.dir_path, 'Cards', 
@@ -2015,10 +2037,10 @@ class MADDMRunCmd(cmd.CmdShell):
             
         run_name = self.me_cmd.run_name
         # launch pythia8
-        pythia_log = pjoin(self.dir_path , 'Indirect', 'Events', run_name, 'pythia8.log')
+        pythia_log = pjoin(self.dir_path, indirect_directory, 'Events', run_name, 'pythia8.log')
 
         # Write a bash wrapper to run the shower with custom environment variables
-        wrapper_path = pjoin(self.dir_path,'Indirect', 'Events',run_name,'run_shower.sh')
+        wrapper_path = pjoin(self.dir_path,indirect_directory, 'Events',run_name,'run_shower.sh')
         wrapper = open(wrapper_path,'w')
         shell = 'bash' if misc.get_shell_type() in ['bash',None] else 'tcsh'
         shell_exe = None
@@ -2048,10 +2070,10 @@ class MADDMRunCmd(cmd.CmdShell):
             cluster = self.me_cmd.cluster    
             ret_code = cluster.launch_and_wait(wrapper_path, 
                     argument= [], stdout= pythia_log, stderr=subprocess.STDOUT,
-                                  cwd=pjoin(self.dir_path,'Indirect','Events',run_name))
+                                  cwd=pjoin(self.dir_path,indirect_directory,'Events',run_name))
         else:                
             ret_code = misc.call(wrapper_path, stdout=open(pythia_log,'w'), stderr=subprocess.STDOUT,
-                                  cwd=pjoin(self.dir_path,'Indirect','Events',run_name))
+                                  cwd=pjoin(self.dir_path,indirect_directory,'Events',run_name))
 
         #### WORK ON CLUSTER !!!
 
@@ -2061,12 +2083,12 @@ class MADDMRunCmd(cmd.CmdShell):
 
 
     # reading the spectra from the pythia8 output
-    def read_py8spectra(self):
+    def read_py8spectra(self, indirect_directory):
         run_name = self.me_cmd.run_name
         for sp in self.Spectra.spectra.keys(): 
             if 'x' in sp: continue
             sp_name = sp + '_spectrum_pythia8.dat'
-            out_dir = pjoin(self.dir_path,'Indirect', 'Events', run_name, sp_name )
+            out_dir = pjoin(self.dir_path,indirect_directory, 'Events', run_name, sp_name )
             if sp == 'gammas': # x values are the same for all the spectra
                 x = np.loadtxt(out_dir , unpack = True )[0]
                 self.Spectra.spectra['x'] = [ np.power(10,num) for num in x]     # from log[10,x] to x
@@ -2235,6 +2257,9 @@ class MADDMRunCmd(cmd.CmdShell):
         # declaring what to do
         if 'PPPC' in self.maddm_card['indirect_flux_source_method']:
             logger.info('Calculating cosmic rays fluxes using gammas and neutrinos spectra from the PPPC4DMID tables.')
+            if not self.options['pppc4dmid_path']:
+                logger.error("PPPC4DMID not installed, will not calculate fluxes.")
+                return
         elif 'pythia' in self.maddm_card['indirect_flux_source_method']:
             logger.info('Calculating cosmic rays fluxes using pythia8 gammas and neutrinos spectra.')
         else:
@@ -2520,12 +2545,13 @@ class MADDMRunCmd(cmd.CmdShell):
 
         if self.mode['indirect'] or self.mode['spectral']:
             logger.info('\n****** Indirect detection [cm^3/s]: ')
-            halo_vel_dsph = self.maddm_card['vave_indirect_cont']
-            halo_vel_gc   = self.maddm_card['vave_indirect_line']
+            halo_vel_cont = self.maddm_card['vave_indirect_cont']
+            halo_vel_line   = self.maddm_card['vave_indirect_line']
   
             detailled_keys = [k for k in self.last_results.keys() if k.startswith('taacsID#')]
             logger.info('<sigma v> method: %s ' % self.maddm_card['sigmav_method'] )
-            logger.info('DM particle halo velocity: %s/c ' % halo_vel) # the velocity should be the same
+            logger.info('DM particle halo velocity (continuum): %s/c ' % halo_vel_cont) # the velocity should be the same
+            logger.info('DM particle halo velocity (line)     : %s/c ' % halo_vel_line) # the velocity should be the same
             logger.info('Print <sigma v> with Fermi dSph limits and %s line limits (if available)' % ', '.join([exp.get_name().replace('_', ' ') for exp in self.line_experiments]))
   
             sigtot_alldm     = self.last_results['taacsID']
@@ -2572,8 +2598,8 @@ class MADDMRunCmd(cmd.CmdShell):
                     logger.info('Skipping zero cross section processes for: %s', ', '.join(skip))
                 return light_s
 
-            fermi_dsph_vel = halo_vel_dsph > (3*10**(-6)) and halo_vel_dsph < ( 1.4*10**(-4) ) # range of validity of Fermi limits
-            line_gc_vel = halo_vel_gc > 200/299792.458 and halo_vel_gc < 250/299792.458 # range of validity of line limits
+            fermi_dsph_vel = halo_vel_cont > (3*10**(-6)) and halo_vel_cont < ( 1.4*10**(-4) ) # range of validity of Fermi limits
+            line_gc_vel = halo_vel_line > 200/299792.458 and halo_vel_line < 250/299792.458 # range of validity of line limits
             
             if fermi_dsph_vel and line_gc_vel:
                 light_s = print_sigmav_with_limits(detailled_keys,
@@ -2713,7 +2739,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
         # check if the indirect_directory exists
         if not os.path.isdir(source_indirect):
-            logger.debug("'%s' directory does not exist. Nothing to do here.")
+            logger.debug("'%s' directory does not exist. Nothing to do here." % indirect_directory)
             return
 
         # If indirect is called, then spectra_source == True by def. The other two options depends on the user choice (sigmav, flux_source, flux_earth)
@@ -2747,7 +2773,7 @@ class MADDMRunCmd(cmd.CmdShell):
                self.save_spec_flux(out_dir = out_dir, spec_source = True, flux_source = False, flux_earth = flux_earth)    
                logger.info('Output files saved in %s', out_dir)
             else:
-               if not os.path.islink(pjoin(self.dir_path, 'output' , run_name, 'Output_Indirect')):
+               if not os.path.islink(pjoin(self.dir_path, 'output' , run_name, 'Output_' + indirect_directory)):
                   os.symlink(pjoin(self.dir_path,indirect_directory,'Events',run_name), \
                              pjoin(self.dir_path, 'output' , run_name, 'Output_' + indirect_directory) )      
 
@@ -2835,7 +2861,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 aux.write_data_to_file(e , dPhidlogE  , filename = out_dir + '/positrons_dphide_' + spec_method +'.dat' , header = header )
 
     
-    def print_ind(self,what, sig_th, sig_alldm, ul,  thermal=False ,direc = False , exp='Fermi_dSph', no_lim = False):
+    def print_ind(self,what, sig_th, sig_alldm, ul,  thermal=False ,direc = False , exp='Fermi dSph', no_lim = False):
         ''' to print the output on screen. Set no_lim = True to avoid printing the experimental ul (e.g. Fermi dSph ul for wrong dm velocity) '''
         
         alldm_mess = self.det_message_screen(sig_alldm , ul)
@@ -2883,12 +2909,12 @@ class MADDMRunCmd(cmd.CmdShell):
             logger.info("==== %s %s====" % (line_exp.get_name().replace('_', ' '), "="*max([0, 100 - len(line_exp.get_name())])))
             logger.info("ROI: %.1f" % self.last_results[str_part + "roi"])
             str_part_peak = str_part + 'peak'
-            energy_peaks = collections.OrderedDict(sorted([(k, v) for k, v in self.last_results.items() if str_part_peak in k and '_states' not in k and v != -1], key = lambda item: item[1])) # key = "line_<exp_name>_peak_<num>", value = energy peak
+            energy_peaks = collections.OrderedDict(sorted([(k, v) for k, v in self.last_results.items() if str_part_peak in k and '_states' not in k and '_error' not in k and v != -1], key = lambda item: item[1])) # key = "line_<exp_name>_peak_<num>", value = energy peak
             roi_warning = self.last_results[str_part + "roi_warning"]
             if roi_warning != "":
                 logger.warning(roi_warning)
             logger.info("J = %.6e GeV^2 cm^-5" % self.last_results[str_part + "Jfactor"])
-            logger.info("detection range : %.4e -- %.4e GeV" % (line_exp.detection_range[0], line_exp.detection_range[1]))
+            logger.info("detection range: %.4e -- %.4e GeV" % (line_exp.detection_range[0], line_exp.detection_range[1]))
             if len(energy_peaks) is 0:
                 logger.info(bcolors.BOLD + "No peaks found: out of detection range." + bcolors.ENDC)
             else:
@@ -2902,9 +2928,9 @@ class MADDMRunCmd(cmd.CmdShell):
                 logger.info("-"*len(first_rule))
                 for k, peak in energy_peaks.items():
                     num = int(k.split('_')[-1])
-                    not_a_line = self.last_results[str_part + "peak_%d_not_a_line" % num]
-                    if not_a_line:
-                        logger.info(row_format.format("peak_%d(%s)" % (num, self.last_results[k + "_states"])) + "   %s%s%s" % ('\033[33m', not_a_line, bcolors.ENDC))
+                    error_code = self.last_results[str_part + "peak_%d_error" % num]
+                    if error_code:
+                        logger.info(row_format.format("peak_%d(%s)" % (num, self.last_results[k + "_states"])) + "   %s%s%s" % ('\033[33m', error_code, bcolors.ENDC))
                         continue
                     flux    = self.last_results[str_part + "flux_%d"    % num]
                     flux_UL = self.last_results[str_part + "flux_UL_%d" % num]
@@ -3022,7 +3048,7 @@ class MADDMRunCmd(cmd.CmdShell):
             # line limits
             if spectral:
                 out.write('\n# Gamma-line spectrum and line limits\n')
-                out.write('# <sigma*v>[cm^3 s^-1], flux[cm^-2 s^-1], J-factor[GeV^2 cm^-5], peak[GeV], ROI[deg], rho_s[GeV], r_s[kpc]')
+                out.write('# <sigma v>[cm^3 s^-1], flux[cm^-2 s^-1], J-factor[GeV^2 cm^-5], peak[GeV], ROI[deg], rho_s[GeV], r_s[kpc]')
                 out.write('\n' + form_s("Density_profile") + '= %s\n' % self.last_results["density_profile"].get_name())
                 for k, v in self.last_results["density_profile"].get_parameters_items():
                     out.write(form_s(k.replace('profile_', '')) + '= ' + form_n(v) + '\n')
@@ -3032,7 +3058,7 @@ class MADDMRunCmd(cmd.CmdShell):
                     out.write(form_s("ROI") + '= %1.1f\n' % self.last_results[str_part + "roi"])
                     out.write(form_s("J-factor") + '= ' + form_n(self.last_results[str_part + "Jfactor"]) + '\n')
                     str_part_peak = str_part + 'peak'
-                    energy_peaks = collections.OrderedDict(sorted([(k, v) for k, v in self.last_results.iteritems() if str_part_peak in k and '_states' not in k and v != -1], key = lambda item: item[1])) # key = "line_<exp_name>_peak_<num>", value = energy peak
+                    energy_peaks = collections.OrderedDict(sorted([(k, v) for k, v in self.last_results.iteritems() if str_part_peak in k and '_states' not in k and '_error' not in k and v != -1], key = lambda item: item[1])) # key = "line_<exp_name>_peak_<num>", value = energy peak
                     if len(energy_peaks) is 0:
                         # this happens when all the peaks are -1, so either if peaks are out of detection range or halo velocity is not compatible with galactic center
                         # if velocity is in the range, print out that peaks are not in the detection range, otherwise print out all -1
@@ -3040,14 +3066,14 @@ class MADDMRunCmd(cmd.CmdShell):
                             out.write('# No peaks found: out of detection range.\n')
                             continue
                         else: # recompute energy_peaks without assuming values != -1
-                            energy_peaks = collections.OrderedDict(sorted([(k, v) for k, v in self.last_results.iteritems() if str_part_peak in k and '_states' not in k], key = lambda item: item[1])) # key = "line_<exp_name>_peak_<num>", value = energy peak
+                            energy_peaks = collections.OrderedDict(sorted([(k, v) for k, v in self.last_results.iteritems() if str_part_peak in k and '_states' not in k and '_error' not in k], key = lambda item: item[1])) # key = "line_<exp_name>_peak_<num>", value = energy peak
                     peaks_string  = ''
                     fluxes_string = ''
                     for k, peak in energy_peaks.iteritems():
                         num     = int(k.split('_')[-1])
-                        not_a_line = self.last_results[str_part + "peak_%d_not_a_line" % num]
-                        flux    = self.last_results[str_part + "flux_%d"    % num]
-                        flux_UL = self.last_results[str_part + "flux_UL_%d" % num]
+                        error_code = self.last_results[str_part + "peak_%d_error" % num]
+                        flux       = self.last_results[str_part + "flux_%d"       % num]
+                        flux_UL    = self.last_results[str_part + "flux_UL_%d"    % num]
                         peaks_string  += form_s("peak_%d(%s)" % (num, self.last_results[k + "_states"])) + '= ' + form_n(peak) + '\n'
                         fluxes_string += form_s("flux_%d" % num) + '= ['+ form_n(flux) + ',' + form_n(flux_UL) + ']\n'
                     out.write(peaks_string)
@@ -3930,7 +3956,12 @@ When you are done with such edition, just press enter (or write 'done' or '0')
                 self.do_set('param_card mass %s %s' % (key.lhacode, 1e10))
                 self.do_set('param_card decay %s %s' % (key.lhacode, 0))
                 self.param_card.write(self.paths['param'])
-        
+
+        # check consistency of sigmav_method, on the basis of forbid_fast option
+        if self.availmode['forbid_fast'] and self.maddm['sigmav_method'] == 'inclusive':
+            logger.info("setting 'sigmav_method' to 'inclusive' is only valid when loop-induced processes are not considered. Switched to 'reshuffling'.")
+            self.setDM('sigmav_method','reshuffling',loglevel=30)
+
         
     def reload_card(self, path):
         """ensure that maddm object are kept in sync"""
@@ -4178,8 +4209,6 @@ class MadDMCard(banner_mod.RunCard):
         self.add_param('only2to2lo', False, system=True)
         self.add_param('run_multinest', False, system=True, include=False)
 
-        # self.add_param('do_indirect_spectral', False, system=True)
-        
         self.add_param('calc_taacs_ann_array', True)
         self.add_param('calc_taacs_dm2dm_array', True)
         self.add_param('calc_taacs_scattering_array', True)
@@ -4270,8 +4299,7 @@ class MadDMCard(banner_mod.RunCard):
         #For the solar/earth capture rate
 
         #indirect detection
-        self.add_param('vave_indirect', 0.00002, include=True)
-        self.add_param('vave_indirect_cont', 0.00002, include=False)
+        self.add_param('vave_indirect_cont', 0.00002, include=True, fortran_name='vave_indirect')
         self.add_param('halo_profile', 'Draco', include=True, legacy=True)   ##### this naming doesn't make sense fix it!!!!!!!!
 
         self.add_param('jfactors', {'__type__':1.0}, include=False, hidden=True, system=True)
