@@ -158,6 +158,7 @@ class MadDM_interface(master_interface.MasterCmd):
         self._ID_line_matrix_elements = [helas_objects.HelasMultiProcess() for i in range(2)]
         self._ID_cont_amps            = [diagram_generation.AmplitudeList() for i in range(2)]
         self._ID_line_amps            = [diagram_generation.AmplitudeList() for i in range(2)]
+        self._last_amps               = diagram_generation.AmplitudeList()
         #self.dm = darkmatter.darkmatter()
         self._forbid_fast = False
         self._unphysical_particles = []
@@ -165,6 +166,14 @@ class MadDM_interface(master_interface.MasterCmd):
         self._has_indirect = False
         self._indirect_gg  = False
         self._has_spectral = False
+
+
+################################################################################        
+# DISPLAY COMMAND
+################################################################################        
+    def do_display(self, *args, **opts):
+        with misc.TMP_variable(self, ['_curr_amps'], [self._last_amps]):
+            super(MadDM_interface, self).do_display(*args, **opts)
 
 
 ################################################################################        
@@ -479,6 +488,7 @@ class MadDM_interface(master_interface.MasterCmd):
         self._ID_line_matrix_elements = [helas_objects.HelasMultiProcess() for i in range(2)]
         self._ID_cont_amps            = [diagram_generation.AmplitudeList() for i in range(2)]
         self._ID_line_amps            = [diagram_generation.AmplitudeList() for i in range(2)]
+        self._last_amps               = diagram_generation.AmplitudeList()
         
     def check_save(self, args):
         
@@ -750,8 +760,6 @@ class MadDM_interface(master_interface.MasterCmd):
         import aloha.aloha_lib as aloha_lib
         aloha_lib.KERNEL = aloha_lib.Computation()
 
-        # import pdb; pdb.set_trace()
-
         with misc.TMP_variable(self,
             ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps', '_done_export'],
             [ID_procs, ID_matrix_elements, ID_amps, None]):
@@ -952,6 +960,8 @@ class MadDM_interface(master_interface.MasterCmd):
                 except (self.InvalidCmd,diagram_generation.NoDiagramException) :
                     continue
 
+        self._last_amps = self._curr_amps
+
     def generate_direct(self, excluded_particles=[]):
         """User level function which performs direct detection functions        
            Generates the DM - q,g scattering matrix elements for spin dependent 
@@ -963,7 +973,6 @@ class MadDM_interface(master_interface.MasterCmd):
         # remove the particles created by the __REAL model from the unphysical particles
         # because they are important for direct detection
         unphysical_particles_minus_REAL = [p for p in self._unphysical_particles if p not in ['999000007', '999000008', '999000009', '999000010']]
-        logger.error(unphysical_particles_minus_REAL)
 
         if not self._dm_candidate:
             self.search_dm_candidate(excluded_particles)
@@ -1101,6 +1110,7 @@ class MadDM_interface(master_interface.MasterCmd):
         
         # Generates events for all the DM annihilation channels (also BSM)
         # it uses the '--noloop' option
+        self._last_amps = diagram_generation.AmplitudeList()
         if argument == []:
             bsm_content = self.indirect_bsm_multiparticle()
             self.exec_cmd('define _q_mdm_ = 1 2 3 4 -1 -2 -3 -4', postcmd=False)
@@ -1109,13 +1119,17 @@ class MadDM_interface(master_interface.MasterCmd):
             final_states += ['_bsm_ _bsm_'] if bsm_content else []
             for final_state in final_states:
                 try: 
-                    self.indirect_processes_generation([final_state, '--noloop'], self._ID_cont_procs, self._ID_cont_matrix_elements, self._ID_cont_amps)
+                    last_amp = self.indirect_process_generation([final_state, '--noloop'], self._ID_cont_procs, self._ID_cont_matrix_elements, self._ID_cont_amps)
+                    if last_amp['diagrams']:
+                        self._last_amps.append(last_amp)
                 except diagram_generation.NoDiagramException:
                     continue
                     logger.info('no diagram for %s' % final_state)
             return
 
-        self.indirect_processes_generation(argument, self._ID_cont_procs, self._ID_cont_matrix_elements, self._ID_cont_amps)
+        last_amp = self.indirect_process_generation(argument, self._ID_cont_procs, self._ID_cont_matrix_elements, self._ID_cont_amps)
+        if last_amp['diagrams']:
+            self._last_amps.append(last_amp)
     
     def generate_spectral(self, argument):
         """ Performs indirect detection in the final states 'a a', 'a z', 'a h' and 'a _bsm_'.
@@ -1152,23 +1166,31 @@ class MadDM_interface(master_interface.MasterCmd):
             return
 
         # Generates events for all the DM annihilation channels (also BSM)
+        self._last_amps = diagram_generation.AmplitudeList()
         if argument == []:
-            bsm_content = self.indirect_bsm_multiparticle()
+            # exclude electric and color charged particles because of course they can't generate 'a _bsm_' diagrams
+            charged_particles = [pdg_code for pdg_code, particle in self._curr_model.get('particle_dict').iteritems() if particle.get('charge') != 0. or particle.get('color') != 1]
+            bsm_content = self.indirect_bsm_multiparticle(excluded = charged_particles)
             final_states = ['22 22', '22 23', '22 25']
             final_states += ['22 _bsm_'] if bsm_content else []
             for final_state in final_states:
                 try: 
-                    self.indirect_processes_generation([final_state], self._ID_line_procs, self._ID_line_matrix_elements, self._ID_line_amps)
+                    last_amp = self.indirect_process_generation([final_state], self._ID_line_procs, self._ID_line_matrix_elements, self._ID_line_amps)
+                    if last_amp['diagrams']:
+                        self._last_amps.append(last_amp)
                 except diagram_generation.NoDiagramException:
                     continue
                     logger.info('no diagram for %s' % final_state)
             return
 
-        self.indirect_processes_generation(argument, self._ID_line_procs, self._ID_line_matrix_elements, self._ID_line_amps)
+        last_amp = self.indirect_process_generation(argument, self._ID_line_procs, self._ID_line_matrix_elements, self._ID_line_amps)
+        if last_amp['diagrams']:
+            self._last_amps.append(last_amp)
 
-    def indirect_bsm_multiparticle(self):
+    def indirect_bsm_multiparticle(self, excluded = []):
         ''' it defines the '_bsm_' particle for indirect detection processes generation,
             and it returns its content.
+            it is possible to specify a list of excluded particles in addition to the already excluded SM ones.
         '''
         dm_cand = [ dic['pdg_code'] for dic in self._dm_candidate ] 
         DM_scattering = []
@@ -1176,9 +1198,8 @@ class MadDM_interface(master_interface.MasterCmd):
         for pdg in dm_cand:
             DM_scattering.append(pdg) , DM_scattering.append(-pdg)
 
-        bsm_all  = [ 'all', '/', '1','2','3','4','5','6','-1','-2','-3','-4','-5','-6','21','22','23','24','-24','25','11','12','13','14','15','16','-11','-12',
-                '-13','-14','-15','-16']
-        bsm_all += self._unphysical_particles
+        bsm_all  = [ 'all', '/' ] + list(set(['1','2','3','4','5','6','-1','-2','-3','-4','-5','-6','21','22','23','24','-24','25','11','12','13','14','15','16','-11','-12',
+                '-13','-14','-15','-16'] + self._unphysical_particles + excluded))
 
         for m in DM_scattering:
             bsm_all.append(m)
@@ -1187,7 +1208,7 @@ class MadDM_interface(master_interface.MasterCmd):
         self.exec_cmd('define _bsm_ = %s' % bsm, postcmd=False)
         return self._multiparticles['_bsm_']
 
-    def indirect_processes_generation(self, argument, ID_procs, ID_matrix_elements, ID_amps):
+    def indirect_process_generation(self, argument, ID_procs, ID_matrix_elements, ID_amps):
         ''' generate the processes for indirect detection, either for continuum spectrum (generate_indirect) or line spectrum (generate_spectral).
             'ID_' variables are the lists which will contains the processes/matrix elements/amplitudes definitions: [0]tree level, [1]loop-induced.
         '''
@@ -1210,6 +1231,7 @@ class MadDM_interface(master_interface.MasterCmd):
         # First try LO matrix-element
         coupling = "SIEFFS=0 SIEFFF=0 SIEFFV=0 SDEFFF=0 SDEFFV=0"
         done= []
+        last_amp = diagram_generation.Amplitude()
         for dm in self._dm_candidate:
             name = dm.get('name')
             antiname = dm.get('antiname')
@@ -1224,6 +1246,7 @@ class MadDM_interface(master_interface.MasterCmd):
                 with misc.TMP_variable(self, ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps'], 
                                      [ID_procs[0], ID_matrix_elements[0], ID_amps[0]]):
                     self.do_add('process %s' % proc)
+                    last_amp = self._curr_amps[-1]
             except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
                 if allow_loop_induce:
                     with misc.TMP_variable(self, ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps'], 
@@ -1234,11 +1257,15 @@ class MadDM_interface(master_interface.MasterCmd):
                         except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
                             proc = '%s %s > %s %s [noborn=QED] @ID ' % (name, antiname, ' '.join(argument), coupling)
                             self.do_add('process %s' % proc)
+                        finally:
+                            last_amp = self._curr_amps[-1]
 
         # check if the _two2twoLO option is True while we have generated a LI process
         if self._two2twoLO and ID_procs[1]:
             logger.error("Can't use '2to2lo' option for indirect detection if loop-induced processes are considered. Please run indirect detection without that option.")
             self._two2twoLO = False
+
+        return last_amp
 
     def install_indirect(self):
         """Code to install the reduction library if needed"""
