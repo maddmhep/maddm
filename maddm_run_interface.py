@@ -9,7 +9,7 @@ import subprocess
 import auxiliary as aux
 import stat
 import shutil
-
+from copy import copy, deepcopy
 
 
 import MGoutput
@@ -710,7 +710,7 @@ class GammaLineExperiment(object):
     ''' this class holds all the generic functionalities regarding the upper limits on gamma ray line searches '''
     KPC_TO_CM = 3.086e21
 
-    def __init__(self, name, energy_resolution, detection_range, info_dict, mask_lat = 0., mask_long = 0., mask_ang = 0., check_profile_output = lambda is_optimized, roi: {True: "", False: ""}.get(is_optimized), arxiv_number = "ArXiv not available"):
+    def __init__(self, name, energy_resolution, detection_range, info_dict, mask_lat = 0., mask_long = 0., mask_ang = 0., check_profile_message = lambda is_optimized, roi: {True: "", False: ""}.get(is_optimized), min_energy_separation = lambda fwhm: 0., peak_height_factor = 10., arxiv_number = "ArXiv not available"):
         # experiment name
         self.name = name
         # latitude and longitude of the mask
@@ -725,8 +725,12 @@ class GammaLineExperiment(object):
         # info_dict: {roi: [profile_default, {profile_default: J-factor_default}, ul_label, ...]} # '...' means other arguments (if present), e.g. likelihood file
         # notice the second member of the list is a J-factor cache: a dict with profiles as keys and related J-factors as values
         self.info_dict = info_dict
-        # check profile output: dictionary with keys True/False
-        self.check_profile_output = check_profile_output
+        # check profile output: function which gives the message to display when the profile not optimized for the ROI
+        self.check_profile_message = check_profile_message
+        # minimum energy separation between lines (after the merging) to consider the signals as completely separated in order to apply a separate analysis
+        self.min_energy_separation = min_energy_separation
+        # height factor to consider, between two peaks with different height, if one is clearly higher than the other
+        self.peak_height_factor = peak_height_factor
         # ArXiv number
         self.arxiv_number = arxiv_number
 
@@ -847,8 +851,9 @@ class GammaLineExperiment(object):
             return self.KPC_TO_CM * np.power(profile.rho_s, 2)*profile.r_s * self.J_cone(ang_1 = ang_1, ang_2 = ang_2, profile_func = profile.functional_form(), x_sun = profile.r_sun/profile.r_s)
             
     def check_profile(self, roi, profile):
-        ''' Check the profile with the default one for the ROI, returning True or False, which is then passed to the dictionary check_profile_output '''
-        return self.check_profile_output(profile.is_optimized(self.info_dict[roi][0]), roi)
+        ''' Check the profile with the default one for the ROI, returning True or False, which is then passed to the function check_profile_message. The result of is_optimized is returned as well. '''
+        is_optimized = profile.is_optimized(self.info_dict[roi][0])
+        return is_optimized, self.check_profile_message(is_optimized, roi)
 
     def get_J(self, roi, profile = None):
         ''' Get the J-factor for the roi specified. First, it checks if their parameters but normalization are equal
@@ -870,23 +875,10 @@ class GammaLineExperiment(object):
                                             profile  = profile)
             return self.info_dict[roi][1][profile]
 
-    def flux(self, mdm, sigmav, jfact, not_aa = False):
+    def flux(self, mdm, sigmav, jfact, is_aa):
         ''' returns the integrated flux for the process dm dm > a X. If X != a, then takes half of the flux. '''
-        coeff = 0.5 if not_aa else 1.
-        return coeff * sigmav * jfact / (4 * np.pi * mdm * mdm)
-
-    def get_energy_bin(self, mdm, energy_means):
-        ''' find the energy bin, by minimising abs(E_i - m) and returns the index '''
-        if mdm < energy_means[0] or mdm > energy_means[-1]:
-            logger.warning("Dark matter mass is out of the range allowed")
-            return None # something
-        this_bin = -1
-        delta = -1
-        for i_bin, e in enumerate(energy_means):
-            if np.abs(e - mdm) < delta or this_bin == -1:
-                delta = np.abs(e - mdm)
-                this_bin = i_bin
-        return this_bin
+        coeff = 2. if is_aa else 1.
+        return coeff * sigmav * jfact / (8 * np.pi * mdm * mdm)
 
     def get_roi(self):
         return self.info_dict.keys()
@@ -902,15 +894,16 @@ class GammaLineExperiment(object):
         flux_ul = id_constraints.ID_max(mdm = e_peak, channel = ul_label)
         return flux_ul
 
-    def get_sigmav_ul(self, e_peak, roi, profile, id_constraints, not_aa = False):
+    def get_sigmav_ul(self, e_peak, roi, profile, id_constraints, is_aa):
         ''' Returns the upper limit on flux for a given ROI (expressed in degrees).
             The limits are taken from the ExpConstraint class, the interpolation function is evaluated at the energy of the peak.
         '''
         default_profile, _, ul_label = self.info_dict[roi][:3]
         if profile.eq_but_norm(default_profile):
             ul_label += '_sigmav'
-            coeff = 0.5 if not_aa else 1.
-            sigmav_ul = id_constraints.ID_max(mdm = e_peak, channel = ul_label) * coeff * np.power(default_profile.rho_s / profile.rho_s, 2)
+            coeff = 2. if is_aa else 1.
+            # flux should be multiplied by 2 if aa, <sigma v> should be divided by 2 if aa
+            sigmav_ul = id_constraints.ID_max(mdm = e_peak, channel = ul_label) * np.power(default_profile.rho_s / profile.rho_s, 2) / coeff
             return sigmav_ul if sigmav_ul > 0 else -1
         else:
             return -1
@@ -933,15 +926,15 @@ else:
 
 GAMMA_LINE_EXPERIMENTS = [
 GammaLineExperiment(
-        name                 = "Fermi-LAT_2015",
-        mask_lat             = 5., # deg
-        mask_long            = 6., # deg
-        mask_ang             = 0., # deg
-        energy_resolution    = energy_resolution_fermi_line_2015,
-        detection_range      = [0.214, 462.],
-        info_dict            = { # the key is the angle of the ROI (in degrees)
+        name                  = "Fermi-LAT_2015",
+        mask_lat              = 5., # deg
+        mask_long             = 6., # deg
+        mask_ang              = 0., # deg
+        energy_resolution     = energy_resolution_fermi_line_2015,
+        detection_range       = [0.214, 462.],
+        info_dict             = { # the key is the angle of the ROI (in degrees)
                         3.  : [PROFILES.NFW(r_s = 20.0, gamma = 1.3, normalization = "fermi_2015"),
-                               {PROFILES.NFW(r_s = 20.0, gamma = 1.3, normalization = "fermi_2015") : 1.39e+23}, # GeV^2 cm^{-5}
+                               {PROFILES.NFW(r_s = 20.0, gamma = 1.3, normalization = "fermi_2015") : 1.497e+23}, # GeV^2 cm^{-5}
                                "(22)(22)_fermi2015R3",
                                np.loadtxt(pjoin(MDMDIR, 'Fermi_line_likelihoods', 'R3_gamma_lines_ULflux_like.dat'), unpack = True)],
                         16. : [PROFILES.Einasto(r_s = 20.0, alpha = 0.17, normalization = "fermi_2015"),
@@ -957,50 +950,242 @@ GammaLineExperiment(
                                "(22)(22)_fermi2015R90",
                                None]
                         },
-        check_profile_output = lambda is_optimized, roi: {True: "", False: "ROI %d is not optimized for this profile!" % roi}.get(is_optimized),
-        arxiv_number         = "1506.00013"
+        check_profile_message = lambda is_optimized, roi: {True: "", False: "ROI %d is not optimized for this profile!" % roi}.get(is_optimized),
+        min_energy_separation = lambda fwhm: 5*fwhm,
+        peak_height_factor    = 10.,
+        arxiv_number          = "1506.00013"
     ),
 GammaLineExperiment(
-        name                 = "HESS_2018",
-        mask_lat             = 0.3, # deg
-        mask_long            = 0., # deg
-        mask_ang             = 0., # deg
-        energy_resolution    = lambda m: 0.1,
-        detection_range      = [306.9, 63850.],
-        info_dict            = { # the key is the angle of the ROI (in degrees)
+        name                  = "HESS_2018",
+        mask_lat              = 0.3, # deg
+        mask_long             = 0., # deg
+        mask_ang              = 0., # deg
+        energy_resolution     = lambda m: 0.1,
+        detection_range       = [306.9, 63850.],
+        info_dict             = { # the key is the angle of the ROI (in degrees)
                         1. : [PROFILES.Einasto(r_s = 20.0, alpha = 0.17, normalization = "hess_2018"),
                               {PROFILES.Einasto(r_s = 20.0, alpha = 0.17, normalization = "hess_2018") : 4.66e21}, # GeV^2 cm^{-5}
                               "(22)(22)_hess2018R1"]
                         },
-        check_profile_output = lambda is_optimized, roi: {True: "", False: "The chosen profile is not the default for this ROI"}.get(is_optimized),
-        arxiv_number         = "1805.05741"
+        min_energy_separation = lambda fwhm: 5*fwhm,
+        peak_height_factor    = 10.,
+        check_profile_message = lambda is_optimized, roi: {True: "", False: "The chosen profile is not the default for this ROI"}.get(is_optimized),
+        arxiv_number          = "1805.05741"
     )
 ]
+
+class Fermi2015GammaLineLikelihood(object):
+    ''' this class holds the functionality to compute the likelihood and the p-value for some ROI of the Fermi-LAT gamma-line 2015 analysis (arXiv: 1506.00013) 
+        likelihoods were gently provided by Alessandro Cuoco, who obtain them for R3 and R16 in an approximate way (see 1603.08228 for reference)
+    '''
+    def __init__(self, experiment):
+        self.experiment = experiment
+
+    def get_energy_bin(self, mdm, energy_means):
+        ''' find the energy bin, by minimising abs(E_i - m) and returns the index '''
+        if mdm < energy_means[0] or mdm > energy_means[-1]:
+            logger.warning("Dark matter mass is out of the range allowed")
+            return None # something
+        this_bin = -1
+        delta = -1
+        for i_bin, e in enumerate(energy_means):
+            if np.abs(e - mdm) < delta or this_bin == -1:
+                delta = np.abs(e - mdm)
+                this_bin = i_bin
+        return this_bin
+
+    def loglike_linear(self, flux, A):
+        return A * flux
+
+    def loglike_parabolic(self, flux, x_zero, sigma):
+        ''' set loglike = 0 for flux < x_zero in order to avoid non-zero loglike for flux = 0 (and likelihood depending on mass in that case) '''
+        return np.power(flux - x_zero, 2) / np.power(sigma, 2) if flux >= x_zero else 0.
+
+    def loglike(self, peak, roi, profile):
+        ''' returns the -2*log(like) evaluated at the flux, for a certain ROI (in degrees) '''
+        try:
+            like_file = self.experiment.info_dict[roi][3]
+        except KeyError:
+            raise ValueError("ROI of amplitude %f is not allowed, ignore likelihood computation" % roi)
+        if like_file is None:
+            raise IOError("No likelihood file available for ROI of amplitude %f." % roi)
+        energy, _, x_zero, sigma = like_file[:4]
+        this_bin = self.get_energy_bin(mdm = peak.e_peak, energy_means = energy)
+        if not this_bin:
+            # out of mass range
+            return -1.
+        if sigma[this_bin] == 0.:
+            logger.debug("loglike ROI %d: Linear: m = %.3e, x_zero = %.3e, flux = %.3e" % (roi, peak.e_peak, x_zero[this_bin], peak.flux))
+            return self.loglike_linear(flux = peak.flux, A = x_zero[this_bin])
+        else:
+            logger.debug("loglike ROI %d: Parabolic: m = %.3e, x_zero = %.3e, sigma = %.3e, flux = %.3e" % (roi, peak.e_peak, x_zero[this_bin], sigma[this_bin], peak.flux))
+            return self.loglike_parabolic(flux = peak.flux, x_zero = x_zero[this_bin], sigma = sigma[this_bin])
+
+    def compute_pvalue(self, peak, roi, profile):
+        ''' compute the p-value assuming as null hypothesis the absence of signal (flux = 0), it assumes the chi-square distribution with one degree of freedom '''
+        try:
+            loglike_h1 = self.loglike(peak, roi, profile)
+            loglike_h0 = self.loglike(GammaLineSpectrum.Peak(label = peak.label + '_H0', e_peak = peak.e_peak, full_width_half_max = peak.fwhm, shape = lambda e: 0.), roi, profile)
+        except (ValueError, IOError, self.ProfileNotOptimized):
+            logger.warning("Error during likelihood computation, will not compute p-value.")
+            return -1
+        test = loglike_h1 - loglike_h0 # they have already -2 factor
+        pvalue = lambda x: 1 - gammainc(0.5, x/2.)
+        return pvalue(test)
+
 
 class GammaLineSpectrum(object):
     ''' class to handle gamma line spectra, peaks, peaks merging, fluxes 
         the spectrum is the flux spectrum, not gamma only, because experiments measure fluxes
         so we need to multiply the energy peak (approximately gaussian) for <sigma v>
     '''
-
     FWHM_PART = 1.0 # coefficient to multiply to the FWHM before making any comparison: it expresses the fraction of the FWHM to be used for comparison: the signal can be summed only if their peak difference is less that both the FWHM*FWHM_PART
     FWHM_MERGED_FRAC = 1.5 # coefficient to multiply to the FWHM after having done all the possible merging: it expresses the maximum fraction of FWHM (with respect to the experiment's one) allowed for the merged line to be considered a line
-    ERROR_TEST = collections.OrderedDict([ # order the error function in the order of testing, errors are concatenated as stri
+    ERROR_TEST = collections.OrderedDict([ # order the error function in the order of testing, errors are concatenated as strings
         ('1', lambda self_: self_.error__not_a_line),
-        ('2', lambda self_: self_.error__not_to_far_apart)
+        ('2', lambda self_: self_.error__not_separated)
     ])
 
-    def __init__(self, pdg_particle_map):
+    class Peak(object):
+        ''' class to handle gamma peaks in the spectrum '''
+        def __init__(self, label, e_peak, full_width_half_max, shape):
+            self.label   = label # the label associated to the peak i.e. the final state particles in pdg
+            self.e_peak  = e_peak
+            self.fwhm    = full_width_half_max
+            self._shape  = shape
+            self.error   = ''
+
+        @property
+        def flux(self):
+            if not hasattr(self, '_flux'):
+                self._flux = self._shape(self.e_peak)
+            return self._flux
+
+        @property
+        def flux_UL(self):
+            if not hasattr(self, '_flux_UL'):
+                return __infty__
+            return self._flux_UL
+
+        @flux_UL.setter
+        def flux_UL(self, value):
+            self._flux_UL = value
+
+        def set_error(self, code_error):
+            self.error += code_error
+
+        def __call__(self, energy):
+            return self._shape(energy)
+
+        def __eq__(self, other):
+            ''' equality is guaranteed if the final state (aka the label) is the same '''
+            assert isinstance(other, GammaLineSpectrum.Peak)
+            return self.label == other.label
+
+        def __ne__(self, other):
+            return not self.__eq__(other)
+
+        def __add__(self, other):
+            assert isinstance(other, GammaLineSpectrum.Peak)
+            label      = "%s+%s" % (self.label, other.label) # new label made of the sum of the various final states that have been merged.
+            shape      = lambda e: self(e) + other(e)
+            min_result = minimize_scalar(lambda e: - shape(e), method = 'bounded', bounds = tuple(sorted([self.e_peak, other.e_peak])))
+            e_peak     = min_result.x
+            max_value  = - min_result.fun
+            max_fwhm   = self.fwhm + other.fwhm # in order to be sure that f(a) and f(b) have different sign, use the sum of the fwhms to find b from a
+            fwhm       = np.abs(bisect(lambda e: shape(e) - max_value/2., a = min_result.x, b = min_result.x - max_fwhm) - bisect(lambda e: shape(e) - max_value/2., a = min_result.x, b = min_result.x + max_fwhm))
+            return GammaLineSpectrum.Peak(label, e_peak, fwhm, shape)
+
+        def __sub__(self, other):
+            assert isinstance(other, GammaLineSpectrum.Peak)
+            return self.e_peak - other.e_peak
+
+        def __lt__(self, other):
+            assert isinstance(other, GammaLineSpectrum.Peak) or isinstance(other, float) or isinstance(other, int)
+            if isinstance(other, GammaLineSpectrum.Peak):
+                return self.e_peak < other.e_peak
+            if isinstance(other, float) or isinstance(other, int):
+                return self.e_peak < other
+
+        def __gt__(self, other):
+            assert isinstance(other, GammaLineSpectrum.Peak) or isinstance(other, float) or isinstance(other, int)
+            if isinstance(other, GammaLineSpectrum.Peak):
+                return self.e_peak > other.e_peak
+            elif isinstance(other, float) or isinstance(other, int):
+                return self.e_peak > other
+
+        def __le__(self, other):
+            return self.__gt__(other)
+
+        def __ge__(self, other):
+            return self.__lt__(other)
+
+        def __str__(self):
+            return "Peak %(label)s (e_peak = %(e_peak).3e GeV, fwhm = %(fwhm).3e GeV" % vars(self) + ", flux = %.3e cm^{-2} s^{-1})" % self.flux
+
+        def __copy__(self):
+            cls_ = self.__class__
+            newobj = cls_.__new__(cls_)
+            newobj.__dict__.update(self.__dict__)
+            return newobj
+
+        def __deepcopy__(self, memo):
+            cls_ = self.__class__
+            newobj = cls_.__new__(cls_)
+            memo[id(self)] = newobj
+            for k, v in self.__dict__.items():
+                setattr(newobj, k, deepcopy(v, memo))
+            return newobj
+    #######################################################
+
+    def __init__(self, line_exp, pdg_particle_map, param_card):
         self.pdg_particle_map = pdg_particle_map
+        self.param_card       = param_card
+        self.mass_dict        = {}
+        for p in pdg_particle_map.keys():
+            try:
+                self.mass_dict["(%s)" % p] = param_card.get_value("mass", abs(int(p)))
+            except KeyError:
+                continue
+        self.line_exp         = line_exp
+        self.spectrum         = []
 
-    def set_param_card(self, param_card):
-        self.param_card = param_card
+    def __iter__(self):
+        return iter(self.spectrum)
 
-    def get_mass_dict(self, finalstate):
-        particles = self.pdg_particle_map.find_particles(finalstate)
-        particles.remove('(22)')
-        particles = set(particles)
-        return {p: self.param_card.get_value("mass", int(p.strip('()'))) for p in particles}
+    def __str__(self):
+        return '[' + ', '.join([str(peak) for peak in self.spectrum]) + ']'
+
+    def __getitem__(self, index):
+        return self.spectrum[index]
+
+    def __len__(self):
+        return len(self.spectrum)
+
+    def __copy__(self):
+        cls_ = self.__class__
+        newobj = cls_.__new__(cls_)
+        newobj.__dict__.update(self.__dict__)
+        return newobj
+
+    def __deepcopy__(self, memo):
+        cls_ = self.__class__
+        newobj = cls_.__new__(cls_)
+        memo[id(self)] = newobj
+        for k, v in self.__dict__.items():
+            setattr(newobj, k, deepcopy(v, memo))
+        return newobj
+
+    def append(self, element):
+        assert isinstance(element, GammaLineSpectrum.Peak)
+        return self.spectrum.append(element)
+
+    def index(self, element):
+        assert isinstance(element, GammaLineSpectrum.Peak)
+        return self.spectrum.index(element)
+
+    def sort(self, reverse = False, key = lambda item: item.e_peak):
+        self.spectrum.sort(reverse = reverse, key = key)
 
     def e_peak_two_body(self, mdm, mx):
         ''' find energy of the peak for final state ax, with x = a, z, h '''
@@ -1013,101 +1198,125 @@ class GammaLineSpectrum(object):
         ''' standard deviation of a gaussian from a full width at half maximum '''
         return full_width_half_max/2/np.sqrt(2*np.log(2))
 
-    def gaussian_spectra(self, e_peak, full_width_half_max, coeff, sigmav):
-        ''' line spectrum with energy resolution (gaussian shape), the coeff depends on the final state (2 for aa, 1 for others) '''
-        return lambda energy: sigmav * coeff / np.sqrt(2 * np.pi) / self.sigma(full_width_half_max) * np.exp(-0.5 * np.power((energy-e_peak)/self.sigma(full_width_half_max), 2))
+    def gaussian_spectra(self, e_peak, full_width_half_max, flux):
+        ''' line spectrum with energy resolution (gaussian shape), the coeff depends on the final state (2 for aa, 1 for others).
+            the normalization factor of the gaussian = 1, so that the shape computed at the e_peak is the flux.
+        '''
+        return lambda energy: flux * np.exp(-0.5 * np.power((energy-e_peak)/self.sigma(full_width_half_max), 2))
 
-    def find_lines(self, mdm, computed_sigmav, line_exp):
+    def find_lines(self, mdm, computed_sigmav, jfact):
         ''' find lines peaks, FWHM and shape of the spectrum. Return a dictionary with key final_state and _peak, _FWHM, _shape '''
-        line_energies = {}
         for fs, sigmav in computed_sigmav.items():
-            mass_dict = self.get_mass_dict(fs)
-            if len(mass_dict) == 1:
-                mx        = mass_dict.values()[0]
+            particles = self.pdg_particle_map.find_particles(fs)
+            # it's a gamma spectrum, so remove one (22) and get the other particles
+            particles.remove('(22)')
+            particles = list(set(particles))
+            if len(particles) == 1:
+                mx        = self.mass_dict[particles[0]]
                 e_peak_fs = self.e_peak_two_body(mdm, mx)
-            elif len(mass_dict) == 2:
+            elif len(particles) == 2:
                 # for future implementations
-                pass
+                raise Exception("Only 2-body final states at the moment, sorry, not '%s'" % self.pdg_particle_map.format_particles(fs))
             else:
-                raise KeyError("Can analyze only 2-body and 3-body final states, not '%s'" % self.pdg_particle_map.format_particles(fs))
+                raise Exception("Can analyze only 2-body and 3-body final states, not '%s'" % self.pdg_particle_map.format_particles(fs))
             # check if the line is in the detection range of the experiment
             if e_peak_fs <= 0.:
                 continue # exclude negative energy peaks, meaning of a forbidden process
-            fwhm_fs = line_exp.energy_resolution(e_peak_fs) * e_peak_fs
-            line_energies[fs + '_peak']  = e_peak_fs
-            line_energies[fs + '_FWHM']  = fwhm_fs # full width at half maximum of each line
-            coeff = 1. if fs != '(22)(22)' else 2.
-            line_energies[fs + '_shape'] = self.gaussian_spectra(e_peak = e_peak_fs, full_width_half_max = fwhm_fs, coeff = coeff, sigmav = sigmav)
-        logger.debug(line_energies)
-        return line_energies
+            fwhm_fs  = self.line_exp.energy_resolution(e_peak_fs) * e_peak_fs
+            flux     = self.line_exp.flux(mdm, sigmav, jfact, is_aa = fs == '(22)(22)')
+            shape_fs = self.gaussian_spectra(e_peak = e_peak_fs, full_width_half_max = fwhm_fs, flux = flux)
+            self.append(GammaLineSpectrum.Peak(
+                label               = fs,
+                e_peak              = e_peak_fs,
+                full_width_half_max = fwhm_fs,
+                shape               = shape_fs
+            ))
+        logger.debug(self)
+        return self
 
-    def merge_lines(self, line_energies, line_exp):
+    def merge_lines(self):
         ''' returns the final spectrum, made of merged lines '''
-        final_spectrum = {}
-        comparisons    = {}
-        signals        = [k.split('_')[0] for k in line_energies.keys() if 'peak' in k]
-        for line_1 in signals:
-            for line_2 in signals[signals.index(line_1)+1:]:
-                diff_energies = np.abs(line_energies[line_1 + '_peak'] - line_energies[line_2 + '_peak'])
-                # this is a tuple: for each couple the first term is a boolean to indicate if they can be merged and the second is the difference between the signals peaks and each FWHM: to be used to decide among more couples which one must be summed first.
-                comparisons["%s--%s" % (line_1, line_2)] = (diff_energies < self.FWHM_PART*line_energies[line_1 + '_FWHM'] and diff_energies < self.FWHM_PART*line_energies[line_2 + '_FWHM'], np.amin([diff_energies - line_energies[line_1 + '_FWHM'], diff_energies - line_energies[line_2 + '_FWHM']]))
-        # check if the couples which can be merged haven't got any common final state: in case, take the case for which the second term of the tuple is minimum.
-        lines_to_merge = [] # list of the final states to be merged 'final_state_1-final_state_2'
+        comparisons = {}
+        for peak_1 in self:
+            for peak_2 in self[self.index(peak_1)+1:]:
+                diff_energies = np.abs(peak_1 - peak_2)
+                # this is a tuple: for each couple the first term is a tuple containing the peaks to sum, the second is a boolean to indicate if they can be merged and the third is the difference between the signals peaks and each FWHM: to be used to decide among more couples which one must be summed first.
+                comparisons["%s--%s" % (peak_1.label, peak_2.label)] = ((peak_1, peak_2), diff_energies < self.FWHM_PART*peak_1.fwhm and diff_energies < self.FWHM_PART*peak_2.fwhm, np.amin([diff_energies - peak_1.fwhm, diff_energies - peak_2.fwhm]))
+        # check if the couples which can be merged haven't got any common final state: in case, take the case for which the third term of the tuple is minimum.
+        lines_to_merge = {} # dict containing a label of the peaks to be merged 'label_1--label_2' a tuple with the actual peaks
         # order the dictionary according to the differences between the signals peaks and each FWHM:
         # in this way we start our analysis from the very minimum and we can drop the other final states which may be merged because this value is certainly higher.
-        comparisons = collections.OrderedDict(sorted(comparisons.items(), key = lambda item: item[1][1]))
-        for comp_lines in comparisons.keys():
-            if not comparisons[comp_lines][0] or any([l in lm for l in comp_lines.split('-') for lm in lines_to_merge]):
+        comparisons = collections.OrderedDict(sorted(comparisons.items(), key = lambda item: item[1][2]))
+        for comp_lines, (peaks_to_sum, merging_condition, discriminant) in comparisons.items():
+            if not merging_condition or any(l in lm for l in comp_lines.split('--') for lm in lines_to_merge.keys()):
                 continue
-            lines_to_merge.append(comp_lines)
+            lines_to_merge[comp_lines] = peaks_to_sum
         # the lines_to_merge list contains the labels of the lines to be merged.
-        for lm in lines_to_merge:
-            label  = lm.replace('--', '+') # new label made of the sum of the various final states that have been merged.
-            l1, l2 = lm.split('--')
-            final_spectrum[label + '_shape'] = lambda e: line_energies[l1 + '_shape'](e) + line_energies[l2 + '_shape'](e)
-            min_result                       = minimize_scalar(lambda e: - final_spectrum[label + '_shape'](e), method = 'bounded', bounds = tuple(sorted([line_energies[l1 + '_peak'], line_energies[l2 + '_peak']])))
-            final_spectrum[label + '_peak']  = min_result.x
-            max_value                        = - min_result.fun
-            max_fwhm                         = line_energies[l1 + '_FWHM'] + line_energies[l2 + '_FWHM'] # in order to be sure that f(a) and f(b) have different sign, use the sum of the fwhms to find b from a
-            final_spectrum[label + '_FWHM']  = np.abs(bisect(lambda e: final_spectrum[label + '_shape'](e) - max_value/2., a = min_result.x, b = min_result.x - max_fwhm) - bisect(lambda e: final_spectrum[label + '_shape'](e) - max_value/2., a = min_result.x, b = min_result.x + max_fwhm))
-        for k, v in line_energies.items():
-            if any([k.split('_')[0] in lm for lm in lines_to_merge]):
-                continue
+        new_spectrum = [peaks_to_sum[0] + peaks_to_sum[1] for peaks_to_sum in lines_to_merge.values()]
+        for peak in self.spectrum:
             # update the final spectrum with the missing lines which have not been meerged
-            final_spectrum[k] = v
-        if len(lines_to_merge) is 0:
+            if any(peak.label in lm for lm in lines_to_merge.keys()):
+                continue
+            new_spectrum.append(peak)
+        if len(lines_to_merge) == 0:
             # nothing has been merged, so check if the peaks are inside one FWHM from the detection range, otherwise drop them.
-            for label, (peak, fwhm) in {k.replace('_peak', ''): (final_spectrum[k], final_spectrum[k.replace('_peak', '_FWHM')]) for k in final_spectrum.keys() if '_peak' in k}.items():
-                if peak < line_exp.detection_range[0] - fwhm/2. or peak > line_exp.detection_range[1] + fwhm/2.:
-                    del final_spectrum[label + '_peak']
-                    del final_spectrum[label + '_FWHM']
-                    del final_spectrum[label + '_shape']
-                    continue
-                # check if there are other errors related to the peak
-                final_spectrum[label + '_error'] = ''
-                for code, error_func in self.ERROR_TEST.items():
-                    if error_func(self).__call__(line_exp, final_spectrum, label):
-                        final_spectrum[label + '_error'] += code
-            logger.debug(final_spectrum)
-            return final_spectrum
+            self.spectrum = [peak for peak in new_spectrum if peak > self.line_exp.detection_range[0] - peak.fwhm/2. and peak < self.line_exp.detection_range[1] + peak.fwhm/2.]
+            logger.debug(self)
+            return self
         else:
             # something has been merged, so check if we can merge something more in the new spectrum.
-            logger.debug(final_spectrum)
-            return self.merge_lines(final_spectrum, line_exp)
+            self.spectrum[:] = new_spectrum
+            return self.merge_lines()
 
-    def error__not_a_line(self, line_exp, final_spectrum, label):
+    def test_for_errors(self):
+        ''' check if there are errors related to the peaks '''
+        for code, error_func in self.ERROR_TEST.items():
+            for peak in self.spectrum:
+                if error_func(self).__call__(peak):
+                    peak.set_error(code)
+
+    def error__not_a_line(self, peak):
         ''' check if the FWHM of each peak is compatible with the experimental one at that energy peak '''
-        peak = final_spectrum[label + '_peak']
-        fwhm = final_spectrum[label + '_FWHM']
-        logger.debug("peak = %f, fwhm = %f, fwhm_max = %f" % (peak, fwhm, line_exp.energy_resolution(peak) * self.FWHM_MERGED_FRAC))
-        return fwhm > line_exp.energy_resolution(peak) * peak * self.FWHM_MERGED_FRAC
+        return peak.fwhm > self.line_exp.energy_resolution(peak.e_peak) * peak.e_peak * self.FWHM_MERGED_FRAC
 
-    def error__not_to_far_apart(self, line_exp, final_spectrum, label):
+    def error__not_separated(self, peak):
         # check for incompatible errors (peaks with those errors should not be tested)
-        if any(code in final_spectrum[label + '_error'] for code in ['1']):
+        if any(code in peak.error for code in ['1']):
             return False
-        # yet to be implemented
-        return False
+        min_separation = self.line_exp.min_energy_separation(peak.fwhm)
+        test_spectrum  = np.array([p for p in self if p != peak])
+        # find neighbourhood of the peak
+        get_e_peak     = lambda peak: peak.e_peak
+        energy_peaks   = np.array(map(get_e_peak, test_spectrum))
+        condition      = np.logical_and(energy_peaks < peak.e_peak + min_separation, energy_peaks > peak.e_peak - min_separation)
+        neighbourhood  = test_spectrum[condition]
+        debug_str = '''
+---
+peak = %s
+min_separation = %f
+energy_peaks = %s
+neighbourhood = %s
+''' % (peak, min_separation, energy_peaks, [str(p) for p in neighbourhood])
+        # check: if it is alone, then return False
+        if len(neighbourhood) == 0:
+            logger.debug(debug_str + 'OK\n---')
+            return False # no peaks too close
+        # check the ratio flux/flux_UL of the peak with respect each other peak in the neighbourhood
+        get_height = lambda peak: peak.flux/peak.flux_UL
+        height_peaks = np.array(map(get_height, neighbourhood))
+        debug_str += "height_peaks = %s\n" % height_peaks
+        if any(height_peaks == 0): # happens if one peak has flux_UL == __infty__ (it is out of range), in this case can't do comparison, so assume they are too close
+            logger.warning("One peak has upper limit equal to __infty__, I can't compare its height with others, I assume they can't be neglected.")
+            logger.debug(debug_str + 'ERROR\n---')
+            return True # because that means peaks are too close to each other, but none of them is clearly higher
+        this_peak_height = peak.flux/peak.flux_UL
+        debug_str += "this_peak_height = %f\n" % this_peak_height
+        if all(height_peaks < this_peak_height/self.line_exp.peak_height_factor):
+            logger.debug(debug_str + 'OK\n---')
+            return False # in case the peak is clearly higher than the others, then no error because it can be considered separated!
+        logger.debug(debug_str + 'ERROR\n---')
+        return True
+
 
 # PDG-particle map
 class PDGParticleMap(dict):
@@ -1230,14 +1439,14 @@ class MADDMRunCmd(cmd.CmdShell):
             dir_path = root_path
 
         self.dir_path = dir_path
-        self.indirect_directories = dict(zip(['Indirect_tree_cont', 'Indirect_tree_line', 'Indirect_LI_cont', 'Indirect_LI_line'], map(os.path.isdir, [pjoin(dir_path, 'Indirect_tree_cont'), pjoin(dir_path, 'Indirect_tree_line'), pjoin(dir_path, 'Indirect_LI_cont'), pjoin(dir_path, 'Indirect_LI_cont')])))
+        self.indirect_directories = dict(zip(['Indirect_tree_cont', 'Indirect_tree_line', 'Indirect_LI_cont', 'Indirect_LI_line'], map(os.path.isdir, [pjoin(dir_path, 'Indirect_tree_cont'), pjoin(dir_path, 'Indirect_tree_line'), pjoin(dir_path, 'Indirect_LI_cont'), pjoin(dir_path, 'Indirect_LI_line')])))
         self.param_card_iterator = [] #a placeholder containing a generator of paramcard for scanning
         
         # Define self.proc_characteristics (set of information related to the
         # directory status
         self.get_characteristics()
 
-        self._two2twoLO = self.proc_characteristics['two2twoLO']
+        self._two2twoLO = False # is set in ask_run_configuration
         self._dNdE_setup = False #If true, this flag allows the code to skip loading and caldulating dNdE
         #self._fit_parameters= []
 
@@ -1259,7 +1468,6 @@ class MADDMRunCmd(cmd.CmdShell):
         self.Spectra = Spectra()
         self.Fermi   = Fermi_bounds()
         self.line_experiments = GAMMA_LINE_EXPERIMENTS
-        self.gamma_line_spectrum = GammaLineSpectrum(self.pdg_particle_map)
         self.MadDM_version = '3.0'
 
         self.processes_names_map = self.proc_characteristics['processes_names_map']
@@ -1403,7 +1611,7 @@ class MADDMRunCmd(cmd.CmdShell):
         # create output directory.
         os.mkdir(pjoin(self.dir_path, 'output', self.run_name))
         
-                 
+
         output = pjoin(self.dir_path, 'output', self.run_name, 'maddm.out') 
         misc.call(['./maddm.x', pjoin('output', self.run_name, 'maddm.out')], cwd =self.dir_path)
         #Here we read out the results which the FORTRAN module dumped into a file
@@ -1608,8 +1816,11 @@ class MADDMRunCmd(cmd.CmdShell):
                     for i in range(len([k for k in self.last_results.keys() if self.is_spectral_finalstate(k.split('_')[-1])])):
                         order.append(str_part + "peak_%d"        % (i+1))
                         # order.append(str_part + "peak_%d_states" % (i+1))
+                        # order.append(str_part + "peak_%d_error"  % (i+1))
                         order.append(str_part + "flux_%d"        % (i+1))
                         order.append(str_part + "flux_UL_%d"     % (i+1))
+                        order.append(str_part + "like_%d"        % (i+1))
+                        order.append(str_part + "pvalue_%d"      % (i+1))
 
             # remove elements which have not been computed
             order[:] = [elem for elem in order if elem in self.last_results.keys()]
@@ -1685,8 +1896,8 @@ class MADDMRunCmd(cmd.CmdShell):
         # if not os.path.exists(pjoin(self.dir_path, 'Indirect')):
         #     self._two2twoLO = True
             #return
-        if self.maddm_card['sigmav_method'] == 'inclusive':
-            self._two2twoLO = True
+        # if self.maddm_card['sigmav_method'] == 'inclusive':
+        #     self._two2twoLO = True
             #return 
         
         if not self.in_scan_mode: 
@@ -1742,16 +1953,7 @@ class MADDMRunCmd(cmd.CmdShell):
                         if self.maddm_card['sigmav_method'] == 'madevent':
                             if os.path.exists(pjoin(self.dir_path,indirect_directory,'Cards','reweight_card.dat')):
                                 os.remove(pjoin(self.dir_path,'Cards','reweight_card.dat'))
-                            # self.me_cmd.do_launch('%s -f' % self.run_name)
-                            if indirect_directory == 'Indirect_tree_cont':
-                                self.me_cmd.do_launch('%s -f' % self.run_name)
-                            if indirect_directory == 'Indirect_LI_cont':
-                                self.me_cmd.do_launch('%s -f' % self.run_name)
-                            if indirect_directory == 'Indirect_LI_line':
-                                self.me_cmd.Presults = {}
-                                self.me_cmd.Presults['xsec/something_n1n1_aa'] = 10.3
-                                self.me_cmd.Presults['xsec/something_n1n1_ah'] = 4.6
-                                self.me_cmd.Presults['xsec/something_n1n1_az'] = 9.1
+                            self.me_cmd.do_launch('%s -f' % self.run_name)
                         elif self.maddm_card['sigmav_method'] == 'reshuffling': 
                             cmd = ['launch %s' % self.run_name,
                                'reweight=indirect',
@@ -1774,8 +1976,6 @@ class MADDMRunCmd(cmd.CmdShell):
                     
                 elif key.startswith('xerr'):
                     self.last_results['err_taacsID#%s' %(clean_key)] = value * pb2cm3
-            
-        logger.debug(self.last_results)
 
         # the following is done above
         # *** Multiply all the calculated indirect cross section by sqrt(3)/2 * 2 *(vave_indirect) value (since is relative velocity)
@@ -1787,7 +1987,7 @@ class MADDMRunCmd(cmd.CmdShell):
     def launch_indirect_computations(self, mdm):
         ''' do indirect detection calculations for continuum spectra '''
         # check that whether we are in fast mode at least for one of the directories computed
-        cont_spectra_directories = [d for d, v in self.indirect_directories.items() if 'cont' in d and v]
+        cont_spectra_directories = [d for d, v in self.indirect_directories.items() if ('cont' in d) and v]
         fast_mode = any(self._two2twoLO and 'tree' in directory for directory in cont_spectra_directories)
         # compute spectra with Pythia or PPPC only in the continuum case
         if not fast_mode:
@@ -1831,7 +2031,6 @@ class MADDMRunCmd(cmd.CmdShell):
             
     def launch_spectral_computations(self, mdm):
         """running the indirect detection for spectral features"""
-        self.gamma_line_spectrum.set_param_card(self.param_card)
         self.calculate_line_limits(mdm)                                                                                                                       
 
     def calculate_fermi_limits(self, mdm):
@@ -1921,8 +2120,6 @@ class MADDMRunCmd(cmd.CmdShell):
         )
         # fill last_results with the profile parameters
         self.last_results["density_profile"] = density_profile
-        # for k, v in density_profile.get_parameters_items():
-        #     self.last_results[k] = v
         # check scipy
         if HAS_SCIPY is False:
             logger.warning("scipy module not available, line limits computation is disabled.")
@@ -1940,54 +2137,66 @@ class MADDMRunCmd(cmd.CmdShell):
         # <sigma v> of the various final states
         sigmavs = {k.split("_")[-1]: v for k, v in self.last_results.iteritems() if k.startswith('taacsID#') and self.is_spectral_finalstate(k.split("_")[-1])}
         # dict for <sigma v> ul
-        sigmav_ul = {k: list() for k in self.last_results.iterkeys() if "lim_taacsID#" in k and self.is_spectral_finalstate(k.split('_')[-1])} # if there is at least one '(22)' then we treat it as a spectral final state
+        sigmav_ul = {k: [-1 for line_exp in self.line_experiments] for k in self.last_results.iterkeys() if "lim_taacsID#" in k and self.is_spectral_finalstate(k.split('_')[-1])} # if there is at least one '(22)' then we treat it as a spectral final state
+        initial_states = sigmav_ul.keys()[0].replace("lim_taacsID#", '').split('_')[0]
         # compute the main results
-        for line_exp in self.line_experiments:
+        for num_exp, line_exp in enumerate(self.line_experiments):
+            gamma_line_spectrum = GammaLineSpectrum(line_exp, self.pdg_particle_map, self.param_card)
             str_part = "line_%s_" % line_exp.get_name()
+            if line_exp.get_name() == "Fermi-LAT_2015":
+                exp_likelihood = Fermi2015GammaLineLikelihood(line_exp)
+            else:
+                exp_likelihood = None
             # fill last_results with all the keys (with value -1, which means 'not computed') of line analysis
             for i in range(len(sigmavs)):
                 self.last_results[str_part + "peak_%d"        % (i+1)] = -1
                 self.last_results[str_part + "peak_%d_states" % (i+1)] = -1
                 self.last_results[str_part + "flux_%d"        % (i+1)] = -1
                 self.last_results[str_part + "flux_UL_%d"     % (i+1)] = -1
+                self.last_results[str_part + "like_%d"        % (i+1)] = -1
+                self.last_results[str_part + "pvalue_%d"      % (i+1)] = -1
             # fill last_results dict with the new values
-            line_energies           = self.gamma_line_spectrum.find_lines(mdm, sigmavs, line_exp)
-            final_spectrum          = self.gamma_line_spectrum.merge_lines(line_energies, line_exp)
-            spectra_per_final_state = collections.OrderedDict(sorted([(k.replace('_peak', ''), v) for k, v in final_spectrum.items() if 'peak' in k], key = lambda item: item[1]))
             self.last_results[str_part + "Jfactor"    ] = line_exp.get_J(roi = self.last_results[str_part + 'roi'], profile = density_profile)
-            self.last_results[str_part + "roi_warning"] = line_exp.check_profile(roi = self.last_results[str_part + 'roi'], profile = density_profile)            
-            for i, (merged, line) in enumerate(spectra_per_final_state.items()):
-                self.last_results[str_part + "peak_%d"            % (i+1)] = line
-                self.last_results[str_part + "peak_%d_states"     % (i+1)] = self.pdg_particle_map.format_particles(merged)
-                error_code = final_spectrum[merged + '_error']
-                self.last_results[str_part + "peak_%d_error" % (i+1)] = error_code
-                if error_code:
+            self.last_results[str_part + "roi_warning"] = line_exp.check_profile(roi = self.last_results[str_part + 'roi'], profile = density_profile)[1]          
+            gamma_line_spectrum.find_lines(mdm, sigmavs, self.last_results[str_part + "Jfactor"])
+            original_gamma_spectrum = deepcopy(gamma_line_spectrum)
+            gamma_line_spectrum.merge_lines()
+            gamma_line_spectrum.sort()
+            # the following dicts are for the testing errors
+            for i, peak in enumerate(gamma_line_spectrum):
+                self.last_results[str_part + "peak_%d"        % (i+1)] = peak.e_peak
+                self.last_results[str_part + "peak_%d_states" % (i+1)] = self.pdg_particle_map.format_particles(peak.label)
+                # flux upper limits
+                peak.flux_UL = line_exp.get_flux_ul(e_peak = peak.e_peak, roi = self.last_results[str_part + 'roi'], id_constraints = self.limits)
+                self.last_results[str_part + "flux_%d"    % (i+1)] = peak.flux
+                self.last_results[str_part + "flux_UL_%d" % (i+1)] = peak.flux_UL
+            # first: merging algorithm
+            # second: check for errors after having computed the flux upper limits
+            # third: if there are errors, then set flux and flux_UL to -1
+            gamma_line_spectrum.test_for_errors()
+            for i, peak in enumerate(gamma_line_spectrum):
+                self.last_results[str_part + "peak_%d_error"  % (i+1)] = peak.error
+                if peak.error:
                     self.last_results[str_part + "flux_%d"    % (i+1)] = -1
                     self.last_results[str_part + "flux_UL_%d" % (i+1)] = -1
-                else:
-                    total_flux = 0.
-                    for fs in merged.split('+'):
-                        not_aa     = fs != '(22)(22)'
-                        total_flux += line_exp.flux(mdm = mdm, sigmav = sigmavs[fs], jfact = self.last_results[str_part + "Jfactor"], not_aa = not_aa)
-                    self.last_results[str_part + "flux_%d"    % (i+1)] = total_flux
-                    self.last_results[str_part + "flux_UL_%d" % (i+1)] = line_exp.get_flux_ul(e_peak = line, roi = self.last_results[str_part + 'roi'], id_constraints = self.limits)
-            # compute <sigma v> ul to display only if the profile chosen in equal to the default one for the ROIs
+                elif exp_likelihood: # compute likelihoods only if there are no errors and if exists
+                    try:
+                        self.last_results[str_part + "like_%d"   % (i+1)] = exp_likelihood.loglike(peak, self.last_results[str_part + 'roi'], density_profile)
+                        self.last_results[str_part + "pvalue_%d" % (i+1)] = exp_likelihood.compute_pvalue(peak, self.last_results[str_part + 'roi'], density_profile)
+                    except IOError as err:
+                        logger.warning(err.args[0])
+                        continue
+            # compute <sigma v> ul to display only if the profile chosen is equal to the default one for the ROIs
             # fill a list with the limits from each experiment and then take the minimum
-            for k, v in sigmav_ul.iteritems():
-                final_state = k.split('_')[-1]
-                not_aa = final_state != '(22)(22)'
-                if final_state + '_peak' not in line_energies.keys():
-                    v.append(-1)
-                    continue
-                v.append(line_exp.get_sigmav_ul(e_peak = line_energies[final_state + '_peak'], roi = self.last_results[str_part + 'roi'], profile = density_profile, id_constraints = self.limits, not_aa = not_aa))
+            for original_peak in original_gamma_spectrum: # fill value only for peaks which have been detected (are in the detection range), otherwise keep -1
+                sigmav_ul["lim_taacsID#" + initial_states + '_' + original_peak.label][num_exp] = line_exp.get_sigmav_ul(e_peak = original_peak.e_peak, roi = self.last_results[str_part + 'roi'], profile = density_profile, id_constraints = self.limits, is_aa = original_peak.label == '(22)(22)')
         # get the <sigma v> ul: drop the -1 and get the minimum, in case everything is -1 then the list is empty, so return -1
         logger.debug(sigmav_ul)
         for k, v in sigmav_ul.items():
             lim_list = [lim for lim in v if lim != -1]
             self.last_results[k] = -1 if len(lim_list) == 0 else np.amin(lim_list)
         # in case all of the line peaks are out of range of detection for a certain experiment:
-        # find_lines(...) will return an empty dict
-        # merge_lines(...) will return an empty dict
+        # gamma_line_spectrum would be an empty list
         # self.last_results["line_%s_peak_%d" % (exp_name, i+1)], self.last_results["line_%s_flux_%d" % (exp_name, i+1)], self.last_results["line_%s_flux_UL_%d" % (exp_name, i+1)] will be all -1
 
     def run_pythia8_for_flux(self, indirect_directory):
@@ -2506,7 +2715,7 @@ class MADDMRunCmd(cmd.CmdShell):
               logger.info("Rescaling theory prediction for xsi(direct det.) and xsi^2(indirect det.) for thermal scenarios.\n")
 
         if self.mode['relic']:
-            logger.info("\n***** Relic Density")
+            logger.info("\n****** Relic Density")
             print 'OMEGA IS ', omega 
             logger.info( self.form_s('Relic Density') + '= ' + self.form_n(omega)   + '      '  +  pass_relic )
             logger.info( self.form_s('x_f'          ) + '= ' + self.form_s(self.form_n(x_f      ) ) )
@@ -2525,7 +2734,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
             self.last_results['direct_results'] = direct_names
 
-            logger.info('\n***** Direct detection [cm^2]: ')  
+            logger.info('\n****** Direct detection [cm^2]: ')  
             for D in direct_names:
                     th_cross = D['sig']* xsi 
                     ul = D['lim']
@@ -2909,7 +3118,7 @@ class MADDMRunCmd(cmd.CmdShell):
             logger.info("==== %s %s====" % (line_exp.get_name().replace('_', ' '), "="*max([0, 100 - len(line_exp.get_name())])))
             logger.info("ROI: %.1f" % self.last_results[str_part + "roi"])
             str_part_peak = str_part + 'peak'
-            energy_peaks = collections.OrderedDict(sorted([(k, v) for k, v in self.last_results.items() if str_part_peak in k and '_states' not in k and '_error' not in k and v != -1], key = lambda item: item[1])) # key = "line_<exp_name>_peak_<num>", value = energy peak
+            energy_peaks = collections.OrderedDict(sorted([(k, v) for k, v in self.last_results.items() if str_part_peak in k and not any(['states' in k, 'error' in k, 'like' in k, 'pvalue' in k]) and v != -1], key = lambda item: item[1])) # key = "line_<exp_name>_peak_<num>", value = energy peak
             roi_warning = self.last_results[str_part + "roi_warning"]
             if roi_warning != "":
                 logger.warning(roi_warning)
@@ -2934,9 +3143,12 @@ class MADDMRunCmd(cmd.CmdShell):
                         continue
                     flux    = self.last_results[str_part + "flux_%d"    % num]
                     flux_UL = self.last_results[str_part + "flux_UL_%d" % num]
+                    like    = self.last_results[str_part + "like_%d"    % num]
+                    pvalue  = self.last_results[str_part + "pvalue_%d"  % num]
                     allowed_or_excluded, color       = colored_message(flux, flux_UL)
                     allowed_or_excluded_th, color_th = colored_message(flux*xsi2, flux_UL)
                     logger.info(row_format.format("peak_%d(%s)" % (num, self.last_results[k + "_states"])) + "   {0:^11.4e}   {1:^16.4e} {6:s}{2:<8s}{8:s}   {3:^16.4e} {7:s}{4:<8s}{8:s}   {5:^10.4e}".format(peak, flux, allowed_or_excluded, flux*xsi2, allowed_or_excluded_th, flux_UL, color, color_th, bcolors.ENDC))
+                    logger.debug("peak_%d: loglike = %.4e, p-value = %f" % (num, like, pvalue))
                 logger.info("-"*len(first_rule))
 
     def save_summary_single(self, relic = False, direct = False , indirect = False , spectral = False , fluxes_source = False , fluxes_earth = False):
@@ -3036,7 +3248,7 @@ class MADDMRunCmd(cmd.CmdShell):
                     out.write(form_s('TotalSM_xsec')+ '= '+ form_s('['+ form_n(tot_sm)+ ',' + form_n(tot_ul) +']') + '\n')
                 """
 
-                out.write('# Global Fermi dSph Limit computed with ' + method + ' spectra\n\n')                                                                              
+                out.write('\n# Global Fermi dSph Limit computed with ' + method + ' spectra\n')                                                                              
                 out.write(form_s('TotalSM_xsec')+ '= '+ form_s('['+ form_n(tot_sm)+ ',' + form_n(tot_ul) +']') + '\n')
                 out.write( form_s('Fermi_Likelihood')+ '= '+ form_s(form_n(likelihood_nonth))  +'\n' )
                 out.write( form_s('Fermi_pvalue'    )+ '= '+ form_s(form_n(pvalue_nonth    ))  +'\n')
@@ -3069,15 +3281,21 @@ class MADDMRunCmd(cmd.CmdShell):
                             energy_peaks = collections.OrderedDict(sorted([(k, v) for k, v in self.last_results.iteritems() if str_part_peak in k and '_states' not in k and '_error' not in k], key = lambda item: item[1])) # key = "line_<exp_name>_peak_<num>", value = energy peak
                     peaks_string  = ''
                     fluxes_string = ''
+                    like_string = ''
                     for k, peak in energy_peaks.iteritems():
-                        num     = int(k.split('_')[-1])
-                        error_code = self.last_results[str_part + "peak_%d_error" % num]
-                        flux       = self.last_results[str_part + "flux_%d"       % num]
-                        flux_UL    = self.last_results[str_part + "flux_UL_%d"    % num]
-                        peaks_string  += form_s("peak_%d(%s)" % (num, self.last_results[k + "_states"])) + '= ' + form_n(peak) + '\n'
+                        num        = int(k.split('_')[-1])
+                        error_code = self.last_results[str_part + "peak_%d_error"  % num]
+                        error_str  = "# error: %s" % error_code if error_code else ''
+                        flux       = self.last_results[str_part + "flux_%d"        % num]
+                        flux_UL    = self.last_results[str_part + "flux_UL_%d"     % num]
+                        like       = self.last_results[str_part + "like_%d"        % num]
+                        pvalue     = self.last_results[str_part + "pvalue_%d"      % num]
+                        peaks_string  += form_s("peak_%d(%s)" % (num, self.last_results[k + "_states"])) + '= ' + form_n(peak) + ' \t ' + error_str + '\n'
                         fluxes_string += form_s("flux_%d" % num) + '= ['+ form_n(flux) + ',' + form_n(flux_UL) + ']\n'
+                        like_string   += form_s("-2*log(Likelihood)_%d" % num) + '= '+ form_n(like) + '\n' + form_s("p-value_%d" % num) + '= '+ form_n(pvalue) + '\n'
                     out.write(peaks_string)
                     out.write(fluxes_string)
+                    out.write(like_string)
 
 
         if fluxes_source:
@@ -3140,21 +3358,38 @@ class MADDMRunCmd(cmd.CmdShell):
         self.param_card = check_param_card.ParamCard(pjoin(self.dir_path, 'Cards', 'param_card.dat'))
         
         # if 'forbid_fast' is True, then we can't use 'inclusive' --> switch to 'reshuffling'
-        if self.proc_characteristics['forbid_fast'] and self.maddm_card['sigmav_method'] in ['inclusive']:
-            logger.error("Can't use '%s' method, because it is forbidden in this case. Switched automatically to 'reshuffling'." % self.maddm_card['sigmav_method'])
-            self.maddm_card['sigmav_method'] = 'reshuffling'
+        # if self.proc_characteristics['forbid_fast'] and self.maddm_card['sigmav_method'] in ['inclusive']:
+        #     logger.error("Can't use '%s' method, because it is forbidden in this case. Switched automatically to 'reshuffling'." % self.maddm_card['sigmav_method'])
+        #     cmd_quest.setDM('sigmav_method','reshuffling',loglevel=30)
 
-        #set self._two2twoLO if we need to use inclusive method
-        #If the Indirect subfolder is not created, that means that the code is
-        #using the 2to2 at LO which is handled by maddm.f.
+        def check_mode_and_dirs(mode, one_dir_exists):
+            ''' check:
+                if MODE 'OFF': OK
+                if MODE 'ON' : check if at least one dirs for that MODE exists: if so: OK, if not: PROBLEM!
+                we need to check each mode with this method and see if both independently are OK.
+                Indeed: if 2to2lo is not set by sigmav_method being inclusive, then we need to be sure the
+                user has not used the option during generation, while then setting a different sigmav_method from inclusive
+                So the condition is that if the MODE is OFF then no problem at all, but if it's ON, we need to check
+                that there is at least one directory for that MODE (tree or LI doesn't care), otherwise that would
+                mean they have not been created as a consequence for the choice of the user.
+                mode and one_dir_exists are both bool.
+            '''
+            if not mode:
+                return True
+            elif one_dir_exists:
+                return True
+            else:
+                return False
+
+        # set self._two2twoLO if we need to use inclusive method
         if self.maddm_card['sigmav_method'] in ['inclusive']:
             self._two2twoLO = True
-        # at this point we have that sigmav_method either 'reshuffling' or 'madevent'
+        # if the 'if' above is not executed then we have that sigmav_method can be either 'reshuffling' or 'madevent'
         # so we should check if there is at least one directory for 'cont' or 'line' if respectively the modes 'indirect' or 'spectral' are ON
-        # in this case we can go ahead, otherwise we can't use Madevent
-        elif (self.mode['indirect'] and any(exist for dir_, exist in self.indirect_directories.items() if 'cont' in dir_))\
-          or (self.mode['spectral'] and any(exist for dir_, exist in self.indirect_directories.items() if 'line' in dir_)):
-            self._two2twoLO = False
+        # in this case we can go ahead (see the __doc__ of the function above), otherwise we can't use Madevent
+        elif check_mode_and_dirs(self.mode['indirect'], any(exist for dir_, exist in self.indirect_directories.items() if 'cont' in dir_)) and\
+             check_mode_and_dirs(self.mode['spectral'], any(exist for dir_, exist in self.indirect_directories.items() if 'line' in dir_)):
+             self._two2twoLO = False
         else:
             misc.sprint(os.listdir(self.dir_path))
             raise Exception, 'Madevent output for indirect detection not available'
@@ -3620,11 +3855,11 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         """pass to fast mode according to the paper"""
         
         if self.availmode['forbid_fast']:
-            logger.info("setting fast mode is only valid when loop-induced processes are not considered.")
+            logger.error("setting fast mode is only valid when loop-induced processes are not considered.")
             return
         indirect = self.answer['indirect']
         if indirect in ['OFF', None]:
-            logger.info("setting fast mode is only valid when indirect mode is getting called.")
+            logger.error("setting fast mode is only valid when indirect mode is getting called.")
             return 
         elif indirect == 'sigmav':
             self.do_set("sigmav_method inclusive")
@@ -3642,7 +3877,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         indirect = self.answer['indirect']
         spectral = self.answer['spectral']
         if indirect in ['OFF', None] and spectral in ['OFF', None]:
-            logger.info("setting precise mode is only valid when indirect or spectral mode is getting called.")
+            logger.error("setting precise mode is only valid when indirect or spectral mode is getting called.")
             return 
         elif indirect == 'sigmav' or spectral == 'ON':
             self.do_set("sigmav_method reshuffling")
@@ -3673,7 +3908,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         
         # Technical note: 
         # Note that some special trigger happens for 
-        #    7/8 trigger via self.trigger_7 and self.trigger_8
+        #    8/9 trigger via self.trigger_8 and self.trigger_9
         #    If you change the numbering, please change the name of the 
         #    trigger function accordingly.
         
@@ -3752,7 +3987,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         
         #  1) do like the user type "indirect=flux_source" (if not in flux)
         #  2) forbid sigmav_method = inclusive
-        #  3) forbid PPPC4IDMD
+        #  3) forbid PPPC4DMID
         #  4) go to the line edition
         #1.
         if not self.switch['indirect'].startswith('flux_'):
@@ -3959,7 +4194,7 @@ When you are done with such edition, just press enter (or write 'done' or '0')
 
         # check consistency of sigmav_method, on the basis of forbid_fast option
         if self.availmode['forbid_fast'] and self.maddm['sigmav_method'] == 'inclusive':
-            logger.info("setting 'sigmav_method' to 'inclusive' is only valid when loop-induced processes are not considered. Switched to 'reshuffling'.")
+            logger.warning("setting 'sigmav_method' to 'inclusive' is only valid when loop-induced processes are not considered. Switched to 'reshuffling'.")
             self.setDM('sigmav_method','reshuffling',loglevel=30)
 
         
@@ -4385,13 +4620,13 @@ class MadDMCard(banner_mod.RunCard):
         if self['sigmav_method'] == 'inclusive':
             if self['indirect_flux_source_method'] == 'pythia8':
                 if self['do_indirect_detection']:
-                    logger.warning('since sigmav_method is on inclusive, indirect_flux_source_method has been switched to PPPC4MID')
+                    logger.warning('since sigmav_method is on inclusive, indirect_flux_source_method has been switched to PPPC4DMID')
                 #if self['do_flux']:
-                    #logger.warning('since sigmav_method is on inclusive, indirect_flux_source_method has been switch to PPPC4MID')
+                    #logger.warning('since sigmav_method is on inclusive, indirect_flux_source_method has been switch to PPPC4DMID')
                 self['indirect_flux_source_method'] = 'PPPC4DMID'
             #if self['indirect_flux_earth_method'] != 'PPPC4DMID':
             #    if self['do_flux']:
-            #        logger.warning('since sigmav_method is on inclusive, indirect_flux_earth_method has been switch to PPPC4MID_ep')
+            #        logger.warning('since sigmav_method is on inclusive, indirect_flux_earth_method has been switch to PPPC4DMID_ep')
             #    self['indirect_flux_earth_method'] = 'PPPC4DMID_ep' 
                 
         elif self['indirect_flux_earth_method'] == 'PPPC4DMID_ep' and self['sigmav_method'] != 'inclusive':
