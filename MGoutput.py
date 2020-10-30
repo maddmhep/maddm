@@ -1092,6 +1092,8 @@ class ProcessExporterIndirectD(object):
         
         new_history = []
         next_generate = True #put on True if the next add process need to be switch to generate
+        indirect_done = False
+
         for line in history:
             line = re.sub('\s+', ' ', line)
         
@@ -1109,7 +1111,7 @@ class ProcessExporterIndirectD(object):
                         next_generate = True
                         continue  
                     
-                if line.startswith('generate indirect'):
+                if line.startswith('generate indirect') and not indirect_done:
                     # using curr_amps has the issue if two ME are mapped into a single one
                     # using proc_def has the issue that some process might not have any diagram
                     # therefore using self._curr_matrix_elements
@@ -1121,6 +1123,7 @@ class ProcessExporterIndirectD(object):
                                 prefix = 'generate ' if i==0 else 'add process '
                                 new_history.append(p.nice_string(prefix=prefix))
                                 i=1
+                    indirect_done = True
                     continue
             
             if line.startswith('add'):
@@ -1130,7 +1133,7 @@ class ProcessExporterIndirectD(object):
                     index = line.find('@')
                     if not line[index:].startswith(('@1995','@ID')):
                         continue  
-                if line.startswith('add indirect'):
+                if line.startswith('add indirect') and not indirect_done:
                     # using curr_amps has the issue if two ME are mapped into a single one
                     # using proc_def has the issue that some process might not have any diagram
                     # therefore using self._curr_matrix_elements
@@ -1144,6 +1147,7 @@ class ProcessExporterIndirectD(object):
                                 i=1
                     
                     next_generate = False
+                    indirect_done = True
                     continue
                 
                 if next_generate and line.startswith('add process'):
