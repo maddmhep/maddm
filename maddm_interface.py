@@ -1,5 +1,6 @@
 import logging
 import os
+import collections
 
 import maddm_run_interface as maddm_run_interface
 import dm_tutorial_text as dm_tutorial_text
@@ -103,7 +104,7 @@ class MadDM_interface(master_interface.MasterCmd):
     # path to PPPC4DMID
     
     options_configuration = dict(master_interface.MasterCmd.options_configuration)
-    options_configuration['pppc4dmid_path'] = './PPPC4DMID'
+    options_configuration['pppc4dmid_path'] = None
     options_configuration['dragon_path'] = None
     options_configuration['maddm_first_indirect'] = True
     
@@ -116,8 +117,10 @@ class MadDM_interface(master_interface.MasterCmd):
             self.options['pppc4dmid_path'] = pjoin(MG5DIR, 'PPPC4DMID')
         
         if not maddm_run_interface.HAS_SCIPY:
-            logger.critical("Fermi-LAT limit calculation for indirect detection requires numpy and scipy. Please install the missing modules.")
+            logger.critical("Fermi-LAT and HESS limits calculation for indirect detection requires numpy and scipy. Please install the missing modules.")
             logger.info("you can try to use \"pip install scipy\"")
+
+        self.exec_cmd('save options %s' % 'pppc4dmid_path')
             
         return
     
@@ -153,18 +156,23 @@ class MadDM_interface(master_interface.MasterCmd):
         self.option_2to2lo = False # keep track if the user wants to use this option
         self._has_indirect = False
         self._has_spectral = False
-        # magic variables for relic also (in order to extract the processes names)
+        # Relic procs, matrix_elements, amps
         self._relic_procs           = base_objects.ProcessDefinitionList()
-        self._relic_matrix_elements = helas_objects.HelasMultiProcess()
+        self._relic_matrix_elements = self._curr_matrix_elements#helas_objects.HelasMultiProcess()
         self._relic_amps            = diagram_generation.AmplitudeList()
-        # procs, matrix_elements, amps --> lists with 2 elements [tree, loop-induced]
+        # DD procs, matrix_elements, amps
+        self._direct_procs           = base_objects.ProcessDefinitionList()
+        self._direct_matrix_elements = self._curr_matrix_elements#helas_objects.HelasMultiProcess()
+        self._direct_amps            = diagram_generation.AmplitudeList()
+        # ID procs, matrix_elements, amps --> lists with 2 elements [tree, loop-induced]
         self._ID_cont_procs           = [base_objects.ProcessDefinitionList() for i in range(2)]
         self._ID_line_procs           = [base_objects.ProcessDefinitionList() for i in range(2)]
         self._ID_cont_matrix_elements = [helas_objects.HelasMultiProcess() for i in range(2)]
         self._ID_line_matrix_elements = [helas_objects.HelasMultiProcess() for i in range(2)]
         self._ID_cont_amps            = [diagram_generation.AmplitudeList() for i in range(2)]
         self._ID_line_amps            = [diagram_generation.AmplitudeList() for i in range(2)]
-        self._last_amps               = diagram_generation.AmplitudeList()
+        # only for display purposes
+        self._last_amps   = diagram_generation.AmplitudeList()
         #self.dm = darkmatter.darkmatter()
         self._forbid_fast = False
         self._unphysical_particles = []
@@ -175,8 +183,92 @@ class MadDM_interface(master_interface.MasterCmd):
 # DISPLAY COMMAND
 ################################################################################        
     def do_display(self, *args, **opts):
-        with misc.TMP_variable(self, ['_curr_amps'], [self._last_amps]):
-            super(MadDM_interface, self).do_display(*args, **opts)
+        ''' concerning 'processes', 'diagrams' and 'diagrams_text' it accepts options:
+                relic, direct, indirect: displays the generated processes/diagrams of the chosen category;
+                all: displays all the processes/diagrams that have been generated;
+                last: displays the processes/diagrams generated in the last command.
+        '''
+        args = list(args) # convert the tuple to list so we can modify it
+        arguments = self.split_arg(args[0]) #args[0] is the line of the command
+        # check the generated diagrams
+        self._indirect_amps = self._ID_cont_amps[0] + self._ID_line_amps[0] + self._ID_cont_amps[1] + self._ID_line_amps[1]
+        generated_amps = {
+            'relic': bool(self._relic_amps),
+            'direct': bool(self._direct_amps),
+            'indirect': bool(self._indirect_amps)
+        }
+        if arguments[0] in ['processes', 'diagrams', 'diagrams_text']:
+            # in the following lines we filter out only the allowed options
+            which = [arg for arg in arguments if arg in ['relic', 'direct', 'indirect', 'all', 'last']]
+            which = list(set(which))
+            for arg in which:
+                arguments.remove(arg)
+            if len(which) == 0:
+                which.append('all')
+            if 'all' in which:
+                generated_categories = [category for category, generated in generated_amps.items() if generated]
+                if len(generated_categories) == 0:
+                    logger.error("No %s have been generated yet." % (arguments[0].split('_')[0]))
+                    return
+                args[0] = " ".join(arguments) + ' ' + ' '.join(generated_categories)
+                self.do_display(*args, **opts)
+                return
+            args[0] = " ".join(arguments)
+            N_head = 80
+            if 'last' in which:
+                header = "==== LAST %s " % arguments[0].upper()
+                print header + "=" * max([N_head - len(header), 0])
+                with misc.TMP_variable(self, ['_curr_amps'], [self._last_amps]):
+                    super(MadDM_interface, self).do_display(*args, **opts)
+                return
+            else:
+                for category in which:
+                    header = "==== %s %s " % (category.upper(), arguments[0].upper())
+                    print header + "=" * max([N_head - len(header), 0])
+                    with misc.TMP_variable(self, ['_curr_amps'], [getattr(self, "_%s_amps" % category)]):
+                        super(MadDM_interface, self).do_display(*args, **opts)
+                return
+        super(MadDM_interface, self).do_display(*args, **opts)
+
+    def complete_display(self, text, line, begidx, endidx, formatting = True):
+        ''' if len(args) > 1 it means we have already written the subcommand, so when we run the superclass completion
+            it will not return anything, setting out = None, so that the next method deal_multiple_categories
+            would crash, because it tries to get the len of a None object.
+            We need to set explicitly out = [] when it is None.
+        '''
+        args = self.split_arg(line[:begidx])
+        
+        out = super(MadDM_interface, self).complete_display(text, line, begidx, endidx)
+
+        if out is None:
+            out = []
+        if not isinstance(out, dict):
+            out = {"standard options": out}
+
+        if len(args) > 1 and args[1] in ['processes', 'diagrams', 'diagrams_text']:
+            options = ['relic', 'direct', 'indirect', 'all', 'last']
+            out['processes|diagrams|diagrams_text options'] = self.list_completion(text, options, line)
+
+        return self.deal_multiple_categories(out, formatting)
+
+    def help_display(self):
+        logger.info("**************** MADDM NEW OPTION ***************************")
+        logger.info("syntax: display processes|diagrams|diagrams_text [PATH] [OPTIONS]", '$MG:color:BLUE')
+        logger.info(" -- displays the generated processes/diagrams, storing the latter")
+        logger.info("    in the specified PATH")   
+        logger.info(" OPTIONS:", '$MG:BOLD')
+        logger.info("    - You can display only certain categories of processes/diagrams,")
+        logger.info("      by using 'relic', 'direct', 'indirect' or a combination of them")
+        logger.info("     o example: display processes relic indirect",'$MG:color:GREEN')   
+        logger.info("    - You can display all of the generated processes/diagrams,")
+        logger.info("      by using 'all'. This overwrites the other options.")
+        logger.info("      This is the default if no options are given.")
+        logger.info("     o example: display processes all",'$MG:color:GREEN')             
+        logger.info("    - You can display the processes/diagrams generated in the last call,")
+        logger.info("      by using 'last'. This overwrites the other options, except 'all'.")
+        logger.info("     o example: display processes last",'$MG:color:GREEN')         
+        logger.info("**************** MG5AMC OPTION ***************************")
+        super(MadDM_interface, self).help_display()
 
 
 ################################################################################        
@@ -488,6 +580,9 @@ class MadDM_interface(master_interface.MasterCmd):
         self._relic_procs             = base_objects.ProcessDefinitionList()
         self._relic_matrix_elements   = helas_objects.HelasMultiProcess()
         self._relic_amps              = diagram_generation.AmplitudeList()
+        self._direct_procs                = base_objects.ProcessDefinitionList()
+        self._direct_matrix_elements      = helas_objects.HelasMultiProcess()
+        self._direct_amps                 = diagram_generation.AmplitudeList()
         self._ID_cont_procs           = [base_objects.ProcessDefinitionList() for i in range(2)]
         self._ID_line_procs           = [base_objects.ProcessDefinitionList() for i in range(2)]
         self._ID_cont_matrix_elements = [helas_objects.HelasMultiProcess() for i in range(2)]
@@ -605,7 +700,7 @@ class MadDM_interface(master_interface.MasterCmd):
         out = super(MadDM_interface, self).complete_generate(text, line, begidx, endidx,formatting=False)
         if not isinstance(out, dict):
             out = {"standard options": out}
-        
+
         if len(args) == 1:
             options = ['relic_density', 'direct_detection', 'indirect_detection', 'indirect_spectral_features']#, 'capture']
             out['maddm options'] = self.list_completion(text, options , line)
@@ -713,30 +808,30 @@ class MadDM_interface(master_interface.MasterCmd):
         
         args = self.split_arg(line)
         if not args or args[0] not in self._export_formats + ['maddm']:
-            if self._relic_amps:
+            if self._relic_amps or self._direct_amps:
                 if any(amp.get('process').get('id') in self.process_tag.values()
-                        for amp in self._relic_amps):
+                        for amp in self._relic_amps + self._direct_amps):
                     args.insert(0, 'maddm')
-
             
         if args and args[0] == 'maddm':
             line = ' '.join(args)
         
-        if self._relic_amps:
+        if self._relic_amps or self._direct_amps:
             with misc.TMP_variable(self,
             ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps'],
-            [self._relic_procs, self._relic_matrix_elements, self._relic_amps]):
+            [self._relic_procs + self._direct_procs, self._curr_matrix_elements, self._relic_amps + self._direct_amps]):
                 super(MadDM_interface, self).do_output(line)
         
         path = self._done_export[0]
         if any(proc for proc in self._ID_cont_procs + self._ID_line_procs):
-            self.output_indirect(path, 'Indirect_tree_cont', self._ID_cont_procs[0], self._ID_cont_matrix_elements[0], self._ID_cont_amps[0], loop_induced = False)
-            self.output_indirect(path, 'Indirect_tree_line', self._ID_line_procs[0], self._ID_line_matrix_elements[0], self._ID_line_amps[0], loop_induced = False)
-            self.output_indirect(path, 'Indirect_LI_cont', self._ID_cont_procs[1], self._ID_cont_matrix_elements[1], self._ID_cont_amps[1], loop_induced = True)
-            self.output_indirect(path, 'Indirect_LI_line', self._ID_line_procs[1], self._ID_line_matrix_elements[1], self._ID_line_amps[1], loop_induced = True)
+            self.output_indirect(path, 'Indirect_tree_cont', self._ID_cont_procs[0], self._ID_cont_matrix_elements[0], self._ID_cont_amps[0])
+            self.output_indirect(path, 'Indirect_tree_line', self._ID_line_procs[0], self._ID_line_matrix_elements[0], self._ID_line_amps[0])
+            self.output_indirect(path, 'Indirect_LI_cont',   self._ID_cont_procs[1], self._ID_cont_matrix_elements[1], self._ID_cont_amps[1])
+            self.output_indirect(path, 'Indirect_LI_line',   self._ID_line_procs[1], self._ID_line_matrix_elements[1], self._ID_line_amps[1])
 
         # find processes names map and write proc_characteristics file
         relic_processes_names_map     = self.extract_processes_names(self._relic_amps)
+        direct_processes_names_map    = self.extract_processes_names(self._direct_amps)
         tree_cont_processes_names_map = self.extract_processes_names(self._ID_cont_amps[0])
         tree_line_processes_names_map = self.extract_processes_names(self._ID_line_amps[0])
         li_cont_processes_names_map   = self.extract_processes_names(self._ID_cont_amps[1])
@@ -748,7 +843,7 @@ class MadDM_interface(master_interface.MasterCmd):
         proc_charac['has_indirect_spectral']  = self._has_spectral
         proc_charac['forbid_fast']            = self._forbid_fast
         proc_charac['pdg_particle_map']       = self._pdg_particle_map
-        proc_charac['processes_names_map']    = dict(relic_processes_names_map.items() + tree_cont_processes_names_map.items() + tree_line_processes_names_map.items() + li_cont_processes_names_map.items() + li_line_processes_names_map.items())
+        proc_charac['processes_names_map']    = dict(relic_processes_names_map.items() + direct_processes_names_map.items() + tree_cont_processes_names_map.items() + tree_line_processes_names_map.items() + li_cont_processes_names_map.items() + li_line_processes_names_map.items())
         proc_charac.write(proc_path)
 
     def extract_processes_names(self, amplitude_list):
@@ -761,14 +856,14 @@ class MadDM_interface(master_interface.MasterCmd):
             proc_names.append('_'.join(amplitude['process'].shell_string().split('_')[-2:]))
         return dict(zip(proc_names, proc_pdg))
 
-    def output_indirect(self, path, directory, ID_procs, ID_matrix_elements, ID_amps, loop_induced = False):
+    def output_indirect(self, path, directory, ID_procs, ID_matrix_elements, ID_amps):
         ''' Output commands for indirect_detection or loop-induced '''
-        if not ID_procs:
+        if not ID_amps:
             return
 
         # force the code to use madevent/reshuffling in case of loop_induced processes
-        if loop_induced:
-            self._forbid_fast = True
+        # if loop_induced:
+        #     self._forbid_fast = True
 
         import aloha.aloha_lib as aloha_lib
         aloha_lib.KERNEL = aloha_lib.Computation()
@@ -930,11 +1025,14 @@ class MadDM_interface(master_interface.MasterCmd):
         else:
             proc = "dm_particles dm_particles > fs_particles fs_particles %s @DM2SM" \
                    %(coupling)  #changed here
+
+        # reset the last amps
+        self._last_amps = diagram_generation.AmplitudeList()
         
-        with misc.TMP_variable(self,
-            ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps'],
-            [self._relic_procs, self._relic_matrix_elements, self._relic_amps]):         
+        with misc.TMP_variable(self, ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps'], 
+                                     [self._relic_procs, self._relic_matrix_elements, self._relic_amps]):
             self.do_add('process %s' %proc)
+
 
         # Generate all the DM -> DM processes
         nb_dm = len(self._dm_candidate + self._coannihilation)
@@ -947,9 +1045,8 @@ class MadDM_interface(master_interface.MasterCmd):
                     proc = "DM_particle_%s DM_particle_%s > dm_particles dm_particles %s @DM2DM"\
                        % (i,j, coupling)
                 try:
-                    with misc.TMP_variable(self,
-                        ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps'],
-                        [self._relic_procs, self._relic_matrix_elements, self._relic_amps]):
+                    with misc.TMP_variable(self, ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps'], 
+                                     [self._relic_procs, self._relic_matrix_elements, self._relic_amps]):
                         self.do_add('process %s' % proc)
                 except (self.InvalidCmd,diagram_generation.NoDiagramException) :
                     continue
@@ -975,14 +1072,15 @@ class MadDM_interface(master_interface.MasterCmd):
                     proc = "DM_particle_%s sm_particles > DM_particle_%s sm_particles %s @DMSM"\
                             % (i,j, coupling)
                 try:
-                    with misc.TMP_variable(self,
-                        ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps'],
-                        [self._relic_procs, self._relic_matrix_elements, self._relic_amps]):
+                    with misc.TMP_variable(self, ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps'], 
+                                     [self._relic_procs, self._relic_matrix_elements, self._relic_amps]):
                         self.do_add('process %s' % proc)
+                        self._last_amps.append(self._curr_amps[-1])
                 except (self.InvalidCmd,diagram_generation.NoDiagramException) :
                     continue
 
         self._last_amps = self._relic_amps
+
 
     def generate_direct(self, excluded_particles=[]):
         """User level function which performs direct detection functions        
@@ -1068,6 +1166,9 @@ class MadDM_interface(master_interface.MasterCmd):
         elif type == 'SD+QED':
             orders = '%s<=99 %s=0' % (SD_name, SI_name)
             
+        # reset the last amps
+        self._last_amps = diagram_generation.AmplitudeList()
+                
         #loop over quarks
         has_diagram = False
         for i in quarks + antiquarks:
@@ -1079,11 +1180,15 @@ class MadDM_interface(master_interface.MasterCmd):
                      }
 
             try:
-                self.do_add('process %s' % proc)
+                with misc.TMP_variable(self, ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps'], 
+                                             [self._direct_procs, self._direct_matrix_elements, self._direct_amps]):
+                    self.do_add('process %s' %proc)
             except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
                 logger.debug(error)
                 continue # no diagram generated
             has_diagram = True
+
+        self._last_amps = self._direct_amps
         return has_diagram
 
     def check_indirect_and_spectral(self, cmd, argument):
@@ -1112,15 +1217,22 @@ class MadDM_interface(master_interface.MasterCmd):
             logger.info('For indirect detection we need to generate relic density matrix-element','$MG:BOLD')
             self.generate_relic([])
 
-        # check the '2to2lo' option: forbid it if loop-induced processes have been considered
+        # check the '2to2lo' option: forbid it if loop-induced or 2 to 3 processes have been considered
         if '2to2lo' in argument:
-            if not self._ID_cont_procs[1] and not self._ID_line_procs[1]:
+            if not self._forbid_fast:
                 self.option_2to2lo = True
             else:
-                logger.error("Can't use '2to2lo' option for indirect detection if loop-induced processes are considered.")
+                logger.error("Can't use '2to2lo' option for indirect detection if loop-induced or 2 to 3 processes are considered.")
             return True, 1
 
         return True, 0
+
+    def is_amplitude_not_empty(self, amplitude):
+        ''' tree level amplitudes have only property 'diagrams', while for loop amplitudes have both 'diagrams', 'born_diagrams' and 'loop_diagrams', so we need to check all of them to find out if a process has diagrams. '''
+        diagrams = bool(amplitude['diagrams'])
+        born_diagrams = bool('born_diagrams' in amplitude.keys() and amplitude['born_diagrams'])
+        loop_diagrams = bool('loop_diagrams' in amplitude.keys() and amplitude['loop_diagrams'])
+        return any([diagrams, born_diagrams, loop_diagrams])
 
     def generate_indirect(self, argument, user = True):
         """User level function which performs indirect detection functions
@@ -1151,7 +1263,7 @@ class MadDM_interface(master_interface.MasterCmd):
             for final_state in final_states:
                 try: 
                     last_amp = self.indirect_process_generation([final_state, '--noloop'], self._ID_cont_procs, self._ID_cont_matrix_elements, self._ID_cont_amps)
-                    if last_amp['diagrams']:
+                    if self.is_amplitude_not_empty(last_amp):
                         self._last_amps.append(last_amp)
                 except diagram_generation.NoDiagramException:
                     continue
@@ -1159,7 +1271,7 @@ class MadDM_interface(master_interface.MasterCmd):
             return
 
         last_amp = self.indirect_process_generation(argument, self._ID_cont_procs, self._ID_cont_matrix_elements, self._ID_cont_amps)
-        if last_amp['diagrams']:
+        if self.is_amplitude_not_empty(last_amp):
             self._last_amps.append(last_amp)
     
     def generate_spectral(self, argument):
@@ -1188,7 +1300,7 @@ class MadDM_interface(master_interface.MasterCmd):
             for final_state in final_states:
                 try: 
                     last_amp = self.indirect_process_generation([final_state], self._ID_line_procs, self._ID_line_matrix_elements, self._ID_line_amps)
-                    if last_amp['diagrams']:
+                    if self.is_amplitude_not_empty(last_amp):
                         self._last_amps.append(last_amp)
                 except diagram_generation.NoDiagramException:
                     continue
@@ -1196,7 +1308,7 @@ class MadDM_interface(master_interface.MasterCmd):
             return
 
         last_amp = self.indirect_process_generation(argument, self._ID_line_procs, self._ID_line_matrix_elements, self._ID_line_amps)
-        if last_amp['diagrams']:
+        if self.is_amplitude_not_empty(last_amp):
             self._last_amps.append(last_amp)
 
     def indirect_bsm_multiparticle(self, excluded = []):
@@ -1230,10 +1342,10 @@ class MadDM_interface(master_interface.MasterCmd):
              You can compute the rate (no distribution) by typing 'add indirect 2to2lo'. ''')
         #    return
 
-        allow_loop_induce=True
+        allow_loop_induce = True
         if '--noloop' in argument:
             argument.remove('--noloop')
-            allow_loop_induce=False
+            allow_loop_induce = False
 
         # Check if the argument contains only two particles in the final state
         # if not, force the code to use madevent/reshuffling
@@ -1267,17 +1379,21 @@ class MadDM_interface(master_interface.MasterCmd):
                         try:                    
                             self.do_add('process %s' % proc)
                             last_amp = self._curr_amps[-1]
+                            self._forbid_fast = True
                         except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
                             proc = '%s %s > %s %s [noborn=QED] @ID ' % (name, antiname, ' '.join(argument), coupling)
                             try:
                                 self.do_add('process %s' % proc)
                                 last_amp = self._curr_amps[-1]
+                                self._forbid_fast = True
                             except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
-                                logger.error(error.args[0].replace('noborn = QED', 'noborn = QCD or QED'))                         
+                                # if no loop-induced diagrams have been found then change back the command interface to MadGraph
+                                logger.error(error.args[0].replace('noborn = QED', 'noborn = QCD or QED'))
+                                self.change_principal_cmd('MadGraph')
 
-        # check if the _two2twoLO option is True while we have generated a LI process
-        if self.option_2to2lo and ID_procs[1]:
-            logger.error("Can't use '2to2lo' option for indirect detection if loop-induced processes are considered. Please run indirect detection without that option.")
+        # check if the option_2to2lo is True while we have generated a LI process
+        if self.option_2to2lo and self._forbid_fast:
+            logger.error("Can't use '2to2lo' option for indirect detection if loop-induced or 2 to 3 processes are considered. Please run indirect detection without that option.")
             self.option_2to2lo = False
 
         return last_amp # I return the last amp, because this function is called for each process in turn, so I append the generated process only if it is actually generated
@@ -1341,14 +1457,14 @@ class MadDM_interface(master_interface.MasterCmd):
                                                      eff_dm_name,DM.get('name'))
         
             # We want to preserve the following variable while updating the model
-            backup_amp = self._relic_amps
+            backup_amp = self._direct_amps
             backup_param_card = self._param_card
             backup_dm_candidate = self._dm_candidate
             backup_coannihilation = self._coannihilation
         
         
             self.exec_cmd(mg5_command, postcmd=False)
-            self._relic_amps = backup_amp
+            self._direct_amps = backup_amp
             self._param_card = backup_param_card 
             self._dm_candidate = backup_dm_candidate
             self._coannihilation = backup_coannihilation
