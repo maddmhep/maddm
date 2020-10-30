@@ -179,11 +179,11 @@ class ExpConstraints:
     def SI_max(self, mdm):
         if not HAS_NUMPY:
             logger.warning("missing numpy module for SI limit")
-            return __infty__
+            return -1
         
         if (mdm < np.min(self._dd_si_limit_mDM) or mdm > np.max(self._dd_si_limit_mDM)):
             logger.warning('Dark matter mass value '+str(mdm)+' is outside the range of SI limit')
-            return __infty__
+            return -1
         else:
             return np.interp(mdm, self._dd_si_limit_mDM, self._dd_si_limit_sigma)
 
@@ -191,22 +191,22 @@ class ExpConstraints:
     def SD_max(self,mdm, nucleon):
         if not HAS_NUMPY:
             logger.warning("missing numpy module for SD limit")
-            return __infty__
+            return -1
             
         if nucleon not in ['n','p']:
             logger.error('nucleon can only be p or n')
-            return __infty__
+            return -1
         else:
             if nucleon=='p':
                 if (mdm < np.min(self._dd_sd_p_limit_mDM) or mdm > np.max(self._dd_sd_n_limit_mDM)):
                     logger.warning('Dark matter mass value '+str(mdm)+' is outside the range of SD limit')
-                    return __infty__
+                    return -1
                 else:
                     return np.interp(mdm, self._dd_sd_p_limit_mDM, self._dd_sd_p_limit_sigma)
             elif nucleon=='n':
                 if (mdm < np.min(self._dd_sd_n_limit_mDM) or mdm > np.max(self._dd_sd_n_limit_mDM)):
                     logger.warning('Dark matter mass value '+str(mdm)+' is outside the range of SD limit')
-                    return __infty__
+                    return -1
                 else:
                     return np.interp(mdm, self._dd_sd_n_limit_mDM, self._dd_sd_n_limit_sigma)
 
@@ -214,11 +214,11 @@ class ExpConstraints:
     def ID_max(self,mdm, channel):
         if not HAS_NUMPY:
             logger.warning("missing numpy module for ID limit")
-            return __infty__
+            return -1
         try:
             if (mdm < np.min(self._id_limit_mdm[channel]) or mdm > np.max(self._id_limit_mdm[channel])):
                 logger.warning('Dark matter mass value %.2e for channel %s is outside the range of ID limit' % (mdm, channel))
-                return __infty__
+                return -1
             else:
                 return np.interp(mdm, self._id_limit_mdm[channel], self._id_limit_sigv[channel])
         except KeyError:
@@ -1290,31 +1290,18 @@ class GammaLineSpectrum(object):
         energy_peaks   = np.array(map(get_e_peak, test_spectrum))
         condition      = np.logical_and(energy_peaks < peak.e_peak + min_separation, energy_peaks > peak.e_peak - min_separation)
         neighbourhood  = test_spectrum[condition]
-        debug_str = '''
----
-peak = %s
-min_separation = %f
-energy_peaks = %s
-neighbourhood = %s
-''' % (peak, min_separation, energy_peaks, [str(p) for p in neighbourhood])
         # check: if it is alone, then return False
         if len(neighbourhood) == 0:
-            logger.debug(debug_str + 'OK\n---')
             return False # no peaks too close
         # check the ratio flux/flux_UL of the peak with respect each other peak in the neighbourhood
         get_height = lambda peak: peak.flux/peak.flux_UL
         height_peaks = np.array(map(get_height, neighbourhood))
-        debug_str += "height_peaks = %s\n" % height_peaks
         if any(height_peaks == 0): # happens if one peak has flux_UL == __infty__ (it is out of range), in this case can't do comparison, so assume they are too close
             logger.warning("One peak has upper limit equal to __infty__, I can't compare its height with others, I assume they can't be neglected.")
-            logger.debug(debug_str + 'ERROR\n---')
             return True # because that means peaks are too close to each other, but none of them is clearly higher
         this_peak_height = peak.flux/peak.flux_UL
-        debug_str += "this_peak_height = %f\n" % this_peak_height
         if all(height_peaks < this_peak_height/self.line_exp.peak_height_factor):
-            logger.debug(debug_str + 'OK\n---')
             return False # in case the peak is clearly higher than the others, then no error because it can be considered separated!
-        logger.debug(debug_str + 'ERROR\n---')
         return True
 
 
@@ -1954,7 +1941,7 @@ class MADDMRunCmd(cmd.CmdShell):
                             if os.path.exists(pjoin(self.dir_path,indirect_directory,'Cards','reweight_card.dat')):
                                 os.remove(pjoin(self.dir_path,'Cards','reweight_card.dat'))
                             self.me_cmd.do_launch('%s -f' % self.run_name)
-                        elif self.maddm_card['sigmav_method'] == 'reshuffling': 
+                        elif self.maddm_card['sigmav_method'] == 'reshuffling':
                             cmd = ['launch %s' % self.run_name,
                                'reweight=indirect',
                                'edit reweight --replace_line="change velocity" --before_line="launch" change velocity %s' % vave_temp]
