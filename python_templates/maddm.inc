@@ -24,10 +24,10 @@ c relic_density.f
 c tests.f
       double precision crossijk, cross_check_process
 c indirect_detection.f
-      double precision sigmav_ID, dm_vel_dist_ID, integrand, taacs_ID, vave_glob,vave_indirect
+      double precision sigmav_ID, dm_vel_dist_ID, integrand, taacs_ID, vave_glob, vave_indirect, vave_indirect_line
       integer channel_glob
       character(20) halo_profile
-      common/idstuff/ vave_glob, channel_glob, vave_indirect, halo_profile
+      common/idstuff/ vave_glob, channel_glob, vave_indirect, halo_profile, vave_indirect_line
 
 c direct_detection.f
 	  double precision sigma_proton_SI, sigma_neutron_SI, sigma_nucleon
@@ -117,10 +117,10 @@ c number of annihilation particles and associated diagrams
 	  common/ dd_process_ids/ dd_process_ids
 	  common/ dd_eff_process_ids/ dd_eff_process_ids
 	  common/ dd_tot_process_ids/ dd_tot_process_ids
-      logical ann_process_iden_init(maxdms,maxdms, %(max_dm2sm)i), dm2dm_process_iden_init(maxdms,maxdms,%(max_dm2dm)i)
+      logical ann_process_iden_init(maxdms,maxdms, %(max_dm2sm)i), dm2dm_process_iden_init(maxdms,maxdms,%(max_dm2dm)i), is_line_process(%(nb_me)i)
       logical relic_canonical, calc_taacs_ann_array, calc_taacs_dm2dm_array, calc_taacs_scattering_array
-      logical do_relic_density, do_direct_detection, do_indirect_detection, xd_approx, only2to2lo
-      common/process_logical/ ann_process_iden_init, dm2dm_process_iden_init, relic_canonical,
+      logical do_relic_density, do_direct_detection, do_indirect_detection, do_indirect_spectral, xd_approx, only2to2lo
+      common/process_logical/ ann_process_iden_init, dm2dm_process_iden_init, is_line_process, relic_canonical,
      . calc_taacs_ann_array, calc_taacs_dm2dm_array, calc_taacs_scattering_array, xd_approx, only2to2lo
 
 c flags for the test subroutines to see if certain quantities have already been calculated
