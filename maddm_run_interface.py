@@ -3391,6 +3391,7 @@ class MADDMRunCmd(cmd.CmdShell):
             self.maddm_card.set('do_directional_detection', self.mode['direct'] == 'directional', user=False)
             self.maddm_card.set('do_capture', self.mode['capture'], user=False)
             self.maddm_card.set('do_indirect_detection', True if self.mode['indirect'] else False, user=False)
+            self.maddm_card.set('do_indirect_spectral', self.mode['spectral'], user=False)
             self.maddm_card.set('do_flux', True if (self.mode['indirect'] and self.mode['indirect'] != 'sigmav') else False, user=False)
             self.maddm_card.set('only2to2lo', self._two2twoLO, user=False)
             #self.maddm_card.set('do_indirect_spectral', self.mode['spectral'], user=False)
@@ -3825,8 +3826,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         
         self.special_shortcut.update({'nevents': ([int],['Main:numberOfEvents %(0)s']),
                                       'fast':([],[lambda self: self.pass_to_fast_mode]),
-                                      'precise':([],[lambda self: self.pass_to_precise_mode]),
-                                      'vave_indirect':([float],['vave_indirect_cont %(0)s'])
+                                      'precise':([],[lambda self: self.pass_to_precise_mode])
                                       })
         self.special_shortcut_help.update({'nevents': 'number of events to generate for indirect detection if sigmav_method is madevent/reshuffling',
                                            'fast': 'modify the maddm_card to favor fast computation (but less precise) of the indirect mode',
@@ -4156,7 +4156,10 @@ When you are done with such edition, just press enter (or write 'done' or '0')
         #logger.debug('Updating the Jfactor file')
         #self.write_jfactors()
 
-
+        if 'vave_indirect' in self.maddm.user_set:
+            logger.warning("You are using an old parameter name 'vave_indirect'. Fall back to the updated name 'vave_indirect_cont'.")
+            self.setDM('vave_indirect_cont', self.maddm.get('vave_indirect'), loglevel = 30)
+            self.maddm.user_set.remove('vave_indirect')
 
         # If direct detection is ON ensure that quark mass are not zero
         if self.switch['direct'] != 'OFF':
@@ -4428,6 +4431,7 @@ class MadDMCard(banner_mod.RunCard):
         
 
         self.add_param('do_indirect_detection', False, system=True)
+        self.add_param('do_indirect_spectral', False, system=True)
         self.add_param('only2to2lo', False, system=True)
         self.add_param('run_multinest', False, system=True, include=False)
 
@@ -4520,8 +4524,12 @@ class MadDMCard(banner_mod.RunCard):
         
         #For the solar/earth capture rate
 
-        #indirect detection
+        # velocities for indirect detection
         self.add_param('vave_indirect_cont', 0.00002, include=True, fortran_name='vave_indirect')
+        self.add_param('vave_indirect', -1.0, include=False, hidden=True)
+        self.add_param('vave_indirect_line', 7.5e-4, hidden = False, include = True)
+
+        #indirect detection
         self.add_param('halo_profile', 'Draco', include=True, legacy=True)   ##### this naming doesn't make sense fix it!!!!!!!!
 
         self.add_param('jfactors', {'__type__':1.0}, include=False, hidden=True, system=True)
@@ -4552,7 +4560,6 @@ class MadDMCard(banner_mod.RunCard):
                            hidden = True , allowed = ['MF1','MF2','MF3'])
 
         # line analysis parameters
-        self.add_param('vave_indirect_line', 7.5e-4, hidden = False, include = False)
         self.add_param('profile', 'nfw', comment='choose the halo density profile: nfwg, einasto, nfw, isothermal, burkert', include = False, \
                            hidden = False, allowed = ['nfwg', 'einasto', 'nfw', 'isothermal', 'burkert'])
         self.add_param('r_s', 20.0, comment='scale radius (in kpc)', include = False, \
