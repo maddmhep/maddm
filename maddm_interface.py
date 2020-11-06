@@ -1244,8 +1244,6 @@ class MadDM_interface(master_interface.MasterCmd):
         last_amp = self.indirect_process_generation(argument, self._ID_cont_procs, self._ID_cont_matrix_elements, self._ID_cont_amps)
         if self.is_amplitude_not_empty(last_amp):
             self._last_amps.append(last_amp)
-
-        import pdb; pdb.set_trace()
     
     def generate_spectral(self, argument):
         """ Performs indirect detection in the final states 'a a', 'a z', 'a h' and 'a _bsm_'.
