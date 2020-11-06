@@ -143,11 +143,28 @@ C      Here write the output.
        vID_natural = sqrt(3.) * vave_indirect !/299792.d0  here natural just signals that it's in natural units.
 
         do k=1, ANN_NUM_PROCESSES
+           if (IS_LINE_PROCESS(k)) then
+C             print*,'proc:',PROCESS_NAMES(k),' photon? ',IS_LINE_PROCESS(k)
+            cycle
+           end if
            sigv =  taacs_ID(k,vID_natural)*pbtocm3*vID_natural  ! 2.d0
            write(33,fmt='(A8,A12,A4,ES14.7,A7)') 'sigma*v:',PROCESS_NAMES(k),' ',sigv, ' cm^3/s'
         enddo
 c        print*,'total:', total_cross * gevtopb * pbtocm3
 c        write(33,fmt='(A8,A12,A4,ES14.7,A7)') 'DM --> all:' 
+      endif
+
+      if (do_indirect_spectral.and.only2to2lo) then
+       vID_natural = sqrt(3.) * vave_indirect_line !/299792.d0  here natural just signals that it's in natural units.
+
+        do k=1, ANN_NUM_PROCESSES
+           if (.not.IS_LINE_PROCESS(k)) then
+C             print*,'proc:',PROCESS_NAMES(k),' photon? ',IS_LINE_PROCESS(k)
+            cycle
+           end if
+           sigv =  taacs_ID(k,vID_natural)*pbtocm3*vID_natural  ! 2.d0
+           write(33,fmt='(A8,A12,A4,ES14.7,A7)') 'sigma*v:',PROCESS_NAMES(k),' ',sigv, ' cm^3/s'
+        enddo
       endif
 
       close(33)
