@@ -583,6 +583,11 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         dd_names = {'bsm':[], 'eft':[],'tot':[]}       # store process name
         dd_initial_state = {'bsm':[], 'eft':[],'tot':[]} # store the pdg of the initial state
         
+        # check if a certain process contains a photon in the final state
+        is_line_process = collections.defaultdict(list) # store True if the process has at least one photon in the final state
+        def has_photon(final_state_pdg):
+            return 22 in final_state_pdg
+
         for me in matrix_element_list.get_matrix_elements():
 
             p = me.get('processes')[0]
@@ -593,16 +598,19 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
             if tag == self.DM2SM:
                 total_annihilation_nprocesses += 1
                 annihilation[ids].append(name)
+                is_line_process[ids].append(has_photon(p.get_final_ids()))
                 annihilation_iden[ids].append(p1.get('id') == p2.get('id'))
             elif tag == self.DM2DM:
                 total_dm2dmscattering_nprocesses += 1 
                 
                 dm2dm[ids].append(name)
+                is_line_process[ids].append(has_photon(p.get_final_ids()))
                 dm2dm_fs[ids].append([abs(p3.get('id')), abs(p4.get('id'))])
                 dm2dm_iden[ids].append(p1.get('id') == p2.get('id'))   
             elif tag == self.DMSM:
                 total_scattering_nprocesses +=1
                 scattering[ids].append(name)
+                is_line_process[ids].append(has_photon(p.get_final_ids()))
                 scattering_sm[ids].append(abs(p2.get('id')))
             elif tag == self.DD:
                 ddtype, si_or_sd = self.get_dd_type(p)
@@ -615,31 +623,37 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
                                                              
         
         # writting the information
+        # store boolean array 'is_line_process' in advance and write it later
+        is_line_process_list = []
+
         process_counter = 0
         fsock.write_comments("Number of annihilation processes for each DM pair")   
         for i,dm1 in enumerate(self.dm_particles):
             for j,dm2 in enumerate(self.dm_particles[i:],i):
                 ids = self.make_ids(dm1, dm2, self.DM2SM)
-                for name in annihilation[ids]:
+                for name, has_photon in zip(annihilation[ids], is_line_process[ids]):
                     process_counter += 1
                     fsock.writelines('process_names(%i) = \'%s\'' % (process_counter, name))
+                    is_line_process_list.append(has_photon)
 
 
         for i,dm1 in enumerate(self.dm_particles):
             for j,dm2 in enumerate(self.dm_particles[i:],i):
                 ids = self.make_ids(dm1, dm2, self.DM2DM)
-                for name in dm2dm[ids]:
+                for name, has_photon in zip(dm2dm[ids], is_line_process[ids]):
                     process_counter += 1
                     fsock.writelines('process_names(%i) = \'%s\'\n' % (process_counter, name)) 
+                    is_line_process_list.append(has_photon)
 
         fsock.write_comments('DM/SM scattering process names')
 
         for i,dm1 in enumerate(self.dm_particles):
             for dm2 in self.dm_particles:
                 ids = self.make_ids(dm1, dm2, self.DMSM)
-                for name in scattering[ids]:
+                for name, has_photon in zip(scattering[ids], is_line_process[ids]):
                     process_counter += 1
                     fsock.writelines('process_names(%i) = \'%s\'\n' % (process_counter, name)) 
+                    is_line_process_list.append(has_photon)
 
         fsock.write_comments('Total number of processes for each category')
         fsock.writelines(" num_processes = %s \n" % process_counter)
@@ -657,6 +671,13 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
                 for k,iden in enumerate(annihilation_iden[ids]):
                     fsock.writelines(' ann_process_iden_init(%s,%s,%s) = %s' % \
                                (i+1, j+1, k+1, '.true.' if iden else '.false.'))
+
+        # Write out the boolean flags for the processes with at least one photon in the final state
+        fsock.write_comments('Boolean flags for photon in final state:')
+        fsock.write_comments('true means that the process has at least one photon')
+        fsock.write_comments('in the final state')
+        for i, has_photon in enumerate(is_line_process_list):
+            fsock.writelines(' is_line_process(%i) = %s' % (i+1, '.true.' if has_photon else '.false.'))
                   
         fsock.write_comments('DM -> DM diagrams')
         for i,dm1 in enumerate(self.dm_particles):
