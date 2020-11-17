@@ -166,11 +166,11 @@ class ExpConstraints:
     def SI_max(self, mdm):
         if not HAS_NUMPY:
             logger.warning("missing numpy module for SI limit")
-            return __infty__
+            return -1.
         
         if (mdm < np.min(self._dd_si_limit_mDM) or mdm > np.max(self._dd_si_limit_mDM)):
             logger.warning('Dark matter mass value '+str(mdm)+' is outside the range of SI limit')
-            return __infty__
+            return -1.
         else:
             return np.interp(mdm, self._dd_si_limit_mDM, self._dd_si_limit_sigma)
 
@@ -178,22 +178,22 @@ class ExpConstraints:
     def SD_max(self,mdm, nucleon):
         if not HAS_NUMPY:
             logger.warning("missing numpy module for SD limit")
-            return __infty__
+            return -1
             
         if nucleon not in ['n','p']:
             logger.error('nucleon can only be p or n')
-            return __infty__
+            return -1
         else:
             if nucleon=='p':
                 if (mdm < np.min(self._dd_sd_p_limit_mDM) or mdm > np.max(self._dd_sd_n_limit_mDM)):
                     logger.warning('Dark matter mass value '+str(mdm)+' is outside the range of SD limit')
-                    return __infty__
+                    return -1
                 else:
                     return np.interp(mdm, self._dd_sd_p_limit_mDM, self._dd_sd_p_limit_sigma)
             elif nucleon=='n':
                 if (mdm < np.min(self._dd_sd_n_limit_mDM) or mdm > np.max(self._dd_sd_n_limit_mDM)):
                     logger.warning('Dark matter mass value '+str(mdm)+' is outside the range of SD limit')
-                    return __infty__
+                    return -1
                 else:
                     return np.interp(mdm, self._dd_sd_n_limit_mDM, self._dd_sd_n_limit_sigma)
 
@@ -201,10 +201,10 @@ class ExpConstraints:
     def ID_max(self,mdm, channel):
         if not HAS_NUMPY:
             logger.warning("missing numpy module for ID limit")
-            return __infty__
+            return -1
         if (mdm < np.min(self._id_limit_mdm[channel]) or mdm > np.max(self._id_limit_mdm[channel])):
             logger.warning('Dark matter mass value %.2e for channel %s is outside the range of ID limit' % (mdm, channel))
-            return __infty__
+            return -1
         else:
             return np.interp(mdm, self._id_limit_mdm[channel], self._id_limit_sigv[channel])
 
@@ -870,6 +870,14 @@ class MADDMRunCmd(cmd.CmdShell):
 
         if self.mode['indirect']:
             self.launch_indirect(force)
+
+        # rescale Fermi dSph limits by branching ratio
+        for limit_key in [k for k in self.last_results.keys() if 'lim_taacsID#' in k]:
+            sigmav_ch = self.last_results[limit_key.replace('lim_','')]
+            if sigmav_ch == 0.:
+                self.last_results[limit_key] = -1
+            else:
+                self.last_results[limit_key] /= (sigmav_ch/self.last_results['taacsID']) if self.last_results[limit_key] != -1 else 1
         
         if not self.in_scan_mode and not self.multinest_running:
             self.print_results()
@@ -963,9 +971,7 @@ class MADDMRunCmd(cmd.CmdShell):
                            if 'antip' in channel or 'pos' in channel: continue
                            order.append('flux_%s' % channel)
 
-            for elem in order:
-                if elem not in self.last_results.keys():
-                    order.remove(elem)
+            order[:] = [elem for elem in order if elem in self.last_results.keys()]
 
             run_name = str(self.run_name).rsplit('_',1)[0]
             summary_file = pjoin(self.dir_path, 'output','scan_%s.txt' % run_name)
@@ -1784,15 +1790,11 @@ class MADDMRunCmd(cmd.CmdShell):
                     if s_alldm <= 10**(-100): 
                         skip.append(f_original)
                         continue 
-                    if finalstate in self.limits._allowed_final_states :
-                        s_ul   = self.limits.ID_max(mdm, finalstate)
-                        self.last_results['Fermi_lim_'+key] = self.limits.ID_max(mdm, finalstate)
-                    else:  s_ul   = '-1'
 
                     if finalstate not in self.limits._allowed_final_states :                                                                                                       
                         self.print_ind(clean_key, s_thermal, s_alldm, -1,  thermal= dm_scen)                                                                                       
                     else:                                                                                                                                                          
-                        self.print_ind(clean_key, s_thermal, s_alldm, s_ul,  thermal= dm_scen) 
+                        self.print_ind(clean_key, s_thermal, s_alldm, self.last_results['lim_' + key],  thermal= dm_scen) 
 
             if len(skip) >=1:        
                       logger.info('Skipping zero cross section processes for: %s', ', '.join(skip))                      
