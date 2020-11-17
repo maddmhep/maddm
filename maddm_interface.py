@@ -120,6 +120,8 @@ class MadDM_interface(master_interface.MasterCmd):
             logger.critical("Fermi-LAT limit calculation for indirect detection requires numpy and scipy. Please install the missing modules.")
             logger.info("you can try to use \"pip install scipy\"")
             
+        self.exec_cmd('save options %s' % 'pppc4dmid_path')
+
         return
     
     def set_configuration(self, config_path=None, final=True, **opts):
@@ -156,6 +158,102 @@ class MadDM_interface(master_interface.MasterCmd):
         self._ID_amps = diagram_generation.AmplitudeList() 
         #self.dm = darkmatter.darkmatter()
         self._force_madevent_for_ID = False
+        # only for display purposes
+        self._last_amps = diagram_generation.AmplitudeList()
+        self._unphysical_particles = []
+
+################################################################################        
+# DISPLAY COMMAND
+################################################################################        
+    def do_display(self, *args, **opts):
+        ''' concerning 'processes', 'diagrams' and 'diagrams_text' it accepts options:
+                relic, direct, indirect: displays the generated processes/diagrams of the chosen category;
+                all: displays all the processes/diagrams that have been generated;
+                last: displays the processes/diagrams generated in the last command.
+        '''
+        args = list(args) # convert the tuple to list so we can modify it
+        arguments = self.split_arg(args[0]) #args[0] is the line of the command
+        # check the generated diagrams
+        self._relic_amps    = [amp for amp in self._curr_amps if amp.get('process').get('id') in [self.process_tag['DM2SM'], self.process_tag['DMSM']]]
+        self._direct_amps   = [amp for amp in self._curr_amps if amp.get('process').get('id') == self.process_tag['DD']]
+        self._indirect_amps = self._ID_amps
+        generated_amps = {
+            'relic'   : bool(self._relic_amps),
+            'direct'  : bool(self._direct_amps),
+            'indirect': bool(self._indirect_amps)
+        }
+        if arguments[0] in ['processes', 'diagrams', 'diagrams_text']:
+            # in the following lines we filter out only the allowed options
+            which = [arg for arg in arguments if arg in ['relic', 'direct', 'indirect', 'all', 'last']]
+            which = list(set(which))
+            for arg in which:
+                arguments.remove(arg)
+            if len(which) == 0:
+                which.append('all')
+            if 'all' in which:
+                generated_categories = [category for category, generated in generated_amps.items() if generated]
+                if len(generated_categories) == 0:
+                    logger.error("No %s have been generated yet." % (arguments[0].split('_')[0]))
+                    return
+                args[0] = " ".join(arguments) + ' ' + ' '.join(generated_categories)
+                self.do_display(*args, **opts)
+                return
+            args[0] = " ".join(arguments)
+            N_head = 80
+            if 'last' in which:
+                header = "==== LAST %s " % arguments[0].upper()
+                print header + "=" * max([N_head - len(header), 0])
+                with misc.TMP_variable(self, ['_curr_amps'], [self._last_amps]):
+                    super(MadDM_interface, self).do_display(*args, **opts)
+                return
+            else:
+                for category in which:
+                    header = "==== %s %s " % (category.upper(), arguments[0].upper())
+                    print header + "=" * max([N_head - len(header), 0])
+                    with misc.TMP_variable(self, ['_curr_amps'], [getattr(self, "_%s_amps" % category)]):
+                        super(MadDM_interface, self).do_display(*args, **opts)
+                return
+        super(MadDM_interface, self).do_display(*args, **opts)
+
+    def complete_display(self, text, line, begidx, endidx, formatting = True):
+        ''' if len(args) > 1 it means we have already written the subcommand, so when we run the superclass completion
+            it will not return anything, setting out = None, so that the next method deal_multiple_categories
+            would crash, because it tries to get the len of a None object.
+            We need to set explicitly out = [] when it is None.
+        '''
+        args = self.split_arg(line[:begidx])
+        
+        out = super(MadDM_interface, self).complete_display(text, line, begidx, endidx)
+
+        if out is None:
+            out = []
+        if not isinstance(out, dict):
+            out = {"standard options": out}
+
+        if len(args) > 1 and args[1] in ['processes', 'diagrams', 'diagrams_text']:
+            options = ['relic', 'direct', 'indirect', 'all', 'last']
+            out['processes|diagrams|diagrams_text options'] = self.list_completion(text, options, line)
+
+        return self.deal_multiple_categories(out, formatting)
+
+    def help_display(self):
+        logger.info("**************** MADDM NEW OPTION ***************************")
+        logger.info("syntax: display processes|diagrams|diagrams_text [PATH] [OPTIONS]", '$MG:color:BLUE')
+        logger.info(" -- displays the generated processes/diagrams, storing the latter")
+        logger.info("    in the specified PATH")   
+        logger.info(" OPTIONS:", '$MG:BOLD')
+        logger.info("    - You can display only certain categories of processes/diagrams,")
+        logger.info("      by using 'relic', 'direct', 'indirect' or a combination of them")
+        logger.info("     o example: display processes relic indirect",'$MG:color:GREEN')   
+        logger.info("    - You can display all of the generated processes/diagrams,")
+        logger.info("      by using 'all'. This overwrites the other options.")
+        logger.info("      This is the default if no options are given.")
+        logger.info("     o example: display processes all",'$MG:color:GREEN')             
+        logger.info("    - You can display the processes/diagrams generated in the last call,")
+        logger.info("      by using 'last'. This overwrites the other options, except 'all'.")
+        logger.info("     o example: display processes last",'$MG:color:GREEN')         
+        logger.info("**************** MG5AMC OPTION ***************************")
+        super(MadDM_interface, self).help_display()
 
 
 ################################################################################        
@@ -470,6 +568,7 @@ class MadDM_interface(master_interface.MasterCmd):
         self._ID_procs = base_objects.ProcessDefinitionList()
         self._ID_matrix_elements = helas_objects.HelasMultiProcess()
         self._ID_amps = diagram_generation.AmplitudeList()
+        self._last_amps = diagram_generation.AmplitudeList()
         
     def check_save(self, args):
         
@@ -514,7 +613,7 @@ class MadDM_interface(master_interface.MasterCmd):
         logger.info("        add process DM  N > DM N @ ID")
         logger.info("")
         logger.info("**************** MG5AMC OPTION ***************************")
-        super(MadDM_interface, self).help_define()
+        super(MadDM_interface, self).help_generate()
 
     help_add = help_generate
     
@@ -554,6 +653,14 @@ class MadDM_interface(master_interface.MasterCmd):
     @misc.mute_logger(['madgraph', 'models'], [30,30])    
     def add_model(self,*args,**opts):
         super(MadDM_interface, self).add_model(*args, **opts)
+        possible_added_particles = ['999000006', '999000007', '999000008', '999000009', '999000010'] # from __REAL or __COMPLEX model
+        self._unphysical_particles = []
+        for p in self._curr_model.get('particles'):
+            if p.get('type') != '' or str(p.get('pdg_code')) in possible_added_particles:
+                if not p.get('self_antipart'):
+                    self._unphysical_particles += [str(p.get('pdg_code')), str(-p.get('pdg_code'))]
+                else:
+                    self._unphysical_particles += [str(p.get('pdg_code'))]
 
     def complete_generate(self, text, line, begidx, endidx, formatting=True):
         """Complete particle information + handle maddm options"""
@@ -790,7 +897,7 @@ class MadDM_interface(master_interface.MasterCmd):
         #the bsm in the array to initialize a flag and then remove it from the excluded
         #particles array so as not to conflict with the use in other places.
         self.define_multiparticles('bsm',[p for p in self._curr_model.get('particles')\
-                         if abs(p.get('pdg_code')) > 25])
+                         if abs(p.get('pdg_code')) > 25 and str(p.get('pdg_code')) not in self._unphysical_particles])
         if 'bsm' in excluded_particles:
             exclude_bsm = True
             while 'bsm' in excluded_particles:
@@ -819,7 +926,8 @@ class MadDM_interface(master_interface.MasterCmd):
                          if abs(p.get('pdg_code')) > 25 and \
                          (p.get('name') not in excluded_particles or p.get('antiname') not in excluded_particles) and\
                          p.get('width') != 'ZERO' and
-                         abs(p.get('pdg_code')) not in ids_veto]
+                         abs(p.get('pdg_code')) not in ids_veto and
+                         str(p.get('pdg_code')) not in self._unphysical_particles]
         if not exclude_bsm:
             if bsm_final_states:
                 logger.info("DM is allowed to annihilate into the following BSM particles: %s",
@@ -851,6 +959,9 @@ class MadDM_interface(master_interface.MasterCmd):
         else:
             proc = "dm_particles dm_particles > fs_particles fs_particles %s @DM2SM" \
                    %(coupling)  #changed here
+
+        # reset the last amps
+        self._last_amps = diagram_generation.AmplitudeList()
                    
         self.do_add('process %s' %proc)
 
@@ -893,6 +1004,8 @@ class MadDM_interface(master_interface.MasterCmd):
                     self.do_add('process %s' % proc)
                 except (self.InvalidCmd,diagram_generation.NoDiagramException) :
                     continue
+
+        self._last_amps = [amp for amp in self._curr_amps if amp.get('process').get('id') in [self.process_tag['DM2SM'], self.process_tag['DMSM']]]
 
     def generate_direct(self, excluded_particles=[]):
         """User level function which performs direct detection functions        
@@ -991,7 +1104,16 @@ class MadDM_interface(master_interface.MasterCmd):
                 logger.debug(error)
                 continue # no diagram generated
             has_diagram = True
+        
+        self._last_amps = [amp for amp in self._curr_amps if amp.get('process').get('id') == self.process_tag['DD']]
         return has_diagram
+
+    def is_amplitude_not_empty(self, amplitude):
+        ''' tree level amplitudes have only property 'diagrams', while for loop amplitudes have both 'diagrams', 'born_diagrams' and 'loop_diagrams', so we need to check all of them to find out if a process has diagrams. '''
+        diagrams = bool(amplitude['diagrams'])
+        born_diagrams = bool('born_diagrams' in amplitude.keys() and amplitude['born_diagrams'])
+        loop_diagrams = bool('loop_diagrams' in amplitude.keys() and amplitude['loop_diagrams'])
+        return any([diagrams, born_diagrams, loop_diagrams])
 
     def generate_indirect(self, argument, user=True):
         """User level function which performs indirect detection functions
@@ -1048,8 +1170,8 @@ class MadDM_interface(master_interface.MasterCmd):
             for pdg in dm_cand:
                 DM_scattering.append(pdg) , DM_scattering.append(-pdg)
 
-            bsm_all  = [ 'all', '/', '1','2','3','4','5','6','-1','-2','-3','-4','-5','-6','21','22','23','24','-24','25','11','12','13','14','15','16','-11','-12',
-                    '-13','-14','-15','-16']
+            bsm_all = [ 'all', '/' ] + list(set(['1','2','3','4','5','6','-1','-2','-3','-4','-5','-6','21','22','23','24','-24','25','11','12','13','14','15','16','-11','-12',
+                '-13','-14','-15','-16'] + self._unphysical_particles))
 
             for m in DM_scattering:
                 bsm_all.append(m)
@@ -1060,6 +1182,7 @@ class MadDM_interface(master_interface.MasterCmd):
 
             final_states = ['bsm bsm','q_mdm q_mdm','21 21', '5 -5', '6 -6', '22 22', '23 23', '24 -24','25 25', '11 -11', '13 -13', '15 -15', '12 -12', '14 -14', '16 -16']
 
+            self._last_amps = diagram_generation.AmplitudeList()
             for final_state in final_states:
                 try: 
                     self.generate_indirect([final_state, '--noloop'], user=False)
@@ -1075,6 +1198,8 @@ class MadDM_interface(master_interface.MasterCmd):
             argument.remove('--noloop')
             allow_loop_induce=False
 
+        if user: # reset last_amps if user has called this method with a specific final state
+            self._last_amps = diagram_generation.AmplitudeList()
         # flip indirect/standard process definition
         with misc.TMP_variable(self, ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps'], 
                                      [self._ID_procs, self._ID_matrix_elements, self._ID_amps]):
@@ -1087,19 +1212,25 @@ class MadDM_interface(master_interface.MasterCmd):
                 if name in done:
                     continue
                 done += [name, antiname]
+                last_amp = diagram_generation.Amplitude()
                 #We put the coupling order restrictions after the @ID in order to
                 #apply it to the entire matrix element.
                 proc = '%s %s > %s @ID %s' % (name, antiname, ' '.join(argument), coupling)
                 try:
                     self.do_add('process %s' % proc)
+                    last_amp = self._curr_amps[-1]
                 except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
                     if allow_loop_induce:
                         proc = '%s %s > %s %s [noborn=QCD] @ID ' % (name, antiname, ' '.join(argument), coupling)
                         try:                    
                             self.do_add('process %s' % proc)
+                            last_amp = self._curr_amps[-1]
                         except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
                             proc = '%s %s > %s %s [noborn=QED] @ID ' % (name, antiname, ' '.join(argument), coupling)
                             self.do_add('process %s' % proc)
+                            last_amp = self._curr_amps[-1]
+                if self.is_amplitude_not_empty(last_amp):
+                    self._last_amps.append(last_amp)
   
     def install_indirect(self):
         """Code to install the reduction library if needed"""
