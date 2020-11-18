@@ -72,10 +72,9 @@ __mnestlog0__ = -1.0E90
 
 class ExpConstraints:
 
-    def __init__(self, pdg_particle_map):
+    def __init__(self):
 
         self._allowed_final_states = ['(1)(-1)', '(2)(-2)', '(3)(-3)', '(4)(-4)', '(21)(21)', '(5)(-5)', '(6)(-6)', '(11)(-11)', '(13)(-13)', '(15)(-15)', '(24)(-24)', '(23)(23)', '(25)(25)']
-        self.pdg_particle_map = pdg_particle_map
 
         self._oh2_planck = 0.1198
         self._oh2_planck_width = 0.0015
@@ -222,7 +221,6 @@ class ExpConstraints:
             else:
                 return np.interp(mdm, self._id_limit_mdm[channel], self._id_limit_sigv[channel])
         except KeyError:
-            # logger.warning("No limit for channel '%s'" % self.pdg_particle_map.format_particles(channel))
             return -1
 
 ################################################################################
@@ -976,7 +974,7 @@ GammaLineExperiment(
 
 class Fermi2015GammaLineLikelihood(object):
     ''' this class holds the functionality to compute the likelihood and the p-value for some ROI of the Fermi-LAT gamma-line 2015 analysis (arXiv: 1506.00013) 
-        likelihoods were gently provided by Alessandro Cuoco, who obtain them for R3 and R16 in an approximate way (see 1603.08228 for reference)
+        likelihoods were kindly provided by Alessandro Cuoco, who obtain them for R3 and R16 in an approximate way (see 1603.08228 for reference)
     '''
     def __init__(self, experiment):
         self.experiment = experiment
@@ -1449,7 +1447,9 @@ class MADDMRunCmd(cmd.CmdShell):
 
         self.pdg_particle_map = PDGParticleMap(self.proc_characteristics['pdg_particle_map'].items())
 
-        self.limits = ExpConstraints(self.pdg_particle_map)
+        self.limits = ExpConstraints()
+        self.vave_indirect_cont_range = (3*10**(-6), 1.4*10**(-4))
+        self.vave_indirect_line_range = (200/299792.458, 250/299792.458)
         self.options = options
 
         self.Spectra = Spectra()
@@ -1640,11 +1640,7 @@ class MADDMRunCmd(cmd.CmdShell):
                             # elif oname.split('_')[1] not in self.limits._allowed_final_states:
                             #     result['lim_taacsID#'+oname] = -1
                             result['lim_taacsID#' + oname] = self.limits.ID_max(mdm, oname.split('_')[1])
-                            sigv_indirect += sigv_temp
                     result[splitline[0].split(':')[0]] = secure_float_f77(splitline[1])
-
-                    
-        result['taacsID'] = sigv_indirect
                             
         np_names = ['g','nue','numu','nutau']
 
@@ -1680,10 +1676,26 @@ class MADDMRunCmd(cmd.CmdShell):
             for directory in [d for d, v in self.indirect_directories.items() if 'cont' in d and v]:
                 self.launch_indirect(force, directory, self.maddm_card['vave_indirect_cont'])
             self.launch_indirect_computations(mdm)
+
         if self.mode['spectral']:
             for directory in [d for d, v in self.indirect_directories.items() if 'line' in d and v]:
                 self.launch_indirect(force, directory, self.maddm_card['vave_indirect_line'])
             self.launch_spectral_computations(mdm)
+
+        # compute total cross section only for continuum final states
+        self.last_results['taacsID'] = 0.
+        for process, sigmav in {k.replace('taacsID#', ''): v for k, v in self.last_results.iteritems() if k.startswith('taacsID#')}.iteritems():
+            if self.is_spectral_finalstate(process.split('_')[-1]):
+                continue
+            self.last_results['taacsID'] += sigmav
+
+        # rescale Fermi dSph limits by branching ratio
+        for limit_key in [k for k in self.last_results.keys() if 'lim_taacsID#' in k and not self.is_spectral_finalstate(k.split('_')[-1])]:
+            sigmav_ch = self.last_results[limit_key.replace('lim_','')]
+            if sigmav_ch == 0.:
+                self.last_results[limit_key] = -1
+            else:
+                self.last_results[limit_key] /= (sigmav_ch/self.last_results['taacsID']) if self.last_results[limit_key] != -1 else 1
         
         if not self.in_scan_mode and not self.multinest_running:
             self.print_results()
@@ -1751,13 +1763,12 @@ class MADDMRunCmd(cmd.CmdShell):
             if self.mode['indirect'] or self.mode['spectral']:
                 halo_vel_cont = self.maddm_card['vave_indirect_cont']
                 halo_vel_line = self.maddm_card['vave_indirect_line']
-                #if halo_vel > (3*10**(-6)) and halo_vel < ( 1.4*10**(-4) ):  # cannot calculate Fermi limits
              
                 #if not self._two2twoLO:
                 detailled_keys = [k for k in self.last_results if k.startswith('taacsID#') ]
                 # halo velocity condition
-                fermi_dsph_vel = halo_vel_cont > (3*10**(-6)) and halo_vel_cont < ( 1.4*10**(-4) ) # range of validity of Fermi limits
-                line_gc_vel = halo_vel_line > 200/299792.458 and halo_vel_line < 250/299792.458 # range of validity of line limits
+                fermi_dsph_vel = halo_vel_cont > self.vave_indirect_cont_range[0] and halo_vel_cont < self.vave_indirect_cont_range[1] # range of validity of Fermi limits
+                line_gc_vel = halo_vel_line > self.vave_indirect_line_range[0] and halo_vel_line < self.vave_indirect_line_range[1] # range of validity of line limits
                 if len(detailled_keys)>1:
                     for key in detailled_keys:
                         clean_key_list = key.split("_")
@@ -1909,10 +1920,6 @@ class MADDMRunCmd(cmd.CmdShell):
 
             vave_temp = math.sqrt(3)/2.0 * halo_vel
 
-            # ensure that VPM is the central one for the printout (so far)
-            self.last_results['taacsID'] = 0.0
-            #for i,v in enumerate(scan_v):
-
             run_card['ebeam1'] = mdm * math.sqrt(1+vave_temp**2)
             run_card['ebeam2'] = mdm * math.sqrt(1+vave_temp**2)
             run_card['use_syst'] = False
@@ -1947,8 +1954,8 @@ class MADDMRunCmd(cmd.CmdShell):
                                'edit reweight --replace_line="change velocity" --before_line="launch" change velocity %s' % vave_temp]
                             self.me_cmd.import_command_file(cmd)
             
-            fermi_dsph_vel = self.maddm_card['vave_indirect_cont'] > (3*10**(-6)) and self.maddm_card['vave_indirect_cont'] < ( 1.4*10**(-4) ) # range of validity of Fermi limits
-            line_gc_vel = self.maddm_card['vave_indirect_line'] > 200/299792.458 and self.maddm_card['vave_indirect_line'] < 250/299792.458 # range of validity of line limits
+            fermi_dsph_vel = self.maddm_card['vave_indirect_cont'] > self.vave_indirect_cont_range[0] and self.maddm_card['vave_indirect_cont'] < self.vave_indirect_cont_range[1] # range of validity of Fermi limits
+            line_gc_vel = self.maddm_card['vave_indirect_line'] > self.vave_indirect_line_range[0] and self.maddm_card['vave_indirect_line'] < self.vave_indirect_line_range[1] # range of validity of line limits
             velocity_in_range = {'cont': fermi_dsph_vel, 'line': line_gc_vel}.get(indirect_directory.split('_')[-1], True)
             
             for key, value in self.me_cmd.Presults.iteritems():
@@ -1958,7 +1965,6 @@ class MADDMRunCmd(cmd.CmdShell):
                 if key.startswith('xsec'):
                     value = halo_vel * math.sqrt(3)/2 * 2 * value
                     self.last_results['taacsID#%s' %(clean_key)] = value* pb2cm3
-                    self.last_results['taacsID'] += value* pb2cm3
                     self.last_results['lim_taacsID#'+clean_key] = self.limits.ID_max(mdm, clean_key.split('_')[1]) if velocity_in_range else -1
                     
                 elif key.startswith('xerr'):
@@ -2032,7 +2038,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
         halo_vel = self.maddm_card['vave_indirect_cont']
         
-        if halo_vel < (3*10**(-6)) or halo_vel > ( 1.4*10**(-4) ):
+        if halo_vel < self.vave_indirect_cont_range[0] or halo_vel > self.vave_indirect_cont_range[1]:
            logger.error('The DM velocity in the dwarfs halo is not in the [3*10^-6 - 1.5*10^-4]/c range - will not calculate Fermi limits!')        
            logger.error('Please rerun with the correct velocity to re-calculate the correct sigmav for Fermi limits.')
            return 0
@@ -2113,8 +2119,8 @@ class MADDMRunCmd(cmd.CmdShell):
             return
         # check halo velocity
         halo_vel = self.maddm_card['vave_indirect_line']
-        if not (halo_vel > 200/299792.458 and halo_vel < 250/299792.458):
-            logger.error('The DM velocity in the galactic center is not in the [%.3e - %.3e] c range - will not calculate line limits!' % (200/299792.458, 250/299792.458))        
+        if not (halo_vel > self.vave_indirect_line_range[0] and halo_vel < self.vave_indirect_line_range[1]):
+            logger.error('The DM velocity in the galactic center is not in the [%.3e - %.3e] c range - will not calculate line limits!' % (self.vave_indirect_line_range[0], self.vave_indirect_line_range[1]))        
             logger.error('Please rerun with the correct velocity to re-calculate the line limits.')
             for line_exp in self.line_experiments:
                 str_part = "line_%s_" % line_exp.get_name()    
@@ -2739,170 +2745,250 @@ class MADDMRunCmd(cmd.CmdShell):
             for key in detailled_keys:
                 logger.info(' %s            : %.2e 1/s' % (key, self.last_results[key]))
 
+        # INDIRECT DETECTION
+        detailled_keys = [k for k in self.last_results.keys() if k.startswith('taacsID#')]
+
+        def print_sigmav_with_limits(detailled_keys, filter_, exp_label, no_lim):
+            ''' filter is a lambda for the processes to display 
+                this method returns True if there are light quarks in the final states
+            '''
+            skip = []
+            light_s = False
+            if len(detailled_keys) > 0:
+                for key in detailled_keys:
+                    process = key.split('#')[-1]
+                    if not filter_(process):
+                        continue
+                    finalstate = process.split("_")[-1]
+                    if '(3)(-3)' in finalstate or '(2)(-2)' in finalstate or '(1)(-1)' in finalstate:
+                        light_s = True
+                    s_alldm   = self.last_results[key]
+                    s_thermal = s_alldm * xsi2
+                    if s_alldm <= 10**(-100): 
+                        skip.append(self.pdg_particle_map.format_particles(finalstate))
+                        continue
+                    s_ul = self.last_results['lim_' + key]
+                    self.print_ind(self.pdg_particle_map.format_process(process), s_thermal, s_alldm, s_ul, exp = exp_label, thermal= dm_scen, no_lim = no_lim) 
+
+            if len(skip) >= 1:        
+                logger.info('Skipping zero cross section processes for: %s', ', '.join(skip))
+            return light_s
+        
         if self.mode['indirect'] or self.mode['spectral']:
-            logger.info('\n****** Indirect detection [cm^3/s]: ')
-            halo_vel_cont = self.maddm_card['vave_indirect_cont']
-            halo_vel_line   = self.maddm_card['vave_indirect_line']
-  
-            detailled_keys = [k for k in self.last_results.keys() if k.startswith('taacsID#')]
-            logger.info('<sigma v> method: %s ' % self.maddm_card['sigmav_method'] )
-            logger.info('DM particle halo velocity (continuum): %s/c ' % halo_vel_cont) # the velocity should be the same
-            logger.info('DM particle halo velocity (line)     : %s/c ' % halo_vel_line) # the velocity should be the same
-            logger.info('Print <sigma v> with Fermi dSph limits and %s line limits (if available)' % ', '.join([exp.get_name().replace('_', ' ') for exp in self.line_experiments]))
-  
+            logger.info('\n****** Indirect detection [cm^3/s]:')
+            logger.info('<sigma v> method: %s ' % self.maddm_card['sigmav_method'])
+
+        if self.mode['indirect']:
+            logger.info('====== continuum spectrum final states')
+            halo_vel = self.maddm_card['vave_indirect_cont']
+            logger.info('DM particle halo velocity: %s/c ' % halo_vel)
+            logger.info('*** Print <sigma v> with Fermi dSph limits')
             sigtot_alldm     = self.last_results['taacsID']
             sigtot_SM_alldm  = self.last_results['tot_SM_xsec']
             sigtot_th        = sigtot_alldm * xsi2
             sigtot_SM_th     = sigtot_SM_alldm * xsi2
-  
-            def print_sigmav_with_limits(detailled_keys, sigmav_lim, exp_label, no_lim_flag):
-                ''' sigmav_lim, exp_label and no_lim_flag are lambda which are calculated from the key '''
-                skip = []
-                light_s = False
-                if len(detailled_keys)>0:
-                    # logger.info('Using generic Fermi dSph limits for light quarks (u,d,s)' )
-                    for key in detailled_keys:
-                        clean_key_list = key.split("#")
-                        clean_key = clean_key_list[1] #clean_key_list[0]+"_"+clean_key_list[1]
-                        finalstate = clean_key.split("_")[1]
-                        if '(3)(-3)' in finalstate or '(2)(-2)' in finalstate or '(1)(-1)' in finalstate:
-                            # finalstate = 'qqx'
-                            light_s    = True
-                        ## The inclusive method does not give the sigma for the BSM states production
-                        s_alldm   = self.last_results[key]
-                        s_thermal = s_alldm*xsi2
-    
-                        if s_alldm <= 10**(-100): 
-                            skip.append(self.pdg_particle_map.format_particles(finalstate))
-                            continue
 
-                        # if self.is_spectral_finalstate(finalstate):
-                        #     s_ul   = -1
-                        #     no_lim = True
-                        # else:
-                        #     s_ul   = self.limits.ID_max(mdm, finalstate)
-                        #     no_lim = False
+            if halo_vel > self.vave_indirect_cont_range[0] and halo_vel < self.vave_indirect_cont_range[1]:
+                light_s = print_sigmav_with_limits(detailled_keys, filter_ = lambda process: not self.is_spectral_finalstate(process.split('_')[-1]), exp_label = 'Fermi dSph', no_lim = False)
+                if light_s:
+                    logger.info('Using generic Fermi dSph limits for light quarks (u,d,s)')
 
-                        # self.last_results['Fermi_lim_'+key] = s_ul
-                        # self.print_ind(clean_key, s_thermal, s_alldm, s_ul,  thermal= dm_scen, no_lim = no_lim) 
-                        s_ul = sigmav_lim(key)
-                        exp = exp_label(finalstate)
-                        no_lim = no_lim_flag(finalstate)
-                        self.print_ind(self.pdg_particle_map.format_process(clean_key), s_thermal, s_alldm, s_ul, exp = exp, thermal= dm_scen, no_lim = no_lim) 
-
-                if len(skip) >=1:        
-                    logger.info('Skipping zero cross section processes for: %s', ', '.join(skip))
-                return light_s
-
-            fermi_dsph_vel = halo_vel_cont > (3*10**(-6)) and halo_vel_cont < ( 1.4*10**(-4) ) # range of validity of Fermi limits
-            line_gc_vel = halo_vel_line > 200/299792.458 and halo_vel_line < 250/299792.458 # range of validity of line limits
+                if self.maddm_card['sigmav_method']!= 'inclusive':     
+                    self.print_ind('DM DM > all',sigtot_th , sigtot_alldm, self.last_results['Fermi_sigmav'],  thermal= dm_scen)
+                else: 
+                    self.print_ind('DM DM > SM SM', sigtot_SM_th , sigtot_SM_alldm, self.last_results['Fermi_sigmav'],  thermal= dm_scen)
             
-            if fermi_dsph_vel and line_gc_vel:
-                light_s = print_sigmav_with_limits(detailled_keys,
-                                                   sigmav_lim = lambda key: self.last_results['lim_' + key],
-                                                   exp_label = lambda finalstate: {False: 'Fermi dSph', True: 'Line'}.get(self.is_spectral_finalstate(finalstate), None),
-                                                   no_lim_flag = lambda finalstate: False)
-                                                                                         
-                if light_s:
-                    logger.info('Using generic Fermi dSph limits for light quarks (u,d,s)' )                                                                                               
-    
-                if self.mode['indirect']:
-                    fermi_ul = self.last_results['Fermi_sigmav']
-    
-                    if len(detailled_keys) > 1 :
-                        logger.info('*** Total limits calculated with Fermi dSph likelihood:')
-                        if self.maddm_card['sigmav_method']!= 'inclusive':     
-                            self.print_ind('DM DM > all',sigtot_th , sigtot_alldm, fermi_ul,  thermal= dm_scen)
-                        else: 
-                            self.print_ind('DM DM > SM SM', sigtot_SM_th , sigtot_SM_alldm, fermi_ul,  thermal= dm_scen)
-    
-                    elif len(detailled_keys) == 1:
-                        logger.info('*** Total limits calculated with Fermi dSph likelihood:')
-                        if self.maddm_card['sigmav_method']!= 'inclusive':
-                            self.print_ind('DM DM > all',sigtot_th , sigtot_alldm, self.last_results['Fermi_sigmav'],  thermal= dm_scen)
-                        else:
-                            self.print_ind('DM DM > SM SM', sigtot_SM_th , sigtot_SM_alldm, self.last_results['Fermi_sigmav'],  thermal= dm_scen)
-    
                 if str(self.mode['indirect']).startswith('flux'):
                     logger.info('')
                     logger.info('*** Fluxes at earth [particle/(cm^2 sr)]:')
                     #np_names = {'gammas':'g'      , 'neutrinos_e':'nue' , 'neutrinos_mu':'numu' , 'neutrinos_tau':'nutau'}
                     for chan in ['gammas','neutrinos_e', 'neutrinos_mu' , 'neutrinos_tau']:
                         logger.info( self.form_s(chan + ' Flux') + '=\t' + self.form_s(self.form_n (self.last_results['flux_%s' % chan]) ))
-                
-                if self.mode['spectral']:
-                    logger.info('')
-                    logger.info('*** Line limits from ' + ', '.join([line_exp.get_name().replace('_', ' ') for line_exp in self.line_experiments]))
-                    self.print_line_results(xsi2)
-  
-            elif fermi_dsph_vel and not line_gc_vel:
-                light_s = print_sigmav_with_limits(detailled_keys,
-                                                   sigmav_lim = lambda key: self.last_results['lim_' + key],
-                                                   exp_label = lambda finalstate: 'Fermi dSph',
-                                                   no_lim_flag = lambda finalstate: self.is_spectral_finalstate(finalstate))
-                
+            
+            else:
+                light_s = print_sigmav_with_limits(detailled_keys, filter_ = lambda process: not self.is_spectral_finalstate(process.split('_')[-1]), exp_label = 'Fermi dSph', no_lim = True)
                 if light_s:
-                    logger.info('Using generic Fermi dSph limits for light quarks (u,d,s)' )
-
-                if self.mode['indirect']:
-                    fermi_ul = self.last_results['Fermi_sigmav']
-    
-                    if len(detailled_keys) > 1 :
-                        logger.info('*** Total limits calculated with Fermi dSph likelihood:')
-                        if self.maddm_card['sigmav_method']!= 'inclusive':     
-                            self.print_ind('DM DM > all',sigtot_th , sigtot_alldm, fermi_ul,  thermal= dm_scen)
-                        else: 
-                            self.print_ind('DM DM > SM SM', sigtot_SM_th , sigtot_SM_alldm, fermi_ul,  thermal= dm_scen)
-    
-                    elif len(detailled_keys) == 1:
-                        logger.info('*** Total limits calculated with Fermi dSph likelihood:')
-                        if self.maddm_card['sigmav_method']!= 'inclusive':
-                            self.print_ind('DM DM > all',sigtot_th , sigtot_alldm, self.last_results['Fermi_sigmav'],  thermal= dm_scen)
-                        else:
-                            self.print_ind('DM DM > SM SM', sigtot_SM_th , sigtot_SM_alldm, self.last_results['Fermi_sigmav'],  thermal= dm_scen)
-    
-                if str(self.mode['indirect']).startswith('flux'):
-                    logger.info('')
-                    logger.info('*** Fluxes at earth [particle/(cm^2 sr)]:')
-                    #np_names = {'gammas':'g'      , 'neutrinos_e':'nue' , 'neutrinos_mu':'numu' , 'neutrinos_tau':'nutau'}
-                    for chan in ['gammas','neutrinos_e', 'neutrinos_mu' , 'neutrinos_tau']:
-                        logger.info( self.form_s(chan + ' Flux') + '=\t' + self.form_s(self.form_n (self.last_results['flux_%s' % chan]) ))
+                    logger.info('Using generic Fermi dSph limits for light quarks (u,d,s)')
                 
-                if self.mode['spectral']:
-                    logger.info('')
-                    logger.warning('Line limits cannot be calculated since DM halo velocity not compatible GC.')
+                if self.maddm_card['sigmav_method']!= 'inclusive':     
+                    self.print_ind('DM DM > all',sigtot_th , sigtot_alldm, self.last_results['Fermi_sigmav'],  thermal= dm_scen, no_lim = True)
+                else: 
+                    self.print_ind('DM DM > SM SM', sigtot_SM_th , sigtot_SM_alldm, self.last_results['Fermi_sigmav'],  thermal= dm_scen, no_lim = True)
+            
+                logger.info('')
+                logger.warning('Fermi dSph limits cannot be calculated since DM halo velocity not compatible with dSph.')
+   
+        if self.mode['spectral']:
+            logger.info('====== line spectrum final states')
+            halo_vel = self.maddm_card['vave_indirect_line']
+            logger.info('DM particle halo velocity: %s/c ' % halo_vel)
+            logger.info('Print <sigma v> with %s line limits' % ', '.join([exp.get_name().replace('_', ' ') for exp in self.line_experiments]))
 
-            elif not fermi_dsph_vel and line_gc_vel:  
-                print_sigmav_with_limits(detailled_keys,
-                                         sigmav_lim = lambda key: self.last_results['lim_' + key],
-                                         exp_label = lambda finalstate: 'Line',
-                                         no_lim_flag = lambda finalstate: not self.is_spectral_finalstate(finalstate))
+            if halo_vel > self.vave_indirect_line_range[0] and halo_vel < self.vave_indirect_line_range[1]:
+                print_sigmav_with_limits(detailled_keys, filter_ = lambda process: self.is_spectral_finalstate(process.split('_')[-1]), exp_label = 'Fermi dSph', no_lim = False)
 
-                if self.mode['indirect']:
-                    logger.info('')
-                    logger.warning('Fermi dSph limits cannot be calculated since DM halo velocity not compatible with dwarfs.')
-                
-                if self.mode['spectral']:
-                    logger.info('')
-                    logger.info('*** Line limits from ' + ', '.join([line_exp.get_name().replace('_', ' ') for line_exp in self.line_experiments]))
-                    self.print_line_results(xsi2)
+                logger.info('')
+                logger.info('*** Line limits from ' + ', '.join([line_exp.get_name().replace('_', ' ') for line_exp in self.line_experiments]))
+                self.print_line_results(xsi2)
 
             else:
-                print_sigmav_with_limits(detailled_keys,
-                                         sigmav_lim = lambda key: -1,
-                                         exp_label = lambda finalstate: None,
-                                         no_lim_flag = lambda finalstate: True)
+                print_sigmav_with_limits(detailled_keys, filter_ = lambda process: self.is_spectral_finalstate(process.split('_')[-1]), exp_label = 'Fermi dSph', no_lim = True)
+                logger.info('')
+                logger.warning('Line limits cannot be calculated since DM halo velocity not compatible with GC.')
 
-                if self.mode['indirect']:
-                    logger.info('')
-                    logger.warning('Fermi dSph limits cannot be calculated since DM halo velocity not compatible with dwarfs.')
+        ####
+        # if self.mode['indirect'] or self.mode['spectral']:
+        #     logger.info('\n****** Indirect detection [cm^3/s]: ')
+        #     halo_vel_cont = self.maddm_card['vave_indirect_cont']
+        #     halo_vel_line   = self.maddm_card['vave_indirect_line']
+  
+        #     detailled_keys = [k for k in self.last_results.keys() if k.startswith('taacsID#')]
+        #     logger.info('<sigma v> method: %s ' % self.maddm_card['sigmav_method'] )
+        #     logger.info('DM particle halo velocity (continuum): %s/c ' % halo_vel_cont)
+        #     logger.info('DM particle halo velocity (line)     : %s/c ' % halo_vel_line)
+        #     logger.info('Print <sigma v> with Fermi dSph limits and %s line limits (if available)' % ', '.join([exp.get_name().replace('_', ' ') for exp in self.line_experiments]))
+  
+        #     sigtot_alldm     = self.last_results['taacsID']
+        #     sigtot_SM_alldm  = self.last_results['tot_SM_xsec']
+        #     sigtot_th        = sigtot_alldm * xsi2
+        #     sigtot_SM_th     = sigtot_SM_alldm * xsi2
+  
+        #     def print_sigmav_with_limits(detailled_keys, sigmav_lim, exp_label, no_lim_flag):
+        #         ''' sigmav_lim, exp_label and no_lim_flag are lambda which are calculated from the key '''
+        #         skip = []
+        #         light_s = False
+        #         if len(detailled_keys)>0:
+        #             for key in detailled_keys:
+        #                 clean_key_list = key.split("#")
+        #                 clean_key = clean_key_list[1]
+        #                 finalstate = clean_key.split("_")[1]
+        #                 if '(3)(-3)' in finalstate or '(2)(-2)' in finalstate or '(1)(-1)' in finalstate:
+        #                     light_s    = True
+        #                 s_alldm   = self.last_results[key]
+        #                 s_thermal = s_alldm*xsi2
+    
+        #                 if s_alldm <= 10**(-100): 
+        #                     skip.append(self.pdg_particle_map.format_particles(finalstate))
+        #                     continue
 
-                if self.mode['spectral']:
-                    logger.info('')
-                    logger.warning('Line limits cannot be calculated since DM halo velocity not compatible with GC.')
+        #                 s_ul = sigmav_lim(key)
+        #                 exp = exp_label(finalstate)
+        #                 no_lim = no_lim_flag(finalstate)
+        #                 self.print_ind(self.pdg_particle_map.format_process(clean_key), s_thermal, s_alldm, s_ul, exp = exp, thermal= dm_scen, no_lim = no_lim) 
 
-            logger.info('\n')  
-            logger.info('')
+        #         if len(skip) >=1:        
+        #             logger.info('Skipping zero cross section processes for: %s', ', '.join(skip))
+        #         return light_s
+
+        #     fermi_dsph_vel = halo_vel_cont > self.vave_indirect_cont_range[0] and halo_vel_cont < self.vave_indirect_cont_range[1] # range of validity of Fermi limits
+        #     line_gc_vel = halo_vel_line > self.vave_indirect_line_range[0] and halo_vel_line < self.vave_indirect_line_range[1] # range of validity of line limits
+            
+        #     if fermi_dsph_vel and line_gc_vel:
+        #         light_s = print_sigmav_with_limits(detailled_keys,
+        #                                            sigmav_lim = lambda key: self.last_results['lim_' + key],
+        #                                            exp_label = lambda finalstate: {False: 'Fermi dSph', True: 'Line'}.get(self.is_spectral_finalstate(finalstate), None),
+        #                                            no_lim_flag = lambda finalstate: False)
+                                                                                         
+        #         if light_s:
+        #             logger.info('Using generic Fermi dSph limits for light quarks (u,d,s)' )                                                                                               
+    
+        #         if self.mode['indirect']:
+        #             fermi_ul = self.last_results['Fermi_sigmav']
+    
+        #             if len(detailled_keys) > 1 :
+        #                 logger.info('*** Total limits calculated with Fermi dSph likelihood:')
+        #                 if self.maddm_card['sigmav_method']!= 'inclusive':     
+        #                     self.print_ind('DM DM > all',sigtot_th , sigtot_alldm, fermi_ul,  thermal= dm_scen)
+        #                 else: 
+        #                     self.print_ind('DM DM > SM SM', sigtot_SM_th , sigtot_SM_alldm, fermi_ul,  thermal= dm_scen)
+    
+        #             elif len(detailled_keys) == 1:
+        #                 logger.info('*** Total limits calculated with Fermi dSph likelihood:')
+        #                 if self.maddm_card['sigmav_method']!= 'inclusive':
+        #                     self.print_ind('DM DM > all',sigtot_th , sigtot_alldm, self.last_results['Fermi_sigmav'],  thermal= dm_scen)
+        #                 else:
+        #                     self.print_ind('DM DM > SM SM', sigtot_SM_th , sigtot_SM_alldm, self.last_results['Fermi_sigmav'],  thermal= dm_scen)
+    
+        #         if str(self.mode['indirect']).startswith('flux'):
+        #             logger.info('')
+        #             logger.info('*** Fluxes at earth [particle/(cm^2 sr)]:')
+        #             #np_names = {'gammas':'g'      , 'neutrinos_e':'nue' , 'neutrinos_mu':'numu' , 'neutrinos_tau':'nutau'}
+        #             for chan in ['gammas','neutrinos_e', 'neutrinos_mu' , 'neutrinos_tau']:
+        #                 logger.info( self.form_s(chan + ' Flux') + '=\t' + self.form_s(self.form_n (self.last_results['flux_%s' % chan]) ))
+                
+        #         if self.mode['spectral']:
+        #             logger.info('')
+        #             logger.info('*** Line limits from ' + ', '.join([line_exp.get_name().replace('_', ' ') for line_exp in self.line_experiments]))
+        #             self.print_line_results(xsi2)
+  
+        #     elif fermi_dsph_vel and not line_gc_vel:
+        #         light_s = print_sigmav_with_limits(detailled_keys,
+        #                                            sigmav_lim = lambda key: self.last_results['lim_' + key],
+        #                                            exp_label = lambda finalstate: 'Fermi dSph',
+        #                                            no_lim_flag = lambda finalstate: self.is_spectral_finalstate(finalstate))
+                
+        #         if light_s:
+        #             logger.info('Using generic Fermi dSph limits for light quarks (u,d,s)' )
+
+        #         if self.mode['indirect']:
+        #             fermi_ul = self.last_results['Fermi_sigmav']
+    
+        #             if len(detailled_keys) > 1 :
+        #                 logger.info('*** Total limits calculated with Fermi dSph likelihood:')
+        #                 if self.maddm_card['sigmav_method']!= 'inclusive':     
+        #                     self.print_ind('DM DM > all',sigtot_th , sigtot_alldm, fermi_ul,  thermal= dm_scen)
+        #                 else: 
+        #                     self.print_ind('DM DM > SM SM', sigtot_SM_th , sigtot_SM_alldm, fermi_ul,  thermal= dm_scen)
+    
+        #             elif len(detailled_keys) == 1:
+        #                 logger.info('*** Total limits calculated with Fermi dSph likelihood:')
+        #                 if self.maddm_card['sigmav_method']!= 'inclusive':
+        #                     self.print_ind('DM DM > all',sigtot_th , sigtot_alldm, self.last_results['Fermi_sigmav'],  thermal= dm_scen)
+        #                 else:
+        #                     self.print_ind('DM DM > SM SM', sigtot_SM_th , sigtot_SM_alldm, self.last_results['Fermi_sigmav'],  thermal= dm_scen)
+    
+        #         if str(self.mode['indirect']).startswith('flux'):
+        #             logger.info('')
+        #             logger.info('*** Fluxes at earth [particle/(cm^2 sr)]:')
+        #             #np_names = {'gammas':'g'      , 'neutrinos_e':'nue' , 'neutrinos_mu':'numu' , 'neutrinos_tau':'nutau'}
+        #             for chan in ['gammas','neutrinos_e', 'neutrinos_mu' , 'neutrinos_tau']:
+        #                 logger.info( self.form_s(chan + ' Flux') + '=\t' + self.form_s(self.form_n (self.last_results['flux_%s' % chan]) ))
+                
+        #         if self.mode['spectral']:
+        #             logger.info('')
+        #             logger.warning('Line limits cannot be calculated since DM halo velocity not compatible GC.')
+
+        #     elif not fermi_dsph_vel and line_gc_vel:  
+        #         print_sigmav_with_limits(detailled_keys,
+        #                                  sigmav_lim = lambda key: self.last_results['lim_' + key],
+        #                                  exp_label = lambda finalstate: 'Line',
+        #                                  no_lim_flag = lambda finalstate: not self.is_spectral_finalstate(finalstate))
+
+        #         if self.mode['indirect']:
+        #             logger.info('')
+        #             logger.warning('Fermi dSph limits cannot be calculated since DM halo velocity not compatible with dwarfs.')
+                
+        #         if self.mode['spectral']:
+        #             logger.info('')
+        #             logger.info('*** Line limits from ' + ', '.join([line_exp.get_name().replace('_', ' ') for line_exp in self.line_experiments]))
+        #             self.print_line_results(xsi2)
+
+        #     else:
+        #         print_sigmav_with_limits(detailled_keys,
+        #                                  sigmav_lim = lambda key: -1,
+        #                                  exp_label = lambda finalstate: None,
+        #                                  no_lim_flag = lambda finalstate: True)
+
+        #         if self.mode['indirect']:
+        #             logger.info('')
+        #             logger.warning('Fermi dSph limits cannot be calculated since DM halo velocity not compatible with dwarfs.')
+
+        #         if self.mode['spectral']:
+        #             logger.info('')
+        #             logger.warning('Line limits cannot be calculated since DM halo velocity not compatible with GC.')
+
+        #     logger.info('\n')  
+        #     logger.info('')
 
         # Internal: save the results as a numpy dictionary
         # np.save(pjoin(self.dir_path, 'output','Results'), self.last_results)
@@ -3199,14 +3285,39 @@ class MADDMRunCmd(cmd.CmdShell):
             out.write('#############################################\n\n')
 
             out.write('# Annihilation cross section computed with the method: ' + sigmav_meth)
-            out.write('\n# [<sigma v>, Fermi dSph and %s line limits (if available, else -1)]' % ', '.join([exp.get_name().replace('_', ' ') for exp in self.line_experiments]) + '\n')
+            # out.write('\n# [<sigma v>, Fermi dSph and %s line limits (if available, else -1)]' % ', '.join([exp.get_name().replace('_', ' ') for exp in self.line_experiments]) + '\n')
 
-            lista = [ proc for proc in self.last_results.keys() if 'taacsID#' in proc and 'lim_' not in proc and 'err' not in proc]                                      
-            for name in lista:                                                                                                                                     
-                proc = name.replace('taacsID#','')
-                proc = [proc_names for proc_names, proc_pdg in self.processes_names_map.iteritems() if proc == proc_pdg][0]
-                proc_th , proc_ul = self.last_results[name] , self.last_results['lim_'+name]                                                                          
-                out.write(form_s(proc)      + '= '+ form_s('['+ form_n(proc_th)+',' + form_n(proc_ul)+']') + '\n')
+            def collect_processes(processes, filter_):
+                proc_list = []
+                for name in processes:                                                                                                                                     
+                    proc = name.replace('taacsID#','')
+                    if filter_(proc):
+                        continue
+                    proc_list.append(proc)
+                return proc_list
+
+            def print_sigmav(proc_list, fileout):
+                for proc in proc_list:
+                    proc = [proc_names for proc_names, proc_pdg in self.processes_names_map.iteritems() if proc == proc_pdg][0]
+                    proc_th, proc_ul = self.last_results['taacsID#' + proc] , self.last_results['lim_taacsID#' + proc]
+                    fileout.write(form_s(proc)      + '= '+ form_s('['+ form_n(proc_th)+',' + form_n(proc_ul)+']') + '\n')
+
+            detailled_keys = [key for key in self.last_results.keys() if key.startswith('taacsID#')]
+
+            cont_procs = collect_processes(detailled_keys, filter_ = lambda process: not self.is_spectral_finalstate(process.split('_')[-1]))
+            if cont_procs:
+                out.write('\n# <sigma v>[cm^3 s^-1] of continuum spectrum final states and Fermi dSph limits (if available, else -1)\n')
+                print_sigmav(cont_procs, out)
+            line_procs = collect_processes(detailled_keys, filter_ = lambda process: self.is_spectral_finalstate(process.split('_')[-1]))
+            if line_procs:
+                out.write('\n# <sigma v>[cm^3 s^-1] of line spectrum final states and %s line limits (if available, else -1)]' % ', '.join([exp.get_name().replace('_', ' ') for exp in self.line_experiments]) + '\n')
+                print_sigmav(line_procs, out)
+
+            # for name in detailled_keys:                                                                                                                                     
+            #     proc = name.replace('taacsID#','')
+            #     proc = [proc_names for proc_names, proc_pdg in self.processes_names_map.iteritems() if proc == proc_pdg][0]
+            #     proc_th, proc_ul = self.last_results[name] , self.last_results['lim_' + name]                                                                          
+            #     out.write(form_s(proc)      + '= '+ form_s('['+ form_n(proc_th)+',' + form_n(proc_ul)+']') + '\n')
 
             if indirect:
                 tot_th , tot_ul , tot_sm = self.last_results['taacsID'] , self.last_results['Fermi_sigmav'] , self.last_results['tot_SM_xsec']
@@ -3261,7 +3372,7 @@ class MADDMRunCmd(cmd.CmdShell):
                     if len(energy_peaks) is 0:
                         # this happens when all the peaks are -1, so either if peaks are out of detection range or halo velocity is not compatible with galactic center
                         # if velocity is in the range, print out that peaks are not in the detection range, otherwise print out all -1
-                        if (self.maddm_card['vave_indirect_line'] > 200/299792.458 and self.maddm_card['vave_indirect_line'] < 250/299792.458):
+                        if (self.maddm_card['vave_indirect_line'] > self.vave_indirect_line_range[0] and self.maddm_card['vave_indirect_line'] < self.vave_indirect_line_range[1]):
                             out.write('# No peaks found: out of detection range.\n')
                             continue
                         else: # recompute energy_peaks without assuming values != -1
@@ -3957,7 +4068,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         #  2) go to the line edition
         self.set_switch('nestscan', "ON", user=True) 
         if self.switch['nestscan'] == "ON":
-            return '7 %s' % line
+            return '8 %s' % line
         # not valid nestscan - > reask question
         else:
             return 
@@ -3992,7 +4103,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         if self.maddm['indirect_flux_source_method'] != 'pythia8':
             self.setDM('indirect_flux_source_method', 'pythia8',loglevel=30)
         
-        return '8 %s' % line
+        return '9 %s' % line
     
     trigger_flux = trigger_8
     
