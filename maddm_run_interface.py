@@ -1606,6 +1606,9 @@ class MADDMRunCmd(cmd.CmdShell):
         # , second line is the nucleon scattering cross section (SI) for proton, third is SI
         # nucleon cross section for the neutron etc. If a quantity was not calculated, we output -1
 
+        # it computes also the percentages for each annihilation channel for relic density
+        # %_<process>
+
         # Define a dictionary holding the results
         result = {}
         result['GeV2pb*pb2cm2']   = GeV2pb*pb2cm2 # conversion factor                                                                                                           
@@ -1613,7 +1616,6 @@ class MADDMRunCmd(cmd.CmdShell):
         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
 
         result['tot_SM_xsec'] = -1
-        sigv_indirect = 0.
 
         for line in open(pjoin(self.dir_path, output)):
       
@@ -1633,14 +1635,13 @@ class MADDMRunCmd(cmd.CmdShell):
                             oname = self.processes_names_map[oname] # conversion to pdg codes
                             result['taacsID#'     + oname] = sigv_temp 
                             result['err_taacsID#' + oname] = 0 
-                            # if oname.split('_')[1] in ['uux','ddx','ssx']:
-                            #     result['lim_taacsID#'+oname] = self.limits.ID_max(mdm, 'qqx')
-                            # elif oname.split('_')[1] in self.limits._allowed_final_states:
-                            #     result['lim_taacsID#'+oname] = self.limits.ID_max(mdm, oname.split('_')[1]) 
-                            # elif oname.split('_')[1] not in self.limits._allowed_final_states:
-                            #     result['lim_taacsID#'+oname] = -1
                             result['lim_taacsID#' + oname] = self.limits.ID_max(mdm, oname.split('_')[1])
-                    result[splitline[0].split(':')[0]] = secure_float_f77(splitline[1])
+                    if '%' in line:
+                        oname = splitline[0].split(':',1)[1]
+                        oname = self.processes_names_map[oname] # conversion to pdg codes
+                        result["%_relic_%s" % oname] = secure_float_f77(splitline[1])
+                    else:
+                        result[splitline[0].split(':')[0]] = secure_float_f77(splitline[1])
                             
         np_names = ['g','nue','numu','nutau']
 
@@ -1741,6 +1742,8 @@ class MADDMRunCmd(cmd.CmdShell):
             # *** Relic density
             if self.mode['relic']:
                 order += ['Omegah^2','x_f', 'sigmav(xf)']
+                for percent in [k for k in self.last_results if k.startswith('%_relic')]:
+                    order += [percent]
             order.append('xsi')
 
             # *** Direct Detection
@@ -2714,6 +2717,10 @@ class MADDMRunCmd(cmd.CmdShell):
             logger.info( self.form_s('x_f'          ) + '= ' + self.form_s(self.form_n(x_f      ) ) )
             logger.info( self.form_s('sigmav(xf)'   ) + '= ' + self.form_s(self.form_n(sigma_xf ) ) )
             logger.info( self.form_s('xsi'          ) + '= ' + self.form_s(self.form_n(xsi      ) ) )
+            logger.info('')
+            logger.info('Channels contributions:')
+            for proc in [k for k in self.last_results.keys() if k.startswith('%_relic_')]:
+                logger.info( self.form_s(self.pdg_particle_map.format_process(proc.replace('%_relic_',''))) + ': %.2f %%' % self.last_results[proc] )
 
         if self.mode['direct']:
             sigN_SI_p , sigN_SI_n = self.last_results['sigmaN_SI_p'] , self.last_results['sigmaN_SI_n']
@@ -3104,6 +3111,10 @@ class MADDMRunCmd(cmd.CmdShell):
                 out.write(form_s('xsi') + '= ' + form_n(self.last_results['xsi']) +' \t # xsi = (Omega/Omega_Planck)\n' )
             out.write(form_s('x_f')                  + '= ' + form_n(self.last_results['x_f'])        + '\n' ) 
             out.write(form_s('sigmav_xf')           + '= ' + form_n(self.last_results['sigmav(xf)']) + '\n' ) 
+            out.write("# %% of the various relic density channels\n")
+            for proc in [k for k in self.last_results.keys() if k.startswith('%_relic_')]:
+                logger.info( form_s(proc.replace('relic_','')) + ': %.2f %%\n' % self.last_results[proc] )
+
 
         if direct:
 

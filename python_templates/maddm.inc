@@ -67,7 +67,7 @@ c old gstar and gstarS stuff
 c variables needed for the phase space routines
       double precision pf1(0:3), pf2(0:3), pf3(0:3), pf4(0:3), pmass(4)
 
-c dm paraeters
+c dm parameters
       integer maxdms, max_dm2dm
       parameter (maxdms=%(nb_dm)i, max_dm2dm=%(max_dm2dm)i)
       integer ndmparticles, nvar, dm_index(maxdms), dm_antiindex(maxdms)
