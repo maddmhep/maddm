@@ -2836,160 +2836,6 @@ class MADDMRunCmd(cmd.CmdShell):
                 logger.info('')
                 logger.warning('Line limits cannot be calculated since DM halo velocity not compatible with GC.')
 
-        ####
-        # if self.mode['indirect'] or self.mode['spectral']:
-        #     logger.info('\n****** Indirect detection [cm^3/s]: ')
-        #     halo_vel_cont = self.maddm_card['vave_indirect_cont']
-        #     halo_vel_line   = self.maddm_card['vave_indirect_line']
-  
-        #     detailled_keys = [k for k in self.last_results.keys() if k.startswith('taacsID#')]
-        #     logger.info('<sigma v> method: %s ' % self.maddm_card['sigmav_method'] )
-        #     logger.info('DM particle halo velocity (continuum): %s/c ' % halo_vel_cont)
-        #     logger.info('DM particle halo velocity (line)     : %s/c ' % halo_vel_line)
-        #     logger.info('Print <sigma v> with Fermi dSph limits and %s line limits (if available)' % ', '.join([exp.get_name().replace('_', ' ') for exp in self.line_experiments]))
-  
-        #     sigtot_alldm     = self.last_results['taacsID']
-        #     sigtot_SM_alldm  = self.last_results['tot_SM_xsec']
-        #     sigtot_th        = sigtot_alldm * xsi2
-        #     sigtot_SM_th     = sigtot_SM_alldm * xsi2
-  
-        #     def print_sigmav_with_limits(detailled_keys, sigmav_lim, exp_label, no_lim_flag):
-        #         ''' sigmav_lim, exp_label and no_lim_flag are lambda which are calculated from the key '''
-        #         skip = []
-        #         light_s = False
-        #         if len(detailled_keys)>0:
-        #             for key in detailled_keys:
-        #                 clean_key_list = key.split("#")
-        #                 clean_key = clean_key_list[1]
-        #                 finalstate = clean_key.split("_")[1]
-        #                 if '(3)(-3)' in finalstate or '(2)(-2)' in finalstate or '(1)(-1)' in finalstate:
-        #                     light_s    = True
-        #                 s_alldm   = self.last_results[key]
-        #                 s_thermal = s_alldm*xsi2
-    
-        #                 if s_alldm <= 10**(-100): 
-        #                     skip.append(self.pdg_particle_map.format_particles(finalstate))
-        #                     continue
-
-        #                 s_ul = sigmav_lim(key)
-        #                 exp = exp_label(finalstate)
-        #                 no_lim = no_lim_flag(finalstate)
-        #                 self.print_ind(self.pdg_particle_map.format_process(clean_key), s_thermal, s_alldm, s_ul, exp = exp, thermal= dm_scen, no_lim = no_lim) 
-
-        #         if len(skip) >=1:        
-        #             logger.info('Skipping zero cross section processes for: %s', ', '.join(skip))
-        #         return light_s
-
-        #     fermi_dsph_vel = halo_vel_cont > self.vave_indirect_cont_range[0] and halo_vel_cont < self.vave_indirect_cont_range[1] # range of validity of Fermi limits
-        #     line_gc_vel = halo_vel_line > self.vave_indirect_line_range[0] and halo_vel_line < self.vave_indirect_line_range[1] # range of validity of line limits
-            
-        #     if fermi_dsph_vel and line_gc_vel:
-        #         light_s = print_sigmav_with_limits(detailled_keys,
-        #                                            sigmav_lim = lambda key: self.last_results['lim_' + key],
-        #                                            exp_label = lambda finalstate: {False: 'Fermi dSph', True: 'Line'}.get(self.is_spectral_finalstate(finalstate), None),
-        #                                            no_lim_flag = lambda finalstate: False)
-                                                                                         
-        #         if light_s:
-        #             logger.info('Using generic Fermi dSph limits for light quarks (u,d,s)' )                                                                                               
-    
-        #         if self.mode['indirect']:
-        #             fermi_ul = self.last_results['Fermi_sigmav']
-    
-        #             if len(detailled_keys) > 1 :
-        #                 logger.info('*** Total limits calculated with Fermi dSph likelihood:')
-        #                 if self.maddm_card['sigmav_method']!= 'inclusive':     
-        #                     self.print_ind('DM DM > all',sigtot_th , sigtot_alldm, fermi_ul,  thermal= dm_scen)
-        #                 else: 
-        #                     self.print_ind('DM DM > SM SM', sigtot_SM_th , sigtot_SM_alldm, fermi_ul,  thermal= dm_scen)
-    
-        #             elif len(detailled_keys) == 1:
-        #                 logger.info('*** Total limits calculated with Fermi dSph likelihood:')
-        #                 if self.maddm_card['sigmav_method']!= 'inclusive':
-        #                     self.print_ind('DM DM > all',sigtot_th , sigtot_alldm, self.last_results['Fermi_sigmav'],  thermal= dm_scen)
-        #                 else:
-        #                     self.print_ind('DM DM > SM SM', sigtot_SM_th , sigtot_SM_alldm, self.last_results['Fermi_sigmav'],  thermal= dm_scen)
-    
-        #         if str(self.mode['indirect']).startswith('flux'):
-        #             logger.info('')
-        #             logger.info('*** Fluxes at earth [particle/(cm^2 sr)]:')
-        #             #np_names = {'gammas':'g'      , 'neutrinos_e':'nue' , 'neutrinos_mu':'numu' , 'neutrinos_tau':'nutau'}
-        #             for chan in ['gammas','neutrinos_e', 'neutrinos_mu' , 'neutrinos_tau']:
-        #                 logger.info( self.form_s(chan + ' Flux') + '=\t' + self.form_s(self.form_n (self.last_results['flux_%s' % chan]) ))
-                
-        #         if self.mode['spectral']:
-        #             logger.info('')
-        #             logger.info('*** Line limits from ' + ', '.join([line_exp.get_name().replace('_', ' ') for line_exp in self.line_experiments]))
-        #             self.print_line_results(xsi2)
-  
-        #     elif fermi_dsph_vel and not line_gc_vel:
-        #         light_s = print_sigmav_with_limits(detailled_keys,
-        #                                            sigmav_lim = lambda key: self.last_results['lim_' + key],
-        #                                            exp_label = lambda finalstate: 'Fermi dSph',
-        #                                            no_lim_flag = lambda finalstate: self.is_spectral_finalstate(finalstate))
-                
-        #         if light_s:
-        #             logger.info('Using generic Fermi dSph limits for light quarks (u,d,s)' )
-
-        #         if self.mode['indirect']:
-        #             fermi_ul = self.last_results['Fermi_sigmav']
-    
-        #             if len(detailled_keys) > 1 :
-        #                 logger.info('*** Total limits calculated with Fermi dSph likelihood:')
-        #                 if self.maddm_card['sigmav_method']!= 'inclusive':     
-        #                     self.print_ind('DM DM > all',sigtot_th , sigtot_alldm, fermi_ul,  thermal= dm_scen)
-        #                 else: 
-        #                     self.print_ind('DM DM > SM SM', sigtot_SM_th , sigtot_SM_alldm, fermi_ul,  thermal= dm_scen)
-    
-        #             elif len(detailled_keys) == 1:
-        #                 logger.info('*** Total limits calculated with Fermi dSph likelihood:')
-        #                 if self.maddm_card['sigmav_method']!= 'inclusive':
-        #                     self.print_ind('DM DM > all',sigtot_th , sigtot_alldm, self.last_results['Fermi_sigmav'],  thermal= dm_scen)
-        #                 else:
-        #                     self.print_ind('DM DM > SM SM', sigtot_SM_th , sigtot_SM_alldm, self.last_results['Fermi_sigmav'],  thermal= dm_scen)
-    
-        #         if str(self.mode['indirect']).startswith('flux'):
-        #             logger.info('')
-        #             logger.info('*** Fluxes at earth [particle/(cm^2 sr)]:')
-        #             #np_names = {'gammas':'g'      , 'neutrinos_e':'nue' , 'neutrinos_mu':'numu' , 'neutrinos_tau':'nutau'}
-        #             for chan in ['gammas','neutrinos_e', 'neutrinos_mu' , 'neutrinos_tau']:
-        #                 logger.info( self.form_s(chan + ' Flux') + '=\t' + self.form_s(self.form_n (self.last_results['flux_%s' % chan]) ))
-                
-        #         if self.mode['spectral']:
-        #             logger.info('')
-        #             logger.warning('Line limits cannot be calculated since DM halo velocity not compatible GC.')
-
-        #     elif not fermi_dsph_vel and line_gc_vel:  
-        #         print_sigmav_with_limits(detailled_keys,
-        #                                  sigmav_lim = lambda key: self.last_results['lim_' + key],
-        #                                  exp_label = lambda finalstate: 'Line',
-        #                                  no_lim_flag = lambda finalstate: not self.is_spectral_finalstate(finalstate))
-
-        #         if self.mode['indirect']:
-        #             logger.info('')
-        #             logger.warning('Fermi dSph limits cannot be calculated since DM halo velocity not compatible with dwarfs.')
-                
-        #         if self.mode['spectral']:
-        #             logger.info('')
-        #             logger.info('*** Line limits from ' + ', '.join([line_exp.get_name().replace('_', ' ') for line_exp in self.line_experiments]))
-        #             self.print_line_results(xsi2)
-
-        #     else:
-        #         print_sigmav_with_limits(detailled_keys,
-        #                                  sigmav_lim = lambda key: -1,
-        #                                  exp_label = lambda finalstate: None,
-        #                                  no_lim_flag = lambda finalstate: True)
-
-        #         if self.mode['indirect']:
-        #             logger.info('')
-        #             logger.warning('Fermi dSph limits cannot be calculated since DM halo velocity not compatible with dwarfs.')
-
-        #         if self.mode['spectral']:
-        #             logger.info('')
-        #             logger.warning('Line limits cannot be calculated since DM halo velocity not compatible with GC.')
-
-        #     logger.info('\n')  
-        #     logger.info('')
-
         # Internal: save the results as a numpy dictionary
         # np.save(pjoin(self.dir_path, 'output','Results'), self.last_results)
 
@@ -3285,7 +3131,6 @@ class MADDMRunCmd(cmd.CmdShell):
             out.write('#############################################\n\n')
 
             out.write('# Annihilation cross section computed with the method: ' + sigmav_meth)
-            # out.write('\n# [<sigma v>, Fermi dSph and %s line limits (if available, else -1)]' % ', '.join([exp.get_name().replace('_', ' ') for exp in self.line_experiments]) + '\n')
 
             def collect_processes(processes, filter_):
                 proc_list = []
@@ -3312,12 +3157,6 @@ class MADDMRunCmd(cmd.CmdShell):
             if line_procs:
                 out.write('\n# <sigma v>[cm^3 s^-1] of line spectrum final states and %s line limits (if available, else -1)]' % ', '.join([exp.get_name().replace('_', ' ') for exp in self.line_experiments]) + '\n')
                 print_sigmav(line_procs, out)
-
-            # for name in detailled_keys:                                                                                                                                     
-            #     proc = name.replace('taacsID#','')
-            #     proc = [proc_names for proc_names, proc_pdg in self.processes_names_map.iteritems() if proc == proc_pdg][0]
-            #     proc_th, proc_ul = self.last_results[name] , self.last_results['lim_' + name]                                                                          
-            #     out.write(form_s(proc)      + '= '+ form_s('['+ form_n(proc_th)+',' + form_n(proc_ul)+']') + '\n')
 
             if indirect:
                 tot_th , tot_ul , tot_sm = self.last_results['taacsID'] , self.last_results['Fermi_sigmav'] , self.last_results['tot_SM_xsec']
@@ -4793,7 +4632,7 @@ class Priors:
 
 class Likelihoods:
     likelihoods = ['gaussian', 'half_gauss', 'user', 'off']
-    observables = ['relic', 'directSI','directSD_p', 'directSD_n', 'indirect', 'capture']
+    observables = ['relic', 'directSI','directSD_p', 'directSD_n', 'indirect', 'spectral', 'capture']
 
 
 class Multinest(object):
@@ -4802,7 +4641,7 @@ class Multinest(object):
 
         self.options = {
             'prior':'loguniform',
-            'loglikelihood':{'relic':'gaussian', 'directSI':'half_gauss', 'directSD_p':'half_gauss','directSD_n':'half_gauss', 'indirect':'half_gauss'},
+            'loglikelihood':{'relic':'gaussian', 'directSI':'half_gauss', 'directSD_p':'half_gauss', 'directSD_n':'half_gauss', 'indirect':'', 'spectral':''},
             'livepts':10000,
             'sampling_efficiency':'model',
             'parameters':[],
@@ -4811,10 +4650,12 @@ class Multinest(object):
         }
 
         self.maddm_run = run_interface
+        self.line_experiment = "line_Fermi-LAT_2015_"
 
         self.param_blocks, _ = self.maddm_run.param_card.analyze_param_card()
         #self.parameter_vars = [] #names of parameters to scan over
         self.output_observables = []
+        self.likelihood_parts = []
 
         self.counter = 0
         #self.Fermi   = Fermi_bounds()
@@ -4874,6 +4715,11 @@ class Multinest(object):
                 #for key in detailled_keys:
                 #    self.output_observables.append(key)
 
+            if self.maddm_run.mode['spectral']:
+                xsecs = [k for k in self.maddm_run.last_results.keys() if k.startswith("taacsID#") and self.maddm_run.is_spectral_finalstate(k.split('_')[-1])]
+                for proc in xsecs:
+                    self.output_observables.append(proc)
+
             if self.maddm_run.mode['capture']:
                 detailled_keys = [k for k in self.maddm_run.last_results.keys() if k.startswith('ccap_')]
                 for key in detailled_keys:
@@ -4884,7 +4730,9 @@ class Multinest(object):
             #    detailled_keys = [k for k in self.maddm_run.last_results.keys() if k.startswith('??????????')]
             #    for key in detailled_keys:
             #        self.output_observables.append(key)
-               
+        
+        # add likelihoods parts for each category
+        self.likelihood_parts = [mode for mode in ['relic', 'direct', 'indirect', 'spectral'] if self.maddm_run.mode[mode]]
 
         # number of parameters to output
         # this includes the parameters which are scanned over (they go in first)
@@ -4893,7 +4741,7 @@ class Multinest(object):
         n_dimensions = n_parameters
         #mnest.parameter_vars = [parameters[i][0] for i in range(n_parameters)]
 
-        n_parameters=n_parameters+len(self.output_observables)
+        n_parameters=n_parameters+len(self.output_observables)+len(self.likelihood_parts)
 
 
         logger.info("Multinest will run with the following parameters: " )
@@ -4918,6 +4766,9 @@ class Multinest(object):
             logger.info('column[%i] : %s' % (i+2, var[0]))
         for i, obs in enumerate(self.output_observables):
             logger.info('column[%i] : %s' % (i+2+len(self.options['parameters']), obs))
+        for i, obs in enumerate(self.likelihood_parts):
+            logger.info('column[%i] : -2*log(L_%s)' % (i+2+len(self.options['parameters'])+len(self.output_observables), obs))
+
 
         return True
 
@@ -4937,6 +4788,8 @@ class Multinest(object):
                     f.write('column[%i] : %s\n' % (i+2, var[0]))
                 for i, obs in enumerate(self.output_observables):
                     f.write('column[%i] : %s\n' % (i+2+len(self.options['parameters']), obs))
+                for i, obs in enumerate(self.likelihood_parts):
+                    f.write('column[%i] : -2*log(L_%s)\n' % (i+2+len(self.options['parameters'])+len(self.output_observables), obs))
 
 
 
@@ -5086,6 +4939,8 @@ class Multinest(object):
         logger.debug(self.maddm_run.mode['relic'])
         logger.debug(self.maddm_run.mode['direct'])
 
+        ndim_obs = ndim + len(self.output_observables)
+
         for obs, likelihood in self.options.get('loglikelihood').iteritems():
 
             #relic density
@@ -5094,51 +4949,61 @@ class Multinest(object):
                 #if relic density evaluates to -1 (too early freezeout for example)
                 #then discard this point by assigning some high log likelihood.
                 if omegah2 < 0:
-                    chi+= __mnestlog0__
+                    relic_contrib= __mnestlog0__
                 else:
                     if likelihood == 'gaussian':
-                        chi += -0.5*pow(omegah2 - self.maddm_run.limits._oh2_planck,2)/pow(self.maddm_run.limits._oh2_planck_width,2)
+                        relic_contrib = -0.5*pow(omegah2 - self.maddm_run.limits._oh2_planck,2)/pow(self.maddm_run.limits._oh2_planck_width,2)
                     elif likelihood == 'half_gauss':
                         if omegah2 > 0:
-                            #chi += np.log(0.5*(np.tanh((self.maddm_run.limits._oh2_planck - omegah2)\
+                            #relic_contrib = np.log(0.5*(np.tanh((self.maddm_run.limits._oh2_planck - omegah2)\
                             #                           /self.maddm_run.limits._oh2_planck)+1.000001))
                             if omegah2 > self.maddm_run.limits._oh2_planck:
-                                chi+= -0.5*pow(np.log10(self.maddm_run.limits._oh2_planck/omegah2),2)\
+                                relic_contrib+= -0.5*pow(np.log10(self.maddm_run.limits._oh2_planck/omegah2),2)\
                                       /pow(np.log10(self.maddm_run.limits._oh2_planck_width),2)
                     elif likelihood =='user':
-                        chi+=0
+                        relic_contrib=0
                         #
                         # HERE ADD YOUR OWN LOG LIKELIHOOD FOR RELIC DENSITY
                         #
                     elif likelihood == '':
-                        chi+=0
+                        relic_contrib=0
                     else:
                         logger.error('You are not using a valid likelihood function for relic density. Omitting the contribution!')
+                        relic_contrib += 0
+                # add to cube
+                cube[ndim_obs+self.likelihood_parts.index('relic')] = relic_contrib
+                chi += relic_contrib
 
             #direct detection (SI)
+            if self.maddm_run.mode['direct']:
+                cube[ndim_obs+self.likelihood_parts.index('direct')] = 0
             if obs == 'directSI' and self.maddm_run.mode['direct']:
+                if likelihood=='half_gauss':
 
-                    if likelihood=='half_gauss':
+                    if spinSI > self.maddm_run.limits.SI_max(mdm):
+                        direct_contrib_1= -0.5*pow(np.log10(self.maddm_run.limits.SI_max(mdm)/spinSI),2)\
+                                    /pow(self.options['half_gauss_width']['spinSI'],2)
 
-                        if spinSI > self.maddm_run.limits.SI_max(mdm):
-                            chi+= -0.5*pow(np.log10(self.maddm_run.limits.SI_max(mdm)/spinSI),2)\
-                                      /pow(self.options['half_gauss_width']['spinSI'],2)
-
-                    elif likelihood == 'gaussian':
-                        if self.maddm_run.limits._sigma_SI > 0:
-                            chi+=  -0.5*pow(spinSI - self.maddm_run.limits._sigma_SI,2)/pow(self.maddm_run.limits._sigma_SI_width,2)
-                        else:
-                            logger.error('You have to set up the sigma_SI(_width) to a positive value to use gaussian likelihood!')
-                    elif likelihood == 'user':
-                        #
-                        # HERE ADD YOUR OWN LOG LIKELIHOOD FOR SI
-                        #
-                        chi+=0
-
-                    elif likelihood == '':
-                        chi+=0
+                elif likelihood == 'gaussian':
+                    if self.maddm_run.limits._sigma_SI > 0:
+                        direct_contrib_1=  -0.5*pow(spinSI - self.maddm_run.limits._sigma_SI,2)/pow(self.maddm_run.limits._sigma_SI_width,2)
                     else:
-                        logger.error('You are not using a valid likelihood function for SI direct detection. Omitting the contribution!')
+                        logger.error('You have to set up the sigma_SI(_width) to a positive value to use gaussian likelihood!')
+                elif likelihood == 'user':
+                    #
+                    # HERE ADD YOUR OWN LOG LIKELIHOOD FOR SI
+                    #
+                    direct_contrib_1=0
+
+                elif likelihood == '':
+                    direct_contrib_1=0
+                else:
+                    logger.error('You are not using a valid likelihood function for SI direct detection. Omitting the contribution!')
+                    direct_contrib_1 = 0
+
+                # add to cube
+                cube[ndim_obs+self.likelihood_parts.index('direct')] += direct_contrib_1
+                chi += direct_contrib_1
 
             #direct detection (SD) proton and neutron
             if obs.startswith('directSD') and self.maddm_run.mode['direct']:
@@ -5146,37 +5011,44 @@ class Multinest(object):
                 if likelihood=='half_gauss':
                     if nucleon =='p':
                         if spinSDp > self.maddm_run.limits.SD_max(mdm, 'p'):
-                            chi+= -0.5*pow(np.log10(self.maddm_run.limits.SD_max(mdm, 'p')/spinSDp),2)\
+                            direct_contrib_2= -0.5*pow(np.log10(self.maddm_run.limits.SD_max(mdm, 'p')/spinSDp),2)\
                                   /pow(self.options['half_gauss_width']['spinSDp'],2)
                     elif nucleon == 'n':
                         if spinSDp > self.maddm_run.limits.SD_max(mdm,'n'):
-                            chi+= -0.5*pow(np.log10(self.maddm_run.limits.SD_max(mdm, 'n')/spinSDn),2)\
+                            direct_contrib_2= -0.5*pow(np.log10(self.maddm_run.limits.SD_max(mdm, 'n')/spinSDn),2)\
                                   /pow(self.options['half_gauss_width']['spinSDn'],2)
                 elif likelihood == 'gaussian':
                     if nucleon == 'p' and self.maddm_run.limits._sigma_SDp > 0:
-                        chi+=  -0.5*pow(spinSDp - self.maddm_run.limits._sigma_SDp,2)/pow(self.maddm_run.limits._sigma_SDp_width,2)
+                        direct_contrib_2=  -0.5*pow(spinSDp - self.maddm_run.limits._sigma_SDp,2)/pow(self.maddm_run.limits._sigma_SDp_width,2)
                     else:
                         logger.error('You have to set up the sigma_SDp(_width) to a positive value to use gaussian likelihood!')
                     if nucleon == 'n' and self.maddm_run.limits.sigma_SDn > 0:
-                        chi+=  -0.5*pow(spinSDn - self.maddm_run.limits.sigma_SDn,2)/pow(self.maddm_run.limits._sigma_SDn_width,2)
+                        direct_contrib_2=  -0.5*pow(spinSDn - self.maddm_run.limits.sigma_SDn,2)/pow(self.maddm_run.limits._sigma_SDn_width,2)
                     else:
                         logger.error('You have to set up the sigma_SDp(_width) to a positive value to use gaussian likelihood!')
                 elif likelihood == 'user':
                     #
                     # HERE ADD YOUR OWN LOG LIKELIHOOD FOR SD
                     #
-                    chi+=0
+                    direct_contrib_2=0
                 elif likelihood == '':
-                    chi+=0
+                    direct_contrib_2=0
                 else:
                     logger.error('You are not using a valid likelihood function for SD direct detection. Omitting the contribution!')
+                    direct_contrib_2=0
+                # add to cube
+                cube[ndim_obs+self.likelihood_parts.index('direct')] += direct_contrib_2
+                chi += direct_contrib_2
 
             # indirect detection:
             # using Fermi Likelihood for combined gamma spectrum (only SM channels and relative SM xsection for PPPC sepctra)
             if obs == 'indirect' and self.maddm_run.mode['indirect']:
-
-                like = results['like_nonth']
-                chi += like 
+                if likelihood != '':
+                    logger.warning("Likelihood for indirect detection (continuum spectrum) can't be specified, because it is taken from the Fermi-LAT searches in dSph.")
+                indirect_contrib = results['like_nonth']
+                # add to cube
+                cube[ndim_obs+self.likelihood_parts.index('indirect')] = indirect_contrib
+                chi += indirect_contrib
 
                 
                 '''
@@ -5212,6 +5084,17 @@ class Multinest(object):
                         else:
                             logger.warning('No limit for channel %s. Omitting the likelihood contribution.' % finalstate)
                   '''
+
+            if obs == 'spectral' and self.maddm_run.mode['spectral']:
+                if likelihood != '':
+                    logger.warning("Likelihood for indirect detection (line spectrum) can't be specified, because it is taken from the Fermi-LAT 2015 searches in the Galactic Centre.")
+                # find the most constraining peak: -2log(L) higher, but exclude -1 (not computed or out of range peaks)
+                like_peaks = [v for k, v in results.iteritems() if k.startswith(self.line_experiment + 'like') and v != -1.]
+                spectral_contrib = max(like_peaks) if len(like_peaks) != 0 else 0.
+                # add to cube
+                cube[ndim_obs+self.likelihood_parts.index('spectral')] = spectral_contrib
+                chi += spectral_contrib
+
                 
         #Print the counter on the screen
 
