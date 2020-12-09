@@ -1637,9 +1637,10 @@ class MADDMRunCmd(cmd.CmdShell):
                             result['err_taacsID#' + oname] = 0 
                             result['lim_taacsID#' + oname] = self.limits.ID_max(mdm, oname.split('_')[1])
                     if '%' in line:
-                        oname = splitline[0].split(':',1)[1]
+                        oname = splitline[0].split(':',1)[1].split('_')
+                        oname = oname[0] + '_' + oname[1]
                         oname = self.processes_names_map[oname] # conversion to pdg codes
-                        result["%_relic_%s" % oname] = secure_float_f77(splitline[1])
+                        result["%%_relic_%s" % oname] = secure_float_f77(splitline[1])
                     else:
                         result[splitline[0].split(':')[0]] = secure_float_f77(splitline[1])
                             
@@ -1676,6 +1677,12 @@ class MADDMRunCmd(cmd.CmdShell):
         if self.mode['indirect']:
             for directory in [d for d, v in self.indirect_directories.items() if 'cont' in d and v]:
                 self.launch_indirect(force, directory, self.maddm_card['vave_indirect_cont'])
+            # compute total cross section only for continuum final states
+            self.last_results['taacsID'] = 0.
+            for process, sigmav in {k.replace('taacsID#', ''): v for k, v in self.last_results.iteritems() if k.startswith('taacsID#')}.iteritems():
+                if self.is_spectral_finalstate(process.split('_')[-1]):
+                    continue
+                self.last_results['taacsID'] += sigmav
             self.launch_indirect_computations(mdm)
 
         if self.mode['spectral']:
@@ -1683,12 +1690,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 self.launch_indirect(force, directory, self.maddm_card['vave_indirect_line'])
             self.launch_spectral_computations(mdm)
 
-        # compute total cross section only for continuum final states
-        self.last_results['taacsID'] = 0.
-        for process, sigmav in {k.replace('taacsID#', ''): v for k, v in self.last_results.iteritems() if k.startswith('taacsID#')}.iteritems():
-            if self.is_spectral_finalstate(process.split('_')[-1]):
-                continue
-            self.last_results['taacsID'] += sigmav
+        
 
         # rescale Fermi dSph limits by branching ratio
         for limit_key in [k for k in self.last_results.keys() if 'lim_taacsID#' in k and not self.is_spectral_finalstate(k.split('_')[-1])]:
@@ -2649,8 +2651,8 @@ class MADDMRunCmd(cmd.CmdShell):
             for k in keys:
                 if 'taacsID#' in k:
                     k = k.replace('taacsID#','')
-                    this_proc = [(proc_pdg, proc_names) for proc_names, proc_pdg in self.processes_names_map.iteritems() if proc_pdg in k][0]
-                    k = k.replace(this_proc[0], this_proc[1])
+                    #this_proc = [(proc_pdg, proc_names) for proc_names, proc_pdg in self.processes_names_map.iteritems() if proc_pdg in k][0]
+                    #k = k.replace(this_proc[0], this_proc[1])
                 k = k.replace('taacsID','tot_Xsec')
                 nice_keys.append(k)
             
@@ -2719,8 +2721,14 @@ class MADDMRunCmd(cmd.CmdShell):
             logger.info( self.form_s('xsi'          ) + '= ' + self.form_s(self.form_n(xsi      ) ) )
             logger.info('')
             logger.info('Channels contributions:')
+            skip = []
             for proc in [k for k in self.last_results.keys() if k.startswith('%_relic_')]:
+                if self.last_results[proc] == 0.:
+                    skip.append(self.pdg_particle_map.format_particles(proc.split('_')[-1]))
+                    continue
                 logger.info( self.form_s(self.pdg_particle_map.format_process(proc.replace('%_relic_',''))) + ': %.2f %%' % self.last_results[proc] )
+            if len(skip) != 0:
+                logger.info('No contribution from processes: %s', ', '.join(skip))
 
         if self.mode['direct']:
             sigN_SI_p , sigN_SI_n = self.last_results['sigmaN_SI_p'] , self.last_results['sigmaN_SI_n']
@@ -3111,9 +3119,9 @@ class MADDMRunCmd(cmd.CmdShell):
                 out.write(form_s('xsi') + '= ' + form_n(self.last_results['xsi']) +' \t # xsi = (Omega/Omega_Planck)\n' )
             out.write(form_s('x_f')                  + '= ' + form_n(self.last_results['x_f'])        + '\n' ) 
             out.write(form_s('sigmav_xf')           + '= ' + form_n(self.last_results['sigmav(xf)']) + '\n' ) 
-            out.write("# %% of the various relic density channels\n")
+            out.write("# % of the various relic density channels\n")
             for proc in [k for k in self.last_results.keys() if k.startswith('%_relic_')]:
-                logger.info( form_s(proc.replace('relic_','')) + ': %.2f %%\n' % self.last_results[proc] )
+                out.write( form_s(proc.replace('relic_','')) + ': %.2f %%\n' % self.last_results[proc] )
 
 
         if direct:
@@ -3147,14 +3155,15 @@ class MADDMRunCmd(cmd.CmdShell):
                 proc_list = []
                 for name in processes:                                                                                                                                     
                     proc = name.replace('taacsID#','')
-                    if filter_(proc):
+                    if not filter_(proc):
                         continue
                     proc_list.append(proc)
                 return proc_list
 
             def print_sigmav(proc_list, fileout):
+                ''' writes the line proc_name = sigmav, proc is in PDG format. '''
                 for proc in proc_list:
-                    proc = [proc_names for proc_names, proc_pdg in self.processes_names_map.iteritems() if proc == proc_pdg][0]
+                    #proc = [proc_names for proc_names, proc_pdg in self.processes_names_map.iteritems() if proc == proc_pdg][0] # this allows to convert back from PDG
                     proc_th, proc_ul = self.last_results['taacsID#' + proc] , self.last_results['lim_taacsID#' + proc]
                     fileout.write(form_s(proc)      + '= '+ form_s('['+ form_n(proc_th)+',' + form_n(proc_ul)+']') + '\n')
 
