@@ -708,7 +708,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 logger.info('''Some widths are on Auto in the card.
     Those will be computed as soon as you have finish editing the cards.
     If you want to force the computation right now and re-edit
-    the cards afterwards, you can type \"compute_wdiths\".''')
+    the cards afterwards, you can type \"compute_widths\".''')
 
     def do_compute_widths(self, line):
                 
@@ -836,9 +836,9 @@ class MADDMRunCmd(cmd.CmdShell):
                                 result['lim_taacsID#'+oname] = -1
                             sigv_indirect += sigv_temp
                     if '%' in line:
-                        oname = splitline[0].split(':',1)[1]
-                        oname = self.processes_names_map[oname] # conversion to pdg codes
-                        result["%_relic_%s" % oname] = secure_float_f77(splitline[1])
+                        oname = splitline[0].split(':',1)[1].split('_')
+                        oname = oname[0]+'_'+oname[1] #To eliminate the annoying suffix coming from the '/' notation
+                        result["%%_relic_%s" % oname] = secure_float_f77(splitline[1])
                     else:
                         result[splitline[0].split(':')[0]] = secure_float_f77(splitline[1])
         
@@ -889,7 +889,7 @@ class MADDMRunCmd(cmd.CmdShell):
             self.print_results()
 
         # Saving the output for single point
-        if not self.param_card_iterator:
+        if self.mode['indirect']:
             self.save_remove_output(scan = False)
 
         # --------------------------------------------------------------------#
@@ -1740,8 +1740,14 @@ class MADDMRunCmd(cmd.CmdShell):
             logger.info( self.form_s('xsi'          ) + '= ' + self.form_s(self.form_n(xsi      ) ) )
             logger.info('')
             logger.info('Channels contributions:')
+            skip = []
             for proc in [k for k in self.last_results.keys() if k.startswith('%_relic_')]:
-                logger.info( self.form_s(self.pdg_particle_map.format_process(proc.replace('%_relic_',''))) + ': %.2f %%' % self.last_results[proc] )
+                if self.last_results[proc] == 0.:
+                    skip.append(proc.split('_')[-1])
+                    continue
+                logger.info( self.form_s(proc.replace('%_relic_','')) + ': %.2f %%' % self.last_results[proc] )
+            if len(skip) != 0:
+                logger.info('No contribution from processes: %s', ', '.join(skip))
 
         if self.mode['direct']:
             sigN_SI_p , sigN_SI_n = self.last_results['sigmaN_SI_p'] , self.last_results['sigmaN_SI_n']
@@ -1874,7 +1880,7 @@ class MADDMRunCmd(cmd.CmdShell):
                                 fluxes_earth = False )                  
             logger.info('Results written in: ' +pjoin(self.dir_path, 'output', self.run_name, 'MadDM_results.txt') )
 
-            self.save_remove_output(scan = False)
+            # self.save_remove_output(scan = False)
 
 
     def save_remove_output(self, scan = False):
@@ -2073,9 +2079,9 @@ class MADDMRunCmd(cmd.CmdShell):
                 out.write(form_s('xsi') + '= ' + form_n(self.last_results['xsi']) +' \t # xsi = (Omega/Omega_Planck)\n' )
             out.write(form_s('x_f')                  + '= ' + form_n(self.last_results['x_f'])        + '\n' ) 
             out.write(form_s('sigmav_xf')           + '= ' + form_n(self.last_results['sigmav(xf)']) + '\n' ) 
-            out.write("# %% of the various relic density channels\n")
+            out.write("# % of the various relic density channels\n")
             for proc in [k for k in self.last_results.keys() if k.startswith('%_relic_')]:
-                logger.info( form_s(proc.replace('relic_','')) + ': %.2f %%\n' % self.last_results[proc] )
+                out.write( form_s(proc.replace('relic_','')) + ': %.2f %%\n' % self.last_results[proc] )
 
 
         if direct:
