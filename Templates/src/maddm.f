@@ -18,6 +18,8 @@ c parameters used in this routine only
       double precision total_events, sigmawnSI, sigmawpSI
       double precision sigmawnSD, sigmawpSD
       double precision vID_natural
+      double precision cross_sec_relic(size(process_names))
+      Integer process_relic_name_indexes(size(process_names)), process_index
       character(len=32) outfilename
 c      double precision total_cross
 
@@ -128,7 +130,40 @@ C      Here write the output.
 	  write(33,*) 'sigmaN_SD_n: ', sigma_neutron_SD, ' GeV^-2',
      &                ':', sigma_neutron_SD*gevtopb, ' pb'
 	  write(33,*) 'Nevents: ', Nint(total_events)
-	  write(33,*) 'smearing: ', sm_flag
+        write(33,*) 'smearing: ', sm_flag
+        
+c     Compute the relic density channels percentage
+c     loop over all the pairs of DM initial states
+      Integer i_proc = 1
+      do x1=1,ndmparticles
+            do x2=x1,ndmparticles
+c                 loop over all the annihilation diagrams for each DM particle pair
+                  do x3=1,ann_nprocesses(x1,x2)
+                        call get_process_index(x1,x2,x3,1,process_index)
+                        process_relic_name_indexes(i_proc) = process_index
+                        cross_sec_relic (i_proc) = cross_check_process(x1,x2,x3,1,mdm(1)/x_f,mdm(1)/x_f,1)
+                        i_proc += 1
+                  enddo
+c                 loop over all the DM -> DM diagrams for each DM particle pair
+                  do x3=1,dm2dm_nprocesses(x1,x2)
+                        call get_process_index(x1,x2,x3,2,process_index)
+                        process_relic_name_indexes(i_proc) = process_index
+                        cross_sec_relic (i_proc) = cross_check_process(x1,x2,x3,2,mdm(1)/x_f,mdm(1)/x_f,1)
+                        i_proc += 1
+                  enddo
+            enddo
+      enddo
+
+c     Total cross section
+      double precision tot_cross_sec = 0.0
+      do i_proc=1, size(cross_sec_relic)
+            tot_cross_sec += cross_sec_relic(i_proc)
+      enddo
+
+c     Write to output
+      do i_proc=1, size(cross_sec_relic)
+            write(33,fmt='(A2,A30,A1,F3.2)') '%:',process_names(process_relic_name_indexes(i_proc)),' ',cross_sec_relic(i_proc)/tot_cross_sec
+      enddo
 
 
       if (do_capture.and.do_direct_detection) then
