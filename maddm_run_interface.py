@@ -77,8 +77,8 @@ class ExpConstraints:
         self._allowed_final_states = ['qqx', 'ccx', 'gg', 'bbx', 'ttx', 'emep', 'mummup', 'tamtap', 'wpwm', 'zz', 'hh', 
                                       'hess2013','hess2016', 'aaER16','aaIR90','aaNFWcR3','aaNFWR41']
 
-        self._oh2_planck = 0.1198
-        self._oh2_planck_width = 0.0015
+        self._oh2_planck = 0.1200 # from 1807.06209 Tab. 2 (TT,TE,EE+lowE+lensing) quoted also in abstract
+        self._oh2_planck_width = 0.0012
 
         self._dd_si_limit_file = pjoin(MDMDIR, 'ExpData', 'Xenont1T_data_2017.dat')
         self._dd_sd_proton_limit_file = pjoin(MDMDIR, 'ExpData', 'Pico60_sd_proton.dat') # <---------CHANGE THE FILE!!!
@@ -842,6 +842,7 @@ class MADDMRunCmd(cmd.CmdShell):
                     else:
                         result[splitline[0].split(':')[0]] = secure_float_f77(splitline[1])
         
+        result['sigmav(xf)'] *= GeV2pb*pb2cm3
         result['taacsID'] = sigv_indirect
                             
         np_names = ['g','nue','numu','nutau']
@@ -1100,7 +1101,7 @@ class MADDMRunCmd(cmd.CmdShell):
                     with misc.MuteLogger(['madgraph','madevent','cmdprint'], [set_level]*3):
                         #mute logger          
                         if self.maddm_card['sigmav_method'] == 'madevent':
-                            if os.path.exists(pjoin(self.dir_path,'Indirect','Cards','reweight_card.dat')):
+                            if os.path.exists(pjoin(self.dir_path,'Indirect','Cards','reweight_card.dat')) and os.path.exists(pjoin(self.dir_path,'Indirect','Cards','reweight_card.dat')):
                                 os.remove(pjoin(self.dir_path,'Cards','reweight_card.dat'))
                             self.me_cmd.do_launch('%s -f' % self.run_name)
                         elif self.maddm_card['sigmav_method'] == 'reshuffling': 
@@ -1714,12 +1715,19 @@ class MADDMRunCmd(cmd.CmdShell):
 
         mdm= self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
 
-        pass_message  = '%s ALLOWED  %s' % (bcolors.OKGREEN, bcolors.ENDC)
-        fail_message  = '%s EXCLUDED %s' % (bcolors.FAIL, bcolors.ENDC)
-        nolim_message = '%s NO LIMIT %s' % (bcolors.GRAY, bcolors.ENDC)
+        under_message  = '%s UNDERABUNDANT     %s' % ('\033[33m', bcolors.ENDC)
+        above_message  = '%s OVERABUNDANT      %s' % (bcolors.FAIL, bcolors.ENDC)
+        within_message = '%s WITHIN UNCERTAINTY %s' % (bcolors.OKGREEN, bcolors.ENDC)
 
-        #skip this if there is a sequential scan going on.
-        pass_relic = pass_message if self.last_results['Omegah^2'] < self.limits._oh2_planck else fail_message                                                                 
+        # skip this if there is a sequential scan going on.
+        if self.last_results['Omegah^2'] < 0.:
+            pass_relic = ""
+        elif self.last_results['Omegah^2'] < self.limits._oh2_planck - 2*self.limits._oh2_planck_width:
+            pass_relic = under_message
+        elif self.last_results['Omegah^2'] > self.limits._oh2_planck + 2*self.limits._oh2_planck_width:
+            pass_relic = above_message
+        else:
+            pass_relic = within_message
 
         omega    = self.last_results['Omegah^2']
         x_f      = self.last_results['x_f']
