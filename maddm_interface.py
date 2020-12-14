@@ -691,12 +691,9 @@ class MadDM_interface(master_interface.MasterCmd):
 
     def do_tutorial(self, line):
         """Activate/deactivate the tutorial mode."""
-
+        
         if line:
             super(MadDM_interface, self).do_tutorial(line)
-            if not line.lower().strip() not in ['off', 'quit']:
-                return 
-            
             
         args = self.split_arg(line)
         #self.check_tutorial(args)

@@ -124,7 +124,7 @@ launch="""
 Here you are, you have finished your first computation!
 and you have reached the end of this tutorial.
 you can now type 
-MadDM> tutorial quit
+MadDM> tutorial stop
 """
 
 set_mxd="""
