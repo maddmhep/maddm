@@ -1746,7 +1746,7 @@ class MADDMRunCmd(cmd.CmdShell):
             print 'OMEGA IS ', omega 
             logger.info( self.form_s('Relic Density') + '= ' + self.form_n(omega)   + '      '  +  pass_relic )
             logger.info( self.form_s('x_f'          ) + '= ' + self.form_s(self.form_n(x_f      ) ) )
-            logger.info( self.form_s('sigmav(xf)'   ) + '= ' + self.form_s(self.form_n(sigma_xf ) ) )
+            logger.info( self.form_s('sigmav(xf)'   ) + '= ' + self.form_s(self.form_n(sigma_xf ) ) + ' cm^3/s')
             logger.info( self.form_s('xsi'          ) + '= ' + self.form_s(self.form_n(xsi      ) ) )
             logger.info('')
             logger.info('Channels contributions:')
@@ -2088,7 +2088,7 @@ class MADDMRunCmd(cmd.CmdShell):
             if self.last_results['xsi'] > 0: 
                 out.write(form_s('xsi') + '= ' + form_n(self.last_results['xsi']) +' \t # xsi = (Omega/Omega_Planck)\n' )
             out.write(form_s('x_f')                  + '= ' + form_n(self.last_results['x_f'])        + '\n' ) 
-            out.write(form_s('sigmav_xf')           + '= ' + form_n(self.last_results['sigmav(xf)']) + '\n' ) 
+            out.write(form_s('sigmav_xf')           + '= ' + form_n(self.last_results['sigmav(xf)']) + ' cm^3/s\n' ) 
             out.write("# % of the various relic density channels\n")
             for proc in [k for k in self.last_results.keys() if k.startswith('%_relic_')]:
                 out.write( form_s(proc.replace('relic_','')) + ': %.2f %%\n' % self.last_results[proc] )

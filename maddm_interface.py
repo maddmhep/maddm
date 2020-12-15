@@ -1118,6 +1118,9 @@ class MadDM_interface(master_interface.MasterCmd):
 
     def is_amplitude_not_empty(self, amplitude):
         ''' tree level amplitudes have only property 'diagrams', while for loop amplitudes have both 'diagrams', 'born_diagrams' and 'loop_diagrams', so we need to check all of them to find out if a process has diagrams. '''
+        if isinstance(amplitude, diagram_generation.DecayChainAmplitude):
+            return bool(amplitude['decay_chains'])
+
         diagrams = bool(amplitude['diagrams'])
         born_diagrams = bool('born_diagrams' in amplitude.keys() and amplitude['born_diagrams'])
         loop_diagrams = bool('loop_diagrams' in amplitude.keys() and amplitude['loop_diagrams'])
@@ -1224,6 +1227,7 @@ class MadDM_interface(master_interface.MasterCmd):
                 #We put the coupling order restrictions after the @ID in order to
                 #apply it to the entire matrix element.
                 proc = '%s %s > %s @ID %s' % (name, antiname, ' '.join(argument), coupling)
+                misc.sprint(proc)
                 try:
                     self.do_add('process %s' % proc)
                     last_amp = self._curr_amps[-1]
