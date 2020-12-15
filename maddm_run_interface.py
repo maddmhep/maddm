@@ -76,8 +76,8 @@ class ExpConstraints:
 
         self._allowed_final_states = ['(1)(-1)', '(2)(-2)', '(3)(-3)', '(4)(-4)', '(21)(21)', '(5)(-5)', '(6)(-6)', '(11)(-11)', '(13)(-13)', '(15)(-15)', '(24)(-24)', '(23)(23)', '(25)(25)']
 
-        self._oh2_planck = 0.1198
-        self._oh2_planck_width = 0.0015
+        self._oh2_planck = 0.1200 # from 1807.06209 Tab. 2 (TT,TE,EE+lowE+lensing) quoted also in abstract
+        self._oh2_planck_width = 0.0012
 
         self._dd_si_limit_file = pjoin(MDMDIR, 'ExpData', 'Xenont1T_data_2017.dat')
         self._dd_sd_proton_limit_file = pjoin(MDMDIR, 'ExpData', 'Pico60_sd_proton.dat') # <---------CHANGE THE FILE!!!
@@ -1645,6 +1645,7 @@ class MADDMRunCmd(cmd.CmdShell):
                         result[splitline[0].split(':')[0]] = secure_float_f77(splitline[1])
                             
         np_names = ['g','nue','numu','nutau']
+        result['sigmav(xf)'] *= GeV2pb*pb2cm3
 
         if str(self.mode['indirect']).startswith('flux'):
             for chan in np_names + ['gammas','neutrinos_e', 'neutrinos_mu' , 'neutrinos_tau']: # set -1 to the possible cases
@@ -1704,9 +1705,8 @@ class MADDMRunCmd(cmd.CmdShell):
             self.print_results()
 
         # Saving the output for single point
-        if not self.param_card_iterator:
-            for directory in self.indirect_directories.keys():
-                self.save_remove_output(indirect_directory = directory, scan = False)
+        for directory in self.indirect_directories.keys():
+            self.save_remove_output(indirect_directory = directory, scan = False)
 
         # --------------------------------------------------------------------#
         #   THIS PART IS FOR MULTINEST SCANS
@@ -1950,7 +1950,7 @@ class MADDMRunCmd(cmd.CmdShell):
                     with misc.MuteLogger(['madgraph','madevent','cmdprint'], [set_level]*3):
                         #mute logger          
                         if self.maddm_card['sigmav_method'] == 'madevent':
-                            if os.path.exists(pjoin(self.dir_path,indirect_directory,'Cards','reweight_card.dat')):
+                            if os.path.exists(pjoin(self.dir_path,indirect_directory,'Cards','reweight_card.dat')) and os.path.exists(pjoin(self.dir_path,'Cards','reweight_card.dat')):
                                 os.remove(pjoin(self.dir_path,'Cards','reweight_card.dat'))
                             self.me_cmd.do_launch('%s -f' % self.run_name)
                         elif self.maddm_card['sigmav_method'] == 'reshuffling':
@@ -2007,6 +2007,8 @@ class MADDMRunCmd(cmd.CmdShell):
             elif self.mode['indirect'] == 'sigmav':
                 logger.warning('no gamma spectrum since in sigmav mode')      
 
+        elif self.mode['indirect'] == 'sigmav':
+            logger.warning('no gamma spectrum since in sigmav mode') 
         elif self.read_PPPCspectra():   # if not fast mode, use PPPC. return False if PPPC4DMID not installed!
             logger.info('Calculating Fermi dSph limit using PPPC4DMID spectra')
 
@@ -2695,12 +2697,19 @@ class MADDMRunCmd(cmd.CmdShell):
 
         mdm= self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
 
-        pass_message  = '%s ALLOWED  %s' % (bcolors.OKGREEN, bcolors.ENDC)
-        fail_message  = '%s EXCLUDED %s' % (bcolors.FAIL, bcolors.ENDC)
-        nolim_message = '%s NO LIMIT %s' % (bcolors.GRAY, bcolors.ENDC)
+        under_message  = '%s UNDERABUNDANT     %s' % ('\033[33m', bcolors.ENDC)
+        above_message  = '%s OVERABUNDANT      %s' % (bcolors.FAIL, bcolors.ENDC)
+        within_message = '%s WITHIN EXP ERROR %s' % (bcolors.OKGREEN, bcolors.ENDC)
 
-        #skip this if there is a sequential scan going on.
-        pass_relic = pass_message if self.last_results['Omegah^2'] < self.limits._oh2_planck else fail_message                                                                 
+        # skip this if there is a sequential scan going on.
+        if self.last_results['Omegah^2'] < 0.:
+            pass_relic = ""
+        if self.last_results['Omegah^2'] < self.limits._oh2_planck - 2*self.limits._oh2_planck_width:
+            pass_relic = under_message
+        elif self.last_results['Omegah^2'] > self.limits._oh2_planck + 2*self.limits._oh2_planck_width:
+            pass_relic = above_message
+        else:
+            pass_relic = within_message                                                                
 
         omega    = self.last_results['Omegah^2']
         x_f      = self.last_results['x_f']
@@ -2861,8 +2870,8 @@ class MADDMRunCmd(cmd.CmdShell):
                                 fluxes_earth = False )                  
             logger.info('Results written in: ' +pjoin(self.dir_path, 'output', self.run_name, 'MadDM_results.txt') )
 
-            for directory in self.indirect_directories.keys():
-                self.save_remove_output(indirect_directory = directory, scan = False)
+            # for directory in self.indirect_directories.keys():
+            #     self.save_remove_output(indirect_directory = directory, scan = False)
 
 
     def save_remove_output(self, indirect_directory, scan = False):
@@ -3513,9 +3522,13 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
     # everything related to relic option
     ####################################################################    
     def set_default_relic(self):
-        """set the default value for relic="""
+        """set the default value for relic=
+           if relic has been generated when calling indirect detection, then it is set as 'OFF' by default.
+           the 'Not Avail.' case happens when relic has not been generated neither explicitly nor through indirect detection"""
         
-        if self.availmode['has_relic_density']:
+        if self.availmode['relic_density_off']: # this can be True only if self.availmode['has_relic_density'] is True as well, that would correspond to generate relic_density during ID
+            self.switch['relic'] = 'OFF'
+        elif self.availmode['has_relic_density']: # otherwise that would mean that relic density has/hasn't been asked explicitly
             self.switch['relic'] = 'ON'
         else:
             self.switch['relic'] = 'Not Avail.'
@@ -3539,7 +3552,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
     # everything related to direct option
     ####################################################################    
     def set_default_direct(self):
-        """set the default value for relic="""
+        """set the default value for direct="""
         
         if self.availmode['has_directional_detection']:
             self.switch['direct'] = 'directional'
@@ -3549,7 +3562,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
             self.switch['direct'] = 'Not Avail.'
 
     def get_allowed_direct(self):
-        """Specify which parameter are allowed for relic="""
+        """Specify which parameter are allowed for direct="""
         
         
         if hasattr(self, 'allowed_direct'):
@@ -3563,7 +3576,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
             return []
 
     def check_value_direct(self, value):
-        """ allow diret=ON in top of standard mode """
+        """ allow direct=ON in top of standard mode """
         
         if value in self.get_allowed('direct'):
             return True
@@ -3597,12 +3610,12 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
     # TODO -> add check if PY8/Dragon are available for the switch 
     
     def set_default_indirect(self):
-        """set the default value for relic="""
+        """set the default value for indirect="""
         
         if not HAS_NUMPY:
             self.switch['indirect'] = 'Not Avail. (numpy missing)'
         elif self.availmode['has_indirect_detection']:
-            self.switch['indirect'] = 'sigmav'     
+            self.switch['indirect'] = 'flux_source'     
         else:
             self.switch['indirect'] = 'Not Avail.'
 
@@ -3617,7 +3630,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
             return self.print_options('indirect', keep_default=True)
 
     def get_allowed_indirect(self):
-        """Specify which parameter are allowed for relic="""
+        """Specify which parameter are allowed for indirect="""
         
         
         if hasattr(self, 'allowed_indirect'):
@@ -3626,14 +3639,14 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         if not HAS_NUMPY:
             self.allowed_indirect =  ['OFF']
         elif self.availmode['has_indirect_detection']:
-            self.allowed_indirect =  ['OFF', 'sigmav', 'flux_source', 'flux_earth']
+            self.allowed_indirect =  ['OFF', 'flux_source', 'flux_earth', 'sigmav']
         else:
             self.allowed_indirect = []
         return self.allowed_indirect
 
     
     def check_value_indirect(self, value):
-        """ allow diret=ON in top of standard mode """
+        """ allow indirect=ON in top of standard mode """
      
         other_valid = ['source_PPPC4DMID', 'source_py8', 
                        'earth_PPPC4DMID+dragon',

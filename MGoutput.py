@@ -49,6 +49,7 @@ class MADDMProcCharacteristic(banner_mod.ProcCharacteristic):
         """initialize the directory to the default value""" 
 
         self.add_param('has_relic_density', False)
+        self.add_param('relic_density_off', False)
         self.add_param('has_direct_detection', False)
         self.add_param('has_directional_detection', False)
         self.add_param('has_indirect_detection', False)

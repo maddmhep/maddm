@@ -154,6 +154,7 @@ class MadDM_interface(master_interface.MasterCmd):
         self._param_card = None
         self.coannihilation_diff = 1
         self.option_2to2lo = False # keep track if the user wants to use this option
+        self._relic_off = False
         self._has_indirect = False
         self._has_spectral = False
         # ID procs, matrix_elements, amps --> lists with 2 elements [tree, loop-induced]
@@ -718,9 +719,6 @@ class MadDM_interface(master_interface.MasterCmd):
 
         if line:
             super(MadDM_interface, self).do_tutorial(line)
-            if not line.lower().strip() not in ['off', 'quit']:
-                return 
-            
             
         args = self.split_arg(line)
         #self.check_tutorial(args)
@@ -828,6 +826,7 @@ class MadDM_interface(master_interface.MasterCmd):
         import MGoutput
         proc_path = pjoin(path, 'matrix_elements', 'proc_characteristics')
         proc_charac = MGoutput.MADDMProcCharacteristic(proc_path)
+        proc_charac['relic_density_off']      = self._relic_off
         proc_charac['has_indirect_detection'] = self._has_indirect
         proc_charac['has_indirect_spectral']  = self._has_spectral
         proc_charac['forbid_fast']            = self._forbid_fast
@@ -935,13 +934,14 @@ class MadDM_interface(master_interface.MasterCmd):
         self._multiparticles[label] = pdg_list
         
 
-    def generate_relic(self, excluded_particles=[]):
+    def generate_relic(self, excluded_particles=[], user = True):
         """--------------------------------------------------------------------#
         #                                                                      #
         #  This routine generates all the 2 -> 2 annihilation matrix elements. #
         #  The SM particles, BSM particles in self._bsm_final_states, and the  #
         #  DM particles are used as final states.  The initial states are      #
         #  looped over all the different combinations of DM particles.         #
+        #  if user = True, then it would mean the user has run this command.   #
         #--------------------------------------------------------------------"""
 
         #Here we define _bsm_ multiparticle as a special case for exlusion only in the
@@ -950,6 +950,8 @@ class MadDM_interface(master_interface.MasterCmd):
         #Since we use the exluded_particles everywhere, we just use the presence of
         #the _bsm_ in the array to initialize a flag and then remove it from the excluded
         #particles array so as not to conflict with the use in other places.
+        self._relic_off = not user # if the user has not asked explicitly for relic density, then its default value in the launch interface is 'OFF'
+
         self.define_multiparticles('_bsm_',[p for p in self._curr_model.get('particles')\
                          if abs(p.get('pdg_code')) > 25 and str(p.get('pdg_code')) not in self._unphysical_particles])
         if '_bsm_' in excluded_particles:
@@ -1187,7 +1189,7 @@ class MadDM_interface(master_interface.MasterCmd):
         if len(self._curr_proc_defs) == 0 or \
            all(p.get('id') != self.process_tag['DM2SM'] for p in self._curr_proc_defs):
             logger.info('For indirect detection we need to generate relic density matrix-element','$MG:BOLD')
-            self.generate_relic([])
+            self.generate_relic([], user = False)
 
         # check the '2to2lo' option: forbid it if loop-induced or 2 to 3 processes have been considered
         if '2to2lo' in argument:
