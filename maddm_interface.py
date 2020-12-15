@@ -47,7 +47,7 @@ class MadDM_interface(master_interface.MasterCmd):
 
     intro_banner=\
   "            ====================================================\n"+\
-  "            |                  "+bcolors.OKBLUE+"  MadDM v3.0                     "+bcolors.ENDC+"|\n"\
+  "            |                  "+bcolors.OKBLUE+"  MadDM v3.1                     "+bcolors.ENDC+"|\n"\
   "            ====================================================\n"+\
   "                                                                               \n"+\
   "                #########                                                        \n"+\
@@ -158,6 +158,7 @@ class MadDM_interface(master_interface.MasterCmd):
         self._ID_amps = diagram_generation.AmplitudeList() 
         #self.dm = darkmatter.darkmatter()
         self._force_madevent_for_ID = False
+        self._relic_off = False
         # only for display purposes
         self._last_amps = diagram_generation.AmplitudeList()
         self._unphysical_particles = []
@@ -786,10 +787,17 @@ class MadDM_interface(master_interface.MasterCmd):
             super(MadDM_interface, self).do_output(line)
             if args[0] != 'maddm':
                 return
+
+        # create the proc_characteristics file
+        path = self._done_export[0]
+        
+        import MGoutput
+        proc_path = pjoin(path, 'matrix_elements', 'proc_characteristics')
+        proc_charac = MGoutput.MADDMProcCharacteristic(proc_path)
+        proc_charac['relic_density_off'] = self._relic_off
         
         if self._ID_procs:
 
-            path = self._done_export[0]
             if self._ID_procs!='2to2lo':
                 import aloha.aloha_lib as aloha_lib
                 aloha_lib.KERNEL = aloha_lib.Computation()
@@ -809,11 +817,11 @@ class MadDM_interface(master_interface.MasterCmd):
                 files.ln(pjoin(path, 'Cards', 'param_card.dat'), 
                      pjoin(path, 'Indirect', 'Cards'))
 
-            import MGoutput
-            proc_path = pjoin(path, 'matrix_elements', 'proc_characteristics')
-            proc_charac = MGoutput.MADDMProcCharacteristic(proc_path)
+            
             proc_charac['has_indirect_detection'] = True
-            proc_charac.write(proc_path)
+        
+        # write the modifications to the proc_characteristics file
+        proc_charac.write(proc_path)
             
 
     def find_output_type(self, path):
@@ -878,13 +886,14 @@ class MadDM_interface(master_interface.MasterCmd):
         self._multiparticles[label] = pdg_list
         
 
-    def generate_relic(self, excluded_particles=[]):
+    def generate_relic(self, excluded_particles=[], user = True):
         """--------------------------------------------------------------------#
         #                                                                      #
         #  This routine generates all the 2 -> 2 annihilation matrix elements. #
         #  The SM particles, BSM particles in self._bsm_final_states, and the  #
         #  DM particles are used as final states.  The initial states are      #
         #  looped over all the different combinations of DM particles.         #
+        #  if user = True, then it would mean the user has run this command.   #
         #--------------------------------------------------------------------"""
 
         #Here we define bsm multiparticle as a special case for exlusion only in the
@@ -893,6 +902,8 @@ class MadDM_interface(master_interface.MasterCmd):
         #Since we use the exluded_particles everywhere, we just use the presence of
         #the bsm in the array to initialize a flag and then remove it from the excluded
         #particles array so as not to conflict with the use in other places.
+        self._relic_off = not user # if the user has not asked explicitly for relic density, then its default value in the launch interface is 'OFF'
+
         self.define_multiparticles('bsm',[p for p in self._curr_model.get('particles')\
                          if abs(p.get('pdg_code')) > 25 and str(p.get('pdg_code')) not in self._unphysical_particles])
         if 'bsm' in excluded_particles:
@@ -1141,7 +1152,7 @@ class MadDM_interface(master_interface.MasterCmd):
         if len(self._curr_proc_defs) == 0 or \
            all(p.get('id') != self.process_tag['DM2SM'] for p in self._curr_proc_defs):
             logger.info('For indirect detection we need to generate relic density matrix-element','$MG:BOLD')
-            self.generate_relic([])
+            self.generate_relic([], user = False)
 
         if '2to2lo' in argument:
             self._ID_procs ='2to2lo'

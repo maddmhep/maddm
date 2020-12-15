@@ -589,7 +589,7 @@ class MADDMRunCmd(cmd.CmdShell):
     
     intro_banner=\
   "            ====================================================\n"+\
-  "            |                  "+bcolors.OKBLUE+"  MadDM v3.0                     "+bcolors.ENDC+"|\n"\
+  "            |                  "+bcolors.OKBLUE+"  MadDM v3.1                     "+bcolors.ENDC+"|\n"\
   "            ====================================================\n"+\
   "                                                                               \n"+\
   "                #########                                                        \n"+\
@@ -1143,6 +1143,8 @@ class MADDMRunCmd(cmd.CmdShell):
             else:
                 logger.warning('no gamma spectrum since in sigmav mode')      
 
+        elif self.mode['indirect'] == 'sigmav':
+            logger.warning('no gamma spectrum since in sigmav mode')      
         elif self.read_PPPCspectra():   # return False if PPPC4DMID not installed!
             logger.info('Calculating Fermi limit using PPPC4DMID spectra')
 
@@ -1717,7 +1719,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
         under_message  = '%s UNDERABUNDANT     %s' % ('\033[33m', bcolors.ENDC)
         above_message  = '%s OVERABUNDANT      %s' % (bcolors.FAIL, bcolors.ENDC)
-        within_message = '%s WITHIN UNCERTAINTY %s' % (bcolors.OKGREEN, bcolors.ENDC)
+        within_message = '%s WITHIN EXP ERROR %s' % (bcolors.OKGREEN, bcolors.ENDC)
 
         # skip this if there is a sequential scan going on.
         if self.last_results['Omegah^2'] < 0.:
@@ -2397,9 +2399,13 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
     # everything related to relic option
     ####################################################################    
     def set_default_relic(self):
-        """set the default value for relic="""
+        """set the default value for relic=
+           if relic has been generated when calling indirect detection, then it is set as 'OFF' by default.
+           the 'Not Avail.' case happens when relic has not been generated neither explicitly nor through indirect detection"""
         
-        if self.availmode['has_relic_density']:
+        if self.availmode['relic_density_off']: # this can be True only if self.availmode['has_relic_density'] is True as well, that would correspond to generate relic_density during ID
+            self.switch['relic'] = 'OFF'
+        elif self.availmode['has_relic_density']: # otherwise that would mean that relic density has/hasn't been asked explicitly
             self.switch['relic'] = 'ON'
         else:
             self.switch['relic'] = 'Not Avail.'
@@ -2423,7 +2429,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
     # everything related to direct option
     ####################################################################    
     def set_default_direct(self):
-        """set the default value for relic="""
+        """set the default value for direct="""
         
         if self.availmode['has_directional_detection']:
             self.switch['direct'] = 'directional'
@@ -2433,7 +2439,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
             self.switch['direct'] = 'Not Avail.'
 
     def get_allowed_direct(self):
-        """Specify which parameter are allowed for relic="""
+        """Specify which parameter are allowed for direct="""
         
         
         if hasattr(self, 'allowed_direct'):
@@ -2447,7 +2453,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
             return []
 
     def check_value_direct(self, value):
-        """ allow diret=ON in top of standard mode """
+        """ allow direct=ON in top of standard mode """
         
         if value in self.get_allowed('direct'):
             return True
@@ -2481,12 +2487,12 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
     # TODO -> add check if PY8/Dragon are available for the switch 
     
     def set_default_indirect(self):
-        """set the default value for relic="""
+        """set the default value for indirect="""
         
         if not HAS_NUMPY:
             self.switch['indirect'] = 'Not Avail. (numpy missing)'
         elif self.availmode['has_indirect_detection']:
-            self.switch['indirect'] = 'sigmav'     
+            self.switch['indirect'] = 'flux_source'     
         else:
             self.switch['indirect'] = 'Not Avail.'
 
@@ -2501,7 +2507,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
             return self.print_options('indirect', keep_default=True)
 
     def get_allowed_indirect(self):
-        """Specify which parameter are allowed for relic="""
+        """Specify which parameter are allowed for indirect="""
         
         
         if hasattr(self, 'allowed_indirect'):
@@ -2510,14 +2516,14 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         if not HAS_NUMPY:
             self.allowed_indirect =  ['OFF']
         elif self.availmode['has_indirect_detection']:
-            self.allowed_indirect =  ['OFF', 'sigmav', 'flux_source', 'flux_earth']
+            self.allowed_indirect =  ['OFF', 'flux_source', 'flux_earth', 'sigmav']
         else:
             self.allowed_indirect = []
         return self.allowed_indirect
 
     
     def check_value_indirect(self, value):
-        """ allow diret=ON in top of standard mode """
+        """ allow indirect=ON in top of standard mode """
      
         other_valid = ['source_PPPC4DMID', 'source_py8', 
                        'earth_PPPC4DMID+dragon',
