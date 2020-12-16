@@ -77,10 +77,10 @@ class ExpConstraints:
         self._allowed_final_states = ['qqx', 'ccx', 'gg', 'bbx', 'ttx', 'emep', 'mummup', 'tamtap', 'wpwm', 'zz', 'hh', 
                                       'hess2013','hess2016', 'aaER16','aaIR90','aaNFWcR3','aaNFWR41']
 
-        self._oh2_planck = 0.1198
-        self._oh2_planck_width = 0.0015
+        self._oh2_planck = 0.1200 # from 1807.06209 Tab. 2 (TT,TE,EE+lowE+lensing) quoted also in abstract
+        self._oh2_planck_width = 0.0012
 
-        self._dd_si_limit_file = pjoin(MDMDIR, 'ExpData', 'Xenont1T_data_2017.dat')
+        self._dd_si_limit_file = pjoin(MDMDIR, 'ExpData', 'Xenon1T_data_2018.dat')
         self._dd_sd_proton_limit_file = pjoin(MDMDIR, 'ExpData', 'Pico60_sd_proton.dat') # <---------CHANGE THE FILE!!!
         self._dd_sd_neutron_limit_file = pjoin(MDMDIR, 'ExpData', 'Lux_2017_sd_neutron.dat')
         self._id_limit_file = {'qqx'   :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_qq.dat'),
@@ -166,11 +166,11 @@ class ExpConstraints:
     def SI_max(self, mdm):
         if not HAS_NUMPY:
             logger.warning("missing numpy module for SI limit")
-            return __infty__
+            return -1.
         
         if (mdm < np.min(self._dd_si_limit_mDM) or mdm > np.max(self._dd_si_limit_mDM)):
             logger.warning('Dark matter mass value '+str(mdm)+' is outside the range of SI limit')
-            return __infty__
+            return -1.
         else:
             return np.interp(mdm, self._dd_si_limit_mDM, self._dd_si_limit_sigma)
 
@@ -178,22 +178,22 @@ class ExpConstraints:
     def SD_max(self,mdm, nucleon):
         if not HAS_NUMPY:
             logger.warning("missing numpy module for SD limit")
-            return __infty__
+            return -1
             
         if nucleon not in ['n','p']:
             logger.error('nucleon can only be p or n')
-            return __infty__
+            return -1
         else:
             if nucleon=='p':
                 if (mdm < np.min(self._dd_sd_p_limit_mDM) or mdm > np.max(self._dd_sd_n_limit_mDM)):
                     logger.warning('Dark matter mass value '+str(mdm)+' is outside the range of SD limit')
-                    return __infty__
+                    return -1
                 else:
                     return np.interp(mdm, self._dd_sd_p_limit_mDM, self._dd_sd_p_limit_sigma)
             elif nucleon=='n':
                 if (mdm < np.min(self._dd_sd_n_limit_mDM) or mdm > np.max(self._dd_sd_n_limit_mDM)):
                     logger.warning('Dark matter mass value '+str(mdm)+' is outside the range of SD limit')
-                    return __infty__
+                    return -1
                 else:
                     return np.interp(mdm, self._dd_sd_n_limit_mDM, self._dd_sd_n_limit_sigma)
 
@@ -201,10 +201,10 @@ class ExpConstraints:
     def ID_max(self,mdm, channel):
         if not HAS_NUMPY:
             logger.warning("missing numpy module for ID limit")
-            return __infty__
+            return -1
         if (mdm < np.min(self._id_limit_mdm[channel]) or mdm > np.max(self._id_limit_mdm[channel])):
             logger.warning('Dark matter mass value %.2e for channel %s is outside the range of ID limit' % (mdm, channel))
-            return __infty__
+            return -1
         else:
             return np.interp(mdm, self._id_limit_mdm[channel], self._id_limit_sigv[channel])
 
@@ -589,7 +589,7 @@ class MADDMRunCmd(cmd.CmdShell):
     
     intro_banner=\
   "            ====================================================\n"+\
-  "            |                  "+bcolors.OKBLUE+"  MadDM v3.0                     "+bcolors.ENDC+"|\n"\
+  "            |                  "+bcolors.OKBLUE+"  MadDM v3.1                     "+bcolors.ENDC+"|\n"\
   "            ====================================================\n"+\
   "                                                                               \n"+\
   "                #########                                                        \n"+\
@@ -651,7 +651,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
         self.Spectra = Spectra()
         self.Fermi   = Fermi_bounds()
-        self.MadDM_version = '3.0'
+        self.MadDM_version = '3.1'
 
     def preloop(self,*args,**opts):
         super(Indirect_Cmd,self).preloop(*args,**opts)
@@ -708,7 +708,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 logger.info('''Some widths are on Auto in the card.
     Those will be computed as soon as you have finish editing the cards.
     If you want to force the computation right now and re-edit
-    the cards afterwards, you can type \"compute_wdiths\".''')
+    the cards afterwards, you can type \"compute_widths\".''')
 
     def do_compute_widths(self, line):
                 
@@ -799,6 +799,8 @@ class MADDMRunCmd(cmd.CmdShell):
         # , second line is the nucleon scattering cross section (SI) for proton, third is SI
         # nucleon cross section for the neutron etc. If a quantity was not calculated, we output -1
 
+        # it computes also the percentages for each annihilation channel for relic density
+        # %_<process>
 
         # Define a dictionary holding the results
         result = {}
@@ -833,9 +835,14 @@ class MADDMRunCmd(cmd.CmdShell):
                             elif oname.split('_')[1] not in self.limits._allowed_final_states:
                                 result['lim_taacsID#'+oname] = -1
                             sigv_indirect += sigv_temp
-                    result[splitline[0].split(':')[0]] = secure_float_f77(splitline[1])
-
-                    
+                    if '%' in line:
+                        oname = splitline[0].split(':',1)[1].split('_')
+                        oname = oname[0]+'_'+oname[1] #To eliminate the annoying suffix coming from the '/' notation
+                        result["%%_relic_%s" % oname] = secure_float_f77(splitline[1])
+                    else:
+                        result[splitline[0].split(':')[0]] = secure_float_f77(splitline[1])
+        
+        result['sigmav(xf)'] *= GeV2pb*pb2cm3
         result['taacsID'] = sigv_indirect
                             
         np_names = ['g','nue','numu','nutau']
@@ -870,12 +877,20 @@ class MADDMRunCmd(cmd.CmdShell):
 
         if self.mode['indirect']:
             self.launch_indirect(force)
+
+        # rescale Fermi dSph limits by branching ratio
+        for limit_key in [k for k in self.last_results.keys() if 'lim_taacsID#' in k]:
+            sigmav_ch = self.last_results[limit_key.replace('lim_','')]
+            if sigmav_ch == 0.:
+                self.last_results[limit_key] = -1
+            else:
+                self.last_results[limit_key] /= (sigmav_ch/self.last_results['taacsID']) if self.last_results[limit_key] != -1 else 1
         
         if not self.in_scan_mode and not self.multinest_running:
             self.print_results()
 
         # Saving the output for single point
-        if not self.param_card_iterator:
+        if self.mode['indirect']:
             self.save_remove_output(scan = False)
 
         # --------------------------------------------------------------------#
@@ -914,6 +929,8 @@ class MADDMRunCmd(cmd.CmdShell):
             # *** Relic density
             if self.mode['relic']:
                 order += ['Omegah^2','x_f', 'sigmav(xf)']
+                for percent in [k for k in self.last_results if k.startswith('%_relic')]:
+                    order += [percent]
             order.append('xsi')
 
             # *** Direct Detection
@@ -963,9 +980,7 @@ class MADDMRunCmd(cmd.CmdShell):
                            if 'antip' in channel or 'pos' in channel: continue
                            order.append('flux_%s' % channel)
 
-            for elem in order:
-                if elem not in self.last_results.keys():
-                    order.remove(elem)
+            order[:] = [elem for elem in order if elem in self.last_results.keys()]
 
             run_name = str(self.run_name).rsplit('_',1)[0]
             summary_file = pjoin(self.dir_path, 'output','scan_%s.txt' % run_name)
@@ -1086,7 +1101,7 @@ class MADDMRunCmd(cmd.CmdShell):
                     with misc.MuteLogger(['madgraph','madevent','cmdprint'], [set_level]*3):
                         #mute logger          
                         if self.maddm_card['sigmav_method'] == 'madevent':
-                            if os.path.exists(pjoin(self.dir_path,'Indirect','Cards','reweight_card.dat')):
+                            if os.path.exists(pjoin(self.dir_path,'Indirect','Cards','reweight_card.dat')) and os.path.exists(pjoin(self.dir_path,'Indirect','Cards','reweight_card.dat')):
                                 os.remove(pjoin(self.dir_path,'Cards','reweight_card.dat'))
                             self.me_cmd.do_launch('%s -f' % self.run_name)
                         elif self.maddm_card['sigmav_method'] == 'reshuffling': 
@@ -1128,6 +1143,8 @@ class MADDMRunCmd(cmd.CmdShell):
             else:
                 logger.warning('no gamma spectrum since in sigmav mode')      
 
+        elif self.mode['indirect'] == 'sigmav':
+            logger.warning('no gamma spectrum since in sigmav mode')      
         elif self.read_PPPCspectra():   # return False if PPPC4DMID not installed!
             logger.info('Calculating Fermi limit using PPPC4DMID spectra')
 
@@ -1700,12 +1717,19 @@ class MADDMRunCmd(cmd.CmdShell):
 
         mdm= self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
 
-        pass_message  = '%s ALLOWED  %s' % (bcolors.OKGREEN, bcolors.ENDC)
-        fail_message  = '%s EXCLUDED %s' % (bcolors.FAIL, bcolors.ENDC)
-        nolim_message = '%s NO LIMIT %s' % (bcolors.GRAY, bcolors.ENDC)
+        under_message  = '%s UNDERABUNDANT     %s' % ('\033[33m', bcolors.ENDC)
+        above_message  = '%s OVERABUNDANT      %s' % (bcolors.FAIL, bcolors.ENDC)
+        within_message = '%s WITHIN EXP ERROR  %s' % (bcolors.OKGREEN, bcolors.ENDC)
 
-        #skip this if there is a sequential scan going on.
-        pass_relic = pass_message if self.last_results['Omegah^2'] < self.limits._oh2_planck else fail_message                                                                 
+        # skip this if there is a sequential scan going on.
+        if self.last_results['Omegah^2'] < 0.:
+            pass_relic = ""
+        elif self.last_results['Omegah^2'] < self.limits._oh2_planck - 2*self.limits._oh2_planck_width:
+            pass_relic = under_message
+        elif self.last_results['Omegah^2'] > self.limits._oh2_planck + 2*self.limits._oh2_planck_width:
+            pass_relic = above_message
+        else:
+            pass_relic = within_message
 
         omega    = self.last_results['Omegah^2']
         x_f      = self.last_results['x_f']
@@ -1722,8 +1746,18 @@ class MADDMRunCmd(cmd.CmdShell):
             print 'OMEGA IS ', omega 
             logger.info( self.form_s('Relic Density') + '= ' + self.form_n(omega)   + '      '  +  pass_relic )
             logger.info( self.form_s('x_f'          ) + '= ' + self.form_s(self.form_n(x_f      ) ) )
-            logger.info( self.form_s('sigmav(xf)'   ) + '= ' + self.form_s(self.form_n(sigma_xf ) ) )
+            logger.info( self.form_s('sigmav(xf)'   ) + '= ' + self.form_s(self.form_n(sigma_xf ) + ' cm^3/s') )
             logger.info( self.form_s('xsi'          ) + '= ' + self.form_s(self.form_n(xsi      ) ) )
+            logger.info('')
+            logger.info('Channels contributions:')
+            skip = []
+            for proc in [k for k in self.last_results.keys() if k.startswith('%_relic_')]:
+                if self.last_results[proc] == 0.:
+                    skip.append(proc.split('_')[-1])
+                    continue
+                logger.info( self.form_s(proc.replace('%_relic_','')) + ': %.2f %%' % self.last_results[proc] )
+            if len(skip) != 0:
+                logger.info('No contribution from processes: %s', ', '.join(skip))
 
         if self.mode['direct']:
             sigN_SI_p , sigN_SI_n = self.last_results['sigmaN_SI_p'] , self.last_results['sigmaN_SI_n']
@@ -1784,15 +1818,11 @@ class MADDMRunCmd(cmd.CmdShell):
                     if s_alldm <= 10**(-100): 
                         skip.append(f_original)
                         continue 
-                    if finalstate in self.limits._allowed_final_states :
-                        s_ul   = self.limits.ID_max(mdm, finalstate)
-                        self.last_results['Fermi_lim_'+key] = self.limits.ID_max(mdm, finalstate)
-                    else:  s_ul   = '-1'
 
                     if finalstate not in self.limits._allowed_final_states :                                                                                                       
                         self.print_ind(clean_key, s_thermal, s_alldm, -1,  thermal= dm_scen)                                                                                       
                     else:                                                                                                                                                          
-                        self.print_ind(clean_key, s_thermal, s_alldm, s_ul,  thermal= dm_scen) 
+                        self.print_ind(clean_key, s_thermal, s_alldm, self.last_results['lim_' + key],  thermal= dm_scen) 
 
             if len(skip) >=1:        
                       logger.info('Skipping zero cross section processes for: %s', ', '.join(skip))                      
@@ -1860,7 +1890,7 @@ class MADDMRunCmd(cmd.CmdShell):
                                 fluxes_earth = False )                  
             logger.info('Results written in: ' +pjoin(self.dir_path, 'output', self.run_name, 'MadDM_results.txt') )
 
-            self.save_remove_output(scan = False)
+            # self.save_remove_output(scan = False)
 
 
     def save_remove_output(self, scan = False):
@@ -2058,7 +2088,11 @@ class MADDMRunCmd(cmd.CmdShell):
             if self.last_results['xsi'] > 0: 
                 out.write(form_s('xsi') + '= ' + form_n(self.last_results['xsi']) +' \t # xsi = (Omega/Omega_Planck)\n' )
             out.write(form_s('x_f')                  + '= ' + form_n(self.last_results['x_f'])        + '\n' ) 
-            out.write(form_s('sigmav_xf')           + '= ' + form_n(self.last_results['sigmav(xf)']) + '\n' ) 
+            out.write(form_s('sigmav_xf')           + '= ' + form_n(self.last_results['sigmav(xf)']) + ' # cm^3/s\n' ) 
+            out.write("# % of the various relic density channels\n")
+            for proc in [k for k in self.last_results.keys() if k.startswith('%_relic_')]:
+                out.write( form_s(proc.replace('relic_','')) + ': %.2f %%\n' % self.last_results[proc] )
+
 
         if direct:
 
@@ -2365,9 +2399,13 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
     # everything related to relic option
     ####################################################################    
     def set_default_relic(self):
-        """set the default value for relic="""
+        """set the default value for relic=
+           if relic has been generated when calling indirect detection, then it is set as 'OFF' by default.
+           the 'Not Avail.' case happens when relic has not been generated neither explicitly nor through indirect detection"""
         
-        if self.availmode['has_relic_density']:
+        if self.availmode['relic_density_off']: # this can be True only if self.availmode['has_relic_density'] is True as well, that would correspond to generate relic_density during ID
+            self.switch['relic'] = 'OFF'
+        elif self.availmode['has_relic_density']: # otherwise that would mean that relic density has/hasn't been asked explicitly
             self.switch['relic'] = 'ON'
         else:
             self.switch['relic'] = 'Not Avail.'
@@ -2391,7 +2429,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
     # everything related to direct option
     ####################################################################    
     def set_default_direct(self):
-        """set the default value for relic="""
+        """set the default value for direct="""
         
         if self.availmode['has_directional_detection']:
             self.switch['direct'] = 'directional'
@@ -2401,7 +2439,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
             self.switch['direct'] = 'Not Avail.'
 
     def get_allowed_direct(self):
-        """Specify which parameter are allowed for relic="""
+        """Specify which parameter are allowed for direct="""
         
         
         if hasattr(self, 'allowed_direct'):
@@ -2415,7 +2453,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
             return []
 
     def check_value_direct(self, value):
-        """ allow diret=ON in top of standard mode """
+        """ allow direct=ON in top of standard mode """
         
         if value in self.get_allowed('direct'):
             return True
@@ -2449,7 +2487,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
     # TODO -> add check if PY8/Dragon are available for the switch 
     
     def set_default_indirect(self):
-        """set the default value for relic="""
+        """set the default value for indirect="""
         
         if not HAS_NUMPY:
             self.switch['indirect'] = 'Not Avail. (numpy missing)'
@@ -2469,7 +2507,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
             return self.print_options('indirect', keep_default=True)
 
     def get_allowed_indirect(self):
-        """Specify which parameter are allowed for relic="""
+        """Specify which parameter are allowed for indirect="""
         
         
         if hasattr(self, 'allowed_indirect'):
@@ -2485,7 +2523,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
 
     
     def check_value_indirect(self, value):
-        """ allow diret=ON in top of standard mode """
+        """ allow indirect=ON in top of standard mode """
      
         other_valid = ['source_PPPC4DMID', 'source_py8', 
                        'earth_PPPC4DMID+dragon',
@@ -2626,36 +2664,22 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         if indirect in ['OFF', None]:
             logger.info("setting fast mode is only valid when indirect mode is getting called.")
             return 
-        elif indirect == 'sigmav':
-            self.do_set("sigmav_method inclusive")
-        elif indirect == 'flux_source':
-            self.do_set("sigmav_method inclusive")
-            self.do_set("indirect_flux_source_method PPPC4DMID_ew")
-        elif indirect == 'flux_earth':
-            self.do_set("sigmav_method inclusive")
-            self.do_set("indirect_flux_source_method PPPC4DMID_ew")
-            self.do_set("indirect_flux_earth_method PPPC4DMID_ep")
+        self.do_set("sigmav_method inclusive")
+        self.do_set("indirect_flux_source_method PPPC4DMID_ew")
+        self.do_set("indirect_flux_earth_method PPPC4DMID_ep")
         
     def pass_to_precise_mode(self):
-        """pass to fast mode according to the paper"""
+        """pass to precise mode according to the paper"""
         
         indirect = self.answer['indirect']
         if indirect in ['OFF', None]:
-            logger.info("setting fast mode is only valid when indirect mode is getting called.")
+            logger.info("setting precise mode is only valid when indirect mode is getting called.")
             return 
-        elif indirect == 'sigmav':
-            self.do_set("sigmav_method reshuffling")
-        elif indirect == 'flux_source':
-            self.do_set("indirect_flux_source_method pythia8")
-            self.do_set("Main:numberOfEvents 1000000")
-            self.do_set("TimeShower:weakShower = on")
-            self.do_set("sigmav_method reshuffling")
-        elif indirect == 'flux_earth':
-            self.do_set("indirect_flux_source_method pythia8")
-            self.do_set("Main:numberOfEvents 1000000")
-            self.do_set("TimeShower:weakShower = on")
-            self.do_set("indirect_flux_earth_method dragon")
-            self.do_set("sigmav_method reshuffling")
+        self.do_set("sigmav_method reshuffling")
+        self.do_set("indirect_flux_source_method pythia8")
+        self.do_set("indirect_flux_earth_method dragon")
+        self.do_set("Main:numberOfEvents 1000000")
+        self.do_set("TimeShower:weakShower = on")
 
     def get_cardcmd(self):
         """ return the list of command that need to be run to have a consistent 

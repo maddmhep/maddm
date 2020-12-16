@@ -49,6 +49,7 @@ class MADDMProcCharacteristic(banner_mod.ProcCharacteristic):
         """initialize the directory to the default value""" 
 
         self.add_param('has_relic_density', False)
+        self.add_param('relic_density_off', False)
         self.add_param('has_direct_detection', False)
         self.add_param('has_directional_detection', False)
         self.add_param('has_indirect_detection', False)
@@ -124,9 +125,6 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
             files.ln(pjoin(self.dir_path, 'Source','MODEL', name),
                  pjoin(self.dir_path, 'include'))
          
-    def write_procdef_mg5(self,*args):
-        return
-    
     def pass_information_from_cmd(self, cmd):
         """pass information from the command interface to the exporter.
            Please do not modify any object of the interface from the exporter.
@@ -1088,6 +1086,8 @@ class ProcessExporterIndirectD(object):
         
         new_history = []
         next_generate = True #put on True if the next add process need to be switch to generate
+        indirect_done = False
+
         for line in history:
             line = re.sub('\s+', ' ', line)
         
@@ -1105,7 +1105,7 @@ class ProcessExporterIndirectD(object):
                         next_generate = True
                         continue  
                     
-                if line.startswith('generate indirect'):
+                if line.startswith('generate indirect') and not indirect_done:
                     # using curr_amps has the issue if two ME are mapped into a single one
                     # using proc_def has the issue that some process might not have any diagram
                     # therefore using self._curr_matrix_elements
@@ -1115,8 +1115,23 @@ class ProcessExporterIndirectD(object):
                         for me in group.get('matrix_elements'):
                             for p in me.get('processes'):
                                 prefix = 'generate ' if i==0 else 'add process '
-                                new_history.append('%s %s' %(prefix, p.input_string()))
+                                process = p.input_string()
+                                split = process.split('@')
+                                if len(split) == 1:
+                                    new_history.append('%s %s' %(prefix, process))
+                                elif len(split) == 2:
+                                    id = split[1].split()[0]
+                                    new_history.append('%s  %s @%s SDEFFF=0 SDEFFV=0 SIEFFF=0 SIEFFS=0 SIEFFV=0' %(prefix, split[0], id))     
+                                else:
+                                    id = split[1].split()[0]
+                                    proc = [split[0]]
+                                    for s in split[1:-1]:
+                                        proc.append(s.split(',')[1])
+                                    
+                                    new_history.append('%s  %s @%s SDEFFF=0 SDEFFV=0 SIEFFF=0 SIEFFS=0 SIEFFV=0' %(prefix, ' , '.join(proc), id))     
+                                
                                 i=1
+                    indirect_done = True
                     continue
             
             if line.startswith('add'):
@@ -1126,7 +1141,7 @@ class ProcessExporterIndirectD(object):
                     index = line.find('@')
                     if not line[index:].startswith(('@1995','@ID')):
                         continue  
-                if line.startswith('add indirect'):
+                if line.startswith('add indirect') and not indirect_done:
                     # using curr_amps has the issue if two ME are mapped into a single one
                     # using proc_def has the issue that some process might not have any diagram
                     # therefore using self._curr_matrix_elements
@@ -1136,10 +1151,11 @@ class ProcessExporterIndirectD(object):
                         for me in group.get('matrix_elements'):
                             for p in me.get('processes'):
                                 prefix = 'generate ' if (i==0 and next_generate) else 'add process '
-                                new_history.append(p.nice_string(prefix=prefix))
+                                new_history.append('%s %s ' %(prefix, p.input_string()))
                                 i=1
                     
                     next_generate = False
+                    indirect_done = True
                     continue
                 
                 if next_generate and line.startswith('add process'):
