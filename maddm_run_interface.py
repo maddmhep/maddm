@@ -80,7 +80,7 @@ class ExpConstraints:
         self._oh2_planck = 0.1200 # from 1807.06209 Tab. 2 (TT,TE,EE+lowE+lensing) quoted also in abstract
         self._oh2_planck_width = 0.0012
 
-        self._dd_si_limit_file = pjoin(MDMDIR, 'ExpData', 'Xenont1T_data_2017.dat')
+        self._dd_si_limit_file = pjoin(MDMDIR, 'ExpData', 'Xenon1T_data_2018.dat')
         self._dd_sd_proton_limit_file = pjoin(MDMDIR, 'ExpData', 'Pico60_sd_proton.dat') # <---------CHANGE THE FILE!!!
         self._dd_sd_neutron_limit_file = pjoin(MDMDIR, 'ExpData', 'Lux_2017_sd_neutron.dat')
         self._id_limit_file = {'qqx'   :pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_qq.dat'),
@@ -651,7 +651,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
         self.Spectra = Spectra()
         self.Fermi   = Fermi_bounds()
-        self.MadDM_version = '3.0'
+        self.MadDM_version = '3.1'
 
     def preloop(self,*args,**opts):
         super(Indirect_Cmd,self).preloop(*args,**opts)
@@ -1719,7 +1719,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
         under_message  = '%s UNDERABUNDANT     %s' % ('\033[33m', bcolors.ENDC)
         above_message  = '%s OVERABUNDANT      %s' % (bcolors.FAIL, bcolors.ENDC)
-        within_message = '%s WITHIN EXP ERROR %s' % (bcolors.OKGREEN, bcolors.ENDC)
+        within_message = '%s WITHIN EXP ERROR  %s' % (bcolors.OKGREEN, bcolors.ENDC)
 
         # skip this if there is a sequential scan going on.
         if self.last_results['Omegah^2'] < 0.:
@@ -1746,7 +1746,7 @@ class MADDMRunCmd(cmd.CmdShell):
             print 'OMEGA IS ', omega 
             logger.info( self.form_s('Relic Density') + '= ' + self.form_n(omega)   + '      '  +  pass_relic )
             logger.info( self.form_s('x_f'          ) + '= ' + self.form_s(self.form_n(x_f      ) ) )
-            logger.info( self.form_s('sigmav(xf)'   ) + '= ' + self.form_s(self.form_n(sigma_xf ) ) + ' cm^3/s')
+            logger.info( self.form_s('sigmav(xf)'   ) + '= ' + self.form_s(self.form_n(sigma_xf ) + ' cm^3/s') )
             logger.info( self.form_s('xsi'          ) + '= ' + self.form_s(self.form_n(xsi      ) ) )
             logger.info('')
             logger.info('Channels contributions:')
@@ -2088,7 +2088,7 @@ class MADDMRunCmd(cmd.CmdShell):
             if self.last_results['xsi'] > 0: 
                 out.write(form_s('xsi') + '= ' + form_n(self.last_results['xsi']) +' \t # xsi = (Omega/Omega_Planck)\n' )
             out.write(form_s('x_f')                  + '= ' + form_n(self.last_results['x_f'])        + '\n' ) 
-            out.write(form_s('sigmav_xf')           + '= ' + form_n(self.last_results['sigmav(xf)']) + ' cm^3/s\n' ) 
+            out.write(form_s('sigmav_xf')           + '= ' + form_n(self.last_results['sigmav(xf)']) + ' # cm^3/s\n' ) 
             out.write("# % of the various relic density channels\n")
             for proc in [k for k in self.last_results.keys() if k.startswith('%_relic_')]:
                 out.write( form_s(proc.replace('relic_','')) + ': %.2f %%\n' % self.last_results[proc] )
@@ -2492,7 +2492,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         if not HAS_NUMPY:
             self.switch['indirect'] = 'Not Avail. (numpy missing)'
         elif self.availmode['has_indirect_detection']:
-            self.switch['indirect'] = 'flux_source'     
+            self.switch['indirect'] = 'sigmav'     
         else:
             self.switch['indirect'] = 'Not Avail.'
 
@@ -2516,7 +2516,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         if not HAS_NUMPY:
             self.allowed_indirect =  ['OFF']
         elif self.availmode['has_indirect_detection']:
-            self.allowed_indirect =  ['OFF', 'flux_source', 'flux_earth', 'sigmav']
+            self.allowed_indirect =  ['OFF', 'sigmav', 'flux_source', 'flux_earth']
         else:
             self.allowed_indirect = []
         return self.allowed_indirect
@@ -2664,36 +2664,22 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         if indirect in ['OFF', None]:
             logger.info("setting fast mode is only valid when indirect mode is getting called.")
             return 
-        elif indirect == 'sigmav':
-            self.do_set("sigmav_method inclusive")
-        elif indirect == 'flux_source':
-            self.do_set("sigmav_method inclusive")
-            self.do_set("indirect_flux_source_method PPPC4DMID_ew")
-        elif indirect == 'flux_earth':
-            self.do_set("sigmav_method inclusive")
-            self.do_set("indirect_flux_source_method PPPC4DMID_ew")
-            self.do_set("indirect_flux_earth_method PPPC4DMID_ep")
+        self.do_set("sigmav_method inclusive")
+        self.do_set("indirect_flux_source_method PPPC4DMID_ew")
+        self.do_set("indirect_flux_earth_method PPPC4DMID_ep")
         
     def pass_to_precise_mode(self):
-        """pass to fast mode according to the paper"""
+        """pass to precise mode according to the paper"""
         
         indirect = self.answer['indirect']
         if indirect in ['OFF', None]:
-            logger.info("setting fast mode is only valid when indirect mode is getting called.")
+            logger.info("setting precise mode is only valid when indirect mode is getting called.")
             return 
-        elif indirect == 'sigmav':
-            self.do_set("sigmav_method reshuffling")
-        elif indirect == 'flux_source':
-            self.do_set("indirect_flux_source_method pythia8")
-            self.do_set("Main:numberOfEvents 1000000")
-            self.do_set("TimeShower:weakShower = on")
-            self.do_set("sigmav_method reshuffling")
-        elif indirect == 'flux_earth':
-            self.do_set("indirect_flux_source_method pythia8")
-            self.do_set("Main:numberOfEvents 1000000")
-            self.do_set("TimeShower:weakShower = on")
-            self.do_set("indirect_flux_earth_method dragon")
-            self.do_set("sigmav_method reshuffling")
+        self.do_set("sigmav_method reshuffling")
+        self.do_set("indirect_flux_source_method pythia8")
+        self.do_set("indirect_flux_earth_method dragon")
+        self.do_set("Main:numberOfEvents 1000000")
+        self.do_set("TimeShower:weakShower = on")
 
     def get_cardcmd(self):
         """ return the list of command that need to be run to have a consistent 
