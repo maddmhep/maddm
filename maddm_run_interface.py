@@ -2726,7 +2726,7 @@ class MADDMRunCmd(cmd.CmdShell):
             print 'OMEGA IS ', omega 
             logger.info( self.form_s('Relic Density') + '= ' + self.form_n(omega)   + '      '  +  pass_relic )
             logger.info( self.form_s('x_f'          ) + '= ' + self.form_s(self.form_n(x_f      ) ) )
-            logger.info( self.form_s('sigmav(xf)'   ) + '= ' + self.form_s(self.form_n(sigma_xf ) ) )
+            logger.info( self.form_s('sigmav(xf)'   ) + '= ' + self.form_s(self.form_n(sigma_xf ) + ' cm^3/s') )
             logger.info( self.form_s('xsi'          ) + '= ' + self.form_s(self.form_n(xsi      ) ) )
             logger.info('')
             logger.info('Channels contributions:')
@@ -3127,7 +3127,7 @@ class MADDMRunCmd(cmd.CmdShell):
             if self.last_results['xsi'] > 0: 
                 out.write(form_s('xsi') + '= ' + form_n(self.last_results['xsi']) +' \t # xsi = (Omega/Omega_Planck)\n' )
             out.write(form_s('x_f')                  + '= ' + form_n(self.last_results['x_f'])        + '\n' ) 
-            out.write(form_s('sigmav_xf')           + '= ' + form_n(self.last_results['sigmav(xf)']) + '\n' ) 
+            out.write(form_s('sigmav_xf')           + '= ' + form_n(self.last_results['sigmav(xf)']) + '# cm^3/s\n' ) 
             out.write("# % of the various relic density channels\n")
             for proc in [k for k in self.last_results.keys() if k.startswith('%_relic_')]:
                 out.write( form_s(proc.replace('relic_','')) + ': %.2f %%\n' % self.last_results[proc] )
@@ -3831,37 +3831,23 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         if indirect in ['OFF', None]:
             logger.error("setting fast mode is only valid when indirect mode is getting called.")
             return 
-        elif indirect == 'sigmav':
-            self.do_set("sigmav_method inclusive")
-        elif indirect == 'flux_source':
-            self.do_set("sigmav_method inclusive")
-            self.do_set("indirect_flux_source_method PPPC4DMID_ew")
-        elif indirect == 'flux_earth':
-            self.do_set("sigmav_method inclusive")
-            self.do_set("indirect_flux_source_method PPPC4DMID_ew")
-            self.do_set("indirect_flux_earth_method PPPC4DMID_ep")
+        self.do_set("sigmav_method inclusive")
+        self.do_set("indirect_flux_source_method PPPC4DMID_ew")
+        self.do_set("indirect_flux_earth_method PPPC4DMID_ep")
         
     def pass_to_precise_mode(self):
-        """pass to fast mode according to the paper"""
+        """pass to precise mode according to the paper"""
         
         indirect = self.answer['indirect']
         spectral = self.answer['spectral']
         if indirect in ['OFF', None] and spectral in ['OFF', None]:
             logger.error("setting precise mode is only valid when indirect or spectral mode is getting called.")
             return 
-        elif indirect == 'sigmav' or spectral == 'ON':
-            self.do_set("sigmav_method reshuffling")
-        elif indirect == 'flux_source':
-            self.do_set("indirect_flux_source_method pythia8")
-            self.do_set("Main:numberOfEvents 1000000")
-            self.do_set("TimeShower:weakShower = on")
-            self.do_set("sigmav_method reshuffling")
-        elif indirect == 'flux_earth':
-            self.do_set("indirect_flux_source_method pythia8")
-            self.do_set("Main:numberOfEvents 1000000")
-            self.do_set("TimeShower:weakShower = on")
-            self.do_set("indirect_flux_earth_method dragon")
-            self.do_set("sigmav_method reshuffling")
+        self.do_set("sigmav_method reshuffling")
+        self.do_set("indirect_flux_source_method pythia8")
+        self.do_set("indirect_flux_earth_method dragon")
+        self.do_set("Main:numberOfEvents 1000000")
+        self.do_set("TimeShower:weakShower = on")
 
     def get_cardcmd(self):
         """ return the list of command that need to be run to have a consistent 
