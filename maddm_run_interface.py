@@ -79,7 +79,7 @@ class ExpConstraints:
         self._oh2_planck = 0.1200 # from 1807.06209 Tab. 2 (TT,TE,EE+lowE+lensing) quoted also in abstract
         self._oh2_planck_width = 0.0012
 
-        self._dd_si_limit_file = pjoin(MDMDIR, 'ExpData', 'Xenont1T_data_2017.dat')
+        self._dd_si_limit_file = pjoin(MDMDIR, 'ExpData', 'Xenon1T_data_2018.dat')
         self._dd_sd_proton_limit_file = pjoin(MDMDIR, 'ExpData', 'Pico60_sd_proton.dat') # <---------CHANGE THE FILE!!!
         self._dd_sd_neutron_limit_file = pjoin(MDMDIR, 'ExpData', 'Lux_2017_sd_neutron.dat')
         self._id_limit_file = {'(1)(-1)'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_qq.dat'), # same qqx
@@ -1346,6 +1346,21 @@ class PDGParticleMap(dict):
             string = string.replace('(%s)' % pdg, self[pdg])
         return string
 
+    def format_print(self, string):
+        ''' implement a nice print style with pdg code: instead of using round brackets, it uses:
+            #1.#2>#3.#4 moreover it removes minus signs from pdgs
+        '''
+        initial_particles, final_particles = string.split('_')
+        out_string = ""
+        for p in self.find_particles(initial_particles):
+            out_string += p.replace('-','') + '.'
+        out_string.rstrip('.')
+        out_string += '>'
+        for p in self.find_particles(final_particles):
+            out_string += p.replace('-','') + '.'
+        out_string.rstrip('.')
+        return out_string
+
     def format_process(self, string):
         initial_particles, final_particles = string.split('_')
         initial_particles = ' '.join(self.find_particles(initial_particles))
@@ -1455,7 +1470,7 @@ class MADDMRunCmd(cmd.CmdShell):
         self.Spectra = Spectra()
         self.Fermi   = Fermi_bounds()
         self.line_experiments = GAMMA_LINE_EXPERIMENTS
-        self.MadDM_version = '3.0'
+        self.MadDM_version = '3.1'
 
         self.processes_names_map = self.proc_characteristics['processes_names_map']
 
@@ -2699,7 +2714,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
         under_message  = '%s UNDERABUNDANT     %s' % ('\033[33m', bcolors.ENDC)
         above_message  = '%s OVERABUNDANT      %s' % (bcolors.FAIL, bcolors.ENDC)
-        within_message = '%s WITHIN EXP ERROR %s' % (bcolors.OKGREEN, bcolors.ENDC)
+        within_message = '%s WITHIN EXP ERROR  %s' % (bcolors.OKGREEN, bcolors.ENDC)
 
         # skip this if there is a sequential scan going on.
         if self.last_results['Omegah^2'] < 0.:
@@ -3127,7 +3142,7 @@ class MADDMRunCmd(cmd.CmdShell):
             if self.last_results['xsi'] > 0: 
                 out.write(form_s('xsi') + '= ' + form_n(self.last_results['xsi']) +' \t # xsi = (Omega/Omega_Planck)\n' )
             out.write(form_s('x_f')                  + '= ' + form_n(self.last_results['x_f'])        + '\n' ) 
-            out.write(form_s('sigmav_xf')           + '= ' + form_n(self.last_results['sigmav(xf)']) + '# cm^3/s\n' ) 
+            out.write(form_s('sigmav_xf')           + '= ' + form_n(self.last_results['sigmav(xf)']) + ' # cm^3/s\n' ) 
             out.write("# % of the various relic density channels\n")
             for proc in [k for k in self.last_results.keys() if k.startswith('%_relic_')]:
                 out.write( form_s(proc.replace('relic_','')) + ': %.2f %%\n' % self.last_results[proc] )
@@ -3615,7 +3630,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         if not HAS_NUMPY:
             self.switch['indirect'] = 'Not Avail. (numpy missing)'
         elif self.availmode['has_indirect_detection']:
-            self.switch['indirect'] = 'flux_source'     
+            self.switch['indirect'] = 'sigmav'     
         else:
             self.switch['indirect'] = 'Not Avail.'
 
@@ -3639,7 +3654,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         if not HAS_NUMPY:
             self.allowed_indirect =  ['OFF']
         elif self.availmode['has_indirect_detection']:
-            self.allowed_indirect =  ['OFF', 'flux_source', 'flux_earth', 'sigmav']
+            self.allowed_indirect =  ['OFF', 'sigmav', 'flux_source', 'flux_earth']
         else:
             self.allowed_indirect = []
         return self.allowed_indirect
