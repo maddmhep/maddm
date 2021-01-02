@@ -1142,7 +1142,7 @@ class GammaLineSpectrum(object):
         self.mass_dict        = {}
         for p in pdg_particle_map.keys():
             try:
-                self.mass_dict["(%s)" % p] = param_card.get_value("mass", abs(int(p)))
+                self.mass_dict["%s" % p] = param_card.get_value("mass", abs(int(p)))
             except KeyError:
                 continue
         self.line_exp         = line_exp
@@ -1207,7 +1207,7 @@ class GammaLineSpectrum(object):
         for fs, sigmav in computed_sigmav.items():
             particles = self.pdg_particle_map.find_particles(fs)
             # it's a gamma spectrum, so remove one (22) and get the other particles
-            particles.remove('(22)')
+            particles.remove('22')
             particles = list(set(particles))
             if len(particles) == 1:
                 mx        = self.mass_dict[particles[0]]
@@ -1334,14 +1334,15 @@ class PDGParticleMap(dict):
             return '(?)'
 
     def find_particles(self, string):
-        return re.findall(r"\(-?\d+\)", string)
+        ''' find all particles pdg of the form (pdg) in a string and return a list of them '''
+        matches = re.findall(r"\(-?\d+\)", string)
+        return list(map(lambda s: s.strip('()'), matches))
 
     def format_particles(self, string):
         ''' given a string with pdg codes, substitutes them with the particle labels
             finds pdg codes with a regex expression, builds a set of unique codes, substitutes
         '''
-        matches = self.find_particles(string)
-        pdg_list = set(map(lambda s: s.strip('()'), matches))
+        pdg_list = set(self.find_particles(string))
         for pdg in pdg_list:
             string = string.replace('(%s)' % pdg, self[pdg])
         return string
@@ -1351,21 +1352,15 @@ class PDGParticleMap(dict):
             #1.#2>#3.#4 moreover it removes minus signs from pdgs
         '''
         initial_particles, final_particles = string.split('_')
-        out_string = ""
-        for p in self.find_particles(initial_particles):
-            out_string += p.replace('-','') + '.'
-        out_string.rstrip('.')
+        out_string = ".".join(self.find_particles(initial_particles)).replace('-','')
         out_string += '>'
-        for p in self.find_particles(final_particles):
-            out_string += p.replace('-','') + '.'
-        out_string.rstrip('.')
+        out_string += ".".join(self.find_particles(final_particles)).replace('-','')
         return out_string
 
     def format_process(self, string):
+        ''' from (#1)(#2)_(#3)(#4) to p1 p2 > p3 p4 '''
         initial_particles, final_particles = string.split('_')
-        initial_particles = ' '.join(self.find_particles(initial_particles))
-        final_particles = ' '.join(self.find_particles(final_particles))
-        return self.format_particles(initial_particles) + ' > ' + self.format_particles(final_particles)
+        return self.format_particles(initial_particles.replace(')(',') (')) + ' > ' + self.format_particles(final_particles.replace(')(',') (')) # the replace allows to put a space between pdg
 
 
 class bcolors:
@@ -1965,8 +1960,8 @@ class MADDMRunCmd(cmd.CmdShell):
                     with misc.MuteLogger(['madgraph','madevent','cmdprint'], [set_level]*3):
                         #mute logger          
                         if self.maddm_card['sigmav_method'] == 'madevent':
-                            if os.path.exists(pjoin(self.dir_path,indirect_directory,'Cards','reweight_card.dat')) and os.path.exists(pjoin(self.dir_path,'Cards','reweight_card.dat')):
-                                os.remove(pjoin(self.dir_path,'Cards','reweight_card.dat'))
+                            if os.path.exists(pjoin(self.dir_path,indirect_directory,'Cards','reweight_card.dat')):
+                                os.remove(pjoin(self.dir_path,indirect_directory,'Cards','reweight_card.dat'))
                             self.me_cmd.do_launch('%s -f' % self.run_name)
                         elif self.maddm_card['sigmav_method'] == 'reshuffling':
                             cmd = ['launch %s' % self.run_name,
@@ -2043,10 +2038,7 @@ class MADDMRunCmd(cmd.CmdShell):
                     self.run_Dragon()                                                                                                                
 
             self.calculate_fluxes() # calculating dPhidE  
-            
-    def launch_spectral_computations(self, mdm):
-        """running the indirect detection for spectral features"""
-        self.calculate_line_limits(mdm)                                                                                                                       
+                                                                                                                    
 
     def calculate_fermi_limits(self, mdm):
         """setup the computation for the fermi dSph limits"""
@@ -2098,8 +2090,8 @@ class MADDMRunCmd(cmd.CmdShell):
                logger.debug('sigmav = %s , p-th=%s , like-th=%s , p-nonth=%s , like-nonth=%s '  %(sigmav, pvalue_th , like_th , pvalue_nonth , like_nonth ) )
 
 
-    def calculate_line_limits(self, mdm):
-        ''' setup the computation of gamma-line limits from Fermi-LAT and HESS '''  
+    def launch_spectral_computations(self, mdm):
+        """running the indirect detection for spectral features"""
         profiles = {
             'nfwg'      : PROFILES.NFW,
             'nfw'       : lambda **kwargs: (kwargs.pop('gamma', None), PROFILES.NFW(gamma = 1.0, **kwargs))[1], # to make canonical nfw keeping the freedom of kwargs, we need to pop "gamma" from kwargs and set it explicitly: make a lambda and built a tuple inside it: kwargs.pop modifies the dictionary and PROFILES.NFW(gamma=1.0, **kwargs) uses the modified kwargs because the tuple is instantiated and then processed, the [1] element is then returned from the lambda
@@ -2668,8 +2660,12 @@ class MADDMRunCmd(cmd.CmdShell):
             for k in keys:
                 if 'taacsID#' in k:
                     k = k.replace('taacsID#','')
+                    k = self.pdg_particle_map.format_print(k)
                     #this_proc = [(proc_pdg, proc_names) for proc_names, proc_pdg in self.processes_names_map.iteritems() if proc_pdg in k][0]
                     #k = k.replace(this_proc[0], this_proc[1])
+                if '%_relic_' in k:
+                    k = k.replace('%_relic_','')
+                    k = '%_relic_' + self.pdg_particle_map.format_print(k)
                 k = k.replace('taacsID','tot_Xsec')
                 nice_keys.append(k)
             
@@ -3143,9 +3139,9 @@ class MADDMRunCmd(cmd.CmdShell):
                 out.write(form_s('xsi') + '= ' + form_n(self.last_results['xsi']) +' \t # xsi = (Omega/Omega_Planck)\n' )
             out.write(form_s('x_f')                  + '= ' + form_n(self.last_results['x_f'])        + '\n' ) 
             out.write(form_s('sigmav_xf')           + '= ' + form_n(self.last_results['sigmav(xf)']) + ' # cm^3/s\n' ) 
-            out.write("# % of the various relic density channels\n")
+            out.write("# % of the relic density channels\n")
             for proc in [k for k in self.last_results.keys() if k.startswith('%_relic_')]:
-                out.write( form_s(proc.replace('relic_','')) + ': %.2f %%\n' % self.last_results[proc] )
+                out.write( form_s("%_" + self.pdg_particle_map.format_print(proc.replace('%_relic_',''))) + '= %.2f %%\n' % self.last_results[proc] )
 
 
         if direct:
@@ -3189,7 +3185,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 for proc in proc_list:
                     #proc = [proc_names for proc_names, proc_pdg in self.processes_names_map.iteritems() if proc == proc_pdg][0] # this allows to convert back from PDG
                     proc_th, proc_ul = self.last_results['taacsID#' + proc] , self.last_results['lim_taacsID#' + proc]
-                    fileout.write(form_s(proc)      + '= '+ form_s('['+ form_n(proc_th)+',' + form_n(proc_ul)+']') + '\n')
+                    fileout.write(form_s(self.pdg_particle_map.format_print(proc)) + '= '+ form_s('['+ form_n(proc_th)+',' + form_n(proc_ul)+']') + '\n')
 
             detailled_keys = [key for key in self.last_results.keys() if key.startswith('taacsID#')]
 
