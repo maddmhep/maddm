@@ -128,9 +128,6 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         for name in ['coupl.inc', 'input.inc']:
             files.ln(pjoin(self.dir_path, 'Source','MODEL', name),
                  pjoin(self.dir_path, 'include'))
-         
-    def write_procdef_mg5(self,*args):
-        return
     
     def pass_information_from_cmd(self, cmd):
         """pass information from the command interface to the exporter.
@@ -1143,7 +1140,21 @@ class ProcessExporterIndirectD(object):
                         for me in group.get('matrix_elements'):
                             for p in me.get('processes'):
                                 prefix = 'generate ' if i==0 else 'add process '
-                                new_history.append(p.nice_string(prefix=prefix))
+                                process = p.input_string()
+                                split = process.split('@')
+                                if len(split) == 1:
+                                    new_history.append('%s %s' %(prefix, process))
+                                elif len(split) == 2:
+                                    id = split[1].split()[0]
+                                    new_history.append('%s  %s @%s SDEFFF=0 SDEFFV=0 SIEFFF=0 SIEFFS=0 SIEFFV=0' %(prefix, split[0], id))     
+                                else:
+                                    id = split[1].split()[0]
+                                    proc = [split[0]]
+                                    for s in split[1:-1]:
+                                        proc.append(s.split(',')[1])
+                                    
+                                    new_history.append('%s  %s @%s SDEFFF=0 SDEFFV=0 SIEFFF=0 SIEFFS=0 SIEFFV=0' %(prefix, ' , '.join(proc), id))     
+                                
                                 i=1
                     indirect_done = True
                     continue

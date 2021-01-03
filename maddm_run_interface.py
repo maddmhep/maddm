@@ -3167,12 +3167,12 @@ class MADDMRunCmd(cmd.CmdShell):
 
             relic, planck , message = self.last_results['Omegah^2'] , self.limits._oh2_planck , self.det_message(self.last_results['Omegah^2'], self.limits._oh2_planck) 
     
-            out.write(form_s('Omegah2')             + '= ' + form_n(relic)  + '\n')
-            out.write(form_s('Omegah_Planck')       + '= ' + form_n(planck)  + '\n')
+            out.write(form_s('Omegah2')       + '= ' + form_n(relic)  + '\n')
+            out.write(form_s('Omegah_Planck') + '= ' + form_n(planck) + '\n')
             if self.last_results['xsi'] > 0: 
-                out.write(form_s('xsi') + '= ' + form_n(self.last_results['xsi']) +' \t # xsi = (Omega/Omega_Planck)\n' )
-            out.write(form_s('x_f')                  + '= ' + form_n(self.last_results['x_f'])        + '\n' ) 
-            out.write(form_s('sigmav_xf')           + '= ' + form_n(self.last_results['sigmav(xf)']) + ' # cm^3/s\n' ) 
+                out.write(form_s('xsi')   + '= ' + form_n(self.last_results['xsi'])        + ' \t # xsi = (Omega/Omega_Planck)\n' )
+            out.write(form_s('x_f')       + '= ' + form_n(self.last_results['x_f'])        + '\n' ) 
+            out.write(form_s('sigmav_xf') + '= ' + form_n(self.last_results['sigmav(xf)']) + ' # cm^3/s\n' ) 
             out.write("# % of the relic density channels\n")
             for proc in [k for k in self.last_results.keys() if k.startswith('%_relic_')]:
                 out.write( form_s("%_" + self.pdg_particle_map.format_print(proc.replace('%_relic_',''))) + '= %.2f %%\n' % self.last_results[proc] )

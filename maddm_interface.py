@@ -1203,6 +1203,9 @@ class MadDM_interface(master_interface.MasterCmd):
 
     def is_amplitude_not_empty(self, amplitude):
         ''' tree level amplitudes have only property 'diagrams', while for loop amplitudes have both 'diagrams', 'born_diagrams' and 'loop_diagrams', so we need to check all of them to find out if a process has diagrams. '''
+        if isinstance(amplitude, diagram_generation.DecayChainAmplitude):
+            return bool(amplitude['decay_chains'])
+        
         diagrams = bool(amplitude['diagrams'])
         born_diagrams = bool('born_diagrams' in amplitude.keys() and amplitude['born_diagrams'])
         loop_diagrams = bool('loop_diagrams' in amplitude.keys() and amplitude['loop_diagrams'])
@@ -1218,9 +1221,9 @@ class MadDM_interface(master_interface.MasterCmd):
         self._has_indirect, state = self.check_indirect_and_spectral(cmd = 'indirect_detection', argument = argument)
         if state:
             return
-
+        
         # check if there are photons in final states: if so, redirect the user to use 'indirect_spectral_features'
-        if any(self._pdg_particle_map.get_pdg(arg) == 22 for arg in ' '.join(argument).split('/')[0].split()) and len(' '.join(argument).split('/')[0]) != 0:
+        if "," not in ' '.join(argument) and any(self._pdg_particle_map.get_pdg(arg) == 22 for arg in ' '.join(argument).split('/')[0].split()) and len(' '.join(argument).split('/')[0]) != 0:
             logger.error("Processes with at least one photon in the final state must be generated through 'indirect_spectral_features' command.")
             self._has_indirect = False
             return
@@ -1236,9 +1239,6 @@ class MadDM_interface(master_interface.MasterCmd):
             final_states += ['_bsm_ _bsm_'] if bsm_content else []
             for final_state in final_states:
                 try: 
-                    # temp_amps = self.indirect_process_generation([final_state, '--noloop'], self._ID_cont_procs, self._ID_cont_matrix_elements, self._ID_cont_amps)
-                    # for last_amp in temp_amps:
-                    #     self._last_amps.append(last_amp)
                     self.indirect_process_generation([final_state, '--noloop'], self._ID_cont_procs, self._ID_cont_matrix_elements, self._ID_cont_amps)
                 except diagram_generation.NoDiagramException:
                     continue
@@ -1246,9 +1246,6 @@ class MadDM_interface(master_interface.MasterCmd):
             self._last_amps = [amp for amp in self._ID_cont_amps[0] + self._ID_cont_amps[1] if amp not in backup_amps]
             return
 
-        # temp_amps = self.indirect_process_generation(argument, self._ID_cont_procs, self._ID_cont_matrix_elements, self._ID_cont_amps)
-        # for last_amp in temp_amps:
-        #     self._last_amps.append(last_amp)
         self.indirect_process_generation(argument, self._ID_cont_procs, self._ID_cont_matrix_elements, self._ID_cont_amps)
         self._last_amps = [amp for amp in self._ID_cont_amps[0] + self._ID_cont_amps[1] if amp not in backup_amps]
     
@@ -1261,6 +1258,11 @@ class MadDM_interface(master_interface.MasterCmd):
         if state:
             return
 
+        # forbid decay syntax
+        if "," in ' '.join(argument):
+            logger.error("Decay syntax not allowed for line searches.")
+            self._has_spectral = False
+            return
         # check if at least one photon is present in the final state
         if not any(self._pdg_particle_map.get_pdg(arg) == 22 for arg in ' '.join(argument).split('/')[0].split()) and len(' '.join(argument).split('/')[0]) != 0:
             logger.error("There must be at least one photon in the final state.")
@@ -1277,9 +1279,6 @@ class MadDM_interface(master_interface.MasterCmd):
             final_states += ['22 _bsm_'] if bsm_content else []
             for final_state in final_states:
                 try: 
-                    # temp_amps = self.indirect_process_generation([final_state], self._ID_line_procs, self._ID_line_matrix_elements, self._ID_line_amps)
-                    # for last_amp in temp_amps:
-                    #     self._last_amps.append(last_amp)
                     self.indirect_process_generation([final_state], self._ID_line_procs, self._ID_line_matrix_elements, self._ID_line_amps)
                 except diagram_generation.NoDiagramException:
                     continue
@@ -1287,9 +1286,6 @@ class MadDM_interface(master_interface.MasterCmd):
             self._last_amps = [amp for amp in self._ID_line_amps[0] + self._ID_line_amps[1] if amp not in backup_amps]
             return
 
-        # temp_amps = self.indirect_process_generation(argument, self._ID_line_procs, self._ID_line_matrix_elements, self._ID_line_amps)
-        # for last_amp in temp_amps:
-        #     self._last_amps.append(last_amp)
         self.indirect_process_generation(argument, self._ID_line_procs, self._ID_line_matrix_elements, self._ID_line_amps)
         self._last_amps = [amp for amp in self._ID_line_amps[0] + self._ID_line_amps[1] if amp not in backup_amps]
 
@@ -1351,6 +1347,7 @@ class MadDM_interface(master_interface.MasterCmd):
             #We put the coupling order restrictions after the @ID in order to
             #apply it to the entire matrix element.
             proc = '%s %s > %s @ID %s' % (name, antiname, ' '.join(argument), coupling)
+            misc.sprint(proc)
             try:
                 # flip indirect/standard process definition
                 with misc.TMP_variable(self, ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps'], 
