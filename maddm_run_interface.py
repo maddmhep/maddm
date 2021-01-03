@@ -74,7 +74,7 @@ class ExpConstraints:
 
     def __init__(self):
 
-        self._allowed_final_states = ['(1)(-1)', '(2)(-2)', '(3)(-3)', '(4)(-4)', '(21)(21)', '(5)(-5)', '(6)(-6)', '(11)(-11)', '(13)(-13)', '(15)(-15)', '(24)(-24)', '(23)(23)', '(25)(25)']
+        self._settable = ['(1)(-1)', '(2)(-2)', '(3)(-3)', '(4)(-4)', '(21)(21)', '(5)(-5)', '(6)(-6)', '(11)(-11)', '(13)(-13)', '(15)(-15)', '(24)(-24)', '(23)(23)', '(25)(25)']
 
         self._oh2_planck = 0.1200 # from 1807.06209 Tab. 2 (TT,TE,EE+lowE+lensing) quoted also in abstract
         self._oh2_planck_width = 0.0012
@@ -82,46 +82,67 @@ class ExpConstraints:
         self._dd_si_limit_file = pjoin(MDMDIR, 'ExpData', 'Xenon1T_data_2018.dat')
         self._dd_sd_proton_limit_file = pjoin(MDMDIR, 'ExpData', 'Pico60_sd_proton.dat') # <---------CHANGE THE FILE!!!
         self._dd_sd_neutron_limit_file = pjoin(MDMDIR, 'ExpData', 'Lux_2017_sd_neutron.dat')
-        self._id_limit_file = {'(1)(-1)'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_qq.dat'), # same qqx
-                               '(2)(-2)'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_qq.dat'), # same qqx
-                               '(3)(-3)'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_qq.dat'), # same qqx
-                               '(4)(-4)'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_cc.dat'),
-                               '(5)(-5)'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_bb.dat'),
-                               '(6)(-6)'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_tt.dat'),
-                               '(11)(-11)': pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_ee.dat'),
-                               '(13)(-13)': pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_mumu.dat'),
-                               '(15)(-15)': pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_tautau.dat'),
-                               '(21)(21)' : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_gg.dat'),
-                               '(23)(23)' : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_ZZ.dat'),
-                               '(24)(-24)': pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_WW.dat'),
-                               '(25)(25)' : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_hh.dat'),
+        self._id_limit_file = {
+            # cont final states
+            '(1)(-1)'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_qq.dat'), # same qqx
+            '(2)(-2)'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_qq.dat'), # same qqx
+            '(3)(-3)'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_qq.dat'), # same qqx
+            '(4)(-4)'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_cc.dat'),
+            '(5)(-5)'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_bb.dat'),
+            '(6)(-6)'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_tt.dat'),
+            '(11)(-11)': pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_ee.dat'),
+            '(13)(-13)': pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_mumu.dat'),
+            '(15)(-15)': pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_tautau.dat'),
+            '(21)(21)' : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_gg.dat'),
+            '(23)(23)' : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_ZZ.dat'),
+            '(24)(-24)': pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_WW.dat'),
+            '(25)(25)' : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_hh.dat'),
+            # line final states = <final state>_<experiment label><year>R<roi>
+            '(22)(22)_hess2013R1'  : pjoin(MDMDIR,'ExpData', 'hess_I_2013_einasto.dat'),
+            '(22)(22)_hess2016R1'  : pjoin(MDMDIR,'ExpData', 'hess_2016_einasto.dat'),
+            '(22)(22)_hess2018R1'  : pjoin(MDMDIR,'ExpData', 'HESS_2018_lines_R1_Einasto.dat'), # <sigma v> limits
+            '(22)(22)_fermi2015R3' : pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_R3_NFWcontracted.dat'), # <sigma v> limits
+            '(22)(22)_fermi2015R16': pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_R16_Einasto.dat'), # <sigma v> limits
+            '(22)(22)_fermi2015R41': pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_R41_NFW.dat'), # <sigma v> limits
+            '(22)(22)_fermi2015R90': pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_R90_Isothermal.dat')} # <sigma v> limits
 
-                               '(22)(22)_hess2013_sigmav'    : pjoin(MDMDIR,'ExpData', 'hess_I_2013_einasto.dat'),
-                               '(22)(22)_hess2016_sigmav'    : pjoin(MDMDIR,'ExpData', 'hess_2016_einasto.dat'),
-                               '(22)(22)_hess2018R1_flux'    : pjoin(MDMDIR,'ExpData', 'HESS_2018_lines_flux_R1_Einasto.dat'), # Flux limits
-                               '(22)(22)_hess2018R1_sigmav'  : pjoin(MDMDIR,'ExpData', 'HESS_2018_lines_sigmav_R1_Einasto.dat'), # <sigma v> limits
-                               
-                               '(22)(22)_fermi2015R3_flux'   : pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_flux_R3_NFWcontracted.dat'), # Flux limits
-                               '(22)(22)_fermi2015R3_sigmav' : pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_sigmav_R3_NFWcontracted.dat'), # <sigma v> limits
-                               '(22)(22)_fermi2015R16_flux'  : pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_flux_R16_Einasto.dat'), # Flux limits
-                               '(22)(22)_fermi2015R16_sigmav': pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_sigmav_R16_Einasto.dat'), # <sigma v> limits
-                               '(22)(22)_fermi2015R41_flux'  : pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_flux_R41_NFW.dat'), # Flux limits
-                               '(22)(22)_fermi2015R41_sigmav': pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_sigmav_R41_NFW.dat'), # <sigma v> limits
-                               '(22)(22)_fermi2015R90_flux'  : pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_flux_R90_Isothermal.dat'), # Flux limits
-                               '(22)(22)_fermi2015R90_sigmav': pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_sigmav_R90_Isothermal.dat')} # <sigma v> limits
-
-        self._id_limit_vel = {'(1)(-1)':2.0E-5, '(2)(-2)':2.0E-5, '(3)(-3)':2.0E-5, '(4)(-4)':2.0E-5, '(21)(21)':2.0E-5, '(5)(-5)':2.0E-5,'(6)(-6)':2.0E-5,
-                              '(11)(-11)':2.0E-5, '(13)(-13)':2.0E-5, '(15)(-15)':2.0E-5, '(24)(-24)':2.0E-5, '(23)(23)':2.0E-5, '(25)(25)':2.0E-5,
-                              '(22)(22)_hess2013_sigmav'  : 250/299792.458, '(22)(22)_hess2016_sigmav'    : 250/299792.458, 
-                              '(22)(22)_hess2018R1_flux'  : 250/299792.458, '(22)(22)_hess2018R1_sigmav'  : 250/299792.458, 
-                              '(22)(22)_fermi2015R16_flux': 250/299792.458, '(22)(22)_fermi2015R16_sigmav': 250/299792.458, 
-                              '(22)(22)_fermi2015R90_flux': 250/299792.458, '(22)(22)_fermi2015R90_sigmav': 250/299792.458, 
-                              '(22)(22)_fermi2015R3_flux' : 250/299792.458, '(22)(22)_fermi2015R3_sigmav' : 250/299792.458, 
-                              '(22)(22)_fermi2015R41_flux': 250/299792.458, '(22)(22)_fermi2015R41_sigmav': 250/299792.458
-                              }
+        self._id_limit_file_flux = {
+            # line final states
+            '(22)(22)_hess2018R1'    : pjoin(MDMDIR,'ExpData', 'HESS_2018_lines_R1_Einasto.dat'), # Flux limits
+            '(22)(22)_fermi2015R3'   : pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_R3_NFWcontracted.dat'), # Flux limits
+            '(22)(22)_fermi2015R16'  : pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_R16_Einasto.dat'), # Flux limits
+            '(22)(22)_fermi2015R41'  : pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_R41_NFW.dat'), # Flux limits
+            '(22)(22)_fermi2015R90'  : pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_R90_Isothermal.dat') # Flux limits
+        }
+        
+        self._id_limit_vel = {
+            # cont velocity
+            '(1)(-1)':2.0E-5,
+            '(2)(-2)':2.0E-5,
+            '(3)(-3)':2.0E-5,
+            '(4)(-4)':2.0E-5,
+            '(21)(21)':2.0E-5,
+            '(5)(-5)':2.0E-5,
+            '(6)(-6)':2.0E-5,
+            '(11)(-11)':2.0E-5,
+            '(13)(-13)':2.0E-5,
+            '(15)(-15)':2.0E-5,
+            '(24)(-24)':2.0E-5,
+            '(23)(23)':2.0E-5,
+            '(25)(25)':2.0E-5,
+            # line velocity
+            '(22)(22)_hess2013'    : 250/299792.458,
+            '(22)(22)_hess2016'    : 250/299792.458, 
+            '(22)(22)_hess2018R1'  : 250/299792.458, 
+            '(22)(22)_fermi2015R16': 250/299792.458, 
+            '(22)(22)_fermi2015R90': 250/299792.458, 
+            '(22)(22)_fermi2015R3' : 250/299792.458, 
+            '(22)(22)_fermi2015R41': 250/299792.458
+        }
 
         self._id_limit_mdm = dict()
         self._id_limit_sigv = dict()
+        self._id_limit_flux = dict()
 
         #In case there is a measurement of the cross seciton
         self._sigma_SI = -1.0
@@ -133,7 +154,7 @@ class ExpConstraints:
 
         self._sigma_ID = dict()
         self._sigma_ID_width = dict()
-        for item in self._allowed_final_states:
+        for item in self._id_limit_file.keys():
             self._sigma_ID[item] = -1.0
             self._sigma_ID_width[item] = -1.0
 
@@ -165,14 +186,22 @@ class ExpConstraints:
                                                                                                             
         for channel, limit_file in self._id_limit_file.iteritems():
             if limit_file != '': # FF : need to redo the limit files as two columns                                                                             
-             if 'MadDM_Fermi_Lim' in limit_file:
-                self._id_limit_mdm[channel]  = np.loadtxt(limit_file, unpack=True)[0]
-                self._id_limit_sigv[channel] = np.loadtxt(limit_file, unpack=True)[1]
-             else:  self._id_limit_mdm[channel] ,  self._id_limit_sigv[channel] = np.loadtxt(limit_file, unpack=True , comments = '#')
-
+                # if 'MadDM_Fermi_Lim' in limit_file:
+                #     self._id_limit_mdm[channel]  = np.loadtxt(limit_file, unpack=True)[0]
+                #     self._id_limit_sigv[channel] = np.loadtxt(limit_file, unpack=True)[1]
+                # else:
+                self._id_limit_mdm[channel], self._id_limit_sigv[channel] = np.loadtxt(limit_file, unpack=True, usecols=(0,1), comments='#')
             else:
                 self._id_limit_mdm[channel] = False
                 self._id_limit_sigv[channel] = False
+
+        for channel, limit_file in self._id_limit_file_flux.iteritems():
+            if limit_file != '':                                                                      
+                self._id_limit_mdm[channel], self._id_limit_flux[channel] = np.loadtxt(limit_file, unpack=True, usecols=(0,2), comments='#')
+            else:
+                self._id_limit_mdm[channel] = False
+                self._id_limit_flux[channel] = False
+
 
     #Returns a value in cm^2
     def SI_max(self, mdm):
@@ -209,18 +238,21 @@ class ExpConstraints:
                 else:
                     return np.interp(mdm, self._dd_sd_n_limit_mDM, self._dd_sd_n_limit_sigma)
 
-    #Returns a value in cm^3/s
-    def ID_max(self,mdm, channel):
+    # Returns a value in cm^3/s
+    def ID_max(self, mdm, channel, sigmav = True):
+        ''' get the upper limit either for sigmav (sigmav = True) or flux (sigmav = False). '''
         if not HAS_NUMPY:
             logger.warning("missing numpy module for ID limit")
             return -1
+        id_limit_dict = self._id_limit_sigv if sigmav else self._id_limit_flux
         try:
             if (mdm < np.min(self._id_limit_mdm[channel]) or mdm > np.max(self._id_limit_mdm[channel])):
                 logger.warning('Dark matter mass value %.2e for channel %s is outside the range of ID limit' % (mdm, channel))
                 return -1
             else:
-                return np.interp(mdm, self._id_limit_mdm[channel], self._id_limit_sigv[channel])
+                return np.interp(mdm, self._id_limit_mdm[channel], id_limit_dict[channel])
         except KeyError:
+            logger.debug("Channel '%s' not found." % channel)
             return -1
 
 ################################################################################
@@ -888,8 +920,8 @@ class GammaLineExperiment(object):
         ''' Returns the upper limit on flux for a given ROI (expressed in degrees).
             The limits are taken from the ExpConstraint class, the interpolation function is evaluated at the energy of the peak.
         '''
-        ul_label = self.info_dict[roi][2] + '_flux'
-        flux_ul = id_constraints.ID_max(mdm = e_peak, channel = ul_label)
+        ul_label = self.info_dict[roi][2]
+        flux_ul = id_constraints.ID_max(mdm = e_peak, channel = ul_label, sigmav = False)
         return flux_ul
 
     def get_sigmav_ul(self, e_peak, roi, profile, id_constraints, is_aa):
@@ -898,10 +930,9 @@ class GammaLineExperiment(object):
         '''
         default_profile, _, ul_label = self.info_dict[roi][:3]
         if profile.eq_but_norm(default_profile):
-            ul_label += '_sigmav'
             coeff = 2. if is_aa else 1.
             # flux should be multiplied by 2 if aa, <sigma v> should be divided by 2 if aa
-            sigmav_ul = id_constraints.ID_max(mdm = e_peak, channel = ul_label) * np.power(default_profile.rho_s / profile.rho_s, 2) / coeff
+            sigmav_ul = id_constraints.ID_max(mdm = e_peak, channel = ul_label, sigmav = True) * np.power(default_profile.rho_s / profile.rho_s, 2) / coeff
             return sigmav_ul if sigmav_ul > 0 else -1
         else:
             return -1
@@ -1317,7 +1348,10 @@ class PDGParticleMap(dict):
             self[str(pdg_code)] = particle.get_name() 
 
     def get_pdg(self, particle):
-        if particle in self.keys(): # if 'particle' is a pdg_code inside self, then return it
+        ''' if 'particle' is a pdg_code itself inside the self dictionary, then return it,
+            otherwise obtain the pdg_code from the particle label.
+        '''
+        if particle in self.keys():
             return int(particle)
         this_pdg = [pdg for pdg, name in self.iteritems() if name == particle]
         if len(this_pdg) == 0:
@@ -4279,29 +4313,29 @@ When you are done with such edition, just press enter (or write 'done' or '0')
             self.limits._oh2_planck_width = secure_float_f77(args[2])
 
         elif args[0] == 'id_limits':
-             if len(args)!= 4:
-                 logger.warning('You need to provide the following <ave. velocity> <ann. channel> <file path>')
-                 logger.warning('or  <ave. velocity> <ann. channel> <obs. cross section> <obs. uncertainty>')
-                 logger.warning('Annihilation channel can be (in pdg numbers): '+ str(self.limits._allowed_final_states))
-             logger.info('The file you use for indirect detection limits will be interpreted as:')
-             logger.info('Column 1 - dark matter mass in GeV')
-             logger.info('Column 2 - upper limit on the total annihilation cross section in cm^3/s at specified average velocity')
+            if len(args)!= 4:
+                logger.warning('You need to provide the following <ave. velocity> <ann. channel> <file path>')
+                logger.warning('or  <ave. velocity> <ann. channel> <obs. cross section> <obs. uncertainty>')
+                logger.warning('Annihilation channel can be (in pdg numbers): '+ str(self.limits._settable))
+            logger.info('The file you use for indirect detection limits will be interpreted as:')
+            logger.info('Column 1 - dark matter mass in GeV')
+            logger.info('Column 2 - upper limit on the total annihilation cross section in cm^3/s at specified average velocity')
 
-             if len(args) > 4:
-                 if args[2] in self.limits._allowed_final_states:
+            if len(args) > 4:
+                if args[2] in self.limits._settable:
                     self.limits._id_limit_vel[args[2]] = secure_float_f77(args[1])
                     self.limits._sigma_ID[args[2]] = secure_float_f77(args[3])
                     self.limits._sigma_ID_width[args[2]] = secure_float_f77(args[4])
-                 else:
-                     logger.error('Final state not allowed for ID limits!')
-             else:
-                 vel = secure_float_f77(args[1])
-                 channel = args[2]
-                 id_file = args[3]
-                 self.limits._id_limit_vel[channel] = vel
-                 self.limits._id_limit_file[channel] = id_file
+                else:
+                    logger.error('Final state not allowed for ID limits!')
+            else:
+                vel = secure_float_f77(args[1])
+                channel = args[2]
+                id_file = args[3]
+                self.limits._id_limit_vel[channel] = vel
+                self.limits._id_limit_file[channel] = id_file
 
-                 self.limits.load_constraints()
+                self.limits.load_constraints()
         elif args[0].lower() in self.switch:
             return self.default(line.strip())
         else:
