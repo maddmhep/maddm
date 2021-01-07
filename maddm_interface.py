@@ -149,10 +149,12 @@ class MadDM_interface(master_interface.MasterCmd):
     def __init__(self, *args, **opts):
         
         super(MadDM_interface, self).__init__(*args, **opts)
+        # DM candidates and coannihilators (on the basis of Z2 symmetry)
         self._dm_candidate = []
         self._coannihilation = []
+        self._disconnected_particles = []
         self._param_card = None
-        self.coannihilation_diff = 1
+        # self.coannihilation_diff = 1
         self.option_2to2lo = False # keep track if the user wants to use this option
         self._relic_off = False
         self._has_indirect = False
@@ -289,6 +291,7 @@ class MadDM_interface(master_interface.MasterCmd):
                         raise DMError, '%s is not a valid particle for the model.' % args[1] 
                     if len(self._dm_candidate) == 1:
                         # No update of the model if 2(or more) DM since DD is not possible
+                        self.search_coannihilator()
                         self.update_model_with_EFT()
                     else:
                         txt = self._curr_model.write_param_card()
@@ -297,34 +300,34 @@ class MadDM_interface(master_interface.MasterCmd):
                         ff.close()
                         self.define_benchmark(answer=True, path='/tmp/param_card.dat')
                         
-            elif args[0] == 'coannihilator':
-                if not self._dm_candidate:
-                    self.search_dm_candidate([])
-                try:
-                    args[1] = float(args[1])
-                    isdigit=True
-                except:
-                    isdigit=False
-                    pass
+#             elif args[0] == 'coannihilator':
+#                 if not self._dm_candidate:
+#                     self.search_dm_candidate([])
+#                 try:
+#                     args[1] = float(args[1])
+#                     isdigit=True
+#                 except:
+#                     isdigit=False
+#                     pass
                 
-                if len(args) == 1:
-                    self.search_coannihilator()                    
-                elif '--usepdg' in args:
-                    self._coannihilation = [self._curr_model.get_particle(a) for a in args[1:] if a!= '--usepdg']
-                elif len(args)>2 and isdigit and args[2].startswith('/'):
-                    self.search_coannihilator(gap=args[1], excluded=[a.replace('/', '') for a in args[2:]])
-                elif len(args)>1 and not isdigit and args[1].startswith('/'):
-                    self.search_coannihilator( excluded=[a.replace('/', '') for a in args[1:]])
-                elif len(args)==2 and isdigit:
-                    self.search_coannihilator(gap=args[1])
-                else:
-                    self._coannihilation = [self._curr_model.get_particle(a) for a in args[1:]]
-                #avoid duplication
-                if None in self._coannihilation:
-                    raise self.InvalidCmd('Some of the particle name are invalid. Please retry.')
-                all_name = [c.get('name') for c in self._coannihilation]
-                self._coannihilation = [c for i,c in enumerate(self._coannihilation) if c.get('name') not in all_name[:i]]
-#                self._dm_candidate += self._coannihilation 
+#                 if len(args) == 1:
+#                     self.search_coannihilator()                    
+#                 elif '--usepdg' in args:
+#                     self._coannihilation = [self._curr_model.get_particle(a) for a in args[1:] if a!= '--usepdg']
+#                 elif len(args)>2 and isdigit and args[2].startswith('/'):
+#                     self.search_coannihilator(gap=args[1], excluded=[a.replace('/', '') for a in args[2:]])
+#                 elif len(args)>1 and not isdigit and args[1].startswith('/'):
+#                     self.search_coannihilator( excluded=[a.replace('/', '') for a in args[1:]])
+#                 elif len(args)==2 and isdigit:
+#                     self.search_coannihilator(gap=args[1])
+#                 else:
+#                     self._coannihilation = [self._curr_model.get_particle(a) for a in args[1:]]
+#                 #avoid duplication
+#                 if None in self._coannihilation:
+#                     raise self.InvalidCmd('Some of the particle name are invalid. Please retry.')
+#                 all_name = [c.get('name') for c in self._coannihilation]
+#                 self._coannihilation = [c for i,c in enumerate(self._coannihilation) if c.get('name') not in all_name[:i]]
+# #                self._dm_candidate += self._coannihilation 
             elif args[0] == 'benchmark':
                 if len(args)==1:
                     self.define_benchmark()
@@ -454,6 +457,7 @@ class MadDM_interface(master_interface.MasterCmd):
         # Print out the DM candidate
         logger.info("Found Dark Matter candidate: %s" % dm_particles[0]['name'],  '$MG:BOLD')
         self._dm_candidate = dm_particles
+        self.search_coannihilator()
         self.update_model_with_EFT()
         
     def define_benchmark(self, path=None, answer=False):
@@ -461,6 +465,7 @@ class MadDM_interface(master_interface.MasterCmd):
      
         self._dm_candidate = []
         self._coannihilation = []
+        self._disconnected_particles = []
         question = """Do you want to edit the benchmark (press enter to bypass editing)?\n"""
         question += """ - Press 1 or param to open an editor and edit the file\n"""
         question += """ - You can specify a path to a valid card (and potentially edit it afterwards)\n"""
@@ -496,66 +501,165 @@ class MadDM_interface(master_interface.MasterCmd):
         #self._dm_candidate = darkmatter.darkmatter()
     
       
-    def search_coannihilator(self, gap=0.1, excluded=[]):
-        """  This routine finds the coannihilation particles for the relic
-        #  density calculation. The code can search for all the BSM particles that are
-        #  within an input mass difference with the DM candidate.  All
-        #  coannihilation particles are then added to the self._dm_particles
-        #  list.
-        """
+    # def search_coannihilator(self, gap=0.1, excluded=[]):
+    #     """  This routine finds the coannihilation particles for the relic
+    #     #  density calculation. The code can search for all the BSM particles that are
+    #     #  within an input mass difference with the DM candidate.  All
+    #     #  coannihilation particles are then added to the self._dm_particles
+    #     #  list.
+    #     """
 
-        self._coannihilation = []
-        dm_mass = self._curr_model.get_mass(self._dm_candidate[0])
-        self.coannihilation_diff = gap 
-        dm_name = [dm['name'] for dm in self._dm_candidate]
+    #     self._coannihilation = []
+    #     dm_mass = self._curr_model.get_mass(self._dm_candidate[0])
+    #     self.coannihilation_diff = gap 
+    #     dm_name = [dm['name'] for dm in self._dm_candidate]
         
-        bsm_particles = [p for p in self._curr_model.get('particles')                
-                         if 25 < p.get('pdg_code') < 999000000 and\
-                          (p.get('name') not in excluded or 
-                          p.get('antiname') not in excluded or
-                          str(p.get('pdgcode')) not in excluded)] 
+    #     bsm_particles = [p for p in self._curr_model.get('particles')                
+    #                      if 25 < p.get('pdg_code') < 999000000 and\
+    #                       (p.get('name') not in excluded or 
+    #                       p.get('antiname') not in excluded or
+    #                       str(p.get('pdgcode')) not in excluded)] 
 
-        # Loop over BSM particles
-        for p in bsm_particles:
-            if p['name'] in dm_name:
-                continue
+    #     # Loop over BSM particles
+    #     for p in bsm_particles:
+    #         if p['name'] in dm_name:
+    #             continue
             
-            bsm_mass = self._curr_model.get_mass(p)
-            if (abs(dm_mass-bsm_mass)/dm_mass <= gap):
-                self._coannihilation.append(p)
-            # If there are BSM particles that are too small to be included in the coannihilation they
-            # are still tabulated to include in the final state particles with the SM particles.
-            #elif ((self._bsm_masses[i] < (1.0-self._coann_eps)*self._dm_mass) and \
-            #    not ('all' in self._excluded_particles) and \
-            #    not (self._particles[self._bsm_particles[i]] in self._excluded_particles)):
-            #          self._bsm_final_states.append(self._particles[self._bsm_particles[i]])
+    #         bsm_mass = self._curr_model.get_mass(p)
+    #         if (abs(dm_mass-bsm_mass)/dm_mass <= gap):
+    #             self._coannihilation.append(p)
+    #         # If there are BSM particles that are too small to be included in the coannihilation they
+    #         # are still tabulated to include in the final state particles with the SM particles.
+    #         #elif ((self._bsm_masses[i] < (1.0-self._coann_eps)*self._dm_mass) and \
+    #         #    not ('all' in self._excluded_particles) and \
+    #         #    not (self._particles[self._bsm_particles[i]] in self._excluded_particles)):
+    #         #          self._bsm_final_states.append(self._particles[self._bsm_particles[i]])
 
-            # For organizational purposes we put the coannihilation particles by
-            #alphabetical order by name
-            self._coannihilation.sort(key=lambda p: p['name'])
+    #         # For organizational purposes we put the coannihilation particles by
+    #         #alphabetical order by name
+    #         self._coannihilation.sort(key=lambda p: p['name'])
         
-        # Validity check
-        for p in list(self._coannihilation):
-            has_coupling = False
-            for vert in self._curr_model.get('interactions'):
-                if p in vert['particles']:
-                    for coup_name in  vert['couplings'].values():
-                        if self._curr_model.get('coupling_dict')[coup_name]:
-                            has_coupling = True
-                            break
-                if has_coupling:
-                    break
+    #     # Validity check
+    #     for p in list(self._coannihilation):
+    #         has_coupling = False
+    #         for vert in self._curr_model.get('interactions'):
+    #             if p in vert['particles']:
+    #                 for coup_name in  vert['couplings'].values():
+    #                     if self._curr_model.get('coupling_dict')[coup_name]:
+    #                         has_coupling = True
+    #                         break
+    #             if has_coupling:
+    #                 break
+    #         else:
+    #             self._coannihilation.remove(p)
+        
+        
+    #     if self._coannihilation:
+    #         logger.info("Found coannihilation partners: %s" % ','.join([p['name'] for p in self._coannihilation]),
+    #                 '$MG:BOLD')
+    #     else:
+    #         logger.info("No coannihilation partners found.", '$MG:BOLD')
+
+    def search_coannihilator(self):
+        """ Find coannihilators (other Z2-odd particles) and disconnected particles. """
+        # Z2-odd particles: self._dm_candidate + self._coannihilation
+        # unknown Z2 parity particles: self._disconnected
+        Z2_EVEN = 1
+        Z2_ODD = -1
+        Z2_UNKN = 0
+        # reduction functions
+        def remove_any_number_even_particles(z2_parity, particles):
+            ''' gets rid of the even particles '''
+            to_remove = [i for i, z2 in enumerate(z2_parity) if z2 == Z2_EVEN]
+            for i in sorted(to_remove, reverse = True): # reverse indexes upon deletion so smaller indexes won't change
+                del z2_parity[i]
+                del particles[i]
+        def remove_even_number_same_particles(z2_parity, particles):
+            ''' gets rid of an even number of particles with the same name '''
+            to_remove = []
+            unique_particles = set([p.get('name') for p in particles])
+            for p_name in unique_particles:
+                indexes = [i for i, p in enumerate(particles) if p_name == p.get('name')]
+                if len(indexes) < 2:
+                    continue
+                # now I have a list of indexes labelling particles with the same name
+                # keep only an even number of them
+                trunc_len = 2 * (len(indexes) // 2)
+                to_remove.extend(indexes[0:trunc_len])
+            # now I have a list of indexes of the particles to remove
+            for i in sorted(to_remove, reverse = True): # reverse indexes upon deletion so smaller indexes won't change
+                del z2_parity[i]
+                del particles[i]
+        def remove_even_number_odd_particles(z2_parity, particles):
+            ''' gets rid of an even number of Z2-odd particles '''
+            indexes = [i for i, z2 in enumerate(z2_parity) if z2 == Z2_ODD]
+            # now I have a list of indexes labelling Z2-odd particles
+            # keep only an even number of them
+            trunc_len = 2 * (len(indexes) // 2)
+            to_remove = indexes[0:trunc_len]
+            for i in sorted(to_remove, reverse = True): # reverse indexes upon deletion so smaller indexes won't change
+                del z2_parity[i]
+                del particles[i]
+        # all bsm particles except dark matter have an unknown parity
+        z2_odd_particles = [p.get('name') for p in self._dm_candidate + self._coannihilation]
+        for p in self._curr_model.get('particles'):
+            if p.get('pdg_code') <= 25 or p.get('name') in z2_odd_particles or p.get('pdg_code') in [9000001, 9000002, 9000003, 9000004, 82, 250, 251]: # remove fixed PDG code ghosts
+                continue
+            self._disconnected_particles.append(p)
+        z2_unkn_particles = [p.get('name') for p in self._disconnected_particles]
+        def assign_parity(part):
+            if part.get('name') in z2_odd_particles:
+                return Z2_ODD
+            elif part.get('name') in z2_unkn_particles:
+                return Z2_UNKN
             else:
-                self._coannihilation.remove(p)
-        
-        
-        if self._coannihilation:
-            logger.info("Found coannihilation partners: %s" % ','.join([p['name'] for p in self._coannihilation]),
-                    '$MG:BOLD')
+                return Z2_EVEN
+        # store particle list for each vertex
+        vert_particles = [[p for p in vertex['particles']] for vertex in self._curr_model['interactions'].get_type('base')]
+        # core of the algorithm: is_modified is a flag which is True when something changes in the particles' list
+        is_modified = True
+        # ["[%s] -> [%s]" % (",".join([p.get('name') for p in vpart]),",".join(list(map(str,[assign_parity(p) for p in vpart])))) for vpart in vert_particles]
+        while(is_modified):
+            is_modified = False # if nothing is modified, then the loop will finish
+            to_remove = [] # contains indexes of the vertices to remove after the next loop
+            for i_vert, this_vertex_particles in enumerate(vert_particles):
+                vert_z2 = [assign_parity(p) for p in this_vertex_particles]
+                if vert_z2.count(Z2_UNKN) == 0:
+                    to_remove.append(i_vert)
+                    continue
+                remove_any_number_even_particles(vert_z2, this_vertex_particles)
+                remove_even_number_same_particles(vert_z2, this_vertex_particles)
+                remove_even_number_odd_particles(vert_z2, this_vertex_particles)
+                count_unkn = vert_z2.count(Z2_UNKN)
+                # only 3 cases are possible at this stage
+                if count_unkn == 0: # vert_z2 == []
+                    to_remove.append(i_vert)
+                elif count_unkn == 1: # vert_z2 == [0] or vert_z2 == [0, -1] or vert_z2 == [-1, 0]
+                    is_modified = True
+                    if Z2_ODD in vert_z2: # in this case the unknown particle is Z2-odd
+                        unkn = this_vertex_particles[vert_z2.index(Z2_UNKN)]
+                        self._coannihilation.append(unkn)
+                        # update the name list
+                        z2_odd_particles.append(unkn.get('name'))
+                    else: # in this case the unknown particle is Z2-even
+                        unkn = this_vertex_particles[0]
+                    # find and remove that particle from the self._disconnected_particles list
+                    i_unkn_name = z2_unkn_particles.index(unkn.get('name')) # find the index in the name list
+                    del self._disconnected_particles[i_unkn_name] # remove the particle from the list
+                    # check: if self._disconnected_particles is empty then we are done: each bsm particle has been catalogued
+                    if len(self._disconnected_particles) == 0:
+                        is_modified = False # set this to False to break also the outer loop
+                        break
+                    # update the name list
+                    del z2_unkn_particles[i_unkn_name]
+                    # add the vertex index to the list of indexes of the vertices to remove at the end of this loop
+                    to_remove.append(i_vert)
+            for i in sorted(to_remove, reverse = True):
+                del vert_particles[i]
+        if len(self._coannihilation) != 0:
+            logger.info("Found coannihilator(s): " + ", ".join([p.get('name') for p in self._coannihilation]), '$MG:BOLD')
         else:
-            logger.info("No coannihilation partners found.", '$MG:BOLD')
-        
-
+            logger.info("No coannihilators found.")
 
     def do_import(self, line,*args, **opts):
         """normal import but perform a cleaning for MadDM  variables"""
@@ -567,6 +671,7 @@ class MadDM_interface(master_interface.MasterCmd):
             self._param_card = None
             self._dm_candidate = []
             self._coannihilation = []
+            self._disconnected_particles = []
             
         return super(MadDM_interface, self).do_import(line, *args, **opts)
 
@@ -806,7 +911,7 @@ class MadDM_interface(master_interface.MasterCmd):
             
         if args and args[0] == 'maddm':
             line = ' '.join(args)
-        
+
         if self._curr_amps:
             super(MadDM_interface, self).do_output(line)
         
@@ -1446,6 +1551,7 @@ class MadDM_interface(master_interface.MasterCmd):
             backup_param_card = self._param_card
             backup_dm_candidate = self._dm_candidate
             backup_coannihilation = self._coannihilation
+            backup_disconnected_particles = self._disconnected_particles
         
         
             self.exec_cmd(mg5_command, postcmd=False)
@@ -1453,6 +1559,7 @@ class MadDM_interface(master_interface.MasterCmd):
             self._param_card = backup_param_card 
             self._dm_candidate = backup_dm_candidate
             self._coannihilation = backup_coannihilation
+            self._disconnected_particles = backup_disconnected_particles
 
         # update the param_card value
         txt = self._curr_model.write_param_card()
@@ -1507,8 +1614,11 @@ class EditParamCard(common_run.AskforEditCard):
         logger.info("      5. The assigned DM candidate is the lightest of all the particles that meet the above criteria.")  
         logger.info("")
         logger.info("  For coannihilation, we apply the following algorithm:")
-        logger.info("      The code selects all the BSM particles that are within an input mass difference with the DM candidate.")
-        logger.info("      Particles without any non vanishing coupling are discarded")
+        # logger.info("      The code selects all the BSM particles that are within an input mass difference with the DM candidate.")
+        # logger.info("      Particles without any non vanishing coupling are discarded")
+        logger.info("      We consider a Z2 symmetry under which dark matter candidate is odd, while Standard Model particles are even.")
+        logger.info("      The code goes through the interaction vertices and determines the Z2 parity of the BSM particles in the model.")
+        logger.info("      The coannnihilators are the Z2-odd particles.")
  
         logger_tuto.info("""
 This card is here ONLY to allow to determine automatically darkmatter/coannihilator.

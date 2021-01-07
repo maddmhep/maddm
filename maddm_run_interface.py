@@ -2625,13 +2625,14 @@ class MADDMRunCmd(cmd.CmdShell):
 
         run_name = self.last_results['run']        
         dragon_dir = self.options['dragon_path']
+        dragon_bin = pjoin(dragon_dir,'bin','DRAGON')
 
         if not dragon_dir:
             exe = misc.which('DRAGON')
             if exe:
                 dragon_dir = os.path.dirname(exe)
-                
-        if not dragon_dir or not os.path.exists(pjoin(dragon_dir,'DRAGON')):
+        
+        if not dragon_dir or not os.path.exists(dragon_bin):
             logger.error('The DRAGON executable cannot be find! Will not run positrons and antiprotons propagation!')
             logger.info("To specify the path to DRAGON_PATH, please use command 'set dragon_path DRAGON_DIRECTORY'.")
             return
@@ -2668,7 +2669,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
         write_dragon_input(template= template_card , mdm = mDM , sigmav = sigv , dragon_input = dragon_input )
         
-        misc.call(['./DRAGON', dragon_input], cwd=dragon_dir)
+        misc.call([dragon_bin, dragon_input], cwd=dragon_dir)
 
     #        if not __debug__:
     #            logger.debug('keep dragon positrons/antiprotons files due to debug mode.')
@@ -4641,9 +4642,6 @@ class MadDMCard(banner_mod.RunCard):
             #if self['indirect_flux_earth_method'].lower() not in ['PPPC4DMID', 'none']:
                 logger.warning('since pythia8 is used to generate spectra at source, indirect_flux_source_method has been switched to DRAGON')
                 self['indirect_flux_earth_method'] = 'dragon' 
-
-
-
                 
                 
 class Indirect_Cmd(me5_interface.MadEventCmdShell):
