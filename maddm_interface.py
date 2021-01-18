@@ -152,6 +152,7 @@ class MadDM_interface(master_interface.MasterCmd):
         # DM candidates and coannihilators (on the basis of Z2 symmetry)
         self._dm_candidate = []
         self._coannihilation = []
+        self._z2_odd = []
         self._disconnected_particles = []
         self._param_card = None
         # self.coannihilation_diff = 1
@@ -185,16 +186,27 @@ class MadDM_interface(master_interface.MasterCmd):
         '''
         args = list(args) # convert the tuple to list so we can modify it
         arguments = self.split_arg(args[0]) #args[0] is the line of the command
-        # check the generated diagrams
-        self._relic_amps    = [amp for amp in self._curr_amps if amp.get('process').get('id') in [self.process_tag['DM2SM'], self.process_tag['DMSM']]]
-        self._direct_amps   = [amp for amp in self._curr_amps if amp.get('process').get('id') == self.process_tag['DD']]
-        self._indirect_amps = self._ID_cont_amps[0] + self._ID_line_amps[0] + self._ID_cont_amps[1] + self._ID_line_amps[1]
-        generated_amps = {
-            'relic'   : bool(self._relic_amps),
-            'direct'  : bool(self._direct_amps),
-            'indirect': bool(self._indirect_amps)
-        }
+
+        if arguments[0] in ['darkmatter', 'coannihilators', 'z2-odd', 'z2-even', 'disconnected']:
+            to_display = {
+                'darkmatter': self._dm_candidate,
+                'coannihilators': self._coannihilation,
+                'z2-odd': self._z2_odd,
+                'z2-even': [p for p in self._curr_model.get('particles') if abs(p.get('pdg_code')) not in [a.get('pdg_code') for a in self._z2_odd+self._disconnected_particles]],
+                'disconnected': self._disconnected_particles
+            }
+            logger.info(arguments[0] + ": " + ", ".join([p.get('name') for p in to_display[arguments[0]]]))
+        
         if arguments[0] in ['processes', 'diagrams', 'diagrams_text']:
+            # check the generated diagrams
+            self._relic_amps    = [amp for amp in self._curr_amps if amp.get('process').get('id') in [self.process_tag['DM2SM'], self.process_tag['DMSM']]]
+            self._direct_amps   = [amp for amp in self._curr_amps if amp.get('process').get('id') == self.process_tag['DD']]
+            self._indirect_amps = self._ID_cont_amps[0] + self._ID_line_amps[0] + self._ID_cont_amps[1] + self._ID_line_amps[1]
+            generated_amps = {
+                'relic'   : bool(self._relic_amps),
+                'direct'  : bool(self._direct_amps),
+                'indirect': bool(self._indirect_amps)
+            }
             # in the following lines we filter out only the allowed options
             which = [arg for arg in arguments if arg in ['relic', 'direct', 'indirect', 'all', 'last']]
             which = list(set(which))
@@ -245,6 +257,10 @@ class MadDM_interface(master_interface.MasterCmd):
         if not isinstance(out, dict):
             out = {"standard options": out}
 
+        if len(args) == 1:
+            options = ['darkmatter', 'coannihilators', 'z2-odd', 'z2-even', 'disconnected']
+            out['maddm options'] = self.list_completion(text, options , line)
+
         if len(args) > 1 and args[1] in ['processes', 'diagrams', 'diagrams_text']:
             options = ['relic', 'direct', 'indirect', 'all', 'last']
             out['processes|diagrams|diagrams_text options'] = self.list_completion(text, options, line)
@@ -267,6 +283,8 @@ class MadDM_interface(master_interface.MasterCmd):
         logger.info("    - You can display the processes/diagrams generated in the last call,")
         logger.info("      by using 'last'. This overwrites the other options, except 'all'.")
         logger.info("     o example: display processes last",'$MG:color:GREEN')         
+        logger.info("syntax: display darkmatter|coannihilators|z2-odd|z2-even|disconnected", '$MG:color:BLUE')
+        logger.info(" -- displays the related list of particles") 
         logger.info("**************** MG5AMC OPTION ***************************")
         super(MadDM_interface, self).help_display()
 
@@ -291,7 +309,8 @@ class MadDM_interface(master_interface.MasterCmd):
                         raise DMError, '%s is not a valid particle for the model.' % args[1] 
                     if len(self._dm_candidate) == 1:
                         # No update of the model if 2(or more) DM since DD is not possible
-                        self.search_coannihilator()
+                        self._z2_odd.extend([p for p in self._dm_candidate])
+                        self.find_z2_odd_particles()
                         self.update_model_with_EFT()
                     else:
                         txt = self._curr_model.write_param_card()
@@ -300,34 +319,48 @@ class MadDM_interface(master_interface.MasterCmd):
                         ff.close()
                         self.define_benchmark(answer=True, path='/tmp/param_card.dat')
                         
-#             elif args[0] == 'coannihilator':
-#                 if not self._dm_candidate:
-#                     self.search_dm_candidate([])
-#                 try:
-#                     args[1] = float(args[1])
-#                     isdigit=True
-#                 except:
-#                     isdigit=False
-#                     pass
+            elif args[0] == 'coannihilator':
+                if not self._dm_candidate:
+                    self.search_dm_candidate([])
+                try:
+                    args[1] = float(args[1])
+                    isdigit=True
+                except:
+                    isdigit=False
+                    pass
                 
-#                 if len(args) == 1:
-#                     self.search_coannihilator()                    
-#                 elif '--usepdg' in args:
-#                     self._coannihilation = [self._curr_model.get_particle(a) for a in args[1:] if a!= '--usepdg']
-#                 elif len(args)>2 and isdigit and args[2].startswith('/'):
-#                     self.search_coannihilator(gap=args[1], excluded=[a.replace('/', '') for a in args[2:]])
-#                 elif len(args)>1 and not isdigit and args[1].startswith('/'):
-#                     self.search_coannihilator( excluded=[a.replace('/', '') for a in args[1:]])
-#                 elif len(args)==2 and isdigit:
-#                     self.search_coannihilator(gap=args[1])
-#                 else:
-#                     self._coannihilation = [self._curr_model.get_particle(a) for a in args[1:]]
-#                 #avoid duplication
-#                 if None in self._coannihilation:
-#                     raise self.InvalidCmd('Some of the particle name are invalid. Please retry.')
-#                 all_name = [c.get('name') for c in self._coannihilation]
-#                 self._coannihilation = [c for i,c in enumerate(self._coannihilation) if c.get('name') not in all_name[:i]]
-# #                self._dm_candidate += self._coannihilation 
+                if len(args) == 1:
+                    self.search_coannihilator()                    
+                else:
+                    allowed_particles = []
+                    not_z2_odd = False
+                    for p in self.z2_odd:
+                        # user may in principle use name or antiname of the particle, or even the pdg (or -pdg for antiparticles)
+                        allowed_particles.extend([p.get('name'), p.get('antiname'), p.get('pdg_code'), -p.get('pdg_code')])
+                    for a in args[1:]:
+                        if a == '--usepdg':
+                            continue
+                        elif a not in allowed_particles:
+                            not_z2_odd = True
+                        self._coannihilation.append(self._curr_model.get_particle(a))
+                        if not_z2_odd:
+                            logger.error("One or more particles specified are not Z2-odd, so can not be coannihilators.")
+                            self.exec_cmd('display z2-odd', postcmd = False)
+                # elif len(args)>2 and isdigit and args[2].startswith('/'):
+                #     self.search_coannihilator(gap=args[1], excluded=[a.replace('/', '') for a in args[2:]])
+                # elif len(args)>1 and not isdigit and args[1].startswith('/'):
+                #     self.search_coannihilator( excluded=[a.replace('/', '') for a in args[1:]])
+                # elif len(args)==2 and isdigit:
+                #     self.search_coannihilator(gap=args[1])
+                # else:
+                #     self._coannihilation = [self._curr_model.get_particle(a) for a in args[1:]]
+
+                # avoid duplication
+                if None in self._coannihilation:
+                    raise self.InvalidCmd('Some of the particle name are invalid. Please retry.')
+                all_name = [c.get('name') for c in self._coannihilation]
+                self._coannihilation = [c for i,c in enumerate(self._coannihilation) if c.get('name') not in all_name[:i]]
+                
             elif args[0] == 'benchmark':
                 if len(args)==1:
                     self.define_benchmark()
@@ -457,7 +490,8 @@ class MadDM_interface(master_interface.MasterCmd):
         # Print out the DM candidate
         logger.info("Found Dark Matter candidate: %s" % dm_particles[0]['name'],  '$MG:BOLD')
         self._dm_candidate = dm_particles
-        self.search_coannihilator()
+        self._z2_odd.extend([p for p in dm_particles])
+        self.find_z2_odd_particles()
         self.update_model_with_EFT()
         
     def define_benchmark(self, path=None, answer=False):
@@ -561,7 +595,11 @@ class MadDM_interface(master_interface.MasterCmd):
     #         logger.info("No coannihilation partners found.", '$MG:BOLD')
 
     def search_coannihilator(self):
-        """ Find coannihilators (other Z2-odd particles) and disconnected particles. """
+        ''' automatically make the coannihilators list equal to the list of Z2-odd particles found. '''
+        self._coannihilation[:] = self._z2_odd
+
+    def find_z2_odd_particles(self):
+        """ Find Z2-odd particles and disconnected particles. """
         # Z2-odd particles: self._dm_candidate + self._coannihilation
         # unknown Z2 parity particles: self._disconnected
         Z2_EVEN = 1
@@ -601,7 +639,7 @@ class MadDM_interface(master_interface.MasterCmd):
                 del z2_parity[i]
                 del particles[i]
         # all bsm particles except dark matter have an unknown parity
-        z2_odd_particles = [p.get('name') for p in self._dm_candidate + self._coannihilation]
+        z2_odd_particles = [p.get('name') for p in self._z2_odd]
         for p in self._curr_model.get('particles'):
             if p.get('pdg_code') <= 25 or p.get('name') in z2_odd_particles or p.get('pdg_code') in [9000001, 9000002, 9000003, 9000004, 82, 250, 251]: # remove fixed PDG code ghosts
                 continue
@@ -638,7 +676,7 @@ class MadDM_interface(master_interface.MasterCmd):
                     is_modified = True
                     if Z2_ODD in vert_z2: # in this case the unknown particle is Z2-odd
                         unkn = this_vertex_particles[vert_z2.index(Z2_UNKN)]
-                        self._coannihilation.append(unkn)
+                        self._z2_odd.append(unkn)
                         # update the name list
                         z2_odd_particles.append(unkn.get('name'))
                     else: # in this case the unknown particle is Z2-even
@@ -656,10 +694,8 @@ class MadDM_interface(master_interface.MasterCmd):
                     to_remove.append(i_vert)
             for i in sorted(to_remove, reverse = True):
                 del vert_particles[i]
-        if len(self._coannihilation) != 0:
-            logger.info("Found coannihilator(s): " + ", ".join([p.get('name') for p in self._coannihilation]), '$MG:BOLD')
-        else:
-            logger.info("No coannihilators found.")
+        if len(self._z2_odd) != 0:
+            self.exec_cmd('display z2-odd', postcmd = False)
 
     def do_import(self, line,*args, **opts):
         """normal import but perform a cleaning for MadDM  variables"""
@@ -1059,10 +1095,10 @@ class MadDM_interface(master_interface.MasterCmd):
 
         self.define_multiparticles('_bsm_',[p for p in self._curr_model.get('particles')\
                          if abs(p.get('pdg_code')) > 25 and str(p.get('pdg_code')) not in self._unphysical_particles])
-        if '_bsm_' in excluded_particles:
+        if 'bsm' in excluded_particles:
             exclude_bsm = True
-            while '_bsm_' in excluded_particles:
-                excluded_particles.remove('_bsm_')
+            while 'bsm' in excluded_particles:
+                excluded_particles.remove('bsm')
         else:
             exclude_bsm = False
 
@@ -1086,16 +1122,17 @@ class MadDM_interface(master_interface.MasterCmd):
         bsm_final_states = [p for p in self._curr_model.get('particles') 
                          if abs(p.get('pdg_code')) > 25 and \
                          (p.get('name') not in excluded_particles or p.get('antiname') not in excluded_particles) and\
-                         p.get('width') != 'ZERO' and
-                         abs(p.get('pdg_code')) not in ids_veto and
-                         str(p.get('pdg_code')) not in self._unphysical_particles]
+                         p.get('width') != 'ZERO' and \
+                         abs(p.get('pdg_code')) not in ids_veto and \
+                         str(p.get('pdg_code')) not in self._unphysical_particles and \
+                         abs(p.get('pdg_code')) not in [abs(z.get_pdg_code()) for z in self._z2_odd+self._disconnected_particles]]
 
         if not exclude_bsm:
             if bsm_final_states:
                 logger.info("DM is allowed to annihilate into the following BSM particles: %s",
                          ' '.join([p.get('name') for p in bsm_final_states]))
                 logger.info("use generate relic_density / X to forbid the decay the annihilation to X")
-                logger.info("if you want to forbid DM to annihilate into BSM particles do relic_density / _bsm_")
+                logger.info("if you want to forbid DM to annihilate into BSM particles do relic_density / bsm")
         else:
             bsm_final_states=[]
 
@@ -1337,11 +1374,15 @@ class MadDM_interface(master_interface.MasterCmd):
         # it uses the '--noloop' option
         backup_amps = [amp for amp in self._ID_cont_amps[0] + self._ID_cont_amps[1]]
         if argument == []:
-            bsm_content = self.indirect_bsm_multiparticle()
-            self.exec_cmd('define _q_mdm_ = 1 2 3 4 -1 -2 -3 -4', postcmd=False)
+            # bsm_content = self.indirect_bsm_multiparticle()
+            odd_and_disconnected = self.list_odd_disconnected_pdg()
+            id_fs_particle = ['all', '/', '22'] + self._unphysical_particles + odd_and_disconnected
+            self.exec_cmd('define _id_fs_ = %s' % ' '.join(id_fs_particle), postcmd=False)
+            final_states = ['_id_fs_ _id_fs_']
+            # self.exec_cmd('define _q_mdm_ = 1 2 3 4 -1 -2 -3 -4', postcmd=False)
             # set final states: notice that '22 22' has been removed, because now it is handles by 'indirect_spectral_features'
-            final_states = ['_q_mdm_ _q_mdm_', '21 21', '5 -5', '6 -6', '23 23', '24 -24', '25 25', '11 -11', '13 -13', '15 -15', '12 -12', '14 -14', '16 -16']
-            final_states += ['_bsm_ _bsm_'] if bsm_content else []
+            # final_states = ['_q_mdm_ _q_mdm_', '21 21', '5 -5', '6 -6', '23 23', '24 -24', '25 25', '11 -11', '13 -13', '15 -15', '12 -12', '14 -14', '16 -16']
+            # final_states += ['_bsm_ _bsm_'] if bsm_content else []
             for final_state in final_states:
                 try: 
                     self.indirect_process_generation([final_state, '--noloop'], self._ID_cont_procs, self._ID_cont_matrix_elements, self._ID_cont_amps)
@@ -1379,7 +1420,8 @@ class MadDM_interface(master_interface.MasterCmd):
         if argument == []:
             # exclude electric and color charged particles because of course they can't generate 'a _bsm_' diagrams
             charged_particles = [pdg_code for pdg_code, particle in self._curr_model.get('particle_dict').iteritems() if particle.get('charge') != 0. or particle.get('color') != 1]
-            bsm_content = self.indirect_bsm_multiparticle(excluded = charged_particles)
+            odd_and_disconnected = self.list_odd_disconnected_pdg()
+            bsm_content = self.indirect_bsm_multiparticle(excluded = charged_particles+odd_and_disconnected)
             final_states = ['22 22', '22 23', '22 25']
             final_states += ['22 _bsm_'] if bsm_content else []
             for final_state in final_states:
@@ -1399,21 +1441,17 @@ class MadDM_interface(master_interface.MasterCmd):
             and it returns its content.
             it is possible to specify a list of excluded particles in addition to the already excluded SM ones.
         '''
-        dm_cand = [ dic['pdg_code'] for dic in self._dm_candidate ] 
-        DM_scattering = []
-
-        for pdg in dm_cand:
-            DM_scattering.append(pdg) , DM_scattering.append(-pdg)
-
         bsm_all  = [ 'all', '/' ] + list(set(['1','2','3','4','5','6','-1','-2','-3','-4','-5','-6','21','22','23','24','-24','25','11','12','13','14','15','16','-11','-12',
                 '-13','-14','-15','-16'] + self._unphysical_particles + excluded))
-
-        for m in DM_scattering:
-            bsm_all.append(m)
         bsm = " ".join(str(x) for x in bsm_all)
-
         self.exec_cmd('define _bsm_ = %s' % bsm, postcmd=False)
         return self._multiparticles['_bsm_']
+
+    def list_odd_disconnected_pdg(self):
+        odd_and_disconnected = []
+        for particle in self._z2_odd + self._disconnected_particles:
+            odd_and_disconnected.extend([particle.get_pdg_code(), particle.get_anti_pdg_code()])
+        return list(set(odd_and_disconnected))
 
     def indirect_process_generation(self, argument, ID_procs, ID_matrix_elements, ID_amps):
         ''' generate the processes for indirect detection, either for continuum spectrum (generate_indirect) or line spectrum (generate_spectral).
