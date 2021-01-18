@@ -132,12 +132,12 @@ class ExpConstraints:
             '(25)(25)':2.0E-5,
             # line velocity
             '(22)(22)_hess2013'    : 250/299792.458,
-            '(22)(22)_hess2016'    : 250/299792.458, 
-            '(22)(22)_hess2018R1'  : 250/299792.458, 
-            '(22)(22)_fermi2015R16': 250/299792.458, 
-            '(22)(22)_fermi2015R90': 250/299792.458, 
-            '(22)(22)_fermi2015R3' : 250/299792.458, 
-            '(22)(22)_fermi2015R41': 250/299792.458
+            '(22)(22)_hess2016'    : 250/299792.458,
+            '(22)(22)_hess2018R1'  : 250/299792.458,
+            '(22)(22)_fermi2015R3' : 250/299792.458,
+            '(22)(22)_fermi2015R16': 250/299792.458,
+            '(22)(22)_fermi2015R41': 250/299792.458,
+            '(22)(22)_fermi2015R90': 250/299792.458
         }
 
         self._id_limit_mdm = dict()
@@ -927,6 +927,7 @@ class GammaLineExperiment(object):
     def get_sigmav_ul(self, e_peak, roi, profile, id_constraints, is_aa):
         ''' Returns the upper limit on flux for a given ROI (expressed in degrees).
             The limits are taken from the ExpConstraint class, the interpolation function is evaluated at the energy of the peak.
+            Warnings are raised only if the profile is compatible with default one for the ROI and if there are problems in ID_max.
         '''
         default_profile, _, ul_label = self.info_dict[roi][:3]
         if profile.eq_but_norm(default_profile):
@@ -1385,11 +1386,13 @@ class PDGParticleMap(dict):
         ''' implement a nice print style with pdg code: instead of using round brackets, it uses:
             #1.#2>#3.#4 moreover it removes minus signs from pdgs
         '''
-        initial_particles, final_particles = string.split('_')
+        splitted = string.split('_')
+        initial_particles, final_particles = splitted[-2:]
+        rest = "_".join(splitted[:-2]) + "_"*bool(splitted[:-2])
         out_string = ".".join(self.find_particles(initial_particles)).replace('-','')
         out_string += '>'
         out_string += ".".join(self.find_particles(final_particles)).replace('-','')
-        return out_string
+        return rest + out_string
 
     def format_process(self, string):
         ''' from (#1)(#2)_(#3)(#4) to p1 p2 > p3 p4 '''
@@ -1469,6 +1472,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
         self.dir_path = dir_path
         self.indirect_directories = dict(zip(['Indirect_tree_cont', 'Indirect_tree_line', 'Indirect_LI_cont', 'Indirect_LI_line'], map(os.path.isdir, [pjoin(dir_path, 'Indirect_tree_cont'), pjoin(dir_path, 'Indirect_tree_line'), pjoin(dir_path, 'Indirect_LI_cont'), pjoin(dir_path, 'Indirect_LI_line')])))
+        self.indirect_directories_cross_section_contribution = dict(zip(['Indirect_tree_cont', 'Indirect_tree_line', 'Indirect_LI_cont', 'Indirect_LI_line'], [0., 0., 0., 0.]))
         self.param_card_iterator = [] #a placeholder containing a generator of paramcard for scanning
         
         # Define self.proc_characteristics (set of information related to the
@@ -1749,8 +1753,7 @@ class MADDMRunCmd(cmd.CmdShell):
             self.print_results()
 
         # Saving the output for single point
-        for directory in self.indirect_directories.keys():
-            self.save_remove_output(indirect_directory = directory, scan = False)
+        self.save_remove_output(scan = False)
 
         # --------------------------------------------------------------------#
         #   THIS PART IS FOR MULTINEST SCANS
@@ -1774,8 +1777,7 @@ class MADDMRunCmd(cmd.CmdShell):
             self.param_card_iterator = []
 
             ## this is to remove or save spectra, not the scan summary file!
-            for directory in self.indirect_directories.keys():
-                self.save_remove_output(indirect_directory = directory, scan = True)
+            self.save_remove_output(scan = True)
 
             # *** Initialize a list containing the desired variables in the summary output of the scan
             order = ['run']
@@ -1818,28 +1820,27 @@ class MADDMRunCmd(cmd.CmdShell):
                 # halo velocity condition
                 fermi_dsph_vel = halo_vel_cont > self.vave_indirect_cont_range[0] and halo_vel_cont < self.vave_indirect_cont_range[1] # range of validity of Fermi limits
                 line_gc_vel = halo_vel_line > self.vave_indirect_line_range[0] and halo_vel_line < self.vave_indirect_line_range[1] # range of validity of line limits
-                if len(detailled_keys)>1:
-                    for key in detailled_keys:
-                        clean_key_list = key.split("_")
-                        clean_key = clean_key_list[0]+"_"+clean_key_list[1]
+                for key in detailled_keys:
+                    clean_key_list = key.split("_")
+                    clean_key = clean_key_list[0]+"_"+clean_key_list[1]
 
-                        order +=[clean_key]
-                        # add the lim key only if it has been computed
-                        if fermi_dsph_vel and line_gc_vel:
-                            order +=['lim_'+clean_key]
-                        elif fermi_dsph_vel and not line_gc_vel:
-                            if self.is_spectral_finalstate(clean_key_list[1]):
-                                continue
-                            order +=['lim_'+clean_key]
-                        elif not fermi_dsph_vel and line_gc_vel:
-                            if not self.is_spectral_finalstate(clean_key_list[1]):
-                                continue
-                            order +=['lim_'+clean_key]
+                    order +=[clean_key]
+                    # add the lim key only if it has been computed
+                    if fermi_dsph_vel and line_gc_vel:
+                        order +=['lim_'+clean_key]
+                    elif fermi_dsph_vel and not line_gc_vel:
+                        if self.is_spectral_finalstate(clean_key_list[1]):
+                            continue
+                        order +=['lim_'+clean_key]
+                    elif not fermi_dsph_vel and line_gc_vel:
+                        if not self.is_spectral_finalstate(clean_key_list[1]):
+                            continue
+                        order +=['lim_'+clean_key]
 
-
-                order.append('taacsID')
-                order.append('tot_SM_xsec')
-                order.append('Fermi_sigmav')
+                if self.mode['indirect']:
+                    order.append('taacsID')
+                    order.append('tot_SM_xsec')
+                    order.append('Fermi_sigmav')
 
                 if self.last_results['xsi'] >0 and self.last_results['xsi'] <1: # thermal and non thermal case 
                    order = order + ['pvalue_th','like_th','pvalue_nonth','like_nonth']
@@ -1894,8 +1895,7 @@ class MADDMRunCmd(cmd.CmdShell):
                         # logger.warning('--> try again WY0: %.2e' % width)
                         #<=-------------- Mihailo commented out max_col = 10
                         #logger.info('Results for the point \n' + param_card_iterator.write_summary(None, order, lastline=True,nbcol=10)[:-1])#, max_col=10)[:-1])
-                        for directory in self.indirect_directories.keys():
-                            self.save_remove_output(indirect_directory = directory, scan = True)
+                        self.save_remove_output(scan = True)
 
 
 
@@ -2014,6 +2014,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 if key.startswith('xsec'):
                     value = halo_vel * math.sqrt(3)/2 * 2 * value
                     self.last_results['taacsID#%s' %(clean_key)] = value* pb2cm3
+                    self.indirect_directories_cross_section_contribution[indirect_directory] += self.last_results['taacsID#%s' %(clean_key)]
                     self.last_results['lim_taacsID#'+clean_key] = self.limits.ID_max(mdm, clean_key.split('_')[1]) if velocity_in_range else -1
                     
                 elif key.startswith('xerr'):
@@ -2046,14 +2047,13 @@ class MADDMRunCmd(cmd.CmdShell):
                         logger.info('Calculating Fermi dSph limit using pythia8 gamma rays spectrum')
                     elif 'pythia' not in self.maddm_card['indirect_flux_source_method']:
                         logger.warning('Since pythia8 is run, using pythia8 gamma rays spectrum (not PPPC4DMID Tables)')
-                    for id_dir in cont_spectra_directories:
-                        self.read_py8spectra(id_dir)
+                    self.read_py8spectra(cont_spectra_directories)
             elif self.mode['indirect'] == 'sigmav':
-                logger.warning('no gamma spectrum since in sigmav mode')      
+                logger.warning('no gamma spectrum since in sigmav mode')
 
         elif self.mode['indirect'] == 'sigmav':
-            logger.warning('no gamma spectrum since in sigmav mode') 
-        elif self.read_PPPCspectra():   # if not fast mode, use PPPC. return False if PPPC4DMID not installed!
+            logger.warning('no gamma spectrum since in sigmav mode')
+        elif self.read_PPPCspectra():   # if in fast mode, use PPPC. return False if PPPC4DMID not installed!
             logger.info('Calculating Fermi dSph limit using PPPC4DMID spectra')
 
         # ****** Calculating Fermi dSph Limits
@@ -2179,23 +2179,25 @@ class MADDMRunCmd(cmd.CmdShell):
         sigmavs = {k.split("_")[-1]: v for k, v in self.last_results.iteritems() if k.startswith('taacsID#') and self.is_spectral_finalstate(k.split("_")[-1])}
         # dict for <sigma v> ul
         sigmav_ul = {k: [-1 for line_exp in self.line_experiments] for k in self.last_results.iterkeys() if "lim_taacsID#" in k and self.is_spectral_finalstate(k.split('_')[-1])} # if there is at least one '(22)' then we treat it as a spectral final state
-        initial_states = sigmav_ul.keys()[0].replace("lim_taacsID#", '').split('_')[0]
+        initial_states = sigmav_ul.keys()[0].replace("lim_taacsID#", '').split('_')[0] # extract the initial particles, it is ok only for one DM candidate
         # compute the main results
         for num_exp, line_exp in enumerate(self.line_experiments):
             gamma_line_spectrum = GammaLineSpectrum(line_exp, self.pdg_particle_map, self.param_card)
             str_part = "line_%s_" % line_exp.get_name()
-            if line_exp.get_name() == "Fermi-LAT_2015":
-                exp_likelihood = Fermi2015GammaLineLikelihood(line_exp)
-            else:
-                exp_likelihood = None
             # fill last_results with all the keys (with value -1, which means 'not computed') of line analysis
             for i in range(len(sigmavs)):
                 self.last_results[str_part + "peak_%d"        % (i+1)] = -1
                 self.last_results[str_part + "peak_%d_states" % (i+1)] = -1
                 self.last_results[str_part + "flux_%d"        % (i+1)] = -1
                 self.last_results[str_part + "flux_UL_%d"     % (i+1)] = -1
-                self.last_results[str_part + "like_%d"        % (i+1)] = -1
-                self.last_results[str_part + "pvalue_%d"      % (i+1)] = -1
+            # consider likelihood only when it is present
+            if line_exp.get_name() == "Fermi-LAT_2015":
+                exp_likelihood = Fermi2015GammaLineLikelihood(line_exp)
+                for i in range(len(sigmavs)):
+                    self.last_results[str_part + "like_%d"        % (i+1)] = -1
+                    self.last_results[str_part + "pvalue_%d"      % (i+1)] = -1
+            else:
+                exp_likelihood = None
             # fill last_results dict with the new values
             self.last_results[str_part + "Jfactor"    ] = line_exp.get_J(roi = self.last_results[str_part + 'roi'], profile = density_profile)
             self.last_results[str_part + "roi_warning"] = line_exp.check_profile(roi = self.last_results[str_part + 'roi'], profile = density_profile)[1]          
@@ -2333,16 +2335,21 @@ class MADDMRunCmd(cmd.CmdShell):
 
 
     # reading the spectra from the pythia8 output
-    def read_py8spectra(self, indirect_directory):
+    def read_py8spectra(self, directories):
         run_name = self.me_cmd.run_name
+        temp_spectra = {}
         for sp in self.Spectra.spectra.keys(): 
             if 'x' in sp: continue
             sp_name = sp + '_spectrum_pythia8.dat'
-            out_dir = pjoin(self.dir_path,indirect_directory, 'Events', run_name, sp_name )
+            out_dir = lambda indirect_directory: pjoin(self.dir_path, indirect_directory, 'Events', run_name, sp_name)
+            # load x values: they are the same for each file
             if sp == 'gammas': # x values are the same for all the spectra
-                x = np.loadtxt(out_dir , unpack = True )[0]
-                self.Spectra.spectra['x'] = [ np.power(10,num) for num in x]     # from log[10,x] to x
-            self.Spectra.spectra[sp] = np.loadtxt(out_dir , unpack = True )[1].tolist()                                  
+                x = np.loadtxt( out_dir(directories[0]) , unpack = True )[0]
+                self.Spectra.spectra['x'] = [ np.power(10,num) for num in x ]     # from log[10,x] to x
+            temp_spectra[sp] = []
+            for id_dir in directories: # loop over the indirect directories which have run pythia
+                temp_spectra[sp].append(np.loadtxt( out_dir(id_dir) , unpack = True )[1] * (self.indirect_directories_cross_section_contribution[id_dir]/self.last_results['taacsID']))
+            self.Spectra.spectra[sp] = np.sum(temp_spectra[sp], axis = 0)                                
        
 
     # This function reads the spectra from the PPPC tables from each annihilation channel, and adds them up according to the BR 
@@ -2914,149 +2921,310 @@ class MADDMRunCmd(cmd.CmdShell):
                                 indirect = self.mode['indirect'], spectral = self.mode['spectral'],
                                 fluxes_source= self.mode['indirect'].startswith('flux') if isinstance(self.mode['indirect'],str) else self.mode['indirect'], 
                                 fluxes_earth = False )                  
+            logger.info()
             logger.info('Results written in: ' +pjoin(self.dir_path, 'output', self.run_name, 'MadDM_results.txt') )
 
-            # for directory in self.indirect_directories.keys():
-            #     self.save_remove_output(indirect_directory = directory, scan = False)
+            # self.save_remove_output(scan = False)
 
+    def save_direct_detection(self, output_dir, output_run):
+        ''' direct detection output is created in the output directory, move to run directory '''
+        for file_name in ['d2NdEdcos.dat','dNdcos.dat','dNdE.dat','rate.dat']:
+            f_path = pjoin(output_dir, file_name)
+            if os.path.isfile(f_path):
+                shutil.move( f_path, pjoin(output_run, file_name) )
 
-    def save_remove_output(self, indirect_directory, scan = False):
-  
+    def remove_direct_detection(self, output_dir, output_run):
+        ''' direct detection output is created in the output directory, remove those files '''
+        for file_name in ['d2NdEdcos.dat','dNdcos.dat','dNdE.dat','rate.dat']:
+            f_path = pjoin(output_dir, file_name)
+            if os.path.isfile(f_path):
+                os.remove(f_path)
+
+    def create_symlink_to_events(self, indirect_directory, events_run, output_dir):
+        ''' when sigmav_method != inclusive, then we need to create a symlink to the events_run directory in the output_dir '''
+        if not os.path.islink( pjoin(output_dir, 'Output_' + indirect_directory) ):
+            os.symlink( pjoin(events_run), pjoin(output_dir, 'Output_' + indirect_directory) )  
+
+    def remove_lhe_file(self, events_run):
+        ''' removes the .lhe and .sh files from the events_run directory '''
+        if os.path.isfile( pjoin(events_run,'unweighted_events.lhe.gz') ):
+            os.remove( pjoin(events_run,'unweighted_events.lhe.gz') )
+            os.remove( pjoin(events_run,'run_shower.sh') )
+
+    def remove_events_run(self, events_run):
+        ''' remove the entire events_run directory '''
+        if os.path.isdir(events_run):
+            shutil.rmtree(events_run)
+
+    def output_single_directory(self, indirect_directory, scan = False):
+        ''' saves/removes the output related to a single directory '''
+        # run name
         run_name = self.last_results['run']
-        assert run_name == self.run_name
-      
-        ind_mode = self.mode['indirect']      
+
+        # indirect mode
+        ind_mode = self.mode['indirect']
+        # sigmav method
+        sigmav_method = self.maddm_card['sigmav_method']
+        # save_output switch
         save_switch = self.maddm_card['save_output']
 
-        spectrum_method = self.maddm_card['indirect_flux_source_method']
-
         # Setting the various paths
-        source_indirect = pjoin(self.dir_path,    indirect_directory)
-        events          = pjoin(source_indirect,  'Events'          )
-        dir_point       = pjoin(events, run_name )
+        source_indirect = pjoin(self.dir_path  , indirect_directory)
+        events_dir      = pjoin(source_indirect, 'Events'          )
+        events_run      = pjoin(events_dir     , run_name          )
+        output_dir      = pjoin(self.dir_path  , 'output'          )
 
-        # check if the indirect_directory exists
+        # check if the indirect_directory exists: if it does not exist, then do nothing
         if not os.path.isdir(source_indirect):
             logger.debug("'%s' directory does not exist. Nothing to do here." % indirect_directory)
             return
 
-        # If indirect is called, then spectra_source == True by def. The other two options depends on the user choice (sigmav, flux_source, flux_earth)
-        spec_source, flux_source , flux_earth = False ,'',''
-   
-        if ind_mode and 'inclusive' in self.maddm_card['sigmav_method']:
-            spec_source = True
-            if 'source' in ind_mode:
-                flux_source = True
-            elif 'earth' in ind_mode:
-                flux_source , flux_earth = True , True
+        operations = [
+            lambda **kwargs: self.create_symlink_to_events(indirect_directory = kwargs['indirect_directory'], events_run = kwargs['events_run'], output_dir = kwargs['output_dir']),
+            lambda **kwargs: self.remove_events_run(events_run = kwargs['events_run']),
+            lambda **kwargs: self.remove_lhe_file(events_run = kwargs['events_run'])
+        ]
 
-        if 'off' in save_switch and \
-            (self.mode['indirect'] and 'dragon' not in self.mode['indirect']):
-            spec_source, flux_source , flux_earth  = False, False, False
-
-
-        # Saving the output in the general output directory for a single point        
-        # This is *NOT* affected by the user's choice in the save_output field in the maddm_run_card !!! 
         if not scan:
-            
-            self.save_MadDM_card() # saving the maddm_run card in any case                                                                                                         
-            out_dir = pjoin(self.dir_path, 'output', run_name)
+            # output for single point run
+            # save_switch has no effect in this case
+            do_operation = [
+                sigmav_method != 'inclusive',
+                False,
+                False
+            ]
+        else:
+            # output for scan
+            # everything depends on save_switch
+            do_operation = [
+                sigmav_method != 'inclusive' and save_switch != 'off',
+                save_switch == 'off', # remove the entire events_run directory if 'off'
+                save_switch == 'spectra' # remove lhe file only in this case, for 'all' keep it, for 'off' it already removes the entire events_run directory
+            ]
 
-            for F in ['d2NdEdcos.dat','dNdcos.dat','dNdE.dat','rate.dat']:  # moving direct detection output
-                f_path = pjoin( self.dir_path , 'output', F)
-                if os.path.isfile(f_path):
-                    shutil.move(f_path , pjoin(self.dir_path,'output', run_name, F) )
+        for do_it, operation in zip(do_operation, operations):
+            if not do_it:
+                continue
+            operation.__call__(
+                indirect_directory = indirect_directory,
+                events_run         = events_run,
+                output_dir         = output_dir,
+            )
 
-            if 'inclusive' in self.maddm_card['sigmav_method']:
-               self.save_spec_flux(out_dir = out_dir, spec_source = True, flux_source = False, flux_earth = flux_earth)    
-               logger.info('Output files saved in %s', out_dir)
-            else:
-               if not os.path.islink(pjoin(self.dir_path, 'output' , run_name, 'Output_' + indirect_directory)):
-                  os.symlink(pjoin(self.dir_path,indirect_directory,'Events',run_name), \
-                             pjoin(self.dir_path, 'output' , run_name, 'Output_' + indirect_directory) )      
+    def output_entire_run(self, scan = False):
+        ''' saves/removes the output related to the entire run '''
+        # run name
+        run_name = self.last_results['run']
 
-        elif scan:
-            # removing direct det. output if OFF
-            if 'off' in save_switch and 'inclusive' in self.maddm_card['sigmav_method']: # nothing to do here
-                for F in ['d2NdEdcos.dat','dNdcos.dat','dNdE.dat','rate.dat']:
-                    f_path = pjoin( self.dir_path , 'output', F)
-                    if os.path.isfile(F):
-                        os.remove(F)                
-                return
+        # indirect mode
+        ind_mode = self.mode['indirect']
+        # sigmav method
+        sigmav_method = self.maddm_card['sigmav_method']
+        # save_output switch
+        save_switch = self.maddm_card['save_output']
+        # spectrum method
+        source_method = self.maddm_card['indirect_flux_source_method']
+        earth_method  = self.maddm_card['indirect_flux_earth_method']
 
-            out_dir = dir_point # all the various output must be saved here ==  pjoin(events, run_name )     
+        # Setting the various paths
+        output_dir      = pjoin(self.dir_path  , 'output'          )
+        output_run      = pjoin(output_dir     , run_name          )
+
+        # define operations
+        operations = [
+            lambda **kwargs: self.save_MadDM_card(),
+            lambda **kwargs: self.save_direct_detection(output_dir = kwargs['output_dir'], output_run = kwargs['output_run']),
+            lambda **kwargs: self.save_spec_flux(out_run = kwargs['output_run'], spec_source = kwargs['spec_source'], flux_source = kwargs['flux_source'], flux_earth = kwargs['flux_earth']),
+            lambda **kwargs: self.remove_direct_detection(output_dir = kwargs['output_dir'], output_run = kwargs['output_run'])
+        ]
+
+        # PPPC4DMID files
+        # during launch_indirect:
+        # if ind_mode != sigmav, then 'source' spectra are always computed, while 'earth' is done only if it is selected
+        # that means it computes 'source' spectra even if it is selected 'earth'
+        # of course this is valid only for ind_mode != OFF
+        spec_source = ind_mode and ind_mode != 'sigmav'
+        flux_source = 'source' in ind_mode
+        flux_earth  = 'earth' in ind_mode
+
+        if not scan:
+            # output for single point run
+            # save_switch has no effect in this case
+            do_operation = [
+                True,
+                True,
+                True,
+                False
+            ]
+        else:
+            # output for scan
+            # everything depends on save_switch
+            do_operation = [
+                False,
+                save_switch == 'all',
+                save_switch != 'off',
+                save_switch != 'all'
+            ]
+
+        for do_it, operation in zip(do_operation, operations):
+            if not do_it:
+                continue
+            operation.__call__(
+                output_dir         = output_dir,
+                output_run         = output_run,
+                spec_source        = spec_source,
+                flux_source        = flux_source,
+                flux_earth         = flux_earth
+            )
+
+    def save_remove_output(self, scan = False):
+        ''' It saves the various output files in case of single point.
+            It saves the spectra files in each directory.
+            It saves/removes outputs according to the 'save_output' switch in scan mode.
+        '''
+        # run name
+        assert run_name == self.run_name['run']
+        # manage outputs
+        self.output_entire_run(scan)
+        for indirect_directory in self.indirect_directories.keys():
+            self.output_single_directory(indirect_directory, scan)
+
+        
+    # def save_remove_output(self, indirect_directory, scan = False):
+  
+    #     run_name = self.last_results['run']
+    #     assert run_name == self.run_name
+      
+    #     ind_mode = self.mode['indirect']      
+    #     save_switch = self.maddm_card['save_output']
+
+    #     spectrum_method = self.maddm_card['indirect_flux_source_method']
+
+    #     # Setting the various paths
+    #     source_indirect = pjoin(self.dir_path,    indirect_directory)
+    #     events          = pjoin(source_indirect,  'Events'          )
+    #     dir_point       = pjoin(events, run_name )
+
+    #     # check if the indirect_directory exists
+    #     if not os.path.isdir(source_indirect):
+    #         logger.debug("'%s' directory does not exist. Nothing to do here." % indirect_directory)
+    #         return
+
+    #     # If indirect is called, then spectra_source == True by def. The other two options depends on the user choice (sigmav, flux_source, flux_earth)
+    #     spec_source, flux_source , flux_earth = False ,'',''
    
-            if 'off' in save_switch:
-                if 'inclusive' not in self.maddm_card['sigmav_method'] : # here, need to remove everything i.e. the whole run_xx folder
-                    shutil.rmtree(out_dir)
+    #     if ind_mode and 'inclusive' in self.maddm_card['sigmav_method']:
+    #         spec_source = True
+    #         if 'source' in ind_mode:
+    #             flux_source = True
+    #         elif 'earth' in ind_mode:
+    #             flux_source , flux_earth = True , True
+
+    #     if 'off' in save_switch and \
+    #         (self.mode['indirect'] and 'dragon' not in self.mode['indirect']):
+    #         spec_source, flux_source , flux_earth  = False, False, False
+
+
+    #     # Saving the output in the general output directory for a single point        
+    #     # This is *NOT* affected by the user's choice in the save_output field in the maddm_run_card !!! 
+    #     if not scan:
+            
+    #         self.save_MadDM_card() # saving the maddm_run card in any case                                                                                                         
+    #         out_dir = pjoin(self.dir_path, 'output', run_name)
+
+    #         for F in ['d2NdEdcos.dat','dNdcos.dat','dNdE.dat','rate.dat']:  # moving direct detection output
+    #             f_path = pjoin( self.dir_path , 'output', F)
+    #             if os.path.isfile(f_path):
+    #                 shutil.move(f_path , pjoin(self.dir_path,'output', run_name, F) )
+
+    #         if 'inclusive' in self.maddm_card['sigmav_method']:
+    #            self.save_spec_flux(out_dir = out_dir, spec_source = True, flux_source = False, flux_earth = flux_earth)    
+    #            logger.info('Output files saved in %s', out_dir)
+    #         else:
+    #            if not os.path.islink(pjoin(self.dir_path, 'output' , run_name, 'Output_' + indirect_directory)):
+    #               os.symlink(pjoin(self.dir_path,indirect_directory,'Events',run_name), \
+    #                          pjoin(self.dir_path, 'output' , run_name, 'Output_' + indirect_directory) )      
+
+    #     elif scan:
+    #         # removing direct det. output if OFF
+    #         if 'off' in save_switch and 'inclusive' in self.maddm_card['sigmav_method']: # nothing to do here
+    #             for F in ['d2NdEdcos.dat','dNdcos.dat','dNdE.dat','rate.dat']:
+    #                 f_path = pjoin( self.dir_path , 'output', F)
+    #                 if os.path.isfile(F):
+    #                     os.remove(F)                
+    #             return
+
+    #         out_dir = dir_point # all the various output must be saved here ==  pjoin(events, run_name )     
+   
+    #         if 'off' in save_switch:
+    #             if 'inclusive' not in self.maddm_card['sigmav_method'] : # here, need to remove everything i.e. the whole run_xx folder
+    #                 shutil.rmtree(out_dir)
                                       
-            elif 'all' in save_switch :
+    #         elif 'all' in save_switch :
                 
-                for F in ['d2NdEdcos.dat','dNdcos.dat','dNdE.dat','rate.dat']:
-                    f_path = pjoin( self.dir_path , 'output', F)
-                    if os.path.isfile(f_path):
-                        shutil.move(f_path , pjoin(self.dir_path , 'output', run_name, F) )
+    #             for F in ['d2NdEdcos.dat','dNdcos.dat','dNdE.dat','rate.dat']:
+    #                 f_path = pjoin( self.dir_path , 'output', F)
+    #                 if os.path.isfile(f_path):
+    #                     shutil.move(f_path , pjoin(self.dir_path , 'output', run_name, F) )
 
                  
-                if 'inclusive' in self.maddm_card['sigmav_method']: # saving spectra only in inclusive mode since madevent/resh have their own pythia8 spectra             
-                    self.save_spec_flux(out_dir = pjoin(self.dir_path , 'output', run_name), \
-                                            spec_source = spec_source, flux_source = flux_source, flux_earth = flux_earth)
+    #             if 'inclusive' in self.maddm_card['sigmav_method']: # saving spectra only in inclusive mode since madevent/resh have their own pythia8 spectra             
+    #                 self.save_spec_flux(out_dir = pjoin(self.dir_path , 'output', run_name), \
+    #                                         spec_source = spec_source, flux_source = flux_source, flux_earth = flux_earth)
                  
-                elif 'inclusive' not in self.maddm_card['sigmav_method']:
-                    self.save_spec_flux(out_dir = pjoin(self.dir_path , 'output', run_name), \
-                                            spec_source = False, flux_source = flux_source, flux_earth = flux_earth)
-                    if not os.path.islink(pjoin(self.dir_path, 'output' , run_name, 'Output_' + indirect_directory)):
-                           os.symlink(pjoin(self.dir_path,indirect_directory,'Events',run_name), pjoin(self.dir_path, 'output' , run_name, 'Output_' + indirect_directory) )
+    #             elif 'inclusive' not in self.maddm_card['sigmav_method']:
+    #                 self.save_spec_flux(out_dir = pjoin(self.dir_path , 'output', run_name), \
+    #                                         spec_source = False, flux_source = flux_source, flux_earth = flux_earth)
+    #                 if not os.path.islink(pjoin(self.dir_path, 'output' , run_name, 'Output_' + indirect_directory)):
+    #                        os.symlink(pjoin(self.dir_path,indirect_directory,'Events',run_name), pjoin(self.dir_path, 'output' , run_name, 'Output_' + indirect_directory) )
 
 
-            elif 'spectra' in save_switch :
-                for F in ['d2NdEdcos.dat','dNdcos.dat','dNdE.dat','rate.dat']:
-                    f_path = pjoin( self.dir_path , 'output', F)
-                    if os.path.isfile(f_path):
-                        files.mv(f_path , pjoin(self.dir_path , 'output', run_name, F) )
+    #         elif 'spectra' in save_switch :
+    #             for F in ['d2NdEdcos.dat','dNdcos.dat','dNdE.dat','rate.dat']:
+    #                 f_path = pjoin( self.dir_path , 'output', F)
+    #                 if os.path.isfile(f_path):
+    #                     files.mv(f_path , pjoin(self.dir_path , 'output', run_name, F) )
                                 
-                if 'inclusive' in self.maddm_card['sigmav_method']:
-                    self.save_spec_flux(out_dir = pjoin(self.dir_path , 'output', run_name), \
-                                                            spec_source = spec_source, flux_source = flux_source, flux_earth = flux_earth)
+    #             if 'inclusive' in self.maddm_card['sigmav_method']:
+    #                 self.save_spec_flux(out_dir = pjoin(self.dir_path , 'output', run_name), \
+    #                                                         spec_source = spec_source, flux_source = flux_source, flux_earth = flux_earth)
                
-                else:
-                    if os.path.isfile( pjoin(out_dir,'unweighted_events.lhe.gz') ):
-                        os.remove( pjoin(out_dir,'unweighted_events.lhe.gz') )
-                        os.remove( pjoin(out_dir,'run_shower.sh') )
-                    if not os.path.islink(pjoin(self.dir_path, 'output' , run_name, 'Output_' + indirect_directory)):
-                        os.symlink(pjoin(self.dir_path,indirect_directory,'Events',run_name), pjoin(self.dir_path, 'output' , run_name, 'Output_' + indirect_directory) )
+    #             else:
+    #                 if os.path.isfile( pjoin(out_dir,'unweighted_events.lhe.gz') ):
+    #                     os.remove( pjoin(out_dir,'unweighted_events.lhe.gz') )
+    #                     os.remove( pjoin(out_dir,'run_shower.sh') )
+    #                 if not os.path.islink(pjoin(self.dir_path, 'output' , run_name, 'Output_' + indirect_directory)):
+    #                     os.symlink(pjoin(self.dir_path,indirect_directory,'Events',run_name), pjoin(self.dir_path, 'output' , run_name, 'Output_' + indirect_directory) )
 
 
 
     # This aux function saves the spectra/fluxes in the given directory out_dir
-    def save_spec_flux(self, out_dir = '' , spec_source = False, flux_source = False, flux_earth = False):
-        
-        if not out_dir: out_dir = pjoin(self.dir_path, 'output', self.run_name) # default output directory if not defined
+    def save_spec_flux(self, out_run, spec_source = False, flux_source = False, flux_earth = False):
 
         spec_method = self.maddm_card['indirect_flux_source_method']
-
+       
         if spec_source:
             x = np.log10(self.Spectra.spectra['x'])
             for spec in self.Spectra.spectra.keys():
                 header = '# Log10(x=Ekin/mDM)   dn/dlogx   ' + spec + '\t' + self.maddm_card['indirect_flux_source_method'] + ' spectra at source'
                 if 'x' not in spec:
                     dndlogx = self.Spectra.spectra[spec]
-                    aux.write_data_to_file(x , dndlogx  , filename = out_dir + '/' + spec + '_spectrum_'+ spec_method+'.dat' , header = header )
+                    aux.write_data_to_file(x, dndlogx, filename = pjoin(out_run, spec + '_spectrum_' + spec_method +'.dat'), header = header)
 
         if flux_earth:
             e = self.Spectra.flux_source['e']
             for flux in self.Spectra.flux_earth.keys():
-                header = '# E[GeV]   dPhi/dE [particles/(cm2 s sr)] ' + flux + '\t' + self.maddm_card['indirect_flux_source_method'] +' flux at earth'
+                header = '# E[GeV]   dPhi/dE [particles/(cm2 s sr)] ' + flux + '\t' + self.maddm_card['indirect_flux_earth_method'] +' flux at earth'
                 if flux != 'e':
                     dPhidE = self.Spectra.flux_earth[flux]['dPhidE']
-                    aux.write_data_to_file(e , dPhidE  , filename = out_dir + '/' + flux + '_dphide_' + spec_method +'.dat' , header = header )
+                    aux.write_data_to_file(e, dPhidE, filename = pjoin(out_run, flux + '_dphide_' + spec_method + '.dat'), header = header)
 
 
             if 'PPPC' in self.maddm_card['indirect_flux_earth_method']: # for PPPC4DMID, I save also the positron at earth
                 e = self.Spectra.flux_earth_positrons['e']
                 header = '# E[GeV]   dPhi/dlogE [particles/(cm2 s sr)]  positrons \t PPPC4DMID flux at earth'
                 dPhidlogE = self.Spectra.flux_earth_positrons['positrons']['dPhidlogE']
-                aux.write_data_to_file(e , dPhidlogE  , filename = out_dir + '/positrons_dphide_' + spec_method +'.dat' , header = header )
+                aux.write_data_to_file(e, dPhidlogE, filename = pjoin(out_run, 'positrons_dphide_' + spec_method + '.dat'), header = header)
 
     
     def print_ind(self,what, sig_th, sig_alldm, ul,  thermal=False ,direc = False , exp='Fermi dSph', no_lim = False):
@@ -4638,10 +4806,10 @@ class MadDMCard(banner_mod.RunCard):
             #        logger.warning('since sigmav_method is on inclusive, indirect_flux_earth_method has been switch to PPPC4DMID_ep')
             #    self['indirect_flux_earth_method'] = 'PPPC4DMID_ep' 
                 
-        elif self['indirect_flux_earth_method'] == 'PPPC4DMID_ep' and self['sigmav_method'] != 'inclusive':
-            #if self['indirect_flux_earth_method'].lower() not in ['PPPC4DMID', 'none']:
-                logger.warning('since pythia8 is used to generate spectra at source, indirect_flux_source_method has been switched to DRAGON')
-                self['indirect_flux_earth_method'] = 'dragon' 
+        # elif self['indirect_flux_earth_method'] == 'PPPC4DMID_ep' and self['sigmav_method'] != 'inclusive':
+        #     #if self['indirect_flux_earth_method'].lower() not in ['PPPC4DMID', 'none']:
+        #         logger.warning('since pythia8 is used to generate spectra at source, indirect_flux_earth_method has been switched to DRAGON')
+        #         self['indirect_flux_earth_method'] = 'dragon' 
                 
                 
 class Indirect_Cmd(me5_interface.MadEventCmdShell):
