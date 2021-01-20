@@ -1659,7 +1659,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
         # Define a dictionary holding the results
         result = {}
-        result['GeV2pb*pb2cm2']   = GeV2pb*pb2cm2 # conversion factor                                                                                                           
+        # result['GeV2pb*pb2cm2']   = GeV2pb*pb2cm2 # conversion factor                                                                                                           
 
         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
 
@@ -1710,6 +1710,10 @@ class MADDMRunCmd(cmd.CmdShell):
         else: result['xsi'] = 1.0
 
         if self.mode['direct']:
+            result['sigmaN_SI_n']    *= GeV2pb*pb2cm2
+            result['sigmaN_SI_p']    *= GeV2pb*pb2cm2
+            result['sigmaN_SD_p']    *= GeV2pb*pb2cm2
+            result['sigmaN_SD_n']    *= GeV2pb*pb2cm2
             result['lim_sigmaN_SI_n'] = self.limits.SI_max(mdm)
             result['lim_sigmaN_SI_p'] = self.limits.SI_max(mdm)
             result['lim_sigmaN_SD_p'] = self.limits.SD_max(mdm, 'p')
@@ -2793,14 +2797,11 @@ class MADDMRunCmd(cmd.CmdShell):
                 logger.info('No contribution from processes: %s', ', '.join(skip))
 
         if self.mode['direct']:
-            sigN_SI_p , sigN_SI_n = self.last_results['sigmaN_SI_p'] , self.last_results['sigmaN_SI_n']
-            sigN_SD_p , sigN_SD_n = self.last_results['sigmaN_SD_p'] , self.last_results['sigmaN_SD_n']
-
-            units = self.last_results['GeV2pb*pb2cm2']
-            direct_names = [ { 'n':'SigmaN_SI_p','sig':sigN_SI_p*units , 'lim':self.limits.SI_max(mdm)     , 'exp':'Xenon1ton' },
-                             { 'n':'SigmaN_SI_n','sig':sigN_SI_n*units , 'lim':self.limits.SI_max(mdm)     , 'exp':'Xenon1ton' },
-                             { 'n':'SigmaN_SD_p','sig':sigN_SD_p*units , 'lim':self.limits.SD_max(mdm,'p') , 'exp':'Pico60' },
-                             { 'n':'SigmaN_SD_n','sig':sigN_SD_n*units , 'lim':self.limits.SD_max(mdm,'n') , 'exp':'Lux2017' } ]
+            # units = self.last_results['GeV2pb*pb2cm2']
+            direct_names = [ { 'n': 'SigmaN_SI_p', 'sig': self.last_results['sigmaN_SI_p'], 'lim': self.last_results['lim_sigmaN_SI_p'], 'exp': 'Xenon1ton' },
+                             { 'n': 'SigmaN_SI_n', 'sig': self.last_results['sigmaN_SI_n'], 'lim': self.last_results['lim_sigmaN_SI_n'], 'exp': 'Xenon1ton' },
+                             { 'n': 'SigmaN_SD_p', 'sig': self.last_results['sigmaN_SD_p'], 'lim': self.last_results['lim_sigmaN_SD_p'], 'exp': 'Pico60'    },
+                             { 'n': 'SigmaN_SD_n', 'sig': self.last_results['sigmaN_SD_n'], 'lim': self.last_results['lim_sigmaN_SD_n'], 'exp': 'Lux2017'   } ]
 
             self.last_results['direct_results'] = direct_names
 
@@ -5150,9 +5151,9 @@ class Multinest(object):
         if self.maddm_run.mode['relic']:
             omegah2 = results['Omegah^2']
         if self.maddm_run.mode['direct']:
-            spinSI = 0.5*(results['sigmaN_SI_p'] + results['sigmaN_SI_n']) * GeV2pb * pb2cm2
-            spinSDp = results['sigmaN_SD_p']  * GeV2pb * pb2cm2
-            spinSDn = results['sigmaN_SD_n'] * GeV2pb * pb2cm2
+            spinSI = 0.5*(results['sigmaN_SI_p'] + results['sigmaN_SI_n'])# * GeV2pb * pb2cm2
+            spinSDp = results['sigmaN_SD_p']#  * GeV2pb * pb2cm2
+            spinSDn = results['sigmaN_SD_n']# * GeV2pb * pb2cm2
         #<=========== for ID we will need each channel separately.
         
         #if self.maddm_run.mode['indirect']:   
