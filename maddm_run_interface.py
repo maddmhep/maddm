@@ -1633,15 +1633,17 @@ class MADDMRunCmd(cmd.CmdShell):
                   os.path.exists(pjoin(self.dir_path, 'output', 'run_%02d_01' %i)):
                 i += 1
             self.run_name = 'run_%02d' % i
-        
+
         self.ask_run_configuration(mode=[], force=force)
 
         if not self.multinest_running:
             self.compile()
 
-
         if self.param_card_iterator:
             self.run_name += '_01'
+
+        if self.in_scan_mode or self.param_card_iterator:
+            logger.info("Running %s ..." % self.run_name, "$MG:BOLD")
 
         # create output directory.
         os.mkdir(pjoin(self.dir_path, 'output', self.run_name))
@@ -1743,8 +1745,6 @@ class MADDMRunCmd(cmd.CmdShell):
                 self.launch_indirect(force, directory, self.maddm_card['vave_indirect_line'])
             self.launch_spectral_computations(mdm)
 
-        
-
         # rescale Fermi dSph limits by branching ratio
         for limit_key in [k for k in self.last_results.keys() if 'lim_taacsID#' in k and not self.is_spectral_finalstate(k.split('_')[-1])]:
             sigmav_ch = self.last_results[limit_key.replace('lim_','')]
@@ -1756,8 +1756,8 @@ class MADDMRunCmd(cmd.CmdShell):
         if not self.in_scan_mode and not self.multinest_running:
             self.print_results()
 
-        # Saving the output for single point
-        self.save_remove_output(scan = False)
+        # Saving the output for single point or scan
+        self.save_remove_output(scan = self.in_scan_mode or self.param_card_iterator)
 
         # --------------------------------------------------------------------#
         #   THIS PART IS FOR MULTINEST SCANS
@@ -1781,7 +1781,7 @@ class MADDMRunCmd(cmd.CmdShell):
             self.param_card_iterator = []
 
             ## this is to remove or save spectra, not the scan summary file!
-            self.save_remove_output(scan = True)
+            #self.save_remove_output(scan = True)
 
             # *** Initialize a list containing the desired variables in the summary output of the scan
             order = ['run']
@@ -1899,7 +1899,8 @@ class MADDMRunCmd(cmd.CmdShell):
                         # logger.warning('--> try again WY0: %.2e' % width)
                         #<=-------------- Mihailo commented out max_col = 10
                         #logger.info('Results for the point \n' + param_card_iterator.write_summary(None, order, lastline=True,nbcol=10)[:-1])#, max_col=10)[:-1])
-                        self.save_remove_output(scan = True)
+                        
+                        #self.save_remove_output(scan = True)
 
 
 
@@ -2353,8 +2354,16 @@ class MADDMRunCmd(cmd.CmdShell):
             temp_spectra[sp] = []
             for id_dir in directories: # loop over the indirect directories which have run pythia
                 temp_spectra[sp].append(np.loadtxt( out_dir(id_dir) , unpack = True )[1] * (self.indirect_directories_cross_section_contribution[id_dir]/self.last_results['taacsID']))
-            self.Spectra.spectra[sp] = np.sum(temp_spectra[sp], axis = 0)                                
-       
+            self.Spectra.spectra[sp] = np.sum(temp_spectra[sp], axis = 0).tolist() # conversion to list is needed, because in the program we use bool(a_list) to see if a_list is not empty (this doesn't work for numpy.array objects)
+
+    def cont_spectra_available_channels(self):
+        available_channels = {}
+        for x in self.last_results.keys():
+            if 'err' not in x and 'taacsID#' in x and 'lim_' not in x:
+                available_channels[x] = x.split('_')[1] # list of available SM channel xsections
+                if self.is_spectral_finalstate(x.split('_')[-1]): # remove spectral finalstates
+                    del available_channels[x]
+        return available_channels
 
     # This function reads the spectra from the PPPC tables from each annihilation channel, and adds them up according to the BR 
     def read_PPPCspectra(self):
@@ -2381,15 +2390,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
         self.Spectra.spectra['x'] = PPPC_source['x']
 
-        available_channels = {}
-        for x in self.last_results.keys():
-            if 'err' not in x and 'taacsID#' in x and 'lim_' not in x:
-                available_channels[x] = x.split('_')[1] # list of available SM channel xsections
-                if self.is_spectral_finalstate(x.split('_')[-1]): # remove spectral finalstates
-                    del available_channels[x]
-
-    
-        self.last_results['available_channels'] = available_channels.keys()
+        available_channels = self.cont_spectra_available_channels()
         # {'taacsID#xxdxxdb_ccx': 'ccx', 'taacsID#xxdxxdb_y0y0': 'y0y0', 'taacsID#xxdxxdb_ttx': 'ttx', 'taacsID#xxdxxdb_ssx': 'ssx', 
         # 'taacsID#xxdxxdb_uux': 'uux', 'taacsID#xxdxxdb_ddx': 'ddx', 'taacsID#xxdxxdb_bbx': 'bbx'}
 
@@ -2397,43 +2398,43 @@ class MADDMRunCmd(cmd.CmdShell):
 
         # Check that at lest one SM channel is available
         if not any(i in self.Spectra.map_allowed_final_state_PPPC.keys() for i in available_channels.values()):
-                  logger.error('No SM annihilation channel available, cannot use PPPC4DMID Tables!')
-                  return
+            logger.error('No SM annihilation channel available, cannot use PPPC4DMID Tables!')
+            return
                   
         for sp, sp_t in self.Spectra.spectra_id.iteritems():
-              self.last_results['tot_SM_xsec'] = 0
-              # self.Spectra.map_allowed_final_state_PPPC = {'qqx':'qq', 'ccx':'cc', 'gg':'gg', 'bbx':'bb', 'ttx':'tt',
-              #                                             'e+e-':'ee', 'mu+mu-':'mumu', 'ta+ta-':'tautau', 'w+w-':'WW', 'zz':'ZZ', 'hh':'hh' }              
-              temp_dic = {}
+            self.last_results['tot_SM_xsec'] = 0
+            # self.Spectra.map_allowed_final_state_PPPC = {'qqx':'qq', 'ccx':'cc', 'gg':'gg', 'bbx':'bb', 'ttx':'tt',
+            #                                             'e+e-':'ee', 'mu+mu-':'mumu', 'ta+ta-':'tautau', 'w+w-':'WW', 'zz':'ZZ', 'hh':'hh' }              
+            temp_dic = {}
 
-              for CH_k in available_channels.keys():
-                  CH = available_channels[CH_k]
-                  if CH in self.Spectra.map_allowed_final_state_PPPC.keys():
-                     ch = self.Spectra.map_allowed_final_state_PPPC[CH]  # ch is the name of the channels in the Tables
-                  
-                  # Mapping liht quarks to qq in the Tables
-                  # elif CH == 'ssx' : ch = 'qq'
-                  # elif CH == 'uux' : ch = 'qq' 
-                  # elif CH == 'ddx' : ch = 'qq'
-                  else: continue
-                  ch_BR =  self.last_results[CH_k]                                                                                                           
-                  if ch_BR > 0:                                                                                                                                              
-                      temp_dic[CH] = {}                                                                                                                                      
-                      self.last_results['tot_SM_xsec'] +=  ch_BR                                                                                                          
-                      interp_spec = self.Spectra.interpolate_spectra(PPPC_source , mdm = mdm, spectrum = sp_t , channel = ch , earth = False )        
-                      temp_dic[CH]['spec'] = interp_spec                                                                                                                
-                      temp_dic[CH]['xsec'] = ch_BR
-              sum_spec = []
-              if not bool(temp_dic): 
-                 logger.error('There is no annihilation process into SM with cross section > 0!')
-                 return 
-              for num in range(0,len(temp_dic[temp_dic.keys()[0]]['spec']) ):
-                  val = 0
-                  for k in temp_dic.keys():
-                      val = val + temp_dic[k]['spec'][num] * ( temp_dic[k]['xsec'] / self.last_results['tot_SM_xsec'] )
-                  sum_spec.append(val)
+            for CH_k in available_channels.keys():
+                CH = available_channels[CH_k]
+                if CH in self.Spectra.map_allowed_final_state_PPPC.keys():
+                    ch = self.Spectra.map_allowed_final_state_PPPC[CH]  # ch is the name of the channels in the Tables
+                    
+                # Mapping liht quarks to qq in the Tables
+                # elif CH == 'ssx' : ch = 'qq'
+                # elif CH == 'uux' : ch = 'qq' 
+                # elif CH == 'ddx' : ch = 'qq'
+                else: continue
+                ch_BR =  self.last_results[CH_k]                                                                                                           
+                if ch_BR > 0:                                                                                                                                              
+                    temp_dic[CH] = {}                                                                                                                                      
+                    self.last_results['tot_SM_xsec'] +=  ch_BR                                                                                                          
+                    interp_spec = self.Spectra.interpolate_spectra(PPPC_source , mdm = mdm, spectrum = sp_t , channel = ch , earth = False )        
+                    temp_dic[CH]['spec'] = interp_spec                                                                                                                
+                    temp_dic[CH]['xsec'] = ch_BR
+            sum_spec = []
+            if not bool(temp_dic): 
+                logger.error('There is no annihilation process into SM with cross section > 0!')
+                return 
+            for num in range(0,len(temp_dic[temp_dic.keys()[0]]['spec']) ):
+                val = 0
+                for k in temp_dic.keys():
+                    val = val + temp_dic[k]['spec'][num] * ( temp_dic[k]['xsec'] / self.last_results['tot_SM_xsec'] )
+                sum_spec.append(val)
 
-              self.Spectra.spectra[sp_t] = sum_spec
+            self.Spectra.spectra[sp_t] = sum_spec
         return True
 
     
@@ -2453,16 +2454,21 @@ class MADDMRunCmd(cmd.CmdShell):
 
         if 'PPPC4DMID' in self.maddm_card['indirect_flux_earth_method'] or self.maddm_card['sigmav_method'] == 'inclusive':
             if self.Spectra.check_mass(mdm):
-               PPPC_earth = self.Spectra.load_PPPC_earth(self.options['pppc4dmid_path'], prof = PROF)
+                PPPC_earth = self.Spectra.load_PPPC_earth(self.options['pppc4dmid_path'], prof = PROF)
                
         E = 10**np.array(PPPC_earth['x']) # converting Log10(E) in E ; will save fluxes as E vs dPhi/dE
         self.Spectra.flux_earth_positrons['e'] = E
 
-        channels = self.last_results['available_channels']
+        channels = self.cont_spectra_available_channels()
+
+        # Check that at lest one SM channel is available
+        if not any(i in self.Spectra.map_allowed_final_state_PPPC.keys() for i in channels.values()):
+            logger.error('No SM annihilation channel available, cannot use PPPC4DMID Tables!')
+            return
 
         # filling a dictionary with all non -zero cross section positrons fluxes from SM annihilations channels
         temp_dic = {}
-        for CH in channels: # e.g.  ccx, ttx ecc.
+        for CH in channels.keys(): # e.g.  ccx, ttx ecc.
             C = CH.split('_')[1]
             if C in self.Spectra.map_allowed_final_state_PPPC.keys():
                ch = self.Spectra.map_allowed_final_state_PPPC[C]  # ch is the name of the channels in the Tables                                                           
@@ -2917,13 +2923,14 @@ class MADDMRunCmd(cmd.CmdShell):
         # Internal: save the results as a numpy dictionary
         # np.save(pjoin(self.dir_path, 'output','Results'), self.last_results)
 
+        logger.info('')
+
         if not self.param_card_iterator:
             self.save_summary_single(relic = self.mode['relic'], direct = self.mode['direct'], \
                                 indirect = self.mode['indirect'], spectral = self.mode['spectral'],
                                 fluxes_source= self.mode['indirect'].startswith('flux') if isinstance(self.mode['indirect'],str) else self.mode['indirect'], 
                                 fluxes_earth = False )                  
-            logger.info()
-            logger.info('Results written in: ' +pjoin(self.dir_path, 'output', self.run_name, 'MadDM_results.txt') )
+            logger.info('Results written in: ' + pjoin(self.dir_path, 'output', self.run_name, 'MadDM_results.txt') )
 
             # self.save_remove_output(scan = False)
 
@@ -2934,22 +2941,23 @@ class MADDMRunCmd(cmd.CmdShell):
             if os.path.isfile(f_path):
                 shutil.move( f_path, pjoin(output_run, file_name) )
 
-    def remove_direct_detection(self, output_dir, output_run):
+    def remove_direct_detection(self, output_dir):
         ''' direct detection output is created in the output directory, remove those files '''
         for file_name in ['d2NdEdcos.dat','dNdcos.dat','dNdE.dat','rate.dat']:
             f_path = pjoin(output_dir, file_name)
             if os.path.isfile(f_path):
                 os.remove(f_path)
 
-    def create_symlink_to_events(self, indirect_directory, events_run, output_dir):
+    def create_symlink_to_events(self, indirect_directory, events_run, output_run):
         ''' when sigmav_method != inclusive, then we need to create a symlink to the events_run directory in the output_dir '''
-        if not os.path.islink( pjoin(output_dir, 'Output_' + indirect_directory) ):
-            os.symlink( pjoin(events_run), pjoin(output_dir, 'Output_' + indirect_directory) )  
+        if not os.path.islink( pjoin(output_run, 'Output_' + indirect_directory) ):
+            os.symlink( pjoin(events_run), pjoin(output_run, 'Output_' + indirect_directory) )  
 
     def remove_lhe_file(self, events_run):
         ''' removes the .lhe and .sh files from the events_run directory '''
         if os.path.isfile( pjoin(events_run,'unweighted_events.lhe.gz') ):
             os.remove( pjoin(events_run,'unweighted_events.lhe.gz') )
+        if os.path.isfile( pjoin(events_run,'run_shower.sh') ):
             os.remove( pjoin(events_run,'run_shower.sh') )
 
     def remove_events_run(self, events_run):
@@ -2962,8 +2970,6 @@ class MADDMRunCmd(cmd.CmdShell):
         # run name
         run_name = self.last_results['run']
 
-        # indirect mode
-        ind_mode = self.mode['indirect']
         # sigmav method
         sigmav_method = self.maddm_card['sigmav_method']
         # save_output switch
@@ -2974,6 +2980,7 @@ class MADDMRunCmd(cmd.CmdShell):
         events_dir      = pjoin(source_indirect, 'Events'          )
         events_run      = pjoin(events_dir     , run_name          )
         output_dir      = pjoin(self.dir_path  , 'output'          )
+        output_run      = pjoin(output_dir     , run_name          )
 
         # check if the indirect_directory exists: if it does not exist, then do nothing
         if not os.path.isdir(source_indirect):
@@ -2981,7 +2988,7 @@ class MADDMRunCmd(cmd.CmdShell):
             return
 
         operations = [
-            lambda **kwargs: self.create_symlink_to_events(indirect_directory = kwargs['indirect_directory'], events_run = kwargs['events_run'], output_dir = kwargs['output_dir']),
+            lambda **kwargs: self.create_symlink_to_events(indirect_directory = kwargs['indirect_directory'], events_run = kwargs['events_run'], output_run = kwargs['output_run']),
             lambda **kwargs: self.remove_events_run(events_run = kwargs['events_run']),
             lambda **kwargs: self.remove_lhe_file(events_run = kwargs['events_run'])
         ]
@@ -3009,7 +3016,7 @@ class MADDMRunCmd(cmd.CmdShell):
             operation.__call__(
                 indirect_directory = indirect_directory,
                 events_run         = events_run,
-                output_dir         = output_dir,
+                output_run         = output_run,
             )
 
     def output_entire_run(self, scan = False):
@@ -3036,7 +3043,7 @@ class MADDMRunCmd(cmd.CmdShell):
             lambda **kwargs: self.save_MadDM_card(),
             lambda **kwargs: self.save_direct_detection(output_dir = kwargs['output_dir'], output_run = kwargs['output_run']),
             lambda **kwargs: self.save_spec_flux(out_run = kwargs['output_run'], spec_source = kwargs['spec_source'], flux_source = kwargs['flux_source'], flux_earth = kwargs['flux_earth']),
-            lambda **kwargs: self.remove_direct_detection(output_dir = kwargs['output_dir'], output_run = kwargs['output_run'])
+            lambda **kwargs: self.remove_direct_detection(output_dir = kwargs['output_dir'])
         ]
 
         # PPPC4DMID files
@@ -3046,7 +3053,7 @@ class MADDMRunCmd(cmd.CmdShell):
         # of course this is valid only for ind_mode != OFF
         spec_source = ind_mode and ind_mode != 'sigmav'
         flux_source = 'source' in ind_mode
-        flux_earth  = 'earth' in ind_mode
+        flux_earth  = 'earth' in ind_mode and 'PPPC4DMID' in earth_method # positron flux computed inside the variables related to save_spec_flux only if the choice is PPPC4DMID, because DRAGON already writes its own output files.
 
         if not scan:
             # output for single point run
@@ -3071,11 +3078,11 @@ class MADDMRunCmd(cmd.CmdShell):
             if not do_it:
                 continue
             operation.__call__(
-                output_dir         = output_dir,
-                output_run         = output_run,
-                spec_source        = spec_source,
-                flux_source        = flux_source,
-                flux_earth         = flux_earth
+                output_dir  = output_dir,
+                output_run  = output_run,
+                spec_source = spec_source,
+                flux_source = flux_source,
+                flux_earth  = flux_earth
             )
 
     def save_remove_output(self, scan = False):
