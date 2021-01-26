@@ -1106,7 +1106,6 @@ class MadDM_interface(master_interface.MasterCmd):
         else:
             exclude_bsm = False
 
-
         if not self._dm_candidate:
             self.search_dm_candidate(excluded_particles)
             if not self._dm_candidate:

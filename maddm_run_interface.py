@@ -11,7 +11,6 @@ import stat
 import shutil
 from copy import copy, deepcopy
 
-
 import MGoutput
 from madgraph import MadGraph5Error
 from models import check_param_card
@@ -3052,8 +3051,8 @@ class MADDMRunCmd(cmd.CmdShell):
         # that means it computes 'source' spectra even if it is selected 'earth'
         # of course this is valid only for ind_mode != OFF
         spec_source = ind_mode and ind_mode != 'sigmav'
-        flux_source = 'source' in ind_mode
-        flux_earth  = 'earth' in ind_mode and 'PPPC4DMID' in earth_method # positron flux computed inside the variables related to save_spec_flux only if the choice is PPPC4DMID, because DRAGON already writes its own output files.
+        flux_source = ind_mode and 'source' in ind_mode
+        flux_earth  = ind_mode and 'earth' in ind_mode and 'PPPC4DMID' in earth_method # positron flux computed inside the variables related to save_spec_flux only if the choice is PPPC4DMID, because DRAGON already writes its own output files.
 
         if not scan:
             # output for single point run
