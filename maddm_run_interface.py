@@ -2197,11 +2197,12 @@ class MADDMRunCmd(cmd.CmdShell):
             # consider likelihood only when it is present
             if line_exp.get_name() == "Fermi-LAT_2015":
                 exp_likelihood = Fermi2015GammaLineLikelihood(line_exp)
-                for i in range(len(sigmavs)):
-                    self.last_results[str_part + "like_%d"        % (i+1)] = -1
-                    self.last_results[str_part + "pvalue_%d"      % (i+1)] = -1
             else:
                 exp_likelihood = None
+            # fill everything with -1 in either cases
+            for i in range(len(sigmavs)):
+                self.last_results[str_part + "like_%d"        % (i+1)] = -1
+                self.last_results[str_part + "pvalue_%d"      % (i+1)] = -1
             # fill last_results dict with the new values
             self.last_results[str_part + "Jfactor"    ] = line_exp.get_J(roi = self.last_results[str_part + 'roi'], profile = density_profile)
             self.last_results[str_part + "roi_warning"] = line_exp.check_profile(roi = self.last_results[str_part + 'roi'], profile = density_profile)[1]          
@@ -4346,7 +4347,7 @@ When you are done with such edition, just press enter (or write 'done' or '0')
         #logger.debug('Updating the Jfactor file')
         #self.write_jfactors()
 
-        if 'vave_indirect' in self.maddm.user_set:
+        if 'vave_indirect' in self.maddm.user_set and 'vave_indirect_cont' not in self.maddm.user_set:
             logger.warning("You are using an old parameter name 'vave_indirect'. Fall back to the updated name 'vave_indirect_cont'.")
             self.setDM('vave_indirect_cont', self.maddm.get('vave_indirect'), loglevel = 30)
             self.maddm.user_set.remove('vave_indirect')
