@@ -649,7 +649,15 @@ class MadDM_interface(master_interface.MasterCmd):
             if '@' in line:
                 line = re.sub(r'''(?<=@)(%s\b)''' % '\\b|'.join(self.process_tag), 
                               lambda x: `self.process_tag[x.group(0)]`, line)
-            return super(MadDM_interface, self).do_add(line)
+
+            if '@1995' not in line:
+                return super(MadDM_interface, self).do_add(line)
+            else:
+                with misc.TMP_variable(self, ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps'], 
+                                     [self._ID_procs, self._ID_matrix_elements, self._ID_amps]):
+                    return super(MadDM_interface, self).do_add(line)
+
+            
         
     @misc.mute_logger(['madgraph', 'models'], [30,30])    
     def add_model(self,*args,**opts):
