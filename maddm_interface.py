@@ -429,6 +429,7 @@ class MadDM_interface(master_interface.MasterCmd):
                     break
             else:
                 dm_particles.remove(p)
+                dm_names.remove(p.get('name'))
 
         if not dm_particles:
             logger.warning("""found %s but none have them have non zero coupling. Retry by excluding those""", ','.join(dm_names))
@@ -438,7 +439,7 @@ class MadDM_interface(master_interface.MasterCmd):
             choice = self.ask("More than one valid candidate found: Please select the one that you want:",
                      default=dm_names[0], choices=dm_names)
             dm_particles = [p for p in dm_particles if p.get('name') == choice]
-             
+            assert(dm_particles)             
         # Print out the DM candidate
         logger.info("Found Dark Matter candidate: %s" % dm_particles[0]['name'],  '$MG:BOLD')
         self._dm_candidate = dm_particles
@@ -1098,6 +1099,7 @@ class MadDM_interface(master_interface.MasterCmd):
             
         #loop over quarks
         has_diagram = False
+
         for i in quarks + antiquarks:
             proc = ' %(DM)s %(P)s > %(DM)s %(P)s %(excluded)s %(orders)s @DD' %\
                     {'DM': self._dm_candidate[0].get('name'),
@@ -1110,8 +1112,24 @@ class MadDM_interface(master_interface.MasterCmd):
                 self.do_add('process %s' % proc)
             except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
                 logger.debug(error)
-                continue # no diagram generated
-            has_diagram = True
+            else:
+                has_diagram = True
+
+            if self._dm_candidate[0].get('antiname') != self._dm_candidate[0].get('name'):
+                proc = ' %(DM)s %(P)s > %(DM)s %(P)s %(excluded)s %(orders)s @DD' %\
+                    {'DM': self._dm_candidate[0].get('antiname'),
+                     'P': i,
+                     'excluded': ('/ %s' % ' '.join(excluded) if excluded else ''),
+                     'orders': orders
+                     }
+
+                try:
+                    self.do_add('process %s' % proc)
+                except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
+                    logger.debug(error)
+                else:
+                    has_diagram = True
+           
         
         self._last_amps = [amp for amp in self._curr_amps if amp.get('process').get('id') == self.process_tag['DD']]
         return has_diagram
@@ -1227,7 +1245,6 @@ class MadDM_interface(master_interface.MasterCmd):
                 #We put the coupling order restrictions after the @ID in order to
                 #apply it to the entire matrix element.
                 proc = '%s %s > %s @ID %s' % (name, antiname, ' '.join(argument), coupling)
-                misc.sprint(proc)
                 try:
                     self.do_add('process %s' % proc)
                     last_amp = self._curr_amps[-1]
