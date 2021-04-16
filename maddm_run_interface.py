@@ -3021,9 +3021,6 @@ class MADDMRunCmd(cmd.CmdShell):
 
     def output_entire_run(self, scan = False):
         ''' saves/removes the output related to the entire run '''
-        # run name
-        run_name = self.last_results['run']
-
         # indirect mode
         ind_mode = self.mode['indirect']
         # sigmav method
@@ -3035,8 +3032,8 @@ class MADDMRunCmd(cmd.CmdShell):
         earth_method  = self.maddm_card['indirect_flux_earth_method']
 
         # Setting the various paths
-        output_dir      = pjoin(self.dir_path  , 'output'          )
-        output_run      = pjoin(output_dir     , run_name          )
+        output_dir      = pjoin(self.dir_path, 'output'                )
+        output_run      = pjoin(output_dir   , self.last_results['run'])
 
         # define operations
         operations = [
@@ -3091,7 +3088,8 @@ class MADDMRunCmd(cmd.CmdShell):
             It saves/removes outputs according to the 'save_output' switch in scan mode.
         '''
         # run name
-        assert run_name == self.run_name['run']
+        run_name = self.last_results['run']
+        assert run_name == self.run_name
         # manage outputs
         self.output_entire_run(scan)
         for indirect_directory in self.indirect_directories.keys():
