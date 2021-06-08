@@ -1745,14 +1745,6 @@ class MADDMRunCmd(cmd.CmdShell):
                 self.launch_indirect(force, directory, self.maddm_card['vave_indirect_line'])
             self.launch_spectral_computations(mdm)
 
-        # rescale Fermi dSph limits by branching ratio
-        for limit_key in [k for k in self.last_results.keys() if 'lim_taacsID#' in k and not self.is_spectral_finalstate(k.split('_')[-1])]:
-            sigmav_ch = self.last_results[limit_key.replace('lim_','')]
-            if sigmav_ch == 0.:
-                self.last_results[limit_key] = -1
-            else:
-                self.last_results[limit_key] /= (sigmav_ch/self.last_results['taacsID']) if self.last_results[limit_key] != -1 else 1
-        
         if not self.in_scan_mode and not self.multinest_running:
             self.print_results()
 
