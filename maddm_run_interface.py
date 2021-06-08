@@ -1355,9 +1355,10 @@ class PDGParticleMap(dict):
             return int(particle)
         this_pdg = [pdg for pdg, name in self.iteritems() if name == particle]
         if len(this_pdg) == 0:
+            # check if it is a multiparticle
             raise ValueError("No particle '%s' in the model." % particle)
         elif len(this_pdg) > 1:
-            logger.warning("Particle '%s' has different pdg codes in this model, please check the model." % particle)
+            logger.warning("Particle '%s' has multiple pdg codes in this model, please check the model." % particle)
         return int(this_pdg[0])
 
     def __getitem__(self, pdg):
