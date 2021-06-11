@@ -1994,7 +1994,7 @@ class MADDMRunCmd(cmd.CmdShell):
             runcardpath = pjoin(self.dir_path, indirect_directory, 'Cards', 'run_card.dat')
             run_card = banner_mod.RunCard(runcardpath)
 
-            halo_vel = 1e-3 ## CHANGE
+            # halo_vel = 1e-2 ## CHANGE
             vave_temp = math.sqrt(3)/2.0 * halo_vel
 
             run_card['ebeam1'] = mdm * math.sqrt(1+vave_temp**2)
@@ -2024,11 +2024,11 @@ class MADDMRunCmd(cmd.CmdShell):
                         if self.maddm_card['sigmav_method'] == 'madevent':
                             if os.path.exists(pjoin(self.dir_path,indirect_directory,'Cards','reweight_card.dat')):
                                 os.remove(pjoin(self.dir_path,indirect_directory,'Cards','reweight_card.dat'))
-                            # self.me_cmd.do_launch('%s -f' % self.run_name)
-                            self.me_cmd.Presults = {}
-                            self.me_cmd.Presults['xsec/something_chichi_aa'] = 10.3
-                            self.me_cmd.Presults['xsec/something_chichi_ah'] = 4.6
-                            self.me_cmd.Presults['xsec/something_chichi_az'] = 9.1
+                            self.me_cmd.do_launch('%s -f' % self.run_name)
+                            # self.me_cmd.Presults = {}
+                            # self.me_cmd.Presults['xsec/something_chichi_aa'] = 10.3
+                            # self.me_cmd.Presults['xsec/something_chichi_ah'] = 4.6
+                            # self.me_cmd.Presults['xsec/something_chichi_az'] = 9.1
 
                         elif self.maddm_card['sigmav_method'] == 'reshuffling':
                             cmd = ['launch %s' % self.run_name,
