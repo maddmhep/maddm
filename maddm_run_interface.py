@@ -1068,7 +1068,7 @@ class GammaLineSpectrum(object):
         the spectrum is the flux spectrum, not gamma only, because experiments measure fluxes
         so we need to multiply the energy peak (approximately gaussian) for <sigma v>
     '''
-    FWHM_PART = 1.0 # coefficient to multiply to the FWHM before making any comparison: it expresses the fraction of the FWHM to be used for comparison: the signal can be summed only if their peak difference is less that both the FWHM*FWHM_PART
+    FWHM_PART = 1.0 # coefficient to multiply to the FWHM before making any comparison: it expresses the fraction of the FWHM to be used for comparison: the signal can be summed only if their peak difference is less than both the FWHM*FWHM_PART
     FWHM_MERGED_FRAC = 1.5 # coefficient to multiply to the FWHM after having done all the possible merging: it expresses the maximum fraction of FWHM (with respect to the experiment's one) allowed for the merged line to be considered a line
     ERROR_TEST = collections.OrderedDict([ # order the error function in the order of testing, errors are concatenated as strings
         ('1', 'not_a_line'),
@@ -1874,7 +1874,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 for line_exp in self.line_experiments:
                     str_part = "line_%s_" % line_exp.get_name()
                     order.append(str_part + "Jfactor")
-                    # order.append(str_part + "roi")
+                    order.append(str_part + "roi")
                     for i in range(len([k for k in self.last_results.keys() if self.is_spectral_finalstate(k.split('_')[-1])])):
                         order.append(str_part + "peak_%d"        % (i+1))
                         line_spectrum_logging_order.append(str_part + "peak_%d_states" % (i+1))
@@ -1994,7 +1994,6 @@ class MADDMRunCmd(cmd.CmdShell):
             runcardpath = pjoin(self.dir_path, indirect_directory, 'Cards', 'run_card.dat')
             run_card = banner_mod.RunCard(runcardpath)
 
-            # halo_vel = 1e-2 ## CHANGE
             vave_temp = math.sqrt(3)/2.0 * halo_vel
 
             run_card['ebeam1'] = mdm * math.sqrt(1+vave_temp**2)
@@ -3203,7 +3202,7 @@ class MADDMRunCmd(cmd.CmdShell):
         for line_exp in self.line_experiments:
             str_part = "line_%s_" % line_exp.get_name()
             logger.info("==== %s %s====" % (line_exp.get_name().replace('_', ' '), "="*max([0, 100 - len(line_exp.get_name())])))
-            # logger.info("ROI: %.1f" % self.last_results[str_part + "roi"])
+            logger.info("ROI: %.1f" % self.last_results[str_part + "roi"])
             str_part_peak = str_part + 'peak'
             energy_peaks = collections.OrderedDict(sorted([(k, v) for k, v in self.last_results.items() if str_part_peak in k and not any(['states' in k, 'error' in k, 'like' in k, 'pvalue' in k]) and v != -1], key = lambda item: item[1])) # key = "line_<exp_name>_peak_<num>", value = energy peak
             roi_warning = self.last_results[str_part + "roi_warning"]
