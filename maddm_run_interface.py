@@ -928,16 +928,17 @@ class GammaLineExperiment(object):
     def get_sigmav_ul(self, e_peak, roi, profile, id_constraints, is_aa):
         ''' Returns the upper limit on flux for a given ROI (expressed in degrees).
             The limits are taken from the ExpConstraint class, the interpolation function is evaluated at the energy of the peak.
-            It returns -1 if the profile is not compatible with default one for the ROI and if there are problems in ID_max.
+            It returns np.inf if the profile is not compatible with default one for the ROI and if there are problems in ID_max,
+            because that would be used for comparison between the other experiments. Eventually it would become -1 if also other
+            constraints are invalid.
         '''
         default_profile, _, ul_label = self.info_dict[roi][:3]
         if profile.eq_but_norm(default_profile):
-            coeff = 2. if is_aa else 1.
-            # flux should be multiplied by 2 if aa, <sigma v> should be divided by 2 if aa
-            sigmav_ul = id_constraints.ID_max(mdm = e_peak, channel = ul_label, sigmav = True) * np.power(default_profile.rho_s / profile.rho_s, 2) / coeff
-            return sigmav_ul if sigmav_ul > 0 else -1
+            coeff = 1. if is_aa else 2.
+            sigmav_ul = id_constraints.ID_max(mdm = e_peak, channel = ul_label, sigmav = True) * np.power(default_profile.rho_s / profile.rho_s, 2) * coeff
+            return sigmav_ul if sigmav_ul > 0 else np.inf
         else:
-            return -1
+            return np.inf
 
 class GammaLineExperimentsList(object):
     ''' Handle the GammaLineExperiments lists: automatically excludes the hidden experiments when iterating.
@@ -2300,10 +2301,10 @@ class MADDMRunCmd(cmd.CmdShell):
         # <sigma v> of the various final states
         sigmavs = {k.split("_")[-1]: v for k, v in self.last_results.iteritems() if k.startswith('taacsID#') and self.is_spectral_finalstate(k.split("_")[-1])}
         # dict for <sigma v> ul
-        sigmav_ul = {k: [-1 for line_exp in self.line_experiments] for k in self.last_results.iterkeys() if "lim_taacsID#" in k and self.is_spectral_finalstate(k.split('_')[-1])} # if there is at least one '(22)' then we treat it as a spectral final state
+        sigmav_ul = {k: collections.OrderedDict([(name, np.inf) for name in self.line_experiments.iternames()]) for k in self.last_results.iterkeys() if "lim_taacsID#" in k and self.is_spectral_finalstate(k.split('_')[-1])} # if there is at least one '(22)' then we treat it as a spectral final state
         initial_states = sigmav_ul.keys()[0].replace("lim_taacsID#", '').split('_')[0] # extract the initial particles, it is ok only for one DM candidate
         # compute the main results
-        for num_exp, (line_exp, line_exp_roi) in enumerate(zip(self.line_experiments, self.line_experiments.iterrois())):
+        for line_exp, line_exp_roi in zip(self.line_experiments, self.line_experiments.iterrois()):
             gamma_line_spectrum = GammaLineSpectrum(
                 line_exp = line_exp, 
                 pdg_particle_map = self.pdg_particle_map, 
@@ -2363,12 +2364,16 @@ class MADDMRunCmd(cmd.CmdShell):
             # compute <sigma v> ul to display only if the profile chosen is equal to the default one for the ROIs
             # fill a list with the limits from each experiment and then take the minimum
             for original_peak in original_gamma_spectrum: # fill value only for peaks which have been detected (are in the detection range), otherwise keep -1
-                sigmav_ul["lim_taacsID#" + initial_states + '_' + original_peak.label][num_exp] = line_exp.get_sigmav_ul(e_peak = original_peak.e_peak, roi = line_exp_roi, profile = density_profile, id_constraints = self.limits, is_aa = original_peak.label == '(22)(22)')
+                # rescale it wirth respect to gamma gamma, according to (2)*(mdm^2/E_peak^2) : the 2 factor is comprised in the method get_sigmav_ul
+                sigmav_ul["lim_taacsID#" + initial_states + '_' + original_peak.label][line_exp.get_name()] = line_exp.get_sigmav_ul(e_peak = original_peak.e_peak, roi = line_exp_roi, profile = density_profile, id_constraints = self.limits, is_aa = original_peak.label == '(22)(22)') * np.power(mdm/original_peak.e_peak, 2)
         # get the <sigma v> ul: drop the -1 and get the minimum, in case everything is -1 then the list is empty, so return -1
         logger.debug(sigmav_ul)
         for k, v in sigmav_ul.items():
-            lim_list = [lim for lim in v if lim != -1]
-            self.last_results[k] = -1 if len(lim_list) == 0 else np.amin(lim_list)
+            limits = np.array(v.values())
+            index_of_min = np.argmin(limits)
+            strongest_limit = limits[index_of_min]
+            self.last_results[k] = strongest_limit if not np.isinf(strongest_limit) else -1
+            self.last_results[k + '_experiment'] = v.keys()[index_of_min] if not np.isinf(strongest_limit) else ''
         # in case all of the line peaks are out of range of detection for a certain experiment:
         # gamma_line_spectrum would be an empty list
         # self.last_results["line_%s_peak_%d" % (exp_name, i+1)], self.last_results["line_%s_flux_%d" % (exp_name, i+1)], self.last_results["line_%s_flux_UL_%d" % (exp_name, i+1)] will be all -1
