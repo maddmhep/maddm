@@ -93,52 +93,34 @@
 #
 ###################################################################################
 
-# Methode of computation (affects speed and precision)
+# Method of computation (affects speed and precision)
    %(sigmav_method)s    = sigmav_method ! inclusive, madevent, reshuffling
-   %(indirect_flux_source_method)s   = indirect_flux_source_method ! pythia8, PPPC4DMID or PPPC4DMID_ew 
-   %(indirect_flux_earth_method)s    =  indirect_flux_earth_method ! dragon or PPPC4DMID_ep
+   %(indirect_flux_source_method)s   = indirect_flux_source_method ! pythia8, PPPC4DMID, PPPC4DMID_ew 
+   %(indirect_flux_earth_method)s    =  indirect_flux_earth_method ! dragon, PPPC4DMID_ep
 
 # setting for DM velocity
-   %(vave_indirect_cont)s   = vave_indirect_cont  ! average velocity of DM for continuum searches (default: Fermi-LAT dSph searches)
-   %(vave_indirect_line)s   = vave_indirect_line  ! average velocity of DM for line searches (default: GC line search analysis) 
+   %(vave_indirect_cont)s     = vave_indirect_cont  # average velocity of DM for continuum searches (default: Fermi-LAT dSph searches)
+   %(vave_indirect_line)s   = vave_indirect_line  # average velocity of DM for line searches (default: GC line search analysis) 
 
 # --------------------
 # Line analysis
 # --------------------
 
 # choice of the dark matter density profile
-   %(profile)s = profile ! nfwg, einasto, nfw, isothermal, burkert
+   %(profile)s   = profile ! nfwg, einasto, nfw, isothermal, burkert
 
 # profile common parameters
-   %(r_s)s = r_s # kpc
+   %(r_s)s      = r_s # kpc
 
 # nfwg specific parameters
-   %(gamma)s = gamma
+   %(gamma)s       = gamma
 
 # einasto specific parameters
-   %(alpha)s = alpha
-
-
-# normalization (rho_s)
-
-# specify a predefined normalization (or none otherwise)
-   %(predefined_normalization)s = predefined_normalization ! none, fermi_2015, hess_2018
-
-# OR set parameters explicitly (if set none previously)  
-   %(r_sun)s = r_sun # kpc
-   %(rho_s_or_sun)s = rho_s_or_sun # GeV cm^-3 # this is either rho_s or rho_sun
-
-# set True if you want to compute rho_s using r_sun and rho_sun
-# set False if you want to specify rho_s directly
-   %(use_rho_sun)s = use_rho_sun ! True, False
-
-#  - fermi_2015: rho_s_or_sun = 0.4, r_sun = 8.5, use_rho_sun = True
-#  - hess_2018: rho_s_or_sun = 0.39, r_sun = 8.5, use_rho_sun = True
-
+   %(alpha)s      = alpha
 
 # specify a ROI for Fermi-LAT 2015
 # set default to use the ROI for which your profile is optimized
-   %(roi_fermi_2015)s = roi_fermi_2015 ! default, r3, r16, r41, r90
+   %(roi_fermi_2015)s   = roi_fermi_2015 ! default, R3, R16, R41, R90
 
 ###################################################################################
 #

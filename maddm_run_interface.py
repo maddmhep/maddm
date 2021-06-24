@@ -6,6 +6,8 @@ import os
 import re
 import sys
 import subprocess
+
+from numpy.core.fromnumeric import var
 import auxiliary as aux
 import stat
 import shutil
@@ -78,9 +80,19 @@ class ExpConstraints:
         self._oh2_planck = 0.1200 # from 1807.06209 Tab. 2 (TT,TE,EE+lowE+lensing) quoted also in abstract
         self._oh2_planck_width = 0.0012
 
-        self._dd_si_limit_file = pjoin(MDMDIR, 'ExpData', 'Xenon1T_data_2018.dat')
-        self._dd_sd_proton_limit_file = pjoin(MDMDIR, 'ExpData', 'Pico60_sd_proton.dat') # <---------CHANGE THE FILE!!!
-        self._dd_sd_neutron_limit_file = pjoin(MDMDIR, 'ExpData', 'Lux_2017_sd_neutron.dat')
+        # self._dd_si_limit_file = pjoin(MDMDIR, 'ExpData', 'Xenon1T_data_2018.dat')
+        # self._dd_sd_proton_limit_file = pjoin(MDMDIR, 'ExpData', 'Pico60_sd_proton.dat') # <---------CHANGE THE FILE!!!
+        # self._dd_sd_neutron_limit_file = pjoin(MDMDIR, 'ExpData', 'Lux_2017_sd_neutron.dat')
+
+        self._dd_limit_file = {
+            'si'        : pjoin(MDMDIR, 'ExpData', 'Xenon1T_data_2018.dat'),
+            'sd_proton' : pjoin(MDMDIR, 'ExpData', 'Pico60_sd_proton.dat'),
+            'sd_neutron': pjoin(MDMDIR, 'ExpData', 'Lux_2017_sd_neutron.dat')
+        }
+
+        self._dd_limit_mdm = dict()
+        self._dd_limit_sigma = dict()
+
         self._id_limit_file = {
             # cont final states
             '(1)(-1)'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_qq.dat'), # same qqx
@@ -130,13 +142,13 @@ class ExpConstraints:
             '(23)(23)':2.0E-5,
             '(25)(25)':2.0E-5,
             # line velocity
-            '(22)(22)_hess2013'    : 250/299792.458,
-            '(22)(22)_hess2016'    : 250/299792.458,
-            '(22)(22)_hess2018R1'  : 250/299792.458,
-            '(22)(22)_fermi2015R3' : 250/299792.458,
-            '(22)(22)_fermi2015R16': 250/299792.458,
-            '(22)(22)_fermi2015R41': 250/299792.458,
-            '(22)(22)_fermi2015R90': 250/299792.458
+            '(22)(22)_hess2013'    : 1e-3,
+            '(22)(22)_hess2016'    : 1e-3,
+            '(22)(22)_hess2018R1'  : 1e-3,
+            '(22)(22)_fermi2015R3' : 1e-3,
+            '(22)(22)_fermi2015R16': 1e-3,
+            '(22)(22)_fermi2015R41': 1e-3,
+            '(22)(22)_fermi2015R90': 1e-3
         }
 
         self._id_limit_mdm = dict()
@@ -164,43 +176,34 @@ class ExpConstraints:
         logger.info('Loaded experimental constraints. To change, use the set command')
         logger.info('Omega h^2 = %.4e +- %.4e' %(self._oh2_planck, self._oh2_planck_width))
         if HAS_NUMPY:
-            logger.info('Spin Independent cross section: %s' % self._dd_si_limit_file)
-            logger.info('Spin Dependent cross section (p): %s' % self._dd_sd_proton_limit_file)
-            logger.info('Spin Dependent cross section (n): %s' % self._dd_sd_neutron_limit_file)
+            logger.info('Spin Independent cross section: %s' % self._dd_limit_file['si'])
+            logger.info('Spin Dependent cross section (p): %s' % self._dd_limit_file['sd_proton'])
+            logger.info('Spin Dependent cross section (n): %s' % self._dd_limit_file['sd_neutron'])
         else:
             logger.info('Spin (in)dependent not available due to the missing python module: numpy')
 #        for chan in self._allowed_final_states:
 #            logger.info('Indirect Detection cross section for final state %s at velocity %.2e: %s'\
 #                        % (chan, self._id_limit_vel[chan] ,self._id_limit_file[chan]))
 
+    def safe_load_file(self, filename, variables, key, unpack = True, usecols = None, comments = '#'):
+        try:
+            temp = np.loadtxt(filename, unpack = unpack, usecols = usecols, comments = comments)
+            for i, var in enumerate(variables):
+                selfvar = getattr(self, var)
+                selfvar[key] = temp[i]
+        except Exception: # generic error from reading
+            logger.warning("Can't read file '%s': missing or corrupted file." % filename)
 
     def load_constraints(self):
         #Load in direct detection constraints
-        if self._dd_si_limit_file!='':
-            self._dd_si_limit_mDM, self._dd_si_limit_sigma = np.loadtxt(self._dd_si_limit_file, unpack=True, comments='#')
-        if self._dd_sd_proton_limit_file!='':
-            self._dd_sd_p_limit_mDM, self._dd_sd_p_limit_sigma = np.loadtxt(self._dd_sd_proton_limit_file, unpack=True, comments='#')
-        if self._dd_sd_neutron_limit_file!='':
-            self._dd_sd_n_limit_mDM, self._dd_sd_n_limit_sigma = np.loadtxt(self._dd_sd_neutron_limit_file, unpack=True, comments='#')
+        for spin_type, limit_file in self._dd_limit_file.iteritems():
+            self.safe_load_file(filename = limit_file, variables = ['_dd_limit_mdm', '_dd_limit_sigma'], key = spin_type)
                                                                                                             
         for channel, limit_file in self._id_limit_file.iteritems():
-            if limit_file != '': # FF : need to redo the limit files as two columns                                                                             
-                # if 'MadDM_Fermi_Lim' in limit_file:
-                #     self._id_limit_mdm[channel]  = np.loadtxt(limit_file, unpack=True)[0]
-                #     self._id_limit_sigv[channel] = np.loadtxt(limit_file, unpack=True)[1]
-                # else:
-                self._id_limit_mdm[channel], self._id_limit_sigv[channel] = np.loadtxt(limit_file, unpack=True, usecols=(0,1), comments='#')
-            else:
-                self._id_limit_mdm[channel] = False
-                self._id_limit_sigv[channel] = False
+            self.safe_load_file(filename = limit_file, variables = ['_id_limit_mdm', '_id_limit_sigv'], key = channel, usecols = (0,1))
 
         for channel, limit_file in self._id_limit_file_flux.iteritems():
-            if limit_file != '':                                                                      
-                self._id_limit_mdm[channel], self._id_limit_flux[channel] = np.loadtxt(limit_file, unpack=True, usecols=(0,2), comments='#')
-            else:
-                self._id_limit_mdm[channel] = False
-                self._id_limit_flux[channel] = False
-
+            self.safe_load_file(filename = limit_file, variables = ['_id_limit_mdm', '_id_limit_flux'], key = channel, usecols = (0,2))
 
     #Returns a value in cm^2
     def SI_max(self, mdm):
@@ -208,14 +211,14 @@ class ExpConstraints:
             logger.warning("missing numpy module for SI limit")
             return -1
         
-        if (mdm < np.min(self._dd_si_limit_mDM) or mdm > np.max(self._dd_si_limit_mDM)):
+        if (mdm < np.min(self._dd_limit_mdm['si']) or mdm > np.max(self._dd_limit_mdm['si'])):
             logger.warning('Dark matter mass value '+str(mdm)+' is outside the range of SI limit')
             return -1
         else:
-            return np.interp(mdm, self._dd_si_limit_mDM, self._dd_si_limit_sigma)
+            return np.interp(mdm, self._dd_limit_mdm['si'], self._dd_limit_sigma['si'])
 
     #Returns a value in cm^2
-    def SD_max(self,mdm, nucleon):
+    def SD_max(self, mdm, nucleon):
         if not HAS_NUMPY:
             logger.warning("missing numpy module for SD limit")
             return -1
@@ -225,17 +228,17 @@ class ExpConstraints:
             return -1
         else:
             if nucleon=='p':
-                if (mdm < np.min(self._dd_sd_p_limit_mDM) or mdm > np.max(self._dd_sd_n_limit_mDM)):
+                if (mdm < np.min(self._dd_limit_mdm['sd_proton']) or mdm > np.max(self._dd_limit_mdm['sd_proton'])):
                     logger.warning('Dark matter mass value '+str(mdm)+' is outside the range of SD limit')
                     return -1
                 else:
-                    return np.interp(mdm, self._dd_sd_p_limit_mDM, self._dd_sd_p_limit_sigma)
+                    return np.interp(mdm, self._dd_limit_mdm['sd_proton'], self._dd_limit_sigma['sd_proton'])
             elif nucleon=='n':
-                if (mdm < np.min(self._dd_sd_n_limit_mDM) or mdm > np.max(self._dd_sd_n_limit_mDM)):
+                if (mdm < np.min(self._dd_limit_mdm['sd_proton']) or mdm > np.max(self._dd_limit_mdm['sd_proton'])):
                     logger.warning('Dark matter mass value '+str(mdm)+' is outside the range of SD limit')
                     return -1
                 else:
-                    return np.interp(mdm, self._dd_sd_n_limit_mDM, self._dd_sd_n_limit_sigma)
+                    return np.interp(mdm, self._dd_limit_mdm['sd_neutron'], self._dd_limit_sigma['sd_neutron'])
 
     # Returns a value in cm^3/s
     def ID_max(self, mdm, channel, sigmav = True):
@@ -605,16 +608,9 @@ class Fermi_bounds:
 
 class DensityProfile(object):
     ''' this class allows to define and correctly normalise the density profiles '''
-    NORMALIZATION = { # as tuple (rho_sun, r_sun) # GeV cm^{-3}, kpc
-        "fermi_2015": (0.4, 8.5),
-        "hess_2018": (0.39, 8.5)
-    }
     
-    def __init__(self, name, functional_form, r_s, normalization, use_rho_sun):
-        ''' normalization can be either a string for a default normalization
-            or a tuple.
-            if use_rho_sun is True then normalization has the form (rho_sun, r_sun),
-            otherwise it has the form (rho_s, r_sun).
+    def __init__(self, name, functional_form, r_s, rho_sun, r_sun):
+        ''' The normalisation is computed by rho_sun, r_sun.
             functional_form is the functional_form of the profile:
                 - it does not contain the normalisation density rho_s
                 - it does not contain r_s, but y := r/r_s
@@ -623,7 +619,7 @@ class DensityProfile(object):
         self.name = name
         self.r_s = r_s
         self._functional_form = functional_form
-        self.set_normalization(normalization = normalization, use_rho_sun = use_rho_sun)
+        self.set_normalization(rho_sun = rho_sun, r_sun = r_sun)
 
     def functional_form(self):
         return self._functional_form
@@ -631,16 +627,9 @@ class DensityProfile(object):
     def full_form(self):
         return lambda r: self.rho_s * self._functional_form(r / self.r_s)
 
-    def set_normalization(self, normalization, use_rho_sun = True):
-        if isinstance(normalization, str):
-            self.rho_sun, self.r_sun = self.NORMALIZATION[normalization]
-            self.rho_s = self.rho_sun / self._functional_form(self.r_sun / self.r_s)
-        elif use_rho_sun is True:
-            self.rho_sun, self.r_sun = normalization
-            self.rho_s = self.rho_sun / self._functional_form(self.r_sun / self.r_s)
-        else:
-            self.rho_s, self.r_sun = normalization
-            self.rho_sun = self.rho_s * self._functional_form(self.r_sun / self.r_s)
+    def set_normalization(self, rho_sun, r_sun):
+        self.r_sun = r_sun
+        self.rho_s = rho_sun / self._functional_form(r_sun / self.r_s)
 
     def get_name(self):
         return self.name
@@ -667,10 +656,10 @@ class DensityProfile(object):
         '''
         if not isinstance(other, DensityProfile):
             raise TypeError("'eq_but_norm' not supported between instances of 'DensityProfile' and '%s'" % other.__class__.__name__)
-        return self.name == other.name and self.r_s == other.r_s and self.r_sun == other.r_sun
+        return self.name == other.name and np.logical_and.reduce(np.isclose([self.r_s, self.r_sun], [other.r_s, other.r_sun], atol = 0., rtol = 1e-4))
 
     def __hash__(self):
-        return hash((self.name, self.r_s, self.r_sun, self.rho_s))
+        return hash((self.name, self.r_s, self.rho_s, self.r_sun))
 
     def __str__(self):
         return "%s(rho_s = %.4e GeV cm^-3, r_s = %.2e kpc)" % (self.name, self.rho_s, self.r_s)
@@ -680,10 +669,10 @@ class DensityProfile(object):
 
 class PROFILES:
     class NFW(DensityProfile):
-        def __init__(self, r_s, normalization = "fermi_2015", use_rho_sun = True, **kwargs):
+        def __init__(self, r_s, rho_sun = 0.4, r_sun = 8.5, **kwargs):
             self.gamma = kwargs.get("gamma", 1.0)
             functional_form = lambda y: np.power(y, -self.gamma) * np.power(1 + y, self.gamma-3.)
-            super(PROFILES.NFW, self).__init__(name = "NFW", functional_form = functional_form, r_s = r_s, normalization = normalization, use_rho_sun = use_rho_sun)
+            super(PROFILES.NFW, self).__init__(name = "NFW", functional_form = functional_form, r_s = r_s, rho_sun = rho_sun, r_sun = r_sun)
 
         def is_optimized(self, other):
             test = super(PROFILES.NFW, self).is_optimized(other = other)
@@ -703,10 +692,10 @@ class PROFILES:
             return super(PROFILES.NFW, self).get_parameters_items() + [("profile_gamma", self.gamma)]
 
     class Einasto(DensityProfile):
-        def __init__(self, r_s, normalization = "fermi_2015", use_rho_sun = True, **kwargs):
+        def __init__(self, r_s, rho_sun = 0.4, r_sun = 8.5, **kwargs):
             self.alpha = kwargs.get("alpha", 0.17)
             functional_form = lambda y: np.exp(-2/self.alpha * (np.power(y, self.alpha) - 1))
-            super(PROFILES.Einasto, self).__init__(name = "Einasto", functional_form = functional_form, r_s = r_s, normalization = normalization, use_rho_sun = use_rho_sun)
+            super(PROFILES.Einasto, self).__init__(name = "Einasto", functional_form = functional_form, r_s = r_s, rho_sun = rho_sun, r_sun = r_sun)
 
         def is_optimized(self, other):
             test = super(PROFILES.Einasto, self).is_optimized(other = other)
@@ -726,20 +715,20 @@ class PROFILES:
             return super(PROFILES.Einasto, self).get_parameters_items() + [("profile_alpha", self.alpha)]
 
     class Burkert(DensityProfile):
-        def __init__(self, r_s, normalization = "fermi_2015", use_rho_sun = True, **kwargs):
+        def __init__(self, r_s, rho_sun = 0.4, r_sun = 8.5, **kwargs):
             functional_form = lambda y: np.power( (1 + y) * (1 + np.power(y, 2)), -1)
-            super(PROFILES.Burkert, self).__init__(name = "Burkert", functional_form = functional_form, r_s = r_s, normalization = normalization, use_rho_sun = use_rho_sun)
+            super(PROFILES.Burkert, self).__init__(name = "Burkert", functional_form = functional_form, r_s = r_s, rho_sun = rho_sun, r_sun = r_sun)
 
     class Isothermal(DensityProfile):
-        def __init__(self, r_s, normalization = "fermi_2015", use_rho_sun = True, **kwargs):
+        def __init__(self, r_s, rho_sun = 0.4, r_sun = 8.5, **kwargs):
             functional_form = lambda y: np.power( 1 + np.power(y, 2), -1)
-            super(PROFILES.Isothermal, self).__init__(name = "Isothermal", functional_form = functional_form, r_s = r_s, normalization = normalization, use_rho_sun = use_rho_sun)
+            super(PROFILES.Isothermal, self).__init__(name = "Isothermal", functional_form = functional_form, r_s = r_s, rho_sun = rho_sun, r_sun = r_sun)
 
 class GammaLineExperiment(object):
     ''' this class holds all the generic functionalities regarding the upper limits on gamma ray line searches '''
     KPC_TO_CM = 3.086e21
 
-    def __init__(self, name, energy_resolution, detection_range, info_dict, mask_lat = 0., mask_long = 0., mask_ang = 0., check_profile_message = lambda is_optimized, roi: {True: "", False: ""}.get(is_optimized), min_energy_separation = lambda fwhm: 0., peak_height_factor = 10., arxiv_number = "ArXiv not available"):
+    def __init__(self, name, energy_resolution, detection_range, info_dict, mask_lat = 0., mask_long = 0., mask_ang = 0., check_profile_message = lambda is_optimized, roi: {True: "", False: ""}.get(is_optimized), arxiv_number = None, hidden = False):
         # experiment name
         self.name = name
         # latitude and longitude of the mask
@@ -756,12 +745,13 @@ class GammaLineExperiment(object):
         self.info_dict = info_dict
         # check profile output: function which gives the message to display when the profile not optimized for the ROI
         self.check_profile_message = check_profile_message
-        # minimum energy separation between lines (after the merging) to consider the signals as completely separated in order to apply a separate analysis
-        self.min_energy_separation = min_energy_separation
-        # height factor to consider, between two peaks with different height, if one is clearly higher than the other
-        self.peak_height_factor = peak_height_factor
         # ArXiv number
         self.arxiv_number = arxiv_number
+        # hidden?
+        self.hidden = hidden
+
+    def __str__(self):
+        return self.name + " [arXiv:%s]" % self.arxiv_number
 
     def J_cone(self, ang_1, ang_2, profile_func, x_sun):
         ''' it computes the conic part of the J-factor:
@@ -885,24 +875,36 @@ class GammaLineExperiment(object):
         return is_optimized, self.check_profile_message(is_optimized, roi)
 
     def get_J(self, roi, profile = None):
-        ''' Get the J-factor for the roi specified. First, it checks if their parameters but normalization are equal
-            in case it is True, it rescales the default J-factor from the info_dict dictionary with the new normalization (even if the normalisation is the same: it can handle this case),
-            in case it is False, it checks if there is an already computed J-factor in the
-            cached_j dictionary, otherwise it recomputes it for the profile specified.
+        ''' Get the J-factor for the roi specified.
+            First, it checks whether the profile has already a J-factor computed, in case, it directly returns that one.
+            Second, it checks if the new profile and the default profile are equal excepts for the normalization (it also keep into account r_sun).
+            in case it is True and the default J-factor is cached, it rescales the latter according to the new normalization,
+            in case it is False, it computes the new J-factor and caches it for the profile specified.
+            In case the new profile is equal but normalisation to the default profile, but the default J-factor is not cached, it first
+            computes and cache the default J-factor.
         '''
         default_profile, cached_j = self.info_dict[roi][:2]
-        if profile.eq_but_norm(default_profile):
-            return np.power(profile.rho_s/default_profile.rho_s, 2) * cached_j[default_profile]
-        elif profile in cached_j: # search in the cached_j dict
+        if profile in cached_j: # search in the cached_j dict
             return cached_j[profile]
-        else: # compute and add to cache
-            self.info_dict[roi][1][profile] = self.J(
-                                            ang_1    = self.mask_ang,
-                                            ang_2    = roi * np.pi/180., # radians
-                                            ang_lat  = self.mask_lat,
-                                            ang_long = self.mask_long,
-                                            profile  = profile)
-            return self.info_dict[roi][1][profile]
+        if profile.eq_but_norm(default_profile):
+            if default_profile not in cached_j:
+                # compute the default J-factor
+                self.info_dict[roi][1][default_profile] = self.J(
+                                        ang_1    = self.mask_ang,
+                                        ang_2    = roi * np.pi/180., # radians
+                                        ang_lat  = self.mask_lat,
+                                        ang_long = self.mask_long,
+                                        profile  = default_profile)
+                cached_j = self.info_dict[roi][1]
+            return np.power(profile.rho_s/default_profile.rho_s, 2) * cached_j[default_profile]
+        # otherwise compute and add to cache
+        self.info_dict[roi][1][profile] = self.J(
+                                        ang_1    = self.mask_ang,
+                                        ang_2    = roi * np.pi/180., # radians
+                                        ang_lat  = self.mask_lat,
+                                        ang_long = self.mask_long,
+                                        profile  = profile)
+        return self.info_dict[roi][1][profile]
 
     def flux(self, mdm, sigmav, jfact, is_aa):
         ''' returns the integrated flux for the process dm dm > a X. If X != a, then takes half of the flux. '''
@@ -926,7 +928,7 @@ class GammaLineExperiment(object):
     def get_sigmav_ul(self, e_peak, roi, profile, id_constraints, is_aa):
         ''' Returns the upper limit on flux for a given ROI (expressed in degrees).
             The limits are taken from the ExpConstraint class, the interpolation function is evaluated at the energy of the peak.
-            Warnings are raised only if the profile is compatible with default one for the ROI and if there are problems in ID_max.
+            It returns -1 if the profile is not compatible with default one for the ROI and if there are problems in ID_max.
         '''
         default_profile, _, ul_label = self.info_dict[roi][:3]
         if profile.eq_but_norm(default_profile):
@@ -937,71 +939,54 @@ class GammaLineExperiment(object):
         else:
             return -1
 
-## Fermi-LAT 2015
-log_masses = [-0.939, -0.818, -0.69, -0.562, -0.438, -0.313, -0.188, -0.0638, 0.0608, 0.188, 0.313, 0.438, 0.562, 0.687, 0.812, 0.936, 1.06, 1.19, 1.31, 1.44, 1.56, 1.69, 1.81, 1.94, 2.06, 2.19, 2.31, 2.44, 2.56, 2.69]
-e_resolution = [0.14, 0.122, 0.109, 0.0929, 0.0852, 0.0748, 0.0686, 0.0629, 0.059, 0.0581, 0.0543, 0.0505, 0.0457, 0.0424, 0.04, 0.0381, 0.0371, 0.0352, 0.0343, 0.0333, 0.0324, 0.0319, 0.0319, 0.0324, 0.0324, 0.0329, 0.0338, 0.0348, 0.0348, 0.0343]
-if HAS_SCIPY: # so that it does nothing in case scipy is missing: later the program would not use this function
-    resolution_interp_func = interp1d(log_masses, e_resolution, kind = 'linear')
-    def energy_resolution_fermi_line_2015(m):
-        if np.log10(m) <= -0.939:
-            return resolution_interp_func(-0.939)
-        elif np.log10(m) >= 2.69:
-            return resolution_interp_func(2.69)
-        else:
-            return resolution_interp_func(np.log10(m))
-else:
-    def energy_resolution_fermi_line_2015(m):
-        return -1.
+class GammaLineExperimentsList(object):
+    ''' Handle the GammaLineExperiments lists: automatically excludes the hidden experiments when iterating.
+        Contains also a list with the ROI to analyse during this run.
+    '''
+    def __init__(self):
+        self._experiments = []
+        self._rois_to_analyse = []
 
-GAMMA_LINE_EXPERIMENTS = [
-GammaLineExperiment(
-        name                  = "Fermi-LAT_2015",
-        mask_lat              = 5., # deg
-        mask_long             = 6., # deg
-        mask_ang              = 0., # deg
-        energy_resolution     = energy_resolution_fermi_line_2015,
-        detection_range       = [0.214, 462.],
-        info_dict             = { # the key is the angle of the ROI (in degrees)
-                        3.  : [PROFILES.NFW(r_s = 20.0, gamma = 1.3, normalization = "fermi_2015"),
-                               {PROFILES.NFW(r_s = 20.0, gamma = 1.3, normalization = "fermi_2015") : 1.497e+23}, # GeV^2 cm^{-5}
-                               "(22)(22)_fermi2015R3",
-                               np.loadtxt(pjoin(MDMDIR, 'Fermi_line_likelihoods', 'R3_gamma_lines_ULflux_like.dat'), unpack = True)],
-                        16. : [PROFILES.Einasto(r_s = 20.0, alpha = 0.17, normalization = "fermi_2015"),
-                               {PROFILES.Einasto(r_s = 20.0, alpha = 0.17, normalization = "fermi_2015") : 9.39e+22}, # GeV^2 cm^{-5}
-                               "(22)(22)_fermi2015R16",
-                               np.loadtxt(pjoin(MDMDIR, 'Fermi_line_likelihoods', 'R16_gamma_lines_ULflux_like.dat'), unpack = True)],
-                        41. : [PROFILES.NFW(r_s = 20.0, gamma = 1.0, normalization = "fermi_2015"),
-                               {PROFILES.NFW(r_s = 20.0, gamma = 1.0, normalization = "fermi_2015") : 9.16e+22}, # GeV^2 cm^{-5}
-                               "(22)(22)_fermi2015R41",
-                               None],
-                        90. : [PROFILES.Isothermal(r_s = 5.0, normalization = "fermi_2015"),
-                               {PROFILES.Isothermal(r_s = 5.0, normalization = "fermi_2015") : 6.94e+22}, # GeV^2 cm^{-5}
-                               "(22)(22)_fermi2015R90",
-                               None]
-                        },
-        check_profile_message = lambda is_optimized, roi: {True: "", False: "ROI %d is not optimized for this profile!" % roi}.get(is_optimized),
-        min_energy_separation = lambda fwhm: 5*fwhm,
-        peak_height_factor    = 10.,
-        arxiv_number          = "1506.00013"
-    ),
-GammaLineExperiment(
-        name                  = "HESS_2018",
-        mask_lat              = 0.3, # deg
-        mask_long             = 0., # deg
-        mask_ang              = 0., # deg
-        energy_resolution     = lambda m: 0.1,
-        detection_range       = [306.9, 63850.],
-        info_dict             = { # the key is the angle of the ROI (in degrees)
-                        1. : [PROFILES.Einasto(r_s = 20.0, alpha = 0.17, normalization = "hess_2018"),
-                              {PROFILES.Einasto(r_s = 20.0, alpha = 0.17, normalization = "hess_2018") : 4.66e21}, # GeV^2 cm^{-5}
-                              "(22)(22)_hess2018R1"]
-                        },
-        min_energy_separation = lambda fwhm: 5*fwhm,
-        peak_height_factor    = 10.,
-        check_profile_message = lambda is_optimized, roi: {True: "", False: "The chosen profile is not the default for this ROI"}.get(is_optimized),
-        arxiv_number          = "1805.05741"
-    )
-]
+    def append(self, experiment, roi_to_analyse):
+        if not isinstance(experiment, GammaLineExperiment):
+            raise ValueError("Only objects of type GammaLineExperiment can be appended to GammaLineExperimentsList.")
+        self._experiments.append(experiment)
+        self._rois_to_analyse.append(roi_to_analyse)
+
+    def discard_hidden(self):
+        return [exp for exp in self._experiments if not exp.hidden]
+
+    def __iter__(self):
+        return iter(self.discard_hidden())
+
+    def iternames(self):
+        return iter([exp.get_name() for exp in self])
+
+    def iterrois(self):
+        return iter([roi for roi, exp in zip(self._rois_to_analyse, self._experiments) if not exp.hidden])
+
+    def __str__(self):
+        return '[' + ', '.join([str(exp) for exp in self]) + ']'
+
+    def __getitem__(self, index):
+        return self.discard_hidden()[index]
+
+    def __len__(self):
+        return len(self.discard_hidden())
+
+    def __copy__(self):
+        cls_ = self.__class__
+        newobj = cls_.__new__(cls_)
+        newobj.__dict__.update(self.__dict__)
+        return newobj
+
+    def __deepcopy__(self, memo):
+        cls_ = self.__class__
+        newobj = cls_.__new__(cls_)
+        memo[id(self)] = newobj
+        for k, v in self.__dict__.items():
+            setattr(newobj, k, deepcopy(v, memo))
+        return newobj
 
 class Fermi2015GammaLineLikelihood(object):
     ''' this class holds the functionality to compute the likelihood and the p-value for some ROI of the Fermi-LAT gamma-line 2015 analysis (arXiv: 1506.00013) 
@@ -1170,7 +1155,7 @@ class GammaLineSpectrum(object):
             return newobj
     #######################################################
 
-    def __init__(self, line_exp, pdg_particle_map, param_card):
+    def __init__(self, line_exp, pdg_particle_map, param_card, n_fwhm_separation, peak_height_factor):
         self.pdg_particle_map = pdg_particle_map
         self.param_card       = param_card
         self.mass_dict        = {}
@@ -1179,8 +1164,10 @@ class GammaLineSpectrum(object):
                 self.mass_dict["%s" % p] = param_card.get_value("mass", abs(int(p)))
             except KeyError:
                 continue
-        self.line_exp         = line_exp
-        self.spectrum         = []
+        self.line_exp           = line_exp
+        self.spectrum           = []
+        self.n_fwhm_separation  = n_fwhm_separation
+        self.peak_height_factor = peak_height_factor
 
     def __iter__(self):
         return iter(self.spectrum)
@@ -1315,10 +1302,10 @@ class GammaLineSpectrum(object):
         # check for incompatible errors (peaks with those errors should not be tested)
         if any(code in peak.error for code in ['1']):
             return False
-        min_separation = self.line_exp.min_energy_separation(peak.fwhm)
+        min_separation = self.n_fwhm_separation * peak.fwhm
         test_spectrum  = np.array([p for p in self if p != peak])
         # find neighbourhood of the peak
-        get_e_peak     = lambda peak: peak.e_peak
+        get_e_peak     = lambda a_peak: a_peak.e_peak
         energy_peaks   = np.array(map(get_e_peak, test_spectrum))
         condition      = np.logical_and(energy_peaks < peak.e_peak + min_separation, energy_peaks > peak.e_peak - min_separation)
         neighbourhood  = test_spectrum[condition]
@@ -1326,13 +1313,15 @@ class GammaLineSpectrum(object):
         if len(neighbourhood) == 0:
             return False # no peaks too close
         # check the ratio flux/flux_UL of the peak with respect each other peak in the neighbourhood
-        get_height = lambda peak: peak.flux/peak.flux_UL
+        get_height = lambda a_peak: a_peak.flux/a_peak.flux_UL
         height_peaks = np.array(map(get_height, neighbourhood))
-        if any(height_peaks == 0): # happens if one peak has flux_UL == __infty__ (it is out of range), in this case can't do comparison, so assume they are too close
+        # height_peaks elements are of the order of 1e-10 -- 1e-30, so they can be considered zero if less than 1e-200 let's say
+        if any(height_peaks < 1e-200): # happens if one peak has flux_UL == __infty__ (it is out of range), in this case can't do comparison, so assume they are too close
             logger.warning("One peak has upper limit equal to __infty__, I can't compare its height with others, I assume they can't be neglected.")
             return True # because that means peaks are too close to each other, but none of them is clearly higher
         this_peak_height = peak.flux/peak.flux_UL
-        if all(height_peaks < this_peak_height/self.line_exp.peak_height_factor):
+        # what we do is to compare the ratios between the flux and the upper limit on the flux
+        if all(height_peaks < this_peak_height/self.peak_height_factor):
             return False # in case the peak is clearly higher than the others, then no error because it can be considered separated!
         return True
 
@@ -1507,13 +1496,13 @@ class MADDMRunCmd(cmd.CmdShell):
         self.pdg_particle_map = PDGParticleMap(self.proc_characteristics['pdg_particle_map'].items())
 
         self.limits = ExpConstraints()
-        self.vave_indirect_cont_range = (3*10**(-6), 1.4*10**(-4))
-        self.vave_indirect_line_range = (200/299792.458, 250/299792.458)
+        self.vave_indirect_cont_range = (3e-6, 1.4e-4)
+        self.vave_indirect_line_range = (5e-4, 1e-3) # about 180--300 km/s
         self.options = options
 
         self.Spectra = Spectra()
         self.Fermi   = Fermi_bounds()
-        self.line_experiments = GAMMA_LINE_EXPERIMENTS
+        self.line_experiments = GammaLineExperimentsList()
         self.MadDM_version = '3.1'
 
         self.processes_names_map = self.proc_characteristics['processes_names_map']
@@ -2023,11 +2012,11 @@ class MADDMRunCmd(cmd.CmdShell):
                         if self.maddm_card['sigmav_method'] == 'madevent':
                             if os.path.exists(pjoin(self.dir_path,indirect_directory,'Cards','reweight_card.dat')):
                                 os.remove(pjoin(self.dir_path,indirect_directory,'Cards','reweight_card.dat'))
-                            self.me_cmd.do_launch('%s -f' % self.run_name)
-                            # self.me_cmd.Presults = {}
-                            # self.me_cmd.Presults['xsec/something_chichi_aa'] = 10.3
-                            # self.me_cmd.Presults['xsec/something_chichi_ah'] = 4.6
-                            # self.me_cmd.Presults['xsec/something_chichi_az'] = 9.1
+                            # self.me_cmd.do_launch('%s -f' % self.run_name)
+                            self.me_cmd.Presults = {}
+                            self.me_cmd.Presults['xsec/something_chichi_aa'] = 10.3
+                            self.me_cmd.Presults['xsec/something_chichi_ah'] = 4.6
+                            self.me_cmd.Presults['xsec/something_chichi_az'] = 9.1
 
                         elif self.maddm_card['sigmav_method'] == 'reshuffling':
                             cmd = ['launch %s' % self.run_name,
@@ -2176,20 +2165,122 @@ class MADDMRunCmd(cmd.CmdShell):
         if self.maddm_card['roi_fermi_2015'] == 'default':
             roi_fermi_2015 = fermilat_2015_rois_default[self.maddm_card['profile']]
         else:
-            roi_fermi_2015 = int(re.findall(r'(?<=\br)\d+\b', self.maddm_card['roi_fermi_2015'])[0])
-        for line_exp, roi in zip(self.line_experiments, [roi_fermi_2015, 1.]):
-            self.last_results["line_%s_roi" % line_exp.get_name()] = roi
+            roi_fermi_2015 = int(self.maddm_card['roi_fermi_2015'].strip('rR'))
+
+        ### Fill list with GammaLineExperiment
+        if not self.in_scan_mode:
+            r_sun = self.maddm_card['r_sun']
+            rho_sun = self.maddm_card['rho_sun']
+            ### Fermi-LAT 2015
+            log_masses = [-0.939, -0.818, -0.69, -0.562, -0.438, -0.313, -0.188, -0.0638, 0.0608, 0.188, 0.313, 0.438, 0.562, 0.687, 0.812, 0.936, 1.06, 1.19, 1.31, 1.44, 1.56, 1.69, 1.81, 1.94, 2.06, 2.19, 2.31, 2.44, 2.56, 2.69]
+            e_resolution = [0.14, 0.122, 0.109, 0.0929, 0.0852, 0.0748, 0.0686, 0.0629, 0.059, 0.0581, 0.0543, 0.0505, 0.0457, 0.0424, 0.04, 0.0381, 0.0371, 0.0352, 0.0343, 0.0333, 0.0324, 0.0319, 0.0319, 0.0324, 0.0324, 0.0329, 0.0338, 0.0348, 0.0348, 0.0343]
+            if HAS_SCIPY: # so that it does nothing in case scipy is missing: later the program would not use this function
+                resolution_interp_func = interp1d(log_masses, e_resolution, kind = 'linear')
+                def energy_resolution_fermi_line_2015(m):
+                    if np.log10(m) <= -0.939:
+                        return resolution_interp_func(-0.939)
+                    elif np.log10(m) >= 2.69:
+                        return resolution_interp_func(2.69)
+                    else:
+                        return resolution_interp_func(np.log10(m))
+            else:
+                def energy_resolution_fermi_line_2015(m):
+                    return -1.
+
+            self.line_experiments.append(
+                experiment = GammaLineExperiment(
+                    name                  = "Fermi-LAT_2015",
+                    mask_lat              = 5., # deg
+                    mask_long             = 6., # deg
+                    mask_ang              = 0., # deg
+                    energy_resolution     = energy_resolution_fermi_line_2015,
+                    detection_range       = [0.214, 462.],
+                    info_dict             = { # the key is the angle of the ROI (in degrees)
+                        3.  : [PROFILES.NFW(r_s = 20.0, gamma = 1.3, rho_sun = rho_sun, r_sun = r_sun),
+                            {PROFILES.NFW(r_s = 20.0, gamma = 1.3, rho_sun = rho_sun, r_sun = r_sun) : 1.497e+23}, # GeV^2 cm^{-5}
+                            "(22)(22)_fermi2015R3",
+                            np.loadtxt(pjoin(MDMDIR, 'Fermi_line_likelihoods', 'R3_gamma_lines_ULflux_like.dat'), unpack = True)],
+                        16. : [PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = rho_sun, r_sun = r_sun),
+                            {PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = rho_sun, r_sun = r_sun) : 9.39e+22}, # GeV^2 cm^{-5}
+                            "(22)(22)_fermi2015R16",
+                            np.loadtxt(pjoin(MDMDIR, 'Fermi_line_likelihoods', 'R16_gamma_lines_ULflux_like.dat'), unpack = True)],
+                        41. : [PROFILES.NFW(r_s = 20.0, gamma = 1.0, rho_sun = rho_sun, r_sun = r_sun),
+                            {PROFILES.NFW(r_s = 20.0, gamma = 1.0, rho_sun = rho_sun, r_sun = r_sun) : 9.16e+22}, # GeV^2 cm^{-5}
+                            "(22)(22)_fermi2015R41",
+                            None],
+                        90. : [PROFILES.Isothermal(r_s = 5.0, rho_sun = rho_sun, r_sun = r_sun),
+                            {PROFILES.Isothermal(r_s = 5.0, rho_sun = rho_sun, r_sun = r_sun) : 6.94e+22}, # GeV^2 cm^{-5}
+                            "(22)(22)_fermi2015R90",
+                            None]
+                    },
+                    check_profile_message = lambda is_optimized, roi: {True: "", False: "ROI %d is not optimized for this profile!" % roi}.get(is_optimized),
+                    arxiv_number          = "1506.00013",
+                    hidden                = (self.maddm_card['toggle_fermi_2015'] == 'off')
+                ),
+                roi_to_analyse = roi_fermi_2015
+            )
+            ### HESS 2018
+            self.line_experiments.append(
+                experiment = GammaLineExperiment(
+                    name                  = "HESS_2018",
+                    mask_lat              = 0.3, # deg
+                    mask_long             = 0., # deg
+                    mask_ang              = 0., # deg
+                    energy_resolution     = lambda m: 0.1,
+                    detection_range       = [306.9, 63850.],
+                    info_dict             = { # the key is the angle of the ROI (in degrees)
+                        1. : [PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = rho_sun, r_sun = r_sun),
+                            {PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = rho_sun, r_sun = r_sun) : 4.66e21}, # GeV^2 cm^{-5}
+                            "(22)(22)_hess2018R1"]
+                    },
+                    check_profile_message = lambda is_optimized, roi: {True: "", False: "The chosen profile is not the default for this ROI"}.get(is_optimized),
+                    arxiv_number          = "1805.05741",
+                    hidden                = (self.maddm_card['toggle_hess_2018'] == 'off')
+                ),
+                roi_to_analyse = 1.
+            )
+            ### TEMPLATE EXPERIMENT
+            template_roi = self.maddm_card["template_line_experiment_roi"]
+            template_profile = profiles[self.maddm_card['template_line_experiment_profile']](
+                r_s     = self.maddm_card['template_line_experiment_r_s'],
+                gamma   = self.maddm_card['template_line_experiment_gamma'],
+                alpha   = self.maddm_card['template_line_experiment_alpha'],
+                rho_sun = rho_sun,
+                r_sun   = r_sun
+            )
+            self.line_experiments.append(
+                experiment = GammaLineExperiment(
+                    name                  = self.maddm_card["template_line_experiment_name"],
+                    mask_lat              = self.maddm_card["template_line_experiment_mask_latitude"], # deg
+                    mask_long             = self.maddm_card["template_line_experiment_mask_longitude"], # deg
+                    mask_ang              = self.maddm_card["template_line_experiment_mask_inner_angle"], # deg
+                    energy_resolution     = lambda m: self.maddm_card["template_line_experiment_energy_resolution"],
+                    detection_range       = [self.maddm_card["template_line_experiment_detection_range_min"], self.maddm_card["template_line_experiment_detection_range_max"]],
+                    info_dict             = { # the key is the angle of the ROI (in degrees)
+                        template_roi : [template_profile,
+                            {}, # GeV^2 cm^{-5}
+                            "(22)(22)_template"]
+                    },
+                    check_profile_message = lambda is_optimized, roi: {True: "", False: "The chosen profile is not the default for this ROI"}.get(is_optimized),
+                    arxiv_number          = self.maddm_card["template_line_experiment_arxiv"],
+                    hidden                = (self.maddm_card['toggle_template_line_experiment'] == 'off')
+                ),
+                roi_to_analyse = template_roi
+            )
+            if (self.maddm_card['template_line_experiment_constraints_file'] != 'None') and (self.maddm_card['toggle_template_line_experiment'] != 'off'):
+                self.limits._id_limit_file['(22)(22)_template'] = pjoin(MDMDIR, 'ExpData', self.maddm_card['template_line_experiment_constraints_file'])
+                self.limits._id_limit_file_flux['(22)(22)_template'] = pjoin(MDMDIR, 'ExpData', self.maddm_card['template_line_experiment_constraints_file'])
+                self.limits._id_limit_vel['(22)(22)_template'] = self.vave_indirect_line_range[-1]
+                logger.info("Reload constraints to include new gamma ray line experiment...")
+                self.limits.load_constraints()
+              
         # find profile
-        if self.maddm_card['predefined_normalization'] == 'none':
-            normalization = (self.maddm_card['rho_s_or_sun'], self.maddm_card['r_sun'])
-        else:
-            normalization = self.maddm_card['predefined_normalization']
         density_profile = profiles[self.maddm_card['profile']](
-            r_s           = self.maddm_card['r_s'],
-            gamma         = self.maddm_card['gamma'],
-            alpha         = self.maddm_card['alpha'],
-            normalization = normalization,
-            use_rho_sun   = self.maddm_card['use_rho_sun']
+            r_s     = self.maddm_card['r_s'],
+            gamma   = self.maddm_card['gamma'],
+            alpha   = self.maddm_card['alpha'],
+            rho_sun = self.maddm_card["rho_sun"],
+            r_sun   = self.maddm_card['r_sun']
         )
         # fill last_results with the profile parameters
         self.last_results["density_profile"] = density_profile
@@ -2205,15 +2296,22 @@ class MADDMRunCmd(cmd.CmdShell):
         #         str_part = "line_%s_" % line_exp.get_name()    
         #         self.last_results[str_part + "Jfactor"] = -1
         #     return 0   
-        logger.info("Calculating line limits from " + ', '.join([line_exp.get_name().replace('_', ' ') for line_exp in self.line_experiments]))
+        logger.info("Calculating line limits from " + ', '.join([name.replace('_', ' ') for name in self.line_experiments.iternames()]))
         # <sigma v> of the various final states
         sigmavs = {k.split("_")[-1]: v for k, v in self.last_results.iteritems() if k.startswith('taacsID#') and self.is_spectral_finalstate(k.split("_")[-1])}
         # dict for <sigma v> ul
         sigmav_ul = {k: [-1 for line_exp in self.line_experiments] for k in self.last_results.iterkeys() if "lim_taacsID#" in k and self.is_spectral_finalstate(k.split('_')[-1])} # if there is at least one '(22)' then we treat it as a spectral final state
         initial_states = sigmav_ul.keys()[0].replace("lim_taacsID#", '').split('_')[0] # extract the initial particles, it is ok only for one DM candidate
         # compute the main results
-        for num_exp, line_exp in enumerate(self.line_experiments):
-            gamma_line_spectrum = GammaLineSpectrum(line_exp, self.pdg_particle_map, self.param_card)
+        for num_exp, (line_exp, line_exp_roi) in enumerate(zip(self.line_experiments, self.line_experiments.iterrois())):
+            gamma_line_spectrum = GammaLineSpectrum(
+                line_exp = line_exp, 
+                pdg_particle_map = self.pdg_particle_map, 
+                param_card = self.param_card, 
+                n_fwhm_separation = self.maddm_card['n_fwhm_separation'], 
+                peak_height_factor = self.maddm_card['peak_height_factor']
+            )
+            self.last_results["line_%s_roi" % line_exp.get_name()] = line_exp_roi
             str_part = "line_%s_" % line_exp.get_name()
             # likelihood object
             if line_exp.get_name() == "Fermi-LAT_2015":
@@ -2232,8 +2330,8 @@ class MADDMRunCmd(cmd.CmdShell):
                     self.last_results[str_part + "like_%d"        % (i+1)] = -1
                     self.last_results[str_part + "pvalue_%d"      % (i+1)] = -1
             # fill last_results dict with the new values
-            self.last_results[str_part + "Jfactor"    ] = line_exp.get_J(roi = self.last_results[str_part + 'roi'], profile = density_profile)
-            self.last_results[str_part + "roi_warning"] = line_exp.check_profile(roi = self.last_results[str_part + 'roi'], profile = density_profile)[1]          
+            self.last_results[str_part + "Jfactor"    ] = line_exp.get_J(roi = line_exp_roi, profile = density_profile)
+            self.last_results[str_part + "roi_warning"] = line_exp.check_profile(roi = line_exp_roi, profile = density_profile)[1]          
             gamma_line_spectrum.find_lines(mdm, sigmavs, self.last_results[str_part + "Jfactor"])
             original_gamma_spectrum = deepcopy(gamma_line_spectrum)
             gamma_line_spectrum.merge_lines()
@@ -2243,7 +2341,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 self.last_results[str_part + "peak_%d"        % (i+1)] = peak.e_peak
                 self.last_results[str_part + "peak_%d_states" % (i+1)] = self.pdg_particle_map.format_particles(peak.label)
                 # flux upper limits
-                peak.flux_UL = line_exp.get_flux_ul(e_peak = peak.e_peak, roi = self.last_results[str_part + 'roi'], id_constraints = self.limits)
+                peak.flux_UL = line_exp.get_flux_ul(e_peak = peak.e_peak, roi = line_exp_roi, id_constraints = self.limits)
                 self.last_results[str_part + "flux_%d"    % (i+1)] = peak.flux
                 self.last_results[str_part + "flux_UL_%d" % (i+1)] = peak.flux_UL
             # first: merging algorithm
@@ -2257,15 +2355,15 @@ class MADDMRunCmd(cmd.CmdShell):
                 #     self.last_results[str_part + "flux_UL_%d" % (i+1)] = -1
                 if exp_likelihood: # compute likelihoods only if there are no errors and if exists
                     try:
-                        self.last_results[str_part + "like_%d"   % (i+1)] = exp_likelihood.loglike(peak, self.last_results[str_part + 'roi'], density_profile)
-                        self.last_results[str_part + "pvalue_%d" % (i+1)] = exp_likelihood.compute_pvalue(peak, self.last_results[str_part + 'roi'], density_profile)
+                        self.last_results[str_part + "like_%d"   % (i+1)] = exp_likelihood.loglike(peak, line_exp_roi, density_profile)
+                        self.last_results[str_part + "pvalue_%d" % (i+1)] = exp_likelihood.compute_pvalue(peak, line_exp_roi, density_profile)
                     except IOError as err:
                         logger.warning(err.args[0])
                         continue
             # compute <sigma v> ul to display only if the profile chosen is equal to the default one for the ROIs
             # fill a list with the limits from each experiment and then take the minimum
             for original_peak in original_gamma_spectrum: # fill value only for peaks which have been detected (are in the detection range), otherwise keep -1
-                sigmav_ul["lim_taacsID#" + initial_states + '_' + original_peak.label][num_exp] = line_exp.get_sigmav_ul(e_peak = original_peak.e_peak, roi = self.last_results[str_part + 'roi'], profile = density_profile, id_constraints = self.limits, is_aa = original_peak.label == '(22)(22)')
+                sigmav_ul["lim_taacsID#" + initial_states + '_' + original_peak.label][num_exp] = line_exp.get_sigmav_ul(e_peak = original_peak.e_peak, roi = line_exp_roi, profile = density_profile, id_constraints = self.limits, is_aa = original_peak.label == '(22)(22)')
         # get the <sigma v> ul: drop the -1 and get the minimum, in case everything is -1 then the list is empty, so return -1
         logger.debug(sigmav_ul)
         for k, v in sigmav_ul.items():
@@ -2936,7 +3034,7 @@ class MADDMRunCmd(cmd.CmdShell):
             logger.info('====== line spectrum final states')
             halo_vel = self.maddm_card['vave_indirect_line']
             logger.info('DM particle halo velocity: %s/c ' % halo_vel)
-            logger.info('Print <sigma v> with %s line limits' % ', '.join([exp.get_name().replace('_', ' ') for exp in self.line_experiments]))
+            logger.info('Print <sigma v> with %s line limits' % ', '.join([name.replace('_', ' ') for name in self.line_experiments.iternames()]))
 
             # if halo_vel > self.vave_indirect_line_range[0] and halo_vel < self.vave_indirect_line_range[1]:
             print_sigmav_with_limits(detailled_keys, filter_ = lambda process: self.is_spectral_finalstate(process.split('_')[-1]), exp_label = 'Line GC', no_lim = False)
@@ -2944,7 +3042,7 @@ class MADDMRunCmd(cmd.CmdShell):
             if not (halo_vel > self.vave_indirect_line_range[0] and halo_vel < self.vave_indirect_line_range[1]):
                 logger.warning('DM halo velocity not compatible with GC, line limits application is this case is not guaranteed.')
             logger.info('')
-            logger.info('*** Line limits from ' + ', '.join([line_exp.get_name().replace('_', ' ') for line_exp in self.line_experiments]))
+            logger.info('*** Line limits from ' + ', '.join([name.replace('_', ' ') for name in self.line_experiments.iternames()]))
             self.print_line_results(xsi2)
 
             # else:
@@ -3334,7 +3432,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 print_sigmav(cont_procs, out)
             line_procs = collect_processes(detailled_keys, filter_ = lambda process: self.is_spectral_finalstate(process.split('_')[-1]))
             if line_procs:
-                out.write('\n# <sigma v>[cm^3 s^-1] of line spectrum final states and %s line limits (if available, else -1)]' % ', '.join([exp.get_name().replace('_', ' ') for exp in self.line_experiments]) + '\n')
+                out.write('\n# <sigma v>[cm^3 s^-1] of line spectrum final states and %s line limits (if available, else -1)]' % ', '.join([name.replace('_', ' ') for name in self.line_experiments.iternames()]) + '\n')
                 print_sigmav(line_procs, out)
 
             if indirect:
@@ -3663,7 +3761,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
     to_control= [('relic', 'Compute the Relic Density'),
                       ('direct', 'Compute direct(ional) detection'),
                       ('indirect', 'Compute indirect detection/flux (cont spectrum)'),
-                      ('spectral', 'Compute indirect detection in a X (line spectrum)'),
+                      ('spectral', 'Compute indirect detection in aX (line spectrum)'),
                       ('nestscan', 'Run Multinest scan'),
                 ]
     to_init_card = ['param', 'maddm','pythia8']
@@ -4116,7 +4214,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         
         return '9 %s' % line
     
-    trigger_flux = trigger_8
+    # trigger_flux = trigger_8
     
     def do_compute_widths(self, line):
         """normal fct but ensure that self.maddm_card is up-to-date"""
@@ -4383,7 +4481,7 @@ When you are done with such edition, just press enter (or write 'done' or '0')
                 logger.info('The file you use for direct detection limits will be interpreted as:')
                 logger.info('Column 1 - dark matter mass in GeV')
                 logger.info('Column 2 - upper limit on direct detection cross section in pb')
-                self.limits._dd_si_limit_file = args[1]
+                self.limits._dd_limit_file['si'] = args[1]
                 self.limits.load_constraints()
 
         elif args[0] == 'dd_sd_limits':
@@ -4405,9 +4503,9 @@ When you are done with such edition, just press enter (or write 'done' or '0')
                 logger.info('Column 1 - dark matter mass in GeV')
                 logger.info('Column 2 - upper limit on direct detection cross section in pb')
                 if args[1] == 'p':
-                    self.limits._dd_sd_proton_limit_file = args[2]
+                    self.limits._dd_limit_file['sd_proton'] = args[2]
                 elif args[2] == 'n':
-                    self.limits._dd_sd_neutron_limit_file = args[2]
+                    self.limits._dd_limit_file['sd_neutron'] = args[2]
                 else:
                     logger.error('set dd_sd_limits needs to be formatted as:')
                     logger.error('set dd_sd_limits <p or n> <observed val> <uncertainty>, or')
@@ -4649,7 +4747,7 @@ class MadDMCard(banner_mod.RunCard):
         # velocities for indirect detection
         self.add_param('vave_indirect_cont', 0.00002, include=True, fortran_name='vave_indirect')
         self.add_param('vave_indirect', -1.0, include=False, hidden=True)
-        self.add_param('vave_indirect_line', 7.5e-4, hidden = False, include = True)
+        self.add_param('vave_indirect_line', 0.00075, hidden = False, include = True)
 
         #indirect detection
         self.add_param('halo_profile', 'Draco', include=True, legacy=True)   ##### this naming doesn't make sense fix it!!!!!!!!
@@ -4682,7 +4780,7 @@ class MadDMCard(banner_mod.RunCard):
                            hidden = True , allowed = ['MF1','MF2','MF3'])
 
         # line analysis parameters
-        self.add_param('profile', 'nfw', comment='choose the halo density profile: nfwg, einasto, nfw, isothermal, burkert', include = False, \
+        self.add_param('profile', 'einasto', comment='halo density profile for gamma-line searches, choose between nfwg, einasto, nfw, isothermal, burkert', include = False, \
                            hidden = False, allowed = ['nfwg', 'einasto', 'nfw', 'isothermal', 'burkert'])
         self.add_param('r_s', 20.0, comment='scale radius (in kpc)', include = False, \
                            hidden = False)
@@ -4690,16 +4788,51 @@ class MadDMCard(banner_mod.RunCard):
                            hidden = False)
         self.add_param('alpha', 0.17, comment='alpha parameter, relevant for einasto profile', include = False, \
                            hidden = False)
-        self.add_param('predefined_normalization', 'none', comment='choose a predefined normalization between fermi_2015, hess_2018 for the density profile or set none', include = False, \
-                           hidden = False, allowed = ['none', 'fermi_2015', 'hess_2018'])
-        self.add_param('r_sun', 8.5, comment='distance of the galactic center from the Sun -- relevant if predefined_normalization == \'none\'', include = False, \
-                           hidden = False)
-        self.add_param('rho_s_or_sun', 0.4, comment='rho_s: density profile normalization (if use_rho_sun == False) OR rho_sun: dark matter density at the position of the Sun (if use_rho_sun == True) -- relevant if predefined_normalization == none', include = False, \
-                           hidden = False)
-        self.add_param('use_rho_sun', True, comment='set to True: rho_s_or_sun = rho_sun; set to False: rho_s_or_sun = rho_s -- relevant if predefined_normalization == none', include = False, \
-                           hidden = False)
-        self.add_param('roi_fermi_2015', 'default', comment='choose the ROI relevant for the Fermi-LAT 2015 results, set default to pick the ROI optimized for the chosen profile', include = False, \
+        self.add_param('r_sun', 8.5, comment='distance of the galactic center from the Sun', include = False, \
+                           hidden = True)
+        self.add_param('rho_sun', 0.4, comment='dark matter density at the position of the Sun', include = False, \
+                           hidden = True)
+        self.add_param('roi_fermi_2015', 'default', comment='ROI relevant for the Fermi-LAT 2015 results, set default to pick the ROI optimized for the chosen profile', include = False, \
                            hidden = False, allowed = ['default', 'r3', 'r16', 'r41', 'r90'])
+        self.add_param('n_fwhm_separation', 5., comment='number of FWHM to take as the minimum energy separation between peaks to consider them well separated', include = False, \
+                           hidden = True)
+        self.add_param('peak_height_factor', 10., comment="minimum ratio between peaks' heights to have one of them significantly higher than the other", include = False, \
+                           hidden = True)
+        self.add_param('toggle_fermi_2015', 'on', comment="toggle experiment Fermi-LAT 2015 related to gamma-line searches (arxiv: 1506.00013)", include = False, \
+                           hidden = True, allowed = ['on', 'off'])
+        self.add_param('toggle_hess_2018', 'on', comment="toggle experiment HESS 2018 related to gamma-line searches (arxiv: 1805.05741)", include = False, \
+                           hidden = True, allowed = ['on', 'off'])
+        # template experiment
+        self.add_param('toggle_template_line_experiment', 'off', comment="toggle experiment HESS 2018 related to gamma-line searches (arxiv: 1805.05741)", include = False, \
+                           hidden = True, allowed = ['on', 'off'])
+        self.add_param('template_line_experiment_name', 'TEMPLATE_name', comment="name of the template experiment for gamma-line searches", include = False, \
+                           hidden = True)
+        self.add_param('template_line_experiment_arxiv', 'TEMPLATE_arxiv', comment="arxiv number of the template experiment gamma-line searches", include = False, \
+                           hidden = True)
+        self.add_param('template_line_experiment_roi', 1., comment="default ROI of the template experiment gamma-line searches", include = False, \
+                           hidden = True)
+        self.add_param('template_line_experiment_profile', 'einasto', comment='default halo density profile for the template experiment gamma-line searches, choose between nfwg, einasto, nfw, isothermal, burkert', include = False, \
+                           hidden = True, allowed = ['nfwg', 'einasto', 'nfw', 'isothermal', 'burkert'])
+        self.add_param('template_line_experiment_r_s', 20.0, comment='scale radius (in kpc) of the default profile related to the template line experiment gamma-line searches', include = False, \
+                           hidden = True)
+        self.add_param('template_line_experiment_gamma', 1.3, comment='gamma parameter, relevant for nfwg profile related to the template line experiment gamma-line searches', include = False, \
+                           hidden = True)
+        self.add_param('template_line_experiment_alpha', 0.17, comment='alpha parameter, relevant for einasto profile related to the template line experiment gamma-line searches', include = False, \
+                           hidden = True)
+        self.add_param('template_line_experiment_mask_latitude', 0., comment='angle lambda of the mask (in deg): observing the galactic centre from the position of the Sun, mask P, if abs(latitude(P)) < lambda/2 (refer to MadDM 3.2 documentation)', include = False, \
+                           hidden = True)
+        self.add_param('template_line_experiment_mask_longitude', 180., comment='angle beta of the mask (in deg): observing the galactic centre from the position of the Sun, mask P, if abs(longitude(P)) > beta/2 (refer to MadDM 3.2 documentation)', include = False, \
+                           hidden = True)
+        self.add_param('template_line_experiment_mask_inner_angle', 0., comment='angle alpha_1 of the mask (in deg): observing the galactic centre from the position of the Sun, mask P, if abs(arctan(P.y/P.x)) < alpha_1/2 (refer to MadDM 3.2 documentation)', include = False, \
+                           hidden = True)
+        self.add_param('template_line_experiment_energy_resolution', 10., comment='percent value to be multiplied by the energy of the peak to find the resolution at that energy', include = False, \
+                           hidden = True)
+        self.add_param('template_line_experiment_detection_range_min', 0., comment='detection range minimum (in GeV)', include = False, \
+                           hidden = True)
+        self.add_param('template_line_experiment_detection_range_max', 1.e+6, comment='detection range maximum (in GeV)', include = False, \
+                           hidden = True)
+        self.add_param('template_line_experiment_constraints_file', 'None', comment='file containing 3 columns [ DM mass (GeV), <sigmav> (cm^3 s^{-1}), flux (cm^{-2} s^{-1}) ] related to the constraints on gamma-line searches for the template experiment; comments must be prepended with \'#\'; this file must be placed in $MADDM_PATH/ExpData/', include = False, \
+                           hidden = True)
 
     def write(self, output_file, template=None, python_template=False,
               write_hidden=False):
