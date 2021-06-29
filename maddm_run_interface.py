@@ -731,7 +731,7 @@ class GammaLineExperiment(object):
     def __init__(self, name, energy_resolution, detection_range, info_dict, mask_lat = 0., mask_long = 0., mask_ang = 0., check_profile_message = lambda is_optimized, roi: {True: "", False: ""}.get(is_optimized), arxiv_number = None, hidden = False):
         # experiment name
         self.name = name
-        # latitude and longitude of the mask
+        # latitude and longitude of the mask: those are intended so as mask_latitude == +- self.mask_lat, so they are not the full amplitude, but only on one side! The other side is taken symmetrically.
         self.mask_lat = mask_lat * np.pi/180. # radians
         self.mask_long = mask_long * np.pi/180. # radians
         # circular mask
@@ -1040,8 +1040,8 @@ class Fermi2015GammaLineLikelihood(object):
         ''' compute the p-value assuming as null hypothesis the absence of signal (flux = 0), it assumes the chi-square distribution with one degree of freedom '''
         try:
             loglike_h1 = self.loglike(peak, roi, profile)
-            loglike_h0 = self.loglike(GammaLineSpectrum.Peak(label = peak.label + '_H0', e_peak = peak.e_peak, full_width_half_max = peak.fwhm, shape = lambda e: 0.), roi, profile)
-        except (ValueError, IOError, self.ProfileNotOptimized):
+            loglike_h0 = self.loglike(GammaLineSpectrum.Peak(label = peak.label + '_H0', e_peak = peak.e_peak, full_width_half_max = peak.fwhm, shape = lambda e: 0., flux = 0.), roi, profile)
+        except (ValueError, IOError):
             logger.warning("Error during likelihood computation, will not compute p-value.")
             return -1
         test = loglike_h1 - loglike_h0 # they have already -2 factor
@@ -1063,28 +1063,14 @@ class GammaLineSpectrum(object):
 
     class Peak(object):
         ''' class to handle gamma peaks in the spectrum '''
-        def __init__(self, label, e_peak, full_width_half_max, shape):
+        def __init__(self, label, e_peak, full_width_half_max, shape, flux):
             self.label   = label # the label associated to the peak i.e. the final state particles in pdg
             self.e_peak  = e_peak
             self.fwhm    = full_width_half_max
+            self.flux    = flux
+            self.flux_UL = __infty__
             self._shape  = shape
             self.error   = []
-
-        @property
-        def flux(self):
-            if not hasattr(self, '_flux'):
-                self._flux = self._shape(self.e_peak)
-            return self._flux
-
-        @property
-        def flux_UL(self):
-            if not hasattr(self, '_flux_UL'):
-                return __infty__
-            return self._flux_UL
-
-        @flux_UL.setter
-        def flux_UL(self, value):
-            self._flux_UL = value
 
         def set_error(self, code_error):
             self.error.append(code_error)
@@ -1112,7 +1098,13 @@ class GammaLineSpectrum(object):
             max_value  = - min_result.fun
             max_fwhm   = self.fwhm + other.fwhm # in order to be sure that f(a) and f(b) have different sign, use the sum of the fwhms to find b from a
             fwhm       = np.abs(bisect(lambda e: shape(e) - max_value/2., a = min_result.x, b = min_result.x - max_fwhm) - bisect(lambda e: shape(e) - max_value/2., a = min_result.x, b = min_result.x + max_fwhm))
-            return GammaLineSpectrum.Peak(label, e_peak, fwhm, shape)
+            return GammaLineSpectrum.Peak(
+                label               = label, 
+                e_peak              = e_peak, 
+                full_width_half_max = fwhm, 
+                shape               = shape,
+                flux                = self.flux + other.flux
+            )
 
         def __sub__(self, other):
             assert isinstance(other, GammaLineSpectrum.Peak)
@@ -1222,7 +1214,7 @@ class GammaLineSpectrum(object):
         ''' line spectrum with energy resolution (gaussian shape), the coeff depends on the final state (2 for aa, 1 for others).
             the normalization factor of the gaussian = 1, so that the shape computed at the e_peak is the flux.
         '''
-        return lambda energy: flux * np.exp(-0.5 * np.power((energy-e_peak)/self.sigma(full_width_half_max), 2))
+        return lambda energy: flux * np.exp(-0.5 * np.power((energy-e_peak)/self.sigma(full_width_half_max), 2)) / (np.sqrt(2 * np.pi) * self.sigma(full_width_half_max))
 
     def find_lines(self, mdm, computed_sigmav, jfact):
         ''' find lines peaks, FWHM and shape of the spectrum. Return a dictionary with key final_state and _peak, _FWHM, _shape '''
@@ -1249,7 +1241,8 @@ class GammaLineSpectrum(object):
                 label               = fs,
                 e_peak              = e_peak_fs,
                 full_width_half_max = fwhm_fs,
-                shape               = shape_fs
+                shape               = shape_fs,
+                flux                = flux
             ))
         logger.debug(self)
         return self
@@ -1274,7 +1267,7 @@ class GammaLineSpectrum(object):
         # the lines_to_merge list contains the labels of the lines to be merged.
         new_spectrum = [peaks_to_sum[0] + peaks_to_sum[1] for peaks_to_sum in lines_to_merge.values()]
         for peak in self.spectrum:
-            # update the final spectrum with the missing lines which have not been meerged
+            # update the final spectrum with the missing lines which have not been merged
             if any(peak.label in lm for lm in lines_to_merge.keys()):
                 continue
             new_spectrum.append(peak)
