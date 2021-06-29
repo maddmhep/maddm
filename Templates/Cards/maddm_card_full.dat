@@ -197,8 +197,8 @@
 #  - Einasto parameter alpha
    %(template_line_experiment_alpha)s           = template_line_experiment_alpha
 # - specify the parameters of the mask (angles are in deg)
-   %(template_line_experiment_mask_latitude)s            = template_line_experiment_mask_latitude    # angle 'lambda': mask P, if abs(latitude(P)) < lambda/2
-   %(template_line_experiment_mask_longitude)s          = template_line_experiment_mask_longitude   # angle 'beta' : mask P, if abs(longitude(P)) > beta/2
+   %(template_line_experiment_mask_latitude)s            = template_line_experiment_mask_latitude    # angle 'lambda' : mask P, if abs(latitude(P)) < lambda/2
+   %(template_line_experiment_mask_longitude)s          = template_line_experiment_mask_longitude   # angle 'beta'   : mask P, if abs(longitude(P)) > beta/2
    %(template_line_experiment_mask_inner_angle)s            = template_line_experiment_mask_inner_angle # angle 'alpha_1': mask P, if abs(arctan(P.y/P.x)) < alpha_1/2
 # - energy resolution: this is a percent value to be multiplied by the energy of the peak
    %(template_line_experiment_energy_resolution)s           = template_line_experiment_energy_resolution
