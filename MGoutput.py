@@ -1087,6 +1087,14 @@ class ProcessExporterIndirectD(object):
                                 self.cmd._curr_model['name'],
                                 self.cmd._generate_info)
         
+        # only for loop-induced: modify MadLoopParams.dat
+        if getattr(self, 'has_loop_induced', False):
+            MLCard = banner_mod.MadLoopParam(pjoin(self.dir_path, 'Cards', 'MadLoopParams.dat'))
+            MLCard['MLReductionLib'] = "7|6|1|3"
+            MLCard['MLStabThres'] = 1.0e-2
+            MLCard.write(pjoin(self.dir_path, 'Cards', 'MadLoopParams_default.dat'))
+            MLCard.write(pjoin(self.dir_path, 'Cards', 'MadLoopParams.dat'))
+
         self.modify_banner()
         
 
@@ -1262,6 +1270,10 @@ class ProcessExporterIndirectD(object):
         run_card['lpp2'] = 0
         run_card['use_syst'] = False
         run_card.remove_all_cut()
+
+        # only for loop-induced
+        if getattr(self, 'has_loop_induced', False):
+            run_card['nhel'] = 1
                   
         run_card.write(pjoin(self.dir_path, 'Cards', 'run_card_default.dat'),
                        template=pjoin(MG5DIR, 'Template', 'LO', 'Cards', 'run_card.dat'),
