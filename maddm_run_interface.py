@@ -728,7 +728,7 @@ class GammaLineExperiment(object):
     ''' this class holds all the generic functionalities regarding the upper limits on gamma ray line searches '''
     KPC_TO_CM = 3.086e21
 
-    def __init__(self, name, energy_resolution, detection_range, info_dict, mask_lat = 0., mask_long = 0., mask_ang = 0., check_profile_message = lambda is_optimized, roi: {True: "", False: ""}.get(is_optimized), arxiv_number = None, hidden = False):
+    def __init__(self, name, energy_resolution, detection_range, info_dict, majorana_dirac_factor, mask_lat = 0., mask_long = 0., mask_ang = 0., check_profile_message = lambda is_optimized, roi: {True: "", False: ""}.get(is_optimized), arxiv_number = None, hidden = False):
         # experiment name
         self.name = name
         # latitude and longitude of the mask: those are intended so as mask_latitude == +- self.mask_lat, so they are not the full amplitude, but only on one side! The other side is taken symmetrically.
@@ -743,6 +743,8 @@ class GammaLineExperiment(object):
         # info_dict: {roi: [profile_default, {profile_default: J-factor_default}, ul_label, ...]} # '...' means other arguments (if present), e.g. likelihood file
         # notice the second member of the list is a J-factor cache: a dict with profiles as keys and related J-factors as values
         self.info_dict = info_dict
+        # Majorana-Dirac factor: if the particle is auto-conjugate then this factor -> 1 (Majorana or neutral scalar), else -> 2 (Dirac or charged scalar)
+        self.majorana_dirac_factor = majorana_dirac_factor
         # check profile output: function which gives the message to display when the profile not optimized for the ROI
         self.check_profile_message = check_profile_message
         # ArXiv number
@@ -909,7 +911,7 @@ class GammaLineExperiment(object):
     def flux(self, mdm, sigmav, jfact, is_aa):
         ''' returns the integrated flux for the process dm dm > a X. If X != a, then takes half of the flux. '''
         coeff = 2. if is_aa else 1.
-        return coeff * sigmav * jfact / (8 * np.pi * mdm * mdm)
+        return coeff * sigmav * jfact / (8 * np.pi * mdm * mdm * self.majorana_dirac_factor)
 
     def get_roi(self):
         return self.info_dict.keys()
@@ -2207,6 +2209,7 @@ class MADDMRunCmd(cmd.CmdShell):
                             "(22)(22)_fermi2015R90",
                             None]
                     },
+                    majorana_dirac_factor = self.norm_Majorana_Dirac() / 4., # divide by 4, because that methods return 4 if Majorana, 8 if Dirac
                     check_profile_message = lambda is_optimized, roi: {True: "", False: "ROI %d is not optimized for this profile!" % roi}.get(is_optimized),
                     arxiv_number          = "1506.00013",
                     hidden                = (self.maddm_card['toggle_fermi_2015'] == 'off')
@@ -2227,6 +2230,7 @@ class MADDMRunCmd(cmd.CmdShell):
                             {PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = rho_sun, r_sun = r_sun) : 4.66e21}, # GeV^2 cm^{-5}
                             "(22)(22)_hess2018R1"]
                     },
+                    majorana_dirac_factor = self.norm_Majorana_Dirac() / 4., # divide by 4, because that methods return 4 if Majorana, 8 if Dirac
                     check_profile_message = lambda is_optimized, roi: {True: "", False: "The chosen profile is not the default for this ROI"}.get(is_optimized),
                     arxiv_number          = "1805.05741",
                     hidden                = (self.maddm_card['toggle_hess_2018'] == 'off')
@@ -2255,6 +2259,7 @@ class MADDMRunCmd(cmd.CmdShell):
                             {}, # GeV^2 cm^{-5}
                             "(22)(22)_template"]
                     },
+                    majorana_dirac_factor = self.norm_Majorana_Dirac() / 4., # divide by 4, because that methods return 4 if Majorana, 8 if Dirac
                     check_profile_message = lambda is_optimized, roi: {True: "", False: "The chosen profile is not the default for this ROI"}.get(is_optimized),
                     arxiv_number          = self.maddm_card["template_line_experiment_arxiv"],
                     hidden                = (self.maddm_card['toggle_template_line_experiment'] == 'off')
