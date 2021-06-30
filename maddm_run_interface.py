@@ -2010,9 +2010,14 @@ class MADDMRunCmd(cmd.CmdShell):
                                 os.remove(pjoin(self.dir_path,indirect_directory,'Cards','reweight_card.dat'))
                             self.me_cmd.do_launch('%s -f' % self.run_name)
                             # self.me_cmd.Presults = {}
-                            # self.me_cmd.Presults['xsec/something_chichi_aa'] = 10.3
-                            # self.me_cmd.Presults['xsec/something_chichi_ah'] = 4.6
-                            # self.me_cmd.Presults['xsec/something_chichi_az'] = 9.1
+                            # if indirect_directory == "Indirect_LI_line":
+                            #     self.me_cmd.Presults['xsec/something_chichi_aa'] = 10.3
+                            #     self.me_cmd.Presults['xsec/something_chichi_ah'] = 4.6
+                            #     self.me_cmd.Presults['xsec/something_chichi_az'] = 9.1
+                            # if indirect_directory == "Indirect_tree_cont":
+                            #     self.me_cmd.Presults['xsec/something_chichi_ttx'] = 210.2
+                            # if indirect_directory == "Indirect_LI_cont":
+                            #     self.me_cmd.Presults['xsec/something_chichi_gg'] = 33.4
 
                         elif self.maddm_card['sigmav_method'] == 'reshuffling':
                             cmd = ['launch %s' % self.run_name,
@@ -2916,11 +2921,10 @@ class MADDMRunCmd(cmd.CmdShell):
               logger.info("Rescaling theory prediction for xsi(direct det.) and xsi^2(indirect det.) for thermal scenarios.\n")
 
         if self.mode['relic']:
-            logger.info("\n****** Relic Density")
-            print 'OMEGA IS ', omega 
+            logger.info("\n****** Relic Density\nOMEGA IS %f" % omega)
             logger.info( self.form_s('Relic Density') + '= ' + self.form_n(omega)   + '      '  +  pass_relic )
             logger.info( self.form_s('x_f'          ) + '= ' + self.form_s(self.form_n(x_f      ) ) )
-            logger.info( self.form_s('sigmav(xf)'   ) + '= ' + self.form_s(self.form_n(sigma_xf ) + ' cm^3/s') )
+            logger.info( self.form_s('sigmav(xf)'   ) + '= ' + self.form_s(self.form_n(sigma_xf ) + ' cm^3 s^-1') )
             logger.info( self.form_s('xsi'          ) + '= ' + self.form_s(self.form_n(xsi      ) ) )
             logger.info('')
             logger.info('Channels contributions:')
@@ -2958,7 +2962,7 @@ class MADDMRunCmd(cmd.CmdShell):
             logger.info('\n capture coefficients: ')
             detailled_keys = [k for k in self.last_results.keys() if k.startswith('ccap')]
             for key in detailled_keys:
-                logger.info(' %s            : %.2e 1/s' % (key, self.last_results[key]))
+                logger.info(' %s            : %.2e s^-1' % (key, self.last_results[key]))
 
         # INDIRECT DETECTION
         detailled_keys = [k for k in self.last_results.keys() if k.startswith('taacsID#')]
@@ -2990,13 +2994,13 @@ class MADDMRunCmd(cmd.CmdShell):
             return light_s
         
         if self.mode['indirect'] or self.mode['spectral']:
-            logger.info('\n****** Indirect detection [cm^3/s]:')
+            logger.info('\n****** Indirect detection [cm^3 s^-1]:')
             logger.info('<sigma v> method: %s ' % self.maddm_card['sigmav_method'])
 
         if self.mode['indirect']:
             logger.info('====== continuum spectrum final states')
             halo_vel = self.maddm_card['vave_indirect_cont']
-            logger.info('DM particle halo velocity: %s/c ' % halo_vel)
+            logger.info('DM particle halo velocity: %s c ' % halo_vel)
             logger.info('*** Print <sigma v> with Fermi dSph limits')
             sigtot_alldm     = self.last_results['taacsID']
             sigtot_SM_alldm  = self.last_results['tot_SM_xsec']
@@ -3015,7 +3019,7 @@ class MADDMRunCmd(cmd.CmdShell):
             
                 if str(self.mode['indirect']).startswith('flux'):
                     logger.info('')
-                    logger.info('*** Fluxes at earth [particle/(cm^2 sr)]:')
+                    logger.info('*** Fluxes at earth [particle cm^-2 sr^-1)]:')
                     #np_names = {'gammas':'g'      , 'neutrinos_e':'nue' , 'neutrinos_mu':'numu' , 'neutrinos_tau':'nutau'}
                     for chan in ['gammas','neutrinos_e', 'neutrinos_mu' , 'neutrinos_tau']:
                         logger.info( self.form_s(chan + ' Flux') + '=\t' + self.form_s(self.form_n (self.last_results['flux_%s' % chan]) ))
@@ -3036,7 +3040,7 @@ class MADDMRunCmd(cmd.CmdShell):
         if self.mode['spectral']:
             logger.info('====== line spectrum final states')
             halo_vel = self.maddm_card['vave_indirect_line']
-            logger.info('DM particle halo velocity: %s/c ' % halo_vel)
+            logger.info('DM particle halo velocity: %s c ' % halo_vel)
             logger.info('Print <sigma v> with %s line limits' % ', '.join([name.replace('_', ' ') for name in self.line_experiments.iternames()]))
 
             # if halo_vel > self.vave_indirect_line_range[0] and halo_vel < self.vave_indirect_line_range[1]:
@@ -3319,12 +3323,19 @@ class MADDMRunCmd(cmd.CmdShell):
                 first_col_len = max([len("peak_%d(%s)" % (int(k.split('_')[-1]), self.last_results[k + '_states'])) for k in energy_peaks.keys()])
                 row_format = r"{" + "0:%ds" % first_col_len + r"}"
                 if self.mode['relic']:
-                    first_rule = "{0:s}   {2:^11s}   {3:^16s} {1:8s}   {4:^16s} {1:8s}   {5:^10s}".format(" "*first_col_len, "", "Energy(GeV)", "Flux(cm^-2 s^-1)", "Flux(thermal)", "UL flux")
+                    mid_line_len = 10+1+8+3+10+1+8+3+10
+                    headers_low = "{0:s}   {2:^12s}   {3:^10s} {1:8s}   {4:^10s} {1:8s}   {5:^10s}".format(" "*first_col_len, "", "", "All DM", "Thermal", "UL")
                 else:
-                    first_rule = "{0:s}   {2:^11s}   {3:^16s} {1:8s}   {4:^10s}".format(" "*first_col_len, "", "Energy(GeV)", "Flux(cm^-2 s^-1)", "UL flux")
-                logger.info("-"*len(first_rule))
-                logger.info(first_rule)
-                logger.info("-"*len(first_rule))
+                    mid_line_len = 10+1+8+3+10
+                    headers_low = "{0:s}   {2:^12s}   {3:^10s} {1:8s}   {4:^10s}".format(" "*first_col_len, "", "", "All DM", "UL")
+                len_headers = len(headers_low)
+                headers_up_format = r"{" + "0:%ds" % (len_headers - mid_line_len) + r"}{" + "1:^%ds" % (mid_line_len) + r"}"
+                headers_mid_format = r"{" + "0:%ds" % first_col_len + r"}{" + "1:^%ds" % (len_headers - mid_line_len - first_col_len) + r"}{" + "2:-^%ds" % (mid_line_len) + r"}"
+                logger.info("-"*len_headers)
+                logger.info(headers_up_format.format(" ", "Flux [cm^-2 s^-1]"))
+                logger.info(headers_mid_format.format(" ", "Energy [GeV]", ""))
+                logger.info(headers_low)
+                logger.info("-"*len_headers)
                 for k, peak in energy_peaks.items():
                     num = int(k.split('_')[-1])
                     error_code = self.last_results[str_part + "peak_%d_error" % num]
@@ -3334,16 +3345,16 @@ class MADDMRunCmd(cmd.CmdShell):
                     allowed_or_excluded_th, color_th = colored_message(flux*xsi2, flux_UL)
                     error_string = "    %s# error: %s%s" % ('\033[33m', error_code, bcolors.ENDC) if error_code != '0' else ''
                     if self.mode['relic']:
-                        logger.info(row_format.format("peak_%d(%s)" % (num, self.last_results[k + "_states"])) + "   {0:^11.4e}   {1:^16.4e} {6:s}{2:<8s}{8:s}   {3:^16.4e} {7:s}{4:<8s}{8:s}   {5:^10.4e}".format(peak, flux, allowed_or_excluded, flux*xsi2, allowed_or_excluded_th, flux_UL, color, color_th, bcolors.ENDC) + error_string)
+                        logger.info(row_format.format("peak_%d(%s)" % (num, self.last_results[k + "_states"])) + "   {0:^12.4e}   {1:^10.4e} {6:s}{2:<8s}{8:s}   {3:^10.4e} {7:s}{4:<8s}{8:s}   {5:^10.4e}".format(peak, flux, allowed_or_excluded, flux*xsi2, allowed_or_excluded_th, flux_UL, color, color_th, bcolors.ENDC) + error_string)
                     else:
-                        logger.info(row_format.format("peak_%d(%s)" % (num, self.last_results[k + "_states"])) + "   {0:^11.4e}   {1:^16.4e} {4:s}{2:<8s}{5:s}   {3:^10.4e}".format(peak, flux, allowed_or_excluded, flux_UL, color, bcolors.ENDC) + error_string)
+                        logger.info(row_format.format("peak_%d(%s)" % (num, self.last_results[k + "_states"])) + "   {0:^12.4e}   {1:^10.4e} {4:s}{2:<8s}{5:s}   {3:^10.4e}".format(peak, flux, allowed_or_excluded, flux_UL, color, bcolors.ENDC) + error_string)
                     try:
                         like    = self.last_results[str_part + "like_%d"    % num]
                         pvalue  = self.last_results[str_part + "pvalue_%d"  % num]
                         logger.debug("peak_%d: loglike = %.4e, p-value = %f" % (num, like, pvalue))
                     except KeyError:
                         continue
-                logger.info("-"*len(first_rule))
+                logger.info("-"*len_headers)
 
     def save_summary_single(self, relic = False, direct = False , indirect = False , spectral = False , fluxes_source = False , fluxes_earth = False):
 
@@ -3378,7 +3389,7 @@ class MADDMRunCmd(cmd.CmdShell):
             if self.last_results['xsi'] > 0: 
                 out.write(form_s('xsi')   + '= ' + form_n(self.last_results['xsi'])        + ' \t # xsi = (Omega/Omega_Planck)\n' )
             out.write(form_s('x_f')       + '= ' + form_n(self.last_results['x_f'])        + '\n' ) 
-            out.write(form_s('sigmav_xf') + '= ' + form_n(self.last_results['sigmav(xf)']) + ' # cm^3/s\n' ) 
+            out.write(form_s('sigmav_xf') + '= ' + form_n(self.last_results['sigmav(xf)']) + ' # cm^3 s^-1\n' ) 
             out.write("# % of the relic density channels\n")
             for proc in [k for k in self.last_results.keys() if k.startswith('%_relic_')]:
                 out.write( form_s("%_" + self.pdg_particle_map.format_print(proc.replace('%_relic_',''))) + '= %.2f %%\n' % self.last_results[proc] )
@@ -3406,7 +3417,7 @@ class MADDMRunCmd(cmd.CmdShell):
             method = self.maddm_card['indirect_flux_source_method']
             
             out.write('\n#############################################\n')
-            out.write('# Indirect Detection [cm^3/s]               #\n')
+            out.write('# Indirect Detection [cm^3 s^-1]               #\n')
             out.write('#############################################\n\n')
 
             out.write('# Annihilation cross section computed with the method: ' + sigmav_meth)
@@ -3520,7 +3531,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
         if fluxes_source:
            out.write('\n##############################################\n')
-           out.write('# CR Flux at Earth [particles/(cm^2 s sr)]   #\n')
+           out.write('# CR Flux at Earth [particles cm^-2 s^-1 sr^-1)]   #\n')
            out.write('##############################################\n\n')
            out.write('# Fluxes calculated using the spectra from ' + self.maddm_card['indirect_flux_earth_method'] + '\n\n' )
            for name in ['neutrinos_e','neutrinos_mu','neutrinos_tau','gammas']:
