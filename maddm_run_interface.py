@@ -1077,8 +1077,8 @@ class GammaLineSpectrum(object):
         def set_error(self, code_error):
             self.error.append(code_error)
         
-        def get_error_str(self):
-            return ",".join(self.error) if len(self.error) != 0 else '0'
+        def get_error_num(self):
+            return int("".join(self.error)) if len(self.error) != 0 else 0
 
         def __call__(self, energy):
             return self._shape(energy)
@@ -1854,25 +1854,21 @@ class MADDMRunCmd(cmd.CmdShell):
                 # density profile (no 'profile_name' because it is a string)
                 # order += ['profile_r_s', 'profile_rho_s', 'profile_gamma', 'profile_alpha']
                 # observables for each experiment
-                # add also line_spectrum_scan.log with other things useful for logging purposes
-                line_spectrum_logging_order = ['run']
                 for line_exp in self.line_experiments:
                     str_part = "line_%s_" % line_exp.get_name()
                     order.append(str_part + "Jfactor")
                     order.append(str_part + "roi")
                     for i in range(len([k for k in self.last_results.keys() if self.is_spectral_finalstate(k.split('_')[-1])])):
                         order.append(str_part + "peak_%d"        % (i+1))
-                        line_spectrum_logging_order.append(str_part + "peak_%d_states" % (i+1))
-                        line_spectrum_logging_order.append(str_part + "peak_%d_error"  % (i+1))
                         order.append(str_part + "flux_%d"        % (i+1))
                         order.append(str_part + "flux_UL_%d"     % (i+1))
                         if str_part + "like_%d" % (i+1) in self.last_results.keys():
                             order.append(str_part + "like_%d"        % (i+1))
                             order.append(str_part + "pvalue_%d"      % (i+1))
+                        order.append(str_part + "peak_%d_error"  % (i+1))
 
             # remove elements which have not been computed
             order[:] = [elem for elem in order if elem in self.last_results.keys()]
-            line_spectrum_logging_order[:] = [elem for elem in line_spectrum_logging_order if elem in self.last_results.keys()]
 
             run_name = str(self.run_name).rsplit('_',1)[0]
             summary_file = pjoin(self.dir_path, 'output','scan_%s.txt' % run_name)
@@ -1881,10 +1877,6 @@ class MADDMRunCmd(cmd.CmdShell):
             # scan summary for observables
             self.write_scan_output(out_path = summary_file , keys = order, header = True )
             self.write_scan_output(out_path = summary_file , keys = order )
-            # line spectrum scan log (to do only in case 'spectral' has been activated)
-            if self.mode['spectral']:
-                self.write_scan_output(out_path = line_spectrum_logging_file , keys = line_spectrum_logging_order, header = True )
-                self.write_scan_output(out_path = line_spectrum_logging_file , keys = line_spectrum_logging_order, write_strings = True)
 
             with misc.TMP_variable(self, 'in_scan_mode', True):
                 with misc.MuteLogger(names=['cmdprint','madevent','madgraph','madgraph.plugin'],levels=[50,50,50,20]):
@@ -1896,9 +1888,6 @@ class MADDMRunCmd(cmd.CmdShell):
                         for par,val in zip(param_card_iterator.param_order, param_card_iterator.itertag):
                             self.last_results[par] = val
                         self.write_scan_output(out_path = summary_file , keys = order, header = False)
-
-                        if self.mode['spectral']:
-                            self.write_scan_output(out_path = line_spectrum_logging_file , keys = line_spectrum_logging_order, write_strings = True)
 
                         ### the following three lines are added by chiara to check the widht = auto function 
                         # self._param_card = param_card_mod.ParamCard('/Users/arina/Documents/physics/software/maddm_dev2/test_width/Cards/param_card.dat')
@@ -2009,15 +1998,6 @@ class MADDMRunCmd(cmd.CmdShell):
                             if os.path.exists(pjoin(self.dir_path,indirect_directory,'Cards','reweight_card.dat')):
                                 os.remove(pjoin(self.dir_path,indirect_directory,'Cards','reweight_card.dat'))
                             self.me_cmd.do_launch('%s -f' % self.run_name)
-                            # self.me_cmd.Presults = {}
-                            # if indirect_directory == "Indirect_LI_line":
-                            #     self.me_cmd.Presults['xsec/something_chichi_aa'] = 10.3
-                            #     self.me_cmd.Presults['xsec/something_chichi_ah'] = 4.6
-                            #     self.me_cmd.Presults['xsec/something_chichi_az'] = 9.1
-                            # if indirect_directory == "Indirect_tree_cont":
-                            #     self.me_cmd.Presults['xsec/something_chichi_ttx'] = 210.2
-                            # if indirect_directory == "Indirect_LI_cont":
-                            #     self.me_cmd.Presults['xsec/something_chichi_gg'] = 33.4
 
                         elif self.maddm_card['sigmav_method'] == 'reshuffling':
                             cmd = ['launch %s' % self.run_name,
@@ -2326,7 +2306,7 @@ class MADDMRunCmd(cmd.CmdShell):
             for i in range(len(sigmavs)):
                 self.last_results[str_part + "peak_%d"        % (i+1)] = -1
                 self.last_results[str_part + "peak_%d_states" % (i+1)] = '/'
-                self.last_results[str_part + "peak_%d_error"  % (i+1)] = '0' # 0 means no error
+                self.last_results[str_part + "peak_%d_error"  % (i+1)] = -1 # -1 means not measured
                 self.last_results[str_part + "flux_%d"        % (i+1)] = -1
                 self.last_results[str_part + "flux_UL_%d"     % (i+1)] = -1
                 # consider likelihood only when it is present
@@ -2353,7 +2333,7 @@ class MADDMRunCmd(cmd.CmdShell):
             # third: if there are errors, then set flux and flux_UL to -1
             gamma_line_spectrum.test_for_errors()
             for i, peak in enumerate(gamma_line_spectrum):
-                self.last_results[str_part + "peak_%d_error"  % (i+1)] = peak.get_error_str()
+                self.last_results[str_part + "peak_%d_error"  % (i+1)] = peak.get_error_num()
                 # if peak.error:
                 #     self.last_results[str_part + "flux_%d"    % (i+1)] = -1
                 #     self.last_results[str_part + "flux_UL_%d" % (i+1)] = -1
@@ -3343,7 +3323,7 @@ class MADDMRunCmd(cmd.CmdShell):
                     flux_UL = self.last_results[str_part + "flux_UL_%d" % num]
                     allowed_or_excluded, color       = colored_message(flux, flux_UL)
                     allowed_or_excluded_th, color_th = colored_message(flux*xsi2, flux_UL)
-                    error_string = "    %s# error: %s%s" % ('\033[33m', error_code, bcolors.ENDC) if error_code != '0' else ''
+                    error_string = "   %s# error: %s%s" % ('\033[33m', error_code, bcolors.ENDC) if error_code != 0 else ''
                     if self.mode['relic']:
                         logger.info(row_format.format("peak_%d(%s)" % (num, self.last_results[k + "_states"])) + "   {0:^12.4e}   {1:^10.4e} {6:s}{2:<8s}{8:s}   {3:^10.4e} {7:s}{4:<8s}{8:s}   {5:^10.4e}".format(peak, flux, allowed_or_excluded, flux*xsi2, allowed_or_excluded_th, flux_UL, color, color_th, bcolors.ENDC) + error_string)
                     else:
@@ -3417,7 +3397,7 @@ class MADDMRunCmd(cmd.CmdShell):
             method = self.maddm_card['indirect_flux_source_method']
             
             out.write('\n#############################################\n')
-            out.write('# Indirect Detection [cm^3 s^-1]               #\n')
+            out.write('# Indirect Detection [cm^3 s^-1]            #\n')
             out.write('#############################################\n\n')
 
             out.write('# Annihilation cross section computed with the method: ' + sigmav_meth)
@@ -3488,7 +3468,7 @@ class MADDMRunCmd(cmd.CmdShell):
             # line limits
             if spectral:
                 out.write('\n# Gamma-line spectrum and line limits\n')
-                out.write('# <sigma v>[cm^3 s^-1], flux[cm^-2 s^-1], J-factor[GeV^2 cm^-5], peak[GeV]') #, ROI[deg], rho_s[GeV], r_s[kpc]')
+                out.write('# peak[GeV], flux[cm^-2 s^-1], J-factor[GeV^2 cm^-5]\n') #, ROI[deg], rho_s[GeV], r_s[kpc]')
                 # out.write('\n' + form_s("Density_profile") + '= %s\n' % self.last_results["density_profile"].get_name())
                 # for k, v in self.last_results["density_profile"].get_parameters_items(): # print astrophysical parameters
                 #     out.write(form_s(k.replace('profile_', '')) + '= ' + form_n(v) + '\n')
@@ -3513,7 +3493,7 @@ class MADDMRunCmd(cmd.CmdShell):
                     for k, peak in energy_peaks.iteritems():
                         num        = int(k.split('_')[-1])
                         error_code = self.last_results[str_part + "peak_%d_error"  % num]
-                        error_str  = "# error: %s" % error_code if error_code != '0' else ''
+                        error_str  = "# error: %s" % error_code if error_code != 0 else ''
                         flux       = self.last_results[str_part + "flux_%d"        % num]
                         flux_UL    = self.last_results[str_part + "flux_UL_%d"     % num]
                         peaks_string  += form_s("peak_%d(%s)" % (num, self.last_results[k + "_states"])) + '= ' + form_n(peak) + ' \t ' + error_str + '\n'
