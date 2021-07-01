@@ -1430,16 +1430,16 @@ class MADDMRunCmd(cmd.CmdShell):
     
     intro_banner=\
   "            ====================================================\n"+\
-  "            |                  "+bcolors.OKBLUE+"  MadDM v3.0                     "+bcolors.ENDC+"|\n"\
+  "            |                  "+bcolors.OKBLUE+"  MadDM v3.2                     "+bcolors.ENDC+"|\n"\
   "            ====================================================\n"+\
   "                                                                               \n"+\
   "                #########                                                        \n"+\
   "             ###\\\\####//#####              Launchpad:  launchpad.net/maddm      \n"+\
   "           ######\\\\##//########                                              \n"+\
   "          ########\\\\//###########                                            \n"+\
-  "         #########//\\\\############                                           \n"+\
-  "        #########//##\\\\############      "+bcolors.FAIL+"             arXiv:1308.4955        \n"+bcolors.ENDC+\
-  "       ########//#####\\\\###########                   "+bcolors.FAIL+"arXiv:1505.04190        \n"+bcolors.ENDC+\
+  "         #########//\\\\############                    "+bcolors.FAIL+"arXiv:1308.4955        \n"+bcolors.ENDC+\
+  "        #########//##\\\\############                   "+bcolors.FAIL+"arXiv:1505.04190        \n"+bcolors.ENDC+\
+  "       ########//#####\\\\###########                   "+bcolors.FAIL+"arXiv:1804.00044        \n"+bcolors.ENDC+\
   "       ######################### ## ___________________________________________\n"+\
   "       ####################### 0  # "+bcolors.OKGREEN+" _     _               _  _____   _     _  \n"+bcolors.ENDC+\
   "       #############   0  ###    ## "+bcolors.OKGREEN+"| \   / |   ___    ___|| | ___ \ | \   / | \n"+bcolors.ENDC+\
@@ -1451,10 +1451,12 @@ class MADDMRunCmd(cmd.CmdShell):
   "             ################                                                   \n"+\
   "                 ########                                                       \n"+\
   "                                                                                    \n"+\
+  "            Need to learn? -> type tutorial                               \n"+\
+  "                                                                                    \n"+\
   "            ====================================================\n"+\
   "            |           "+bcolors.OKBLUE+" A MadGraph5_aMC@NLO plugin.            "+bcolors.ENDC+"|\n"\
   "            ====================================================\n"+\
-  "" 
+  ""  
     
     
     def __init__(self, dir_path, options, *args, **opts):

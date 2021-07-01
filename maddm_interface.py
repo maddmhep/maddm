@@ -47,7 +47,7 @@ class MadDM_interface(master_interface.MasterCmd):
 
     intro_banner=\
   "            ====================================================\n"+\
-  "            |                  "+bcolors.OKBLUE+"  MadDM v3.0                     "+bcolors.ENDC+"|\n"\
+  "            |                  "+bcolors.OKBLUE+"  MadDM v3.2                     "+bcolors.ENDC+"|\n"\
   "            ====================================================\n"+\
   "                                                                               \n"+\
   "                #########                                                        \n"+\
@@ -1150,7 +1150,7 @@ class MadDM_interface(master_interface.MasterCmd):
 
         self.do_display('multiparticles')
         sm_pdgs = range(1, 7) + range(11, 17) + range(21, 26) #quarks/leptons/bosons
-        sm_part = [self._curr_model.get_particle(pdg) for pdg in sm_pdgs]
+        sm_part = [self._curr_model.get_particle(pdg) for pdg in sm_pdgs if self._curr_model.get_particle(pdg)]
 
         self.define_multiparticles('fs_particles', sm_part +bsm_final_states)
 
