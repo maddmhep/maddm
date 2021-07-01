@@ -1133,7 +1133,7 @@ class GammaLineSpectrum(object):
             return self.__lt__(other)
 
         def __str__(self):
-            return "Peak %(label)s (e_peak = %(e_peak).3e GeV, fwhm = %(fwhm).3e GeV" % vars(self) + ", flux = %.3e cm^{-2} s^{-1})" % self.flux
+            return "Peak %(label)s (e_peak = %(e_peak).3e GeV, fwhm = %(fwhm).3e GeV" % vars(self) + ", flux = %.3e cm^-2 s^-1)" % self.flux
 
         def __copy__(self):
             cls_ = self.__class__
@@ -2178,19 +2178,19 @@ class MADDMRunCmd(cmd.CmdShell):
                     detection_range       = [0.214, 462.],
                     info_dict             = { # the key is the angle of the ROI (in degrees)
                         3.  : [PROFILES.NFW(r_s = 20.0, gamma = 1.3, rho_sun = rho_sun, r_sun = r_sun),
-                            {PROFILES.NFW(r_s = 20.0, gamma = 1.3, rho_sun = rho_sun, r_sun = r_sun) : 1.497e+23}, # GeV^2 cm^{-5}
+                            {PROFILES.NFW(r_s = 20.0, gamma = 1.3, rho_sun = rho_sun, r_sun = r_sun) : 1.497e+23}, # GeV^2 cm^-5
                             "(22)(22)_fermi2015R3",
                             np.loadtxt(pjoin(MDMDIR, 'Fermi_line_likelihoods', 'R3_gamma_lines_ULflux_like.dat'), unpack = True)],
                         16. : [PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = rho_sun, r_sun = r_sun),
-                            {PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = rho_sun, r_sun = r_sun) : 9.39e+22}, # GeV^2 cm^{-5}
+                            {PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = rho_sun, r_sun = r_sun) : 9.39e+22}, # GeV^2 cm^-5
                             "(22)(22)_fermi2015R16",
                             np.loadtxt(pjoin(MDMDIR, 'Fermi_line_likelihoods', 'R16_gamma_lines_ULflux_like.dat'), unpack = True)],
                         41. : [PROFILES.NFW(r_s = 20.0, gamma = 1.0, rho_sun = rho_sun, r_sun = r_sun),
-                            {PROFILES.NFW(r_s = 20.0, gamma = 1.0, rho_sun = rho_sun, r_sun = r_sun) : 9.16e+22}, # GeV^2 cm^{-5}
+                            {PROFILES.NFW(r_s = 20.0, gamma = 1.0, rho_sun = rho_sun, r_sun = r_sun) : 9.16e+22}, # GeV^2 cm^-5
                             "(22)(22)_fermi2015R41",
                             None],
                         90. : [PROFILES.Isothermal(r_s = 5.0, rho_sun = rho_sun, r_sun = r_sun),
-                            {PROFILES.Isothermal(r_s = 5.0, rho_sun = rho_sun, r_sun = r_sun) : 6.94e+22}, # GeV^2 cm^{-5}
+                            {PROFILES.Isothermal(r_s = 5.0, rho_sun = rho_sun, r_sun = r_sun) : 6.94e+22}, # GeV^2 cm^-5
                             "(22)(22)_fermi2015R90",
                             None]
                     },
@@ -2212,7 +2212,7 @@ class MADDMRunCmd(cmd.CmdShell):
                     detection_range       = [306.9, 63850.],
                     info_dict             = { # the key is the angle of the ROI (in degrees)
                         1. : [PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = rho_sun, r_sun = r_sun),
-                            {PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = rho_sun, r_sun = r_sun) : 4.66e21}, # GeV^2 cm^{-5}
+                            {PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = rho_sun, r_sun = r_sun) : 4.66e21}, # GeV^2 cm^-5
                             "(22)(22)_hess2018R1"]
                     },
                     majorana_dirac_factor = self.norm_Majorana_Dirac() / 4., # divide by 4, because that methods return 4 if Majorana, 8 if Dirac
@@ -2241,7 +2241,7 @@ class MADDMRunCmd(cmd.CmdShell):
                     detection_range       = [self.maddm_card["template_line_experiment_detection_range_min"], self.maddm_card["template_line_experiment_detection_range_max"]],
                     info_dict             = { # the key is the angle of the ROI (in degrees)
                         template_roi : [template_profile,
-                            {}, # GeV^2 cm^{-5}
+                            {}, # GeV^2 cm^-5
                             "(22)(22)_template"]
                     },
                     majorana_dirac_factor = self.norm_Majorana_Dirac() / 4., # divide by 4, because that methods return 4 if Majorana, 8 if Dirac
@@ -4813,9 +4813,9 @@ class MadDMCard(banner_mod.RunCard):
                            hidden = True)
         self.add_param('template_line_experiment_alpha', 0.17, comment='alpha parameter, relevant for einasto profile related to the template line experiment gamma-line searches', include = False, \
                            hidden = True)
-        self.add_param('template_line_experiment_mask_latitude', 0., comment='angle lambda of the mask (in deg): observing the galactic centre from the position of the Sun, mask P, if abs(latitude(P)) < lambda/2 (refer to MadDM 3.2 documentation)', include = False, \
+        self.add_param('template_line_experiment_mask_latitude', 0., comment='angle beta of the mask (in deg): observing the galactic centre from the position of the Sun, mask P, if abs(latitude(P)) < beta (refer to MadDM 3.2 documentation)', include = False, \
                            hidden = True)
-        self.add_param('template_line_experiment_mask_longitude', 180., comment='angle beta of the mask (in deg): observing the galactic centre from the position of the Sun, mask P, if abs(longitude(P)) > beta/2 (refer to MadDM 3.2 documentation)', include = False, \
+        self.add_param('template_line_experiment_mask_longitude', 180., comment='angle lambda of the mask (in deg): observing the galactic centre from the position of the Sun, mask P, if abs(longitude(P)) > lambda (refer to MadDM 3.2 documentation)', include = False, \
                            hidden = True)
         self.add_param('template_line_experiment_mask_inner_angle', 0., comment='angle alpha_1 of the mask (in deg): observing the galactic centre from the position of the Sun, mask P, if abs(arctan(P.y/P.x)) < alpha_1/2 (refer to MadDM 3.2 documentation)', include = False, \
                            hidden = True)
@@ -4825,7 +4825,7 @@ class MadDMCard(banner_mod.RunCard):
                            hidden = True)
         self.add_param('template_line_experiment_detection_range_max', 1.e+6, comment='detection range maximum (in GeV)', include = False, \
                            hidden = True)
-        self.add_param('template_line_experiment_constraints_file', 'None', comment='file containing 3 columns [ DM mass (GeV), <sigmav> (cm^3 s^{-1}), flux (cm^{-2} s^{-1}) ] related to the constraints on gamma-line searches for the template experiment; comments must be prepended with \'#\'; this file must be placed in $MADDM_PATH/ExpData/', include = False, \
+        self.add_param('template_line_experiment_constraints_file', 'None', comment='file containing 3 columns [ DM mass (GeV), <sigmav> (cm^3 s^-1), flux (cm^-2 s^-1) ] related to the constraints on gamma-line searches for the template experiment; comments must be prepended with \'#\'; this file must be placed in $MADDM_PATH/ExpData/', include = False, \
                            hidden = True)
 
     def write(self, output_file, template=None, python_template=False,
