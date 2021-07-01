@@ -1,14 +1,14 @@
 #            ====================================================
-#            |                    MadDM v3.0                     |
+#            |                    MadDM v3.2                     |
 #            ====================================================
-#
-#                #########
-#             ###\\####//#####              Launchpad:  launchpad.net/maddm
-#           ######\\##//########
-#          ########\\//###########
-#         #########//\\############
-#        #########//##\\############                   arXiv:1308.4955
-#       ########//#####\\###########                   arXiv:1505.04190
+#                                                                               
+#                #########                                                        
+#             ###\\####//#####              Launchpad:  launchpad.net/maddm      
+#           ######\\##//########                                              
+#          ########\\//###########                                            
+#         #########//\\############                    arXiv:1308.4955
+#        #########//##\\############                   arXiv:1505.04190
+#       ########//#####\\###########                   arXiv:1804.00044
 #       ######################### ## ___________________________________________
 #       ####################### 0  #  _     _               _  _____   _     _
 #       #############   0  ###    ## | \   / |   ___    ___|| | ___ \ | \   / |
@@ -16,10 +16,10 @@
 #        ##########################  ||  V  || ||__||  ||__|| ||___|| ||  V  ||
 #         ###################   ##   ||     || \_____\ \____| |_____/ ||     ||
 #          ############       ###    ___________________________________________
-#           ##########    ######
-#             ################
-#                 ########
-#
+#           ##########    ######                                                 
+#             ################                                                   
+#                 ########                                                       
+#                                                                                    
 ###################################################################################
 #
 #   RELIC DENSITY
@@ -94,7 +94,7 @@
 ###################################################################################
 
 # Method of computation (affects speed and precision)
-   %(sigmav_method)s    = sigmav_method ! inclusive, madevent, reshuffling
+   %(sigmav_method)s = sigmav_method ! inclusive, madevent, reshuffling
    %(indirect_flux_source_method)s   = indirect_flux_source_method ! pythia8, PPPC4DMID, PPPC4DMID_ew 
    %(indirect_flux_earth_method)s    =  indirect_flux_earth_method ! dragon, PPPC4DMID_ep
 
@@ -128,11 +128,13 @@
 #
 ###################################################################################
 
-#flag to limit the Auto of the param_card to only consider two body decays.
- %(only_two_body_decays)s = only_two_body_decays
+# Flag to limit the Auto of the param_card to only consider two body decays.
+   %(only_two_body_decays)s = only_two_body_decays
 
- %(save_output)s       = save_output ! choose off , all , spectra to store output in scan mode
-# Note that integration precision parameters can be update via
+# Amount of output to store in scan mode
+   %(save_output)s       = save_output ! off, all, spectra
+
+# Note that integration precision parameters can be updated via
 # ngrid_init, nres_points, eps_wij, iter_wij
 # those impact relic density and indirect detection (for sigmav_method=inclusive)
 

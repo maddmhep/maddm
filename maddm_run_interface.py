@@ -3755,12 +3755,12 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
     """ """
 
     to_control= [('relic', 'Compute the Relic Density'),
-                      ('direct', 'Compute direct(ional) detection'),
-                      ('indirect', 'Compute indirect detection/flux (cont spectrum)'),
-                      ('spectral', 'Compute indirect detection in aX (line spectrum)'),
-                      ('nestscan', 'Run Multinest scan'),
+                 ('direct', 'Compute direct(ional) detection'),
+                 ('indirect', 'Compute indirect detection/flux (cont spectrum)'),
+                 ('spectral', 'Compute indirect detection in aX (line spectrum)'),
+                 ('nestscan', 'Run Multinest scan'),
                 ]
-    to_init_card = ['param', 'maddm','pythia8']
+    to_init_card = ['param', 'maddm', 'pythia8']
     PY8Card_class = Indirect_PY8Card
     
     integer_bias = len(to_control) + 1 # integer corresponding to the first entry in self.cards
@@ -4165,7 +4165,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
             
             check that nestscan can be ON
                if it is, set it ON,
-               otherswise, print a warning and set the line to reask the 
+               otherwise, print a warning and set the line to reask the 
                question (return False)
         """
         
@@ -4184,7 +4184,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
             
             check that indirect can be ON
                if it is, set it ON,
-               otherswise, print a warning and set the line to reask the 
+               otherwise, print a warning and set the line to reask the 
                question (return False)
         """
         
@@ -4200,7 +4200,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
                 return 
             logger.warning('switching indirect mode to flux_source since sigmav does not support flux')
            
-        #2. check that sigmv_method is not inclusive
+        #2. check that sigmav_method is not inclusive
         if self.maddm['sigmav_method'] == 'inclusive':
             self.setDM('sigmav_method', 'reshuffling',loglevel=30)
             
@@ -4210,7 +4210,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         
         return '9 %s' % line
     
-    # trigger_flux = trigger_8
+    trigger_flux = trigger_9
     
     def do_compute_widths(self, line):
         """normal fct but ensure that self.maddm_card is up-to-date"""

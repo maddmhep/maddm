@@ -1,14 +1,14 @@
 #            ====================================================
-#            |                    MadDM v3.0                     |
+#            |                    MadDM v3.2                     |
 #            ====================================================
-#
-#                #########
-#             ###\\####//#####              Launchpad:  launchpad.net/maddm
-#           ######\\##//########
-#          ########\\//###########
-#         #########//\\############
-#        #########//##\\############                   arXiv:1308.4955
-#       ########//#####\\###########                   arXiv:1505.04190
+#                                                                               
+#                #########                                                        
+#             ###\\####//#####              Launchpad:  launchpad.net/maddm      
+#           ######\\##//########                                              
+#          ########\\//###########                                            
+#         #########//\\############                    arXiv:1308.4955
+#        #########//##\\############                   arXiv:1505.04190
+#       ########//#####\\###########                   arXiv:1804.00044
 #       ######################### ## ___________________________________________
 #       ####################### 0  #  _     _               _  _____   _     _
 #       #############   0  ###    ## | \   / |   ___    ___|| | ___ \ | \   / |
@@ -16,10 +16,10 @@
 #        ##########################  ||  V  || ||__||  ||__|| ||___|| ||  V  ||
 #         ###################   ##   ||     || \_____\ \____| |_____/ ||     ||
 #          ############       ###    ___________________________________________
-#           ##########    ######
-#             ################
-#                 ########
-#
+#           ##########    ######                                                 
+#             ################                                                   
+#                 ########                                                       
+#                                                                                    
 ###################################################################################
 #
 #   RELIC DENSITY
@@ -134,7 +134,7 @@
 ###################################################################################
 
 # Method of computation (affects speed and precision)
-   %(sigmav_method)s    = sigmav_method ! inclusive, madevent, reshuffling
+   %(sigmav_method)s = sigmav_method ! inclusive, madevent, reshuffling
    %(indirect_flux_source_method)s   = indirect_flux_source_method ! pythia8, PPPC4DMID, PPPC4DMID_ew
    %(indirect_flux_earth_method)s    =  indirect_flux_earth_method ! dragon, PPPC4DMID_ep
 
@@ -198,7 +198,7 @@
    %(template_line_experiment_alpha)s           = template_line_experiment_alpha
 # - specify the parameters of the mask (angles are in deg)
    %(template_line_experiment_mask_latitude)s            = template_line_experiment_mask_latitude    # angle 'beta'   : mask P, if abs(latitude(P)) < beta
-   %(template_line_experiment_mask_longitude)s         = template_line_experiment_mask_longitude   # angle 'lambda' : mask P, if abs(longitude(P)) > lambda
+   %(template_line_experiment_mask_longitude)s          = template_line_experiment_mask_longitude   # angle 'lambda' : mask P, if abs(longitude(P)) > lambda
    %(template_line_experiment_mask_inner_angle)s            = template_line_experiment_mask_inner_angle # angle 'alpha_1': mask P, if abs(arctan(P.y/P.x)) < alpha_1/2
 # - energy resolution: this is a percent value to be multiplied by the energy of the peak
    %(template_line_experiment_energy_resolution)s           = template_line_experiment_energy_resolution
@@ -215,19 +215,22 @@
 #
 ###################################################################################
 
-#flag to limit the Auto of the param_card to only consider two body decays.
- %(only_two_body_decays)s = only_two_body_decays
+# Flag to limit the Auto of the param_card to only consider two body decays.
+   %(only_two_body_decays)s = only_two_body_decays
+
+# Amount of output to store in scan mode
+   %(save_output)s       = save_output ! off, all, spectra
 
 #
-# integration precision parameters (relic and indirect --inclusive--)
+# Integration precision parameters (relic and indirect --inclusive--)
 #
 
-#     For the calculation of taacs only (both relic and indirect),
-#     Initial number of points in the grid to integrate over (of dm velocity)
+# For the calculation of taacs only (both relic and indirect),
+# Initial number of points in the grid to integrate over (of dm velocity)
    %(ngrid_init)s        = ngrid_init
-#     Number of points to add for one width around each resonance peak
-#     (the code will add points which exponentially increase in distance from the pole)
-   %(nres_points)s        = nres_points
+# Number of points to add for one width around each resonance peak
+# (the code will add points which exponentially increase in distance from the pole)
+   %(nres_points)s       = nres_points
 # precision of the romberg integration for Wij (irrelevant if simpson's rule used)
    %(eps_wij)s      = eps_wij
 # minimum number of iterations in the romberg integration algorithm for both Wij (irrelevant if simpson's rule used)
