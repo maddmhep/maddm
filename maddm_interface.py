@@ -1331,7 +1331,7 @@ class MadDM_interface(master_interface.MasterCmd):
         ''' takes the name of the command in cmd (either 'indirect_detection' or 'indirect_spectral_features')
             check that everything is ok and returns the value to set to _has_<cmd> and a number: if != 0 the generation function should return, otherwise should go ahead
         '''
-        if not maddm_run_interface.HAS_NUMPY and user:
+        if not maddm_run_interface.HAS_NUMPY:
             logger.warning("numpy module not detected on your machine. \n"+
                            "Running indirect detection will not be possible as long as numpy is not installed (try 'pip install numpy')" 
                            )
@@ -1339,7 +1339,8 @@ class MadDM_interface(master_interface.MasterCmd):
             if ans == 'n':
                 return False, 2
         
-        self.install_indirect()
+        if cmd == 'indirect_detection':
+            self.install_indirect()
 
         if not self._dm_candidate:
             self.search_dm_candidate()
