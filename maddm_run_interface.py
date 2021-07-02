@@ -1501,7 +1501,7 @@ class MADDMRunCmd(cmd.CmdShell):
         self.Spectra = Spectra()
         self.Fermi   = Fermi_bounds()
         self.line_experiments = GammaLineExperimentsList()
-        self.MadDM_version = '3.1'
+        self.MadDM_version = '3.2'
 
         self.processes_names_map = self.proc_characteristics['processes_names_map']
 
@@ -2998,13 +2998,14 @@ class MADDMRunCmd(cmd.CmdShell):
                     self.print_ind('DM DM > all',sigtot_th , sigtot_alldm, self.last_results['Fermi_sigmav'],  thermal= dm_scen)
                 else: 
                     self.print_ind('DM DM > SM SM', sigtot_SM_th , sigtot_SM_alldm, self.last_results['Fermi_sigmav'],  thermal= dm_scen)
+                logger.info('')
             
                 if str(self.mode['indirect']).startswith('flux'):
-                    logger.info('')
-                    logger.info('*** Fluxes at earth [particle cm^-2 sr^-1)]:')
+                    logger.info('*** Fluxes at earth [particle cm^-2 sr^-1]:')
                     #np_names = {'gammas':'g'      , 'neutrinos_e':'nue' , 'neutrinos_mu':'numu' , 'neutrinos_tau':'nutau'}
                     for chan in ['gammas','neutrinos_e', 'neutrinos_mu' , 'neutrinos_tau']:
                         logger.info( self.form_s(chan + ' Flux') + '=\t' + self.form_s(self.form_n (self.last_results['flux_%s' % chan]) ))
+                    logger.info('')
             
             else:
                 light_s = print_sigmav_with_limits(detailled_keys, filter_ = lambda process: not self.is_spectral_finalstate(process.split('_')[-1]), exp_label = 'Fermi dSph', no_lim = True)
@@ -3023,7 +3024,7 @@ class MADDMRunCmd(cmd.CmdShell):
             logger.info('====== line spectrum final states')
             halo_vel = self.maddm_card['vave_indirect_line']
             logger.info('DM particle halo velocity: %s c ' % halo_vel)
-            logger.info('Print <sigma v> with %s line limits' % ', '.join([name.replace('_', ' ') for name in self.line_experiments.iternames()]))
+            logger.info('*** Print <sigma v> with %s line limits' % ', '.join([name.replace('_', ' ') for name in self.line_experiments.iternames()]))
 
             # if halo_vel > self.vave_indirect_line_range[0] and halo_vel < self.vave_indirect_line_range[1]:
             print_sigmav_with_limits(detailled_keys, filter_ = lambda process: self.is_spectral_finalstate(process.split('_')[-1]), exp_label = 'Line GC', no_lim = False)
@@ -3355,14 +3356,14 @@ class MADDMRunCmd(cmd.CmdShell):
 
         out = open(pjoin(self.dir_path, 'output', point, 'MadDM_results.txt'),'w')
  
-        out.write('#############################################\n')
-        out.write('#                MadDM v. ' + str(self.MadDM_version) +'               #\n' )
-        out.write('#############################################\n\n\n')
+        out.write('################################################\n')
+        out.write('#                 MadDM v. ' + str(self.MadDM_version) +'                 #\n' )
+        out.write('################################################\n\n\n')
 
         if relic:
-            out.write('#############################################\n')
-            out.write('# Relic Density                             #\n')
-            out.write('#############################################\n\n')
+            out.write('################################################\n')
+            out.write('# Relic Density                                #\n')
+            out.write('################################################\n\n')
 
             relic, planck , message = self.last_results['Omegah^2'] , self.limits._oh2_planck , self.det_message(self.last_results['Omegah^2'], self.limits._oh2_planck) 
     
@@ -3371,7 +3372,7 @@ class MADDMRunCmd(cmd.CmdShell):
             if self.last_results['xsi'] > 0: 
                 out.write(form_s('xsi')   + '= ' + form_n(self.last_results['xsi'])        + ' \t # xsi = (Omega/Omega_Planck)\n' )
             out.write(form_s('x_f')       + '= ' + form_n(self.last_results['x_f'])        + '\n' ) 
-            out.write(form_s('sigmav_xf') + '= ' + form_n(self.last_results['sigmav(xf)']) + ' # cm^3 s^-1\n' ) 
+            out.write(form_s('sigmav_xf') + '= ' + form_n(self.last_results['sigmav(xf)']) + ' \t # cm^3 s^-1\n' ) 
             out.write("# % of the relic density channels\n")
             for proc in [k for k in self.last_results.keys() if k.startswith('%_relic_')]:
                 out.write( form_s("%_" + self.pdg_particle_map.format_print(proc.replace('%_relic_',''))) + '= %.2f %%\n' % self.last_results[proc] )
@@ -3383,9 +3384,9 @@ class MADDMRunCmd(cmd.CmdShell):
                 if os.path.isfile(pjoin(self.dir_path, 'output',name)):
                    shutil.move(pjoin(self.dir_path, 'output',name) ,  pjoin(self.dir_path, 'output', point , name))
             
-            out.write('\n#############################################\n')
-            out.write('# Direct Detection [cm^2]                   #\n')
-            out.write('#############################################\n\n')
+            out.write('\n################################################\n')
+            out.write('# Direct Detection [cm^2]                      #\n')
+            out.write('################################################\n\n')
 
             for D in self.last_results['direct_results']:
                 cross = D['sig']
@@ -3398,10 +3399,11 @@ class MADDMRunCmd(cmd.CmdShell):
             sigmav_meth = self.maddm_card['sigmav_method'] # method actually used
             method = self.maddm_card['indirect_flux_source_method']
             
-            out.write('\n#############################################\n')
-            out.write('# Indirect Detection [cm^3 s^-1]            #\n')
-            out.write('#############################################\n\n')
+            out.write('\n################################################\n')
+            out.write('# Indirect Detection [cm^3 s^-1]               #\n')
+            out.write('################################################\n')
 
+            out.write('# Results in brackets display [prediction, upper limit]\n\n')
             out.write('# Annihilation cross section computed with the method: ' + sigmav_meth)
 
             def collect_processes(processes, filter_):
@@ -3437,7 +3439,6 @@ class MADDMRunCmd(cmd.CmdShell):
                 likelihood_th = self.last_results['like_th'] 
                 pvalue_nonth  = self.last_results['pvalue_nonth']
                 likelihood_nonth = self.last_results['like_nonth']
-
                 """
                 if sigmav_meth !='inclusive':
                     out.write('# Fermi dSph Limit for DM annihilation computed with Pythia8 spectra  \n\n')
@@ -3458,8 +3459,11 @@ class MADDMRunCmd(cmd.CmdShell):
                     out.write(form_s('TotalSM_xsec')+ '= '+ form_s('['+ form_n(tot_sm)+ ',' + form_n(tot_ul) +']') + '\n')
                 """
 
-                out.write('\n# Global Fermi dSph Limit computed with ' + method + ' spectra\n')                                                                              
-                out.write(form_s('TotalSM_xsec')+ '= '+ form_s('['+ form_n(tot_sm)+ ',' + form_n(tot_ul) +']') + '\n')
+                out.write('\n# Global Fermi dSph Limit computed with ' + method + ' spectra\n')  
+                if sigmav_meth != 'inclusive':                                                                            
+                    out.write(form_s('Total_xsec')+ '= '+ form_s('['+ form_n(tot_th)+ ',' + form_n(tot_ul) +']') + '\n')
+                else:
+                    out.write(form_s('TotalSM_xsec')+ '= '+ form_s('['+ form_n(tot_sm)+ ',' + form_n(tot_ul) +']') + '\n')
                 out.write( form_s('Fermi_Likelihood')+ '= '+ form_s(form_n(likelihood_nonth))  +'\n' )
                 out.write( form_s('Fermi_pvalue'    )+ '= '+ form_s(form_n(pvalue_nonth    ))  +'\n')
 
@@ -3512,9 +3516,9 @@ class MADDMRunCmd(cmd.CmdShell):
 
 
         if fluxes_source:
-           out.write('\n##############################################\n')
-           out.write('# CR Flux at Earth [particles cm^-2 s^-1 sr^-1)]   #\n')
-           out.write('##############################################\n\n')
+           out.write('\n#################################################\n')
+           out.write('# CR Flux at Earth [particles cm^-2 s^-1 sr^-1) #\n')
+           out.write('#################################################\n\n')
            out.write('# Fluxes calculated using the spectra from ' + self.maddm_card['indirect_flux_earth_method'] + '\n\n' )
            for name in ['neutrinos_e','neutrinos_mu','neutrinos_tau','gammas']:
                 out.write(form_s('Flux_'+name)+ '= '+ form_s(form_n(self.last_results['flux_'+name] )) + '\n' )
