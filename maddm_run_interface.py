@@ -2976,14 +2976,14 @@ class MADDMRunCmd(cmd.CmdShell):
             return light_s
         
         if self.mode['indirect'] or self.mode['spectral']:
-            logger.info('\n****** Indirect detection [cm^3 s^-1]:')
+            logger.info('\n****** Indirect detection:')
             logger.info('<sigma v> method: %s ' % self.maddm_card['sigmav_method'])
 
         if self.mode['indirect']:
             logger.info('====== continuum spectrum final states')
             halo_vel = self.maddm_card['vave_indirect_cont']
             logger.info('DM particle halo velocity: %s c ' % halo_vel)
-            logger.info('*** Print <sigma v> with Fermi dSph limits')
+            logger.info('*** Print <sigma v> [cm^3 s^-1] with Fermi dSph limits')
             sigtot_alldm     = self.last_results['taacsID']
             sigtot_SM_alldm  = self.last_results['tot_SM_xsec']
             sigtot_th        = sigtot_alldm * xsi2
@@ -3024,7 +3024,7 @@ class MADDMRunCmd(cmd.CmdShell):
             logger.info('====== line spectrum final states')
             halo_vel = self.maddm_card['vave_indirect_line']
             logger.info('DM particle halo velocity: %s c ' % halo_vel)
-            logger.info('*** Print <sigma v> with %s line limits' % ', '.join([name.replace('_', ' ') for name in self.line_experiments.iternames()]))
+            logger.info('*** Print <sigma v> [cm^3 s^-1] with %s line limits' % ', '.join([name.replace('_', ' ') for name in self.line_experiments.iternames()]))
 
             # if halo_vel > self.vave_indirect_line_range[0] and halo_vel < self.vave_indirect_line_range[1]:
             print_sigmav_with_limits(detailled_keys, filter_ = lambda process: self.is_spectral_finalstate(process.split('_')[-1]), exp_label = 'Line GC', no_lim = False)
@@ -3400,7 +3400,7 @@ class MADDMRunCmd(cmd.CmdShell):
             method = self.maddm_card['indirect_flux_source_method']
             
             out.write('\n################################################\n')
-            out.write('# Indirect Detection [cm^3 s^-1]               #\n')
+            out.write('# Indirect Detection                           #\n')
             out.write('################################################\n')
 
             out.write('# Results in brackets display [prediction, upper limit]\n\n')
