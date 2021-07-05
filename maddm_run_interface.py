@@ -1056,7 +1056,6 @@ class GammaLineSpectrum(object):
         the spectrum is the flux spectrum, not gamma only, because experiments measure fluxes
         so we need to multiply the energy peak (approximately gaussian) for <sigma v>
     '''
-    FWHM_PART = 1.0 # coefficient to multiply to the FWHM before making any comparison: it expresses the fraction of the FWHM to be used for comparison: the signal can be summed only if their peak difference is less than both the FWHM*FWHM_PART
     FWHM_MERGED_FRAC = 1.5 # coefficient to multiply to the FWHM after having done all the possible merging: it expresses the maximum fraction of FWHM (with respect to the experiment's one) allowed for the merged line to be considered a line
     ERROR_TEST = collections.OrderedDict([ # order the error function in the order of testing, errors are concatenated as strings
         ('1', 'not_a_line'),
@@ -1255,8 +1254,10 @@ class GammaLineSpectrum(object):
         for peak_1 in self:
             for peak_2 in self[self.index(peak_1)+1:]:
                 diff_energies = np.abs(peak_1 - peak_2)
-                # this is a tuple: for each couple the first term is a tuple containing the peaks to sum, the second is a boolean to indicate if they can be merged and the third is the difference between the signals peaks and each FWHM: to be used to decide among more couples which one must be summed first.
-                comparisons["%s--%s" % (peak_1.label, peak_2.label)] = ((peak_1, peak_2), diff_energies < self.FWHM_PART*peak_1.fwhm and diff_energies < self.FWHM_PART*peak_2.fwhm, np.amin([diff_energies - peak_1.fwhm, diff_energies - peak_2.fwhm]))
+                # this is a tuple: for each couple the first term is a tuple containing the peaks to sum, the second is a boolean to indicate if they can be merged and the third is a quantity to be used to decide among more couples which one should be merged first.
+                # comparisons["%s--%s" % (peak_1.label, peak_2.label)] = ((peak_1, peak_2), diff_energies < peak_1.fwhm and diff_energies < peak_2.fwhm, np.amin([diff_energies - peak_1.fwhm, diff_energies - peak_2.fwhm]))# check with difference, but probably it's better to have the ratio
+                discriminant = diff_energies / np.amin([peak_1.fwhm, peak_2.fwhm])
+                comparisons["%s--%s" % (peak_1.label, peak_2.label)] = ((peak_1, peak_2), discriminant < 1, discriminant)
         # check if the couples which can be merged haven't got any common final state: in case, take the case for which the third term of the tuple is minimum.
         lines_to_merge = {} # dict containing a label of the peaks to be merged 'label_1--label_2' a tuple with the actual peaks
         # order the dictionary according to the differences between the signals peaks and each FWHM:
