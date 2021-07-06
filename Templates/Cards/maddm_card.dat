@@ -107,12 +107,12 @@
 # --------------------
 
 # choice of the dark matter density profile
-   %(profile)s   = profile ! nfwg, einasto, nfw, isothermal, burkert
+   %(profile)s   = profile ! gnfw, einasto, nfw, isothermal, burkert
 
 # profile common parameters
    %(r_s)s      = r_s # kpc
 
-# nfwg specific parameters
+# gnfw specific parameters
    %(gamma)s       = gamma
 
 # einasto specific parameters

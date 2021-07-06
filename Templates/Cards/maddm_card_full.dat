@@ -152,12 +152,12 @@
 # --------------------
 
 # choice of the dark matter density profile
-   %(profile)s   = profile ! nfwg, einasto, nfw, isothermal, burkert
+   %(profile)s   = profile ! gnfw, einasto, nfw, isothermal, burkert
 
 # profile common parameters
    %(r_s)s      = r_s # kpc
 
-# nfwg specific parameters
+# gnfw specific parameters
    %(gamma)s       = gamma
 
 # einasto specific parameters
@@ -192,11 +192,11 @@
    %(template_line_experiment_roi)s            = template_line_experiment_roi
    %(template_line_experiment_profile)s        = template_line_experiment_profile
    %(template_line_experiment_r_s)s           = template_line_experiment_r_s
-#  - NFW parameter gamma
+#  - gnfw parameter gamma
    %(template_line_experiment_gamma)s            = template_line_experiment_gamma
-#  - Einasto parameter alpha
+#  - einasto parameter alpha
    %(template_line_experiment_alpha)s           = template_line_experiment_alpha
-# - specify the parameters of the mask (angles are in deg)
+# - specify the parameters of the mask (angles are in deg), refer to MadDM v3.2 documentation
    %(template_line_experiment_mask_latitude)s            = template_line_experiment_mask_latitude    # angle 'beta'   : mask P, if abs(latitude(P)) < beta
    %(template_line_experiment_mask_longitude)s          = template_line_experiment_mask_longitude   # angle 'lambda' : mask P, if abs(longitude(P)) > lambda
    %(template_line_experiment_mask_inner_angle)s            = template_line_experiment_mask_inner_angle # angle 'alpha_1': mask P, if abs(arctan(P.y/P.x)) < alpha_1/2

@@ -2132,7 +2132,7 @@ class MADDMRunCmd(cmd.CmdShell):
     def launch_spectral_computations(self, mdm):
         """running the indirect detection for spectral features"""
         profiles = {
-            'nfwg'      : PROFILES.NFW,
+            'gnfw'      : PROFILES.NFW,
             'nfw'       : lambda **kwargs: (kwargs.pop('gamma', None), PROFILES.NFW(gamma = 1.0, **kwargs))[1], # to make canonical nfw keeping the freedom of kwargs, we need to pop "gamma" from kwargs and set it explicitly: make a lambda and built a tuple inside it: kwargs.pop modifies the dictionary and PROFILES.NFW(gamma=1.0, **kwargs) uses the modified kwargs because the tuple is instantiated and then processed, the [1] element is then returned from the lambda
             'einasto'   : PROFILES.Einasto,
             'isothermal': PROFILES.Isothermal,
@@ -2140,7 +2140,7 @@ class MADDMRunCmd(cmd.CmdShell):
         }
         # set the default Fermi-LAT 2015 ROI for each profile (for HESS only one ROI)
         fermilat_2015_rois_default = {
-            'nfwg'      : 3.,
+            'gnfw'      : 3.,
             'nfw'       : 41.,
             'einasto'   : 16.,
             'isothermal': 90.,
@@ -4781,11 +4781,11 @@ class MadDMCard(banner_mod.RunCard):
                            hidden = True , allowed = ['MF1','MF2','MF3'])
 
         # line analysis parameters
-        self.add_param('profile', 'einasto', comment='halo density profile for gamma-line searches, choose between nfwg, einasto, nfw, isothermal, burkert', include = False, \
-                           hidden = False, allowed = ['nfwg', 'einasto', 'nfw', 'isothermal', 'burkert'])
+        self.add_param('profile', 'einasto', comment='halo density profile for gamma-line searches, choose between gnfw, einasto, nfw, isothermal, burkert', include = False, \
+                           hidden = False, allowed = ['gnfw', 'einasto', 'nfw', 'isothermal', 'burkert'])
         self.add_param('r_s', 20.0, comment='scale radius (in kpc)', include = False, \
                            hidden = False)
-        self.add_param('gamma', 1.3, comment='gamma parameter, relevant for nfwg profile', include = False, \
+        self.add_param('gamma', 1.3, comment='gamma parameter, relevant for gnfw profile', include = False, \
                            hidden = False)
         self.add_param('alpha', 0.17, comment='alpha parameter, relevant for einasto profile', include = False, \
                            hidden = False)
@@ -4812,11 +4812,11 @@ class MadDMCard(banner_mod.RunCard):
                            hidden = True)
         self.add_param('template_line_experiment_roi', 1., comment="default ROI of the template experiment gamma-line searches", include = False, \
                            hidden = True)
-        self.add_param('template_line_experiment_profile', 'einasto', comment='default halo density profile for the template experiment gamma-line searches, choose between nfwg, einasto, nfw, isothermal, burkert', include = False, \
-                           hidden = True, allowed = ['nfwg', 'einasto', 'nfw', 'isothermal', 'burkert'])
+        self.add_param('template_line_experiment_profile', 'einasto', comment='default halo density profile for the template experiment gamma-line searches, choose between gnfw, einasto, nfw, isothermal, burkert', include = False, \
+                           hidden = True, allowed = ['gnfw', 'einasto', 'nfw', 'isothermal', 'burkert'])
         self.add_param('template_line_experiment_r_s', 20.0, comment='scale radius (in kpc) of the default profile related to the template line experiment gamma-line searches', include = False, \
                            hidden = True)
-        self.add_param('template_line_experiment_gamma', 1.3, comment='gamma parameter, relevant for nfwg profile related to the template line experiment gamma-line searches', include = False, \
+        self.add_param('template_line_experiment_gamma', 1.3, comment='gamma parameter, relevant for gnfw profile related to the template line experiment gamma-line searches', include = False, \
                            hidden = True)
         self.add_param('template_line_experiment_alpha', 0.17, comment='alpha parameter, relevant for einasto profile related to the template line experiment gamma-line searches', include = False, \
                            hidden = True)
