@@ -1190,11 +1190,13 @@ class ProcessExporterIndirectD(object):
                     next_generate = False
                     indirect_done = True
                     continue
-                
+
                 if next_generate and line.startswith('add process'):
                     line = line.replace('add process', 'generate')
                     next_generate = False
                 
+                if line.startswith('add indirect') and indirect_done:
+                    continue # otherwise next lines would be copied as they are 'add indirect_[...]'
                 
             #default behavior propagate
             new_history.append(line)
