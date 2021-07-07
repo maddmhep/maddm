@@ -4058,6 +4058,8 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
             logger.error('problem detected: %s' % e) 
             files.cp(self.paths['maddm_default'], self.paths['maddm'])
             self.maddm = MadDMCard(self.paths['maddm'])
+        self.already_warned = set([])
+        self.old_vave_indirect = self.maddm['vave_indirect']
         
         self.special_shortcut.update({'nevents': ([int],['Main:numberOfEvents %(0)s']),
                                       'fast':([],[lambda self: self.pass_to_fast_mode]),
@@ -4377,10 +4379,15 @@ When you are done with such edition, just press enter (or write 'done' or '0')
         #logger.debug('Updating the Jfactor file')
         #self.write_jfactors()
 
-        if 'vave_indirect' in self.maddm.user_set and 'vave_indirect_cont' not in self.maddm.user_set:
+        # check if user uses old variable 'vave_indirect':
+        # check if in user_set: warn the user and put it in self.maddm.already_warned set
+        # however, it could happen the user uses the old name again: check if the new value is different from the older one,
+        # if this is the case, then warn the user again.
+        if ('vave_indirect' in self.maddm.user_set) and ('vave_indirect' not in self.already_warned) and (self.maddm['vave_indirect'] != self.old_vave_indirect):
             logger.warning("You are using an old parameter name 'vave_indirect'. Fall back to the updated name 'vave_indirect_cont'.")
+            self.already_warned.add('vave_indirect')
+            self.old_vave_indirect = self.maddm['vave_indirect']
             self.setDM('vave_indirect_cont', self.maddm.get('vave_indirect'), loglevel = 30)
-            self.maddm.user_set.remove('vave_indirect')
 
         # If direct detection is ON ensure that quark mass are not zero
         if self.switch['direct'] != 'OFF':
