@@ -1441,6 +1441,10 @@ class MadDM_interface(master_interface.MasterCmd):
             The processes are loop-induced if the model does not provide effective vertices.
             The user can specify a single final state to analyze.
         """
+        print("-"*99)
+        logger.warning("You are using the module indirect_spectral_feature. This module is still in beta release.\nInstabilities at small velocities, vave_indirect_line < 1e-3c, might occur. Consider choosing larger values of vave_indirect_line if possible.")
+        print("-"*99)
+
         self._has_spectral, state = self.check_indirect_and_spectral(cmd = 'indirect_spectral_features', argument = argument)
         if state:
             return
