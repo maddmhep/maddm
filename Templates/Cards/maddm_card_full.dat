@@ -1,14 +1,14 @@
 #            ====================================================
-#            |                    MadDM v3.0                     |
+#            |                    MadDM v3.2                     |
 #            ====================================================
-#
-#                #########
-#             ###\\####//#####              Launchpad:  launchpad.net/maddm
-#           ######\\##//########
-#          ########\\//###########
-#         #########//\\############
-#        #########//##\\############                   arXiv:1308.4955
-#       ########//#####\\###########                   arXiv:1505.04190
+#                                                                               
+#                #########                                                        
+#             ###\\####//#####              Launchpad:  launchpad.net/maddm      
+#           ######\\##//########                                              
+#          ########\\//###########                                            
+#         #########//\\############                    arXiv:1308.4955
+#        #########//##\\############                   arXiv:1505.04190
+#       ########//#####\\###########                   arXiv:1804.00044
 #       ######################### ## ___________________________________________
 #       ####################### 0  #  _     _               _  _____   _     _
 #       #############   0  ###    ## | \   / |   ___    ___|| | ___ \ | \   / |
@@ -16,10 +16,10 @@
 #        ##########################  ||  V  || ||__||  ||__|| ||___|| ||  V  ||
 #         ###################   ##   ||     || \_____\ \____| |_____/ ||     ||
 #          ############       ###    ___________________________________________
-#           ##########    ######
-#             ################
-#                 ########
-#
+#           ##########    ######                                                 
+#             ################                                                   
+#                 ########                                                       
+#                                                                                    
 ###################################################################################
 #
 #   RELIC DENSITY
@@ -133,18 +133,81 @@
 #
 ###################################################################################
 
-# Methode of computation (affects speed and precision)
-   %(sigmav_method)s    = sigmav_method ! inclusive, madevent, reshuffling
-   %(indirect_flux_source_method)s   = indirect_flux_source_method ! pythia8, PPPC4DMID or PPPC4DMID_ew
-   %(indirect_flux_earth_method)s    =  indirect_flux_earth_method ! dragon or PPPC4DMID_ep
+# Method of computation (affects speed and precision)
+   %(sigmav_method)s = sigmav_method ! inclusive, madevent, reshuffling
+   %(indirect_flux_source_method)s   = indirect_flux_source_method ! pythia8, PPPC4DMID, PPPC4DMID_ew
+   %(indirect_flux_earth_method)s    =  indirect_flux_earth_method ! dragon, PPPC4DMID_ep
 
-# velocity in halo
-   %(vave_indirect)s   = vave_indirect  ! average velocity of DM in halos in natural units (e.g. 1E-3 for our galaxy, 1E-5 for dSph galaxies)
-
+# setting for DM velocity
+   %(vave_indirect_cont)s     = vave_indirect_cont  # average velocity of DM for continuum searches (default: Fermi-LAT dSph searches)
+   %(vave_indirect_line)s   = vave_indirect_line  # average velocity of DM for line searches (default: GC line search analysis) 
+   
 # PPPC4DMID_ep settings for dm halo profile, propagation method and halo function
-   %(dm_profile)s      = dm_profile ! NFW, Moo , Iso , Ein 
-   %(prop_method)s     = prop_method ! MIN, MED, MAX
-   %(halo_funct)s      = halo_funct ! MF1, MF2, MF3
+   %(dm_profile)s       = dm_profile ! NFW, Moo, Iso, Ein 
+   %(prop_method)s       = prop_method ! MIN, MED, MAX
+   %(halo_funct)s       = halo_funct ! MF1, MF2, MF3
+
+# --------------------
+# Line analysis
+# --------------------
+
+# choice of the dark matter density profile
+   %(profile)s   = profile ! gnfw, einasto, nfw, isothermal, burkert
+
+# profile common parameters
+   %(r_s)s      = r_s # kpc
+
+# gnfw specific parameters
+   %(gamma)s       = gamma
+
+# einasto specific parameters
+   %(alpha)s      = alpha
+
+# profile normalisation parameters
+   %(r_sun)s       = r_sun # kpc
+   %(rho_sun)s       = rho_sun # GeV cm^-3
+
+# specify a ROI for Fermi-LAT 2015
+# set default to use the ROI for which your profile is optimized
+   %(roi_fermi_2015)s   = roi_fermi_2015 ! default, R3, R16, R41, R90
+
+# number of FWHM to take as the minimum energy separation between peaks to consider them well separated
+   %(n_fwhm_separation)s       = n_fwhm_separation
+
+# minimum ratio between peaks' heights to have one of them significantly higher than the other
+   %(peak_height_factor)s      = peak_height_factor
+
+# toggle line experiments on/off
+   %(toggle_fermi_2015)s        = toggle_fermi_2015
+   %(toggle_hess_2018)s        = toggle_hess_2018
+
+### Template line experiment
+# in the following you are able to specify the parameters for an experiment of your choice
+# - toggle it on/off
+   %(toggle_template_line_experiment)s            = toggle_template_line_experiment
+# - name and arxiv (only for reference purpose)
+   %(template_line_experiment_name)s  = template_line_experiment_name
+   %(template_line_experiment_arxiv)s = template_line_experiment_arxiv
+# - you can specify up to 1 ROI (in deg) and a profile associated to it (with the various parameters as seen above)
+   %(template_line_experiment_roi)s            = template_line_experiment_roi
+   %(template_line_experiment_profile)s        = template_line_experiment_profile
+   %(template_line_experiment_r_s)s           = template_line_experiment_r_s
+#  - gnfw parameter gamma
+   %(template_line_experiment_gamma)s            = template_line_experiment_gamma
+#  - einasto parameter alpha
+   %(template_line_experiment_alpha)s           = template_line_experiment_alpha
+# - specify the parameters of the mask (angles are in deg), refer to MadDM v3.2 documentation
+   %(template_line_experiment_mask_latitude)s            = template_line_experiment_mask_latitude    # angle 'beta'   : mask P, if abs(latitude(P)) < beta
+   %(template_line_experiment_mask_longitude)s          = template_line_experiment_mask_longitude   # angle 'lambda' : mask P, if abs(longitude(P)) > lambda
+   %(template_line_experiment_mask_inner_angle)s            = template_line_experiment_mask_inner_angle # angle 'alpha_1': mask P, if abs(arctan(P.y/P.x)) < alpha_1/2
+# - energy resolution: this is a percent value to be multiplied by the energy of the peak
+   %(template_line_experiment_energy_resolution)s           = template_line_experiment_energy_resolution
+# - detection range in GeV
+   %(template_line_experiment_detection_range_min)s            = template_line_experiment_detection_range_min
+   %(template_line_experiment_detection_range_max)s      = template_line_experiment_detection_range_max
+# - constraints file name: to be placed in $MADDM_PATH/ExpData/, must be 3 columns, lines starting with '#' will be considered as comments
+#   DM mass (GeV), <sigmav> (cm^3 s^-1), flux (cm^-2 s^-1)
+   %(template_line_experiment_constraints_file)s           = template_line_experiment_constraints_file
 
 ###################################################################################
 #
@@ -152,19 +215,22 @@
 #
 ###################################################################################
 
-#flag to limit the Auto of the param_card to only consider two body decays.
- %(only_two_body_decays)s = only_two_body_decays
+# Flag to limit the Auto of the param_card to only consider two body decays.
+   %(only_two_body_decays)s = only_two_body_decays
+
+# Amount of output to store in scan mode
+   %(save_output)s       = save_output ! off, all, spectra
 
 #
-# integration precision parameters (relic and indirect --inclusive--)
+# Integration precision parameters (relic and indirect --inclusive--)
 #
 
-#     For the calculation of taacs only (both relic and indirect),
-#     Initial number of points in the grid to integrate over (of dm velocity)
+# For the calculation of taacs only (both relic and indirect),
+# Initial number of points in the grid to integrate over (of dm velocity)
    %(ngrid_init)s        = ngrid_init
-#     Number of points to add for one width around each resonance peak
-#     (the code will add points which exponentially increase in distance from the pole)
-   %(nres_points)s        = nres_points
+# Number of points to add for one width around each resonance peak
+# (the code will add points which exponentially increase in distance from the pole)
+   %(nres_points)s       = nres_points
 # precision of the romberg integration for Wij (irrelevant if simpson's rule used)
    %(eps_wij)s      = eps_wij
 # minimum number of iterations in the romberg integration algorithm for both Wij (irrelevant if simpson's rule used)
