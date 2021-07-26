@@ -860,7 +860,6 @@ class MadDM_interface(master_interface.MasterCmd):
                             # switch on indirect/spectral
                             self._has_indirect = (self._has_indirect or line_or_cont == 'cont')
                             self._has_spectral = (self._has_spectral or line_or_cont == 'line')
-                            logger.warning("relic_off=%s id=%s spectral=%s" % (self._relic_off, self._has_indirect, self._has_spectral))
                             return function_return
                     except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
                         logger.error(error)
@@ -872,7 +871,6 @@ class MadDM_interface(master_interface.MasterCmd):
                         self._last_amps = [self._curr_amps[-1]]
                         # switch on relic density in case the input process is related to relic density
                         self._relic_off = (self._relic_off and (tag not in [self.process_tag['DM2SM'], self.process_tag['DMSM']]))
-                        logger.warning("relic_off=%s id=%s spectral=%s" % (self._relic_off, self._has_indirect, self._has_spectral))
                         return function_return
                     except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
                         logger.error(error)
