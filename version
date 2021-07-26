@@ -1,4 +1,4 @@
-MadDM v3.2.0
+MadDM v3.2.1
 
 A joint program of University of Kansas (KU), 
 Center for Cosmology, Particle Physics and Phenomenology (CP3), 
@@ -8,6 +8,7 @@ Durham University (IPPP)
 Please cite: arXiv:1308.4955 for relic density
              arXiv:1505.04190 for direct/directional detection
              arXiv:1804.00044 for indirect detection, capture rate, parameter scanning
+			 arXiv:2107.04598 for loop-induced indirect detection and gamma-line spectral features
 
 Parameter scans using Multinest rely on the pymultinest code. 
 If you performed a Multinest scan in MadDM please cite:
