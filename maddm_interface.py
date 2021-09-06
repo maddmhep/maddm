@@ -855,7 +855,7 @@ class MadDM_interface(master_interface.MasterCmd):
                                             [ID_procs, ID_matrix_elements, ID_amps]):
                             function_return = super(MadDM_interface, self).do_add(line)
                             # if we get here, then the generation has gone well
-                            # add to last amps
+                            # initialize _last_amps
                             self._last_amps = [self._curr_amps[-1]]
                             # switch on indirect/spectral
                             self._has_indirect = (self._has_indirect or line_or_cont == 'cont')
