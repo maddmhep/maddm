@@ -820,11 +820,14 @@ class MadDM_interface(master_interface.MasterCmd):
 
         else:
             if '@' in line: # this allows to substitute the tag words with the numbers allowed in MadDM
-                line = re.sub(r'''(?<=@)(%s\b)''' % '\\b|'.join(self.process_tag), 
-                              lambda x: `self.process_tag[x.group(0)]`, line)
-
-                tag = int(re.search(r'(?<=@)\d+', line).group(0))
-                maddm_can_handle = tag in self.process_tag.values()
+                try:
+                    line = re.sub(r'''(?<=@)(%s\b)''' % '\\b|'.join(self.process_tag), 
+                                lambda x: `self.process_tag[x.group(0)]`, line)
+                    tag = int(re.search(r'(?<=@)\d+', line).group(0))
+                    maddm_can_handle = tag in self.process_tag.values()
+                except:
+                    tag = None
+                    maddm_can_handle = False
 
                 if maddm_can_handle and (not self._dm_candidate):
                     self.search_dm_candidate()
@@ -853,10 +856,11 @@ class MadDM_interface(master_interface.MasterCmd):
                     try:
                         with misc.TMP_variable(self, ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps'], 
                                             [ID_procs, ID_matrix_elements, ID_amps]):
+                            n_actual_amps = len(self._curr_amps)
                             function_return = super(MadDM_interface, self).do_add(line)
                             # if we get here, then the generation has gone well
                             # initialize _last_amps
-                            self._last_amps = [self._curr_amps[-1]]
+                            self._last_amps = self._curr_amps[n_actual_amps:]
                             # switch on indirect/spectral
                             self._has_indirect = (self._has_indirect or line_or_cont == 'cont')
                             self._has_spectral = (self._has_spectral or line_or_cont == 'line')
@@ -867,14 +871,18 @@ class MadDM_interface(master_interface.MasterCmd):
                         return
                 elif maddm_can_handle and user:
                     try:
+                        n_actual_amps = len(self._curr_amps)
                         function_return = super(MadDM_interface, self).do_add(line)
-                        self._last_amps = [self._curr_amps[-1]]
+                        self._last_amps = self._curr_amps[n_actual_amps:]
                         # switch on relic density in case the input process is related to relic density
                         self._relic_off = (self._relic_off and (tag not in [self.process_tag['DM2SM'], self.process_tag['DMSM']]))
                         return function_return
                     except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
                         logger.error(error)
                         return
+                elif user:
+                    logger.error("Process not supported by MadDM, allowed tags are: " + ", ".join(self.process_tag.keys()))
+                    return
             
             return super(MadDM_interface, self).do_add(line)
 
