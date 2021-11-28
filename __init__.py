@@ -1,7 +1,8 @@
 ## import the required files
 
-import maddm_interface as maddm_interface
-import MGoutput as MGoutput
+from __future__ import absolute_import
+from . import maddm_interface as maddm_interface
+from . import MGoutput as MGoutput
 ## Define a typical error for the plugin
 class MadDMError(Exception): pass
 

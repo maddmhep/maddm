@@ -1,8 +1,11 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import os
 import sys
 import shutil
 import readline
 import rlcompleter
+from six.moves import input
 
 class bcolors:
     HEADER = '\033[95m'
@@ -48,9 +51,8 @@ def initialize_MadDM_session(print_banner = False):
 #-----------------------------------------------------------------------#
 
   if (print_banner):
-    print "\n"
-    print \
-  "            ====================================================\n"+\
+    print("\n")
+    print("            ====================================================\n"+\
   "            |                  "+bcolors.OKBLUE+"  MadDM v2.0                     "+bcolors.ENDC+"|\n"\
   "            ====================================================\n"+\
   "                                                                               \n"+\
@@ -71,7 +73,7 @@ def initialize_MadDM_session(print_banner = False):
   "           ##########    ######                                                 \n"+\
   "             ################                                                   \n"+\
   "                 ########                                                       \n"+\
-  "                                                                                    \n"
+  "                                                                                    \n")
 
   # Get the model name and check if it exists in the Models folder
   model_list = os.listdir(os.path.join(rp, 'models'))
@@ -80,7 +82,7 @@ def initialize_MadDM_session(print_banner = False):
   leg_ans = False
   while not leg_ans:
 
-	  model_name = raw_input('Enter model name (press Enter to list the available models): ')
+	  model_name = input('Enter model name (press Enter to list the available models): ')
 
 	  if (model_name == ''):
 		  # List the available DM models in the Models directory of MadGraph
@@ -88,15 +90,15 @@ def initialize_MadDM_session(print_banner = False):
 		  for mdl in model_list:
 			  mdl_dir = os.path.join('models', mdl)
 			  if os.path.isdir(os.path.join(rp, mdl_dir)):
-				  print mdl+"   "
+				  print(mdl+"   ")
 
 	  elif model_name in model_list:
 			leg_ans = True
 	  else:
-		  print "The model you entered is not available! Please try again"
+		  print("The model you entered is not available! Please try again")
 
   # Loop until the project name is set
-  project_name = raw_input("Enter project name ("+model_name+"): ")
+  project_name = input("Enter project name ("+model_name+"): ")
   if (project_name == ''):
       project_name = model_name
 
@@ -106,7 +108,7 @@ def initialize_MadDM_session(print_banner = False):
   leg_ans = False
   while not leg_ans:
 
-  	answer = raw_input("Calculate relic density? [y] (y/n)")
+  	answer = input("Calculate relic density? [y] (y/n)")
   	if answer == 'y' or answer=='Y' or answer =='':
   		do_relic_density = True
   		leg_ans = True
@@ -117,7 +119,7 @@ def initialize_MadDM_session(print_banner = False):
   leg_ans = False
   while not leg_ans:
 
-  	answer = raw_input("Calculate direct detection cross sections? [y] (y/n)")
+  	answer = input("Calculate direct detection cross sections? [y] (y/n)")
   	if answer == 'y' or answer=='Y' or answer =='':
   		do_direct_detection = True
   		leg_ans = True
@@ -129,7 +131,7 @@ def initialize_MadDM_session(print_banner = False):
   if do_direct_detection == True:
   	leg_ans = False
   	while not leg_ans:
-  		answer = raw_input("Simulate DM scattering events off nuclei? [y] (y/n)")
+  		answer = input("Simulate DM scattering events off nuclei? [y] (y/n)")
   		if answer == 'y' or answer=='Y' or answer =='':
   			do_directional_detection = True
   			leg_ans = True

@@ -3,9 +3,10 @@
 # Date: Tue 20 Jan 2015 15:06:46
 
 
-from object_library import all_couplings, Coupling
+from __future__ import absolute_import
+from .object_library import all_couplings, Coupling
 
-from function_library import complexconjugate, re, im, csc, sec, acsc, asec, cot
+from .function_library import complexconjugate, re, im, csc, sec, acsc, asec, cot
 
 
 

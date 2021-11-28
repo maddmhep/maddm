@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import logging
 import math
 import os
@@ -8,7 +10,7 @@ import random
 from StringIO import StringIO
 import re
 
-import maddm_run_interface
+from . import maddm_run_interface
 
 # python routines from MadGraph
 import madgraph.iolibs.export_v4 as export_v4
@@ -26,6 +28,8 @@ from madgraph.core.base_objects import Process
 import madgraph.interface.reweight_interface as rwgt_interface
 import madgraph.various.banner as bannermod
 from madgraph.core import base_objects
+from six.moves import range
+from six.moves import zip
 
 
 class MYStringIO(StringIO):
@@ -168,7 +172,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
 
         temp_dir = os.path.join(self.mgme_dir, 'Template')        
         # Add make_opts file in Source
-        print os.path.join(temp_dir, 'LO/Source', 'make_opts') #modified by antony
+        print(os.path.join(temp_dir, 'LO/Source', 'make_opts')) #modified by antony
         shutil.copy(os.path.join(temp_dir, 'LO/Source', 'make_opts'), #modified by antony
                     os.path.join(self.dir_path, 'Source'))        
  

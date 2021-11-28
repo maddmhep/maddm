@@ -1,9 +1,11 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import logging
 import os
 import collections
 
-import maddm_run_interface as maddm_run_interface
-import dm_tutorial_text as dm_tutorial_text
+from . import maddm_run_interface as maddm_run_interface
+from . import dm_tutorial_text as dm_tutorial_text
 
 import madgraph.core.base_objects as base_objects
 import madgraph.core.helas_objects as helas_objects
@@ -19,6 +21,10 @@ import models.model_reader as model_reader
 from madgraph import MG5DIR
 
 import re
+import six
+from six.moves import map
+from six.moves import range
+from six.moves import zip
 pjoin = os.path.join
 
 logger = logging.getLogger('madgraph.plugin.maddm')
@@ -196,7 +202,7 @@ class MadDM_interface(master_interface.MasterCmd):
                 'z2-even': [p for p in self._curr_model.get('particles') if abs(p.get('pdg_code')) not in [a.get('pdg_code') for a in self._z2_odd+self._disconnected_particles]],
                 'disconnected': self._disconnected_particles
             }
-            which = [arg for arg in arguments if arg in to_display.keys()]
+            which = [arg for arg in arguments if arg in list(to_display.keys())]
             which = list(set(which))
             for arg in which:
                 logger.info(arg + ": " + ", ".join([p.get_name() for p in to_display[arg]]))
@@ -213,7 +219,7 @@ class MadDM_interface(master_interface.MasterCmd):
                 'indirect': bool(self._indirect_amps)
             }
             # in the following lines we filter out only the allowed options
-            which = [arg for arg in arguments if arg in generated_amps.keys() + ['all', 'last']]
+            which = [arg for arg in arguments if arg in list(generated_amps.keys()) + ['all', 'last']]
             which = list(set(which))
             for arg in which:
                 arguments.remove(arg)
@@ -231,7 +237,7 @@ class MadDM_interface(master_interface.MasterCmd):
             N_head = 80
             if 'last' in which:
                 header = "==== LAST %s " % arguments[0].upper()
-                print header + "=" * max([N_head - len(header), 0])
+                print(header + "=" * max([N_head - len(header), 0]))
                 with misc.TMP_variable(self, ['_curr_amps'], [self._last_amps]):
                     try:
                         super(MadDM_interface, self).do_display(*args, **opts)
@@ -243,7 +249,7 @@ class MadDM_interface(master_interface.MasterCmd):
                     if (category == 'relic') and self._relic_off:
                         continue
                     header = "==== %s %s " % (category.upper(), arguments[0].upper())
-                    print header + "=" * max([N_head - len(header), 0])
+                    print(header + "=" * max([N_head - len(header), 0]))
                     with misc.TMP_variable(self, ['_curr_amps'], [getattr(self, "_%s_amps" % category)]):
                         super(MadDM_interface, self).do_display(*args, **opts)
                 return
@@ -314,7 +320,7 @@ class MadDM_interface(master_interface.MasterCmd):
                     #remove None
                     self._dm_candidate = [dm for dm in self._dm_candidate if dm]
                     if not self._dm_candidate:
-                        raise DMError, '%s is not a valid particle for the model.' % args[1] 
+                        raise DMError('%s is not a valid particle for the model.' % args[1]) 
                     if len(self._dm_candidate) == 1:
                         # No update of the model if 2(or more) DM since DD is not possible
                         self._z2_odd.extend([p for p in self._dm_candidate])
@@ -465,9 +471,9 @@ class MadDM_interface(master_interface.MasterCmd):
 
         # Check to see if we actually found a DM candidate
         if not dm_particles:
-            raise DMError, "No dark matter candidates in the model!"
+            raise DMError("No dark matter candidates in the model!")
         if dm_mass == 0:
-            raise DMError, "No dark matter candidate since we found a DarkEnergy candidate: %s" % dm_particles[0]['name']
+            raise DMError("No dark matter candidate since we found a DarkEnergy candidate: %s" % dm_particles[0]['name'])
 
         # Validity check
         dm_names = [p.get('name') for p in dm_particles]
@@ -741,7 +747,7 @@ class MadDM_interface(master_interface.MasterCmd):
         
         if args[1] == 'maddm_first_indirect':
             args.insert(1, pjoin(MG5DIR, 'input', 'mg5_configuration.txt'))
-            print args
+            print(args)
             return args
         else:
             return super(MadDM_interface, self).check_save(args)
@@ -822,9 +828,9 @@ class MadDM_interface(master_interface.MasterCmd):
             if '@' in line: # this allows to substitute the tag words with the numbers allowed in MadDM
                 try:
                     line = re.sub(r'''(?<=@)(%s\b)''' % '\\b|'.join(self.process_tag), 
-                                lambda x: `self.process_tag[x.group(0)]`, line)
+                                lambda x: repr(self.process_tag[x.group(0)]), line)
                     tag = int(re.search(r'(?<=@)\d+', line).group(0))
-                    maddm_can_handle = tag in self.process_tag.values()
+                    maddm_can_handle = tag in list(self.process_tag.values())
                 except:
                     tag = None
                     maddm_can_handle = False
@@ -865,7 +871,7 @@ class MadDM_interface(master_interface.MasterCmd):
                             self._has_indirect = (self._has_indirect or line_or_cont == 'cont')
                             self._has_spectral = (self._has_spectral or line_or_cont == 'line')
                             return function_return
-                    except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
+                    except (self.InvalidCmd, diagram_generation.NoDiagramException) as error:
                         logger.error(error)
                         self.change_principal_cmd('MadGraph')
                         return
@@ -877,11 +883,11 @@ class MadDM_interface(master_interface.MasterCmd):
                         # switch on relic density in case the input process is related to relic density
                         self._relic_off = (self._relic_off and (tag not in [self.process_tag['DM2SM'], self.process_tag['DMSM']]))
                         return function_return
-                    except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
+                    except (self.InvalidCmd, diagram_generation.NoDiagramException) as error:
                         logger.error(error)
                         return
                 elif user:
-                    logger.error("Process not supported by MadDM, allowed tags are: " + ", ".join(self.process_tag.keys()))
+                    logger.error("Process not supported by MadDM, allowed tags are: " + ", ".join(list(self.process_tag.keys())))
                     return
             
             return super(MadDM_interface, self).do_add(line)
@@ -1012,7 +1018,7 @@ class MadDM_interface(master_interface.MasterCmd):
         args = self.split_arg(line)
         if not args or args[0] not in self._export_formats + ['maddm']:
             if self._curr_amps:
-                if any(amp.get('process').get('id') in self.process_tag.values()
+                if any(amp.get('process').get('id') in list(self.process_tag.values())
                         for amp in self._curr_amps):
                     args.insert(0, 'maddm')
             
@@ -1035,7 +1041,7 @@ class MadDM_interface(master_interface.MasterCmd):
         tree_line_processes_names_map = self.extract_processes_names(self._ID_line_amps[0])
         li_cont_processes_names_map   = self.extract_processes_names(self._ID_cont_amps[1])
         li_line_processes_names_map   = self.extract_processes_names(self._ID_line_amps[1])
-        import MGoutput
+        from . import MGoutput
         proc_path = pjoin(path, 'matrix_elements', 'proc_characteristics')
         proc_charac = MGoutput.MADDMProcCharacteristic(proc_path)
         proc_charac['relic_density_off']      = self._relic_off
@@ -1043,7 +1049,7 @@ class MadDM_interface(master_interface.MasterCmd):
         proc_charac['has_indirect_spectral']  = self._has_spectral
         proc_charac['forbid_fast']            = self._forbid_fast
         proc_charac['pdg_particle_map']       = self._pdg_particle_map
-        proc_charac['processes_names_map']    = dict(curr_processes_names_map.items() + tree_cont_processes_names_map.items() + tree_line_processes_names_map.items() + li_cont_processes_names_map.items() + li_line_processes_names_map.items())
+        proc_charac['processes_names_map']    = dict(list(curr_processes_names_map.items()) + list(tree_cont_processes_names_map.items()) + list(tree_line_processes_names_map.items()) + list(li_cont_processes_names_map.items()) + list(li_line_processes_names_map.items()))
         proc_charac.write(proc_path)
 
     def extract_processes_names(self, amplitude_list):
@@ -1054,7 +1060,7 @@ class MadDM_interface(master_interface.MasterCmd):
             final_pdg = '(' + ')('.join(map(str,amplitude['process'].get_final_ids())) + ')'
             proc_pdg.append(initial_pdg + '_' + final_pdg)
             proc_names.append('_'.join(amplitude['process'].shell_string().split('_')[-2:]))
-        return dict(zip(proc_names, proc_pdg))
+        return dict(list(zip(proc_names, proc_pdg)))
 
     def output_indirect(self, path, directory, ID_procs, ID_matrix_elements, ID_amps):
         ''' Output commands for indirect_detection or loop-induced '''
@@ -1218,7 +1224,7 @@ class MadDM_interface(master_interface.MasterCmd):
         self.define_multiparticles('dm_particles', self._dm_candidate+self._coannihilation)
 
         self.do_display('multiparticles')
-        sm_pdgs = range(1, 7) + range(11, 17) + range(21, 26) #quarks/leptons/bosons
+        sm_pdgs = list(range(1, 7)) + list(range(11, 17)) + list(range(21, 26)) #quarks/leptons/bosons
         sm_part = [self._curr_model.get_particle(pdg) for pdg in sm_pdgs if self._curr_model.get_particle(pdg)]
 
         self.define_multiparticles('fs_particles', sm_part +bsm_final_states)
@@ -1239,8 +1245,8 @@ class MadDM_interface(master_interface.MasterCmd):
 
         # Generate all the DM -> DM processes
         nb_dm = len(self._dm_candidate + self._coannihilation)
-        for i in xrange(nb_dm):
-            for j in xrange(i,nb_dm):
+        for i in range(nb_dm):
+            for j in range(i,nb_dm):
                 if  excluded_particles:
                     proc = "DM_particle_%s DM_particle_%s > dm_particles dm_particles / %s %s @DM2DM"\
                        % (i,j,' '.join(excluded_particles), coupling)
@@ -1262,8 +1268,8 @@ class MadDM_interface(master_interface.MasterCmd):
 
         # Generate all the DM particles scattering off of the thermal background and
         # change to a different DM species (again, no pure scatterings)
-        for i in xrange(nb_dm):
-            for j in xrange(nb_dm):
+        for i in range(nb_dm):
+            for j in range(nb_dm):
                 if i == j:
                     continue
                 if excluded_particles:
@@ -1345,7 +1351,7 @@ class MadDM_interface(master_interface.MasterCmd):
                  GenerateDiagramsDirDetect() function and no where else!
         """                                                             
 
-        quarks = range(1,7) # ['d', 'u', 's', 'c', 'b','t']
+        quarks = list(range(1,7)) # ['d', 'u', 's', 'c', 'b','t']
         antiquarks = [-1*pdg for pdg in quarks] # ['d~', 'u~', 's~', 'c~', 'b~','t~']
         
         if type == 'SI':
@@ -1372,7 +1378,7 @@ class MadDM_interface(master_interface.MasterCmd):
 
             try:
                 self.do_add('process %s' %proc, user=False)
-            except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
+            except (self.InvalidCmd, diagram_generation.NoDiagramException) as error:
                 logger.debug(error)
             else:
                 has_diagram = True
@@ -1387,7 +1393,7 @@ class MadDM_interface(master_interface.MasterCmd):
 
                 try:
                     self.do_add('process %s' % proc, user=False)
-                except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
+                except (self.InvalidCmd, diagram_generation.NoDiagramException) as error:
                     logger.debug(error)
                 else:
                     has_diagram = True
@@ -1439,8 +1445,8 @@ class MadDM_interface(master_interface.MasterCmd):
             return bool(amplitude['decay_chains'])
         
         diagrams = bool(amplitude['diagrams'])
-        born_diagrams = bool('born_diagrams' in amplitude.keys() and amplitude['born_diagrams'])
-        loop_diagrams = bool('loop_diagrams' in amplitude.keys() and amplitude['loop_diagrams'])
+        born_diagrams = bool('born_diagrams' in list(amplitude.keys()) and amplitude['born_diagrams'])
+        loop_diagrams = bool('loop_diagrams' in list(amplitude.keys()) and amplitude['loop_diagrams'])
         return any([diagrams, born_diagrams, loop_diagrams])
 
     def indirect_contains_photon(self, final_states):
@@ -1506,9 +1512,9 @@ class MadDM_interface(master_interface.MasterCmd):
             The processes are loop-induced if the model does not provide effective vertices.
             The user can specify a single final state to analyze.
         """
-        print("-"*99)
+        print(("-"*99))
         logger.warning("You are using the module indirect_spectral_feature. This module is still in beta release.\nInstabilities at small velocities, vave_indirect_line < 1e-3c, might occur. Consider choosing larger values of vave_indirect_line if possible.")
-        print("-"*99)
+        print(("-"*99))
 
         self._has_spectral, state = self.check_indirect_and_spectral(cmd = 'indirect_spectral_features', argument = argument)
         if state:
@@ -1529,7 +1535,7 @@ class MadDM_interface(master_interface.MasterCmd):
         backup_amps = [amp for amp in self._ID_line_amps[0] + self._ID_line_amps[1]]
         if argument == []:
             # exclude electric and color charged particles because of course they can't generate 'a _bsm_' diagrams
-            charged_particles = [pdg_code for pdg_code, particle in self._curr_model.get('particle_dict').iteritems() if particle.get('charge') != 0. or particle.get('color') != 1]
+            charged_particles = [pdg_code for pdg_code, particle in six.iteritems(self._curr_model.get('particle_dict')) if particle.get('charge') != 0. or particle.get('color') != 1]
             odd_and_disconnected = self.list_odd_disconnected_pdg()
             bsm_content = self.indirect_bsm_multiparticle(excluded = charged_particles+odd_and_disconnected)
             final_states = ['22 22', '22 23', '22 25']
@@ -1606,7 +1612,7 @@ class MadDM_interface(master_interface.MasterCmd):
                                      [ID_procs[0], ID_matrix_elements[0], ID_amps[0]]):
                     self.do_add('process %s' % proc, user=False)
                     last_amp = self._curr_amps[-1]
-            except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
+            except (self.InvalidCmd, diagram_generation.NoDiagramException) as error:
                 if allow_loop_induce:
                     with misc.TMP_variable(self, ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps'], 
                                      [ID_procs[1], ID_matrix_elements[1], ID_amps[1]]):
@@ -1615,13 +1621,13 @@ class MadDM_interface(master_interface.MasterCmd):
                             self.do_add('process %s' % proc, user=False)
                             last_amp = self._curr_amps[-1]
                             self._forbid_fast = True
-                        except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
+                        except (self.InvalidCmd, diagram_generation.NoDiagramException) as error:
                             proc = '%s %s > %s %s [noborn=QED] @ID ' % (name, antiname, ' '.join(argument), coupling)
                             try:
                                 self.do_add('process %s' % proc, user=False)
                                 last_amp = self._curr_amps[-1]
                                 self._forbid_fast = True
-                            except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
+                            except (self.InvalidCmd, diagram_generation.NoDiagramException) as error:
                                 # if no loop-induced diagrams have been found then change back the command interface to MadGraph
                                 logger.error(error.args[0].replace('noborn = QED', 'noborn = QCD or QED'))
                                 self.change_principal_cmd('MadGraph')

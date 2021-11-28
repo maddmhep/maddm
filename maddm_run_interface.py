@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import absolute_import
+from __future__ import print_function
 import collections
 import math
 import logging
@@ -8,14 +10,18 @@ import sys
 import subprocess
 
 from numpy.core.fromnumeric import var
-import auxiliary as aux
+from . import auxiliary as aux
 import stat
 import shutil
 from copy import copy, deepcopy
 
-import MGoutput
+from . import MGoutput
 from madgraph import MadGraph5Error
 from models import check_param_card
+import six
+from six.moves import map
+from six.moves import range
+from six.moves import zip
 
 MG5MODE = True
 import madgraph
@@ -42,8 +48,8 @@ try:
     from scipy.integrate import quad, dblquad, tplquad
     from scipy.optimize import brute, fmin, minimize_scalar, bisect
     from scipy.special import gammainc
-except ImportError, error:
-    print error
+except ImportError as error:
+    print(error)
     logger.warning('scipy module not found! Some Indirect detection features will be disabled.')
     HAS_SCIPY = False 
 else:
@@ -196,13 +202,13 @@ class ExpConstraints:
 
     def load_constraints(self):
         #Load in direct detection constraints
-        for spin_type, limit_file in self._dd_limit_file.iteritems():
+        for spin_type, limit_file in six.iteritems(self._dd_limit_file):
             self.safe_load_file(filename = limit_file, variables = ['_dd_limit_mdm', '_dd_limit_sigma'], key = spin_type)
                                                                                                             
-        for channel, limit_file in self._id_limit_file.iteritems():
+        for channel, limit_file in six.iteritems(self._id_limit_file):
             self.safe_load_file(filename = limit_file, variables = ['_id_limit_mdm', '_id_limit_sigv'], key = channel, usecols = (0,1))
 
-        for channel, limit_file in self._id_limit_file_flux.iteritems():
+        for channel, limit_file in six.iteritems(self._id_limit_file_flux):
             self.safe_load_file(filename = limit_file, variables = ['_id_limit_mdm', '_id_limit_flux'], key = channel, usecols = (0,2))
 
     #Returns a value in cm^2
@@ -456,7 +462,7 @@ class Fermi_bounds:
         tol = min(espectrum(emin),espectrum(emax))*1e-10
         try:
             return quad(espectrum,emin,emax,epsabs=tol,full_output=True)[0]
-        except Exception, msg:
+        except Exception as msg:
             logger.info('Numerical error "%s" when calculating integral flux.' % msg)
         return np.nan
 
@@ -502,7 +508,7 @@ class Fermi_bounds:
         ll_tot = 0.0
         ll_null = 0.0
         j_factors = {}
-        for k,v in dw_in.iteritems():
+        for k,v in six.iteritems(dw_in):
             marg_like = self.marg_like_dw(v,pred,marginalize)
             ll_tot += marg_like[0]
             ll_null += v['ll_null']
@@ -597,7 +603,7 @@ class Fermi_bounds:
 
              if p_value <= cl_val*0.98 or p_value >= cl_val*1.02:
                  sigmav_ul= -1
-                 print " WARNING: increase range (sigmavmin,sigmavmax) and/or step_size_scaling!"
+                 print(" WARNING: increase range (sigmavmin,sigmavmax) and/or step_size_scaling!")
         
              return sigmav_ul    
 
@@ -914,7 +920,7 @@ class GammaLineExperiment(object):
         return coeff * sigmav * jfact / (8 * np.pi * mdm * mdm * self.majorana_dirac_factor)
 
     def get_roi(self):
-        return self.info_dict.keys()
+        return list(self.info_dict.keys())
 
     def get_name(self):
         return self.name
@@ -1262,7 +1268,7 @@ class GammaLineSpectrum(object):
         lines_to_merge = {} # dict containing a label of the peaks to be merged 'label_1--label_2' a tuple with the actual peaks
         # order the dictionary according to the differences between the signals peaks and each FWHM:
         # in this way we start our analysis from the very minimum and we can drop the other final states which may be merged because this value is certainly higher.
-        comparisons = collections.OrderedDict(sorted(comparisons.items(), key = lambda item: item[1][2]))
+        comparisons = collections.OrderedDict(sorted(list(comparisons.items()), key = lambda item: item[1][2]))
         for comp_lines, (peaks_to_sum, merging_condition, discriminant) in comparisons.items():
             if not merging_condition or any(l in lm for l in comp_lines.split('--') for lm in lines_to_merge.keys()):
                 continue
@@ -1303,7 +1309,7 @@ class GammaLineSpectrum(object):
         test_spectrum  = np.array([p for p in self if p != peak])
         # find neighbourhood of the peak
         get_e_peak     = lambda a_peak: a_peak.e_peak
-        energy_peaks   = np.array(map(get_e_peak, test_spectrum))
+        energy_peaks   = np.array(list(map(get_e_peak, test_spectrum)))
         condition      = np.logical_and(energy_peaks < peak.e_peak + min_separation, energy_peaks > peak.e_peak - min_separation)
         neighbourhood  = test_spectrum[condition]
         # check: if it is alone, then return False
@@ -1311,7 +1317,7 @@ class GammaLineSpectrum(object):
             return False # no peaks too close
         # check the ratio flux/flux_UL of the peak with respect each other peak in the neighbourhood
         get_height = lambda a_peak: a_peak.flux/a_peak.flux_UL
-        height_peaks = np.array(map(get_height, neighbourhood))
+        height_peaks = np.array(list(map(get_height, neighbourhood)))
         # height_peaks elements are of the order of 1e-10 -- 1e-30, so they can be considered zero if less than 1e-200 let's say
         if any(height_peaks < 1e-200): # happens if one peak has flux_UL == __infty__ (it is out of range), in this case can't do comparison, so assume they are too close
             logger.warning("One peak has upper limit equal to __infty__, I can't compare its height with others, I assume they can't be neglected.")
@@ -1333,16 +1339,16 @@ class PDGParticleMap(dict):
             self.set_model_map(model)
 
     def set_model_map(self, model):
-        for pdg_code, particle in model.get('particle_dict').iteritems():
+        for pdg_code, particle in six.iteritems(model.get('particle_dict')):
             self[str(pdg_code)] = particle.get_name() 
 
     def get_pdg(self, particle):
         ''' if 'particle' is a pdg_code itself inside the self dictionary, then return it,
             otherwise obtain the pdg_code from the particle label.
         '''
-        if particle in self.keys():
+        if particle in list(self.keys()):
             return int(particle)
-        this_pdg = [pdg for pdg, name in self.iteritems() if name == particle]
+        this_pdg = [pdg for pdg, name in six.iteritems(self) if name == particle]
         if len(this_pdg) == 0:
             # check if it is a multiparticle
             raise ValueError("No particle '%s' in the model." % particle)
@@ -1360,7 +1366,7 @@ class PDGParticleMap(dict):
     def find_particles(self, string):
         ''' find all particles pdg of the form (pdg) in a string and return a list of them '''
         matches = re.findall(r"\(-?\d+\)", string)
-        return list(map(lambda s: s.strip('()'), matches))
+        return list([s.strip('()') for s in matches])
 
     def format_particles(self, string):
         ''' given a string with pdg codes, substitutes them with the particle labels
@@ -1470,8 +1476,8 @@ class MADDMRunCmd(cmd.CmdShell):
             dir_path = root_path
 
         self.dir_path = dir_path
-        self.indirect_directories = dict(zip(['Indirect_tree_cont', 'Indirect_tree_line', 'Indirect_LI_cont', 'Indirect_LI_line'], map(os.path.isdir, [pjoin(dir_path, 'Indirect_tree_cont'), pjoin(dir_path, 'Indirect_tree_line'), pjoin(dir_path, 'Indirect_LI_cont'), pjoin(dir_path, 'Indirect_LI_line')])))
-        self.indirect_directories_cross_section_contribution = dict(zip(['Indirect_tree_cont', 'Indirect_tree_line', 'Indirect_LI_cont', 'Indirect_LI_line'], [0., 0., 0., 0.]))
+        self.indirect_directories = dict(list(zip(['Indirect_tree_cont', 'Indirect_tree_line', 'Indirect_LI_cont', 'Indirect_LI_line'], list(map(os.path.isdir, [pjoin(dir_path, 'Indirect_tree_cont'), pjoin(dir_path, 'Indirect_tree_line'), pjoin(dir_path, 'Indirect_LI_cont'), pjoin(dir_path, 'Indirect_LI_line')])))))
+        self.indirect_directories_cross_section_contribution = dict(list(zip(['Indirect_tree_cont', 'Indirect_tree_line', 'Indirect_LI_cont', 'Indirect_LI_line'], [0., 0., 0., 0.])))
         self.param_card_iterator = [] #a placeholder containing a generator of paramcard for scanning
         
         # Define self.proc_characteristics (set of information related to the
@@ -1492,7 +1498,7 @@ class MADDMRunCmd(cmd.CmdShell):
         self.multinest_running = False
         self.auto_width = set() # keep track of width set on Auto
 
-        self.pdg_particle_map = PDGParticleMap(self.proc_characteristics['pdg_particle_map'].items())
+        self.pdg_particle_map = PDGParticleMap(list(self.proc_characteristics['pdg_particle_map'].items()))
 
         self.limits = ExpConstraints()
         self.vave_indirect_cont_range = (3e-6, 1.4e-4)
@@ -1536,7 +1542,7 @@ class MADDMRunCmd(cmd.CmdShell):
         if pattern_scan.search(text):
             if not isinstance(self, cmd.CmdShell):
                 # we are in web mode => forbid scan due to security risk
-                raise Exception, "Scans are not allowed in web mode"
+                raise Exception("Scans are not allowed in web mode")
             # at least one scan parameter found. create an iterator to go trough the cards
             main_card = param_card_mod.ParamCardIterator(text)
             self.param_card_iterator = main_card
@@ -1733,7 +1739,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 self.launch_indirect(force, directory, self.maddm_card['vave_indirect_cont'])
             # compute total cross section only for continuum final states
             self.last_results['taacsID'] = 0.
-            for process, sigmav in {k.replace('taacsID#', ''): v for k, v in self.last_results.iteritems() if k.startswith('taacsID#')}.iteritems():
+            for process, sigmav in six.iteritems({k.replace('taacsID#', ''): v for k, v in six.iteritems(self.last_results) if k.startswith('taacsID#')}):
                 if self.is_spectral_finalstate(process.split('_')[-1]):
                     continue
                 self.last_results['taacsID'] += sigmav
@@ -1865,13 +1871,13 @@ class MADDMRunCmd(cmd.CmdShell):
                         order.append(str_part + "peak_%d"        % (i+1))
                         order.append(str_part + "flux_%d"        % (i+1))
                         order.append(str_part + "flux_UL_%d"     % (i+1))
-                        if str_part + "like_%d" % (i+1) in self.last_results.keys():
+                        if str_part + "like_%d" % (i+1) in list(self.last_results.keys()):
                             order.append(str_part + "like_%d"        % (i+1))
                             order.append(str_part + "pvalue_%d"      % (i+1))
                         order.append(str_part + "peak_%d_error"  % (i+1))
 
             # remove elements which have not been computed
-            order[:] = [elem for elem in order if elem in self.last_results.keys()]
+            order[:] = [elem for elem in order if elem in list(self.last_results.keys())]
 
             run_name = str(self.run_name).rsplit('_',1)[0]
             summary_file = pjoin(self.dir_path, 'output','scan_%s.txt' % run_name)
@@ -2012,7 +2018,7 @@ class MADDMRunCmd(cmd.CmdShell):
             line_gc_vel = self.maddm_card['vave_indirect_line'] > self.vave_indirect_line_range[0] and self.maddm_card['vave_indirect_line'] < self.vave_indirect_line_range[1] # range of validity of line limits
             velocity_in_range = {'cont': fermi_dsph_vel, 'line': line_gc_vel}.get(indirect_directory.split('_')[-1], True)
             
-            for key, value in self.me_cmd.Presults.iteritems():
+            for key, value in six.iteritems(self.me_cmd.Presults):
                 clean_key_list = key.split("/")
                 clean_key =clean_key_list[len(clean_key_list)-1].split('_')[1] +'_'+  clean_key_list[len(clean_key_list)-1].split('_')[2]
                 clean_key = self.processes_names_map[clean_key] # conversion to pdg codes
@@ -2285,10 +2291,10 @@ class MADDMRunCmd(cmd.CmdShell):
         #     return 0   
         logger.info("Calculating line limits from " + ', '.join([name.replace('_', ' ') for name in self.line_experiments.iternames()]))
         # <sigma v> of the various final states
-        sigmavs = {k.split("_")[-1]: v for k, v in self.last_results.iteritems() if k.startswith('taacsID#') and self.is_spectral_finalstate(k.split("_")[-1])}
+        sigmavs = {k.split("_")[-1]: v for k, v in six.iteritems(self.last_results) if k.startswith('taacsID#') and self.is_spectral_finalstate(k.split("_")[-1])}
         # dict for <sigma v> ul
-        sigmav_ul = {k: collections.OrderedDict([(name, np.inf) for name in self.line_experiments.iternames()]) for k in self.last_results.iterkeys() if "lim_taacsID#" in k and self.is_spectral_finalstate(k.split('_')[-1])} # if there is at least one '(22)' then we treat it as a spectral final state
-        initial_states = sigmav_ul.keys()[0].replace("lim_taacsID#", '').split('_')[0] # extract the initial particles, it is ok only for one DM candidate
+        sigmav_ul = {k: collections.OrderedDict([(name, np.inf) for name in self.line_experiments.iternames()]) for k in six.iterkeys(self.last_results) if "lim_taacsID#" in k and self.is_spectral_finalstate(k.split('_')[-1])} # if there is at least one '(22)' then we treat it as a spectral final state
+        initial_states = list(sigmav_ul.keys())[0].replace("lim_taacsID#", '').split('_')[0] # extract the initial particles, it is ok only for one DM candidate
         # compute the main results
         for line_exp, line_exp_roi in zip(self.line_experiments, self.line_experiments.iterrois()):
             gamma_line_spectrum = GammaLineSpectrum(
@@ -2355,11 +2361,11 @@ class MADDMRunCmd(cmd.CmdShell):
         # get the <sigma v> ul: drop the -1 and get the minimum, in case everything is -1 then the list is empty, so return -1
         logger.debug(sigmav_ul)
         for k, v in sigmav_ul.items():
-            limits = np.array(v.values())
+            limits = np.array(list(v.values()))
             index_of_min = np.argmin(limits)
             strongest_limit = limits[index_of_min]
             self.last_results[k] = strongest_limit if not np.isinf(strongest_limit) else -1
-            self.last_results[k + '_experiment'] = v.keys()[index_of_min] if not np.isinf(strongest_limit) else ''
+            self.last_results[k + '_experiment'] = list(v.keys())[index_of_min] if not np.isinf(strongest_limit) else ''
         # in case all of the line peaks are out of range of detection for a certain experiment:
         # gamma_line_spectrum would be an empty list
         # self.last_results["line_%s_peak_%d" % (exp_name, i+1)], self.last_results["line_%s_flux_%d" % (exp_name, i+1)], self.last_results["line_%s_flux_UL_%d" % (exp_name, i+1)] will be all -1
@@ -2388,7 +2394,7 @@ class MADDMRunCmd(cmd.CmdShell):
                pjoin(self.dir_path,'bin','internal'))
             try:
                 misc.compile(['main101'], cwd=pjoin(self.dir_path,'bin','internal'))
-            except MadGraph5Error,e:
+            except MadGraph5Error as e:
                 logger.debug(str(e))
                 logger.critical('Indirect detection, py8 script can not be compiled. Skip flux calculation')
                 return
@@ -2514,11 +2520,11 @@ class MADDMRunCmd(cmd.CmdShell):
         # self.Spectra.spectra_id = {'px':'antiprotons', 'gx':'gammas', 'nuex':'neutrinos_e', 'numux':'neutrinos_mu', 'nutaux':'neutrinos_tau', 'ex':'positrons'}
 
         # Check that at lest one SM channel is available
-        if not any(i in self.Spectra.map_allowed_final_state_PPPC.keys() for i in available_channels.values()):
+        if not any(i in list(self.Spectra.map_allowed_final_state_PPPC.keys()) for i in available_channels.values()):
             logger.error('No SM annihilation channel available, cannot use PPPC4DMID Tables!')
             return
                   
-        for sp, sp_t in self.Spectra.spectra_id.iteritems():
+        for sp, sp_t in six.iteritems(self.Spectra.spectra_id):
             self.last_results['tot_SM_xsec'] = 0
             # self.Spectra.map_allowed_final_state_PPPC = {'qqx':'qq', 'ccx':'cc', 'gg':'gg', 'bbx':'bb', 'ttx':'tt',
             #                                             'e+e-':'ee', 'mu+mu-':'mumu', 'ta+ta-':'tautau', 'w+w-':'WW', 'zz':'ZZ', 'hh':'hh' }              
@@ -2526,7 +2532,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
             for CH_k in available_channels.keys():
                 CH = available_channels[CH_k]
-                if CH in self.Spectra.map_allowed_final_state_PPPC.keys():
+                if CH in list(self.Spectra.map_allowed_final_state_PPPC.keys()):
                     ch = self.Spectra.map_allowed_final_state_PPPC[CH]  # ch is the name of the channels in the Tables
                     
                 # Mapping liht quarks to qq in the Tables
@@ -2545,7 +2551,7 @@ class MADDMRunCmd(cmd.CmdShell):
             if not bool(temp_dic): 
                 logger.error('There is no annihilation process into SM with cross section > 0!')
                 return 
-            for num in range(0,len(temp_dic[temp_dic.keys()[0]]['spec']) ):
+            for num in range(0,len(temp_dic[list(temp_dic.keys())[0]]['spec']) ):
                 val = 0
                 for k in temp_dic.keys():
                     val = val + temp_dic[k]['spec'][num] * ( temp_dic[k]['xsec'] / self.last_results['tot_SM_xsec'] )
@@ -2579,7 +2585,7 @@ class MADDMRunCmd(cmd.CmdShell):
         channels = self.cont_spectra_available_channels()
 
         # Check that at lest one SM channel is available
-        if not any(i in self.Spectra.map_allowed_final_state_PPPC.keys() for i in channels.values()):
+        if not any(i in list(self.Spectra.map_allowed_final_state_PPPC.keys()) for i in channels.values()):
             logger.error('No SM annihilation channel available, cannot use PPPC4DMID Tables!')
             return
 
@@ -2587,7 +2593,7 @@ class MADDMRunCmd(cmd.CmdShell):
         temp_dic = {}
         for CH in channels.keys(): # e.g.  ccx, ttx ecc.
             C = CH.split('_')[1]
-            if C in self.Spectra.map_allowed_final_state_PPPC.keys():
+            if C in list(self.Spectra.map_allowed_final_state_PPPC.keys()):
                ch = self.Spectra.map_allowed_final_state_PPPC[C]  # ch is the name of the channels in the Tables                                                           
             #       # Mapping light quarks to qq in the Tables                                                                                                                      
             # elif C == 'ssx' : ch = 'qq'
@@ -2605,7 +2611,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 temp_dic[C]['xsec'] = ch_BR
 
         sum_spec = []
-        for num in range(0,len(temp_dic[temp_dic.keys()[0]]['spec']) ):
+        for num in range(0,len(temp_dic[list(temp_dic.keys())[0]]['spec']) ):
             val = 0
             for k in temp_dic.keys():
                 val = val + temp_dic[k]['spec'][num] * ( temp_dic[k]['xsec'] / self.last_results['tot_SM_xsec'] )
@@ -2650,7 +2656,7 @@ class MADDMRunCmd(cmd.CmdShell):
             return
              
         # self.Spectra.spectra = = {'x':[] , 'antiprotons':[], 'gammas':[], 'neutrinos_e':[], 'neutrinos_mu':[], 'neutrinos_tau':[], 'positrons':[] }
-        cr_spectra = self.Spectra.spectra.keys()
+        cr_spectra = list(self.Spectra.spectra.keys())
         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
         if str(self.mode['indirect']).startswith('flux'):
 
@@ -3485,7 +3491,7 @@ class MADDMRunCmd(cmd.CmdShell):
                     out.write(form_s("ROI") + '= %1.1f\n' % self.last_results[str_part + "roi"])
                     out.write(form_s("J-factor") + '= ' + form_n(self.last_results[str_part + "Jfactor"]) + '\n')
                     str_part_peak = str_part + 'peak'
-                    energy_peaks = collections.OrderedDict(sorted([(k, v) for k, v in self.last_results.iteritems() if str_part_peak in k and '_states' not in k and '_error' not in k and v != -1], key = lambda item: item[1])) # key = "line_<exp_name>_peak_<num>", value = energy peak
+                    energy_peaks = collections.OrderedDict(sorted([(k, v) for k, v in six.iteritems(self.last_results) if str_part_peak in k and '_states' not in k and '_error' not in k and v != -1], key = lambda item: item[1])) # key = "line_<exp_name>_peak_<num>", value = energy peak
                     if len(energy_peaks) is 0:
                         # this happens when all the peaks are -1, so either if peaks are out of detection range or halo velocity is not compatible with galactic center
                         # if velocity is in the range, print out that peaks are not in the detection range, otherwise print out all -1
@@ -3493,11 +3499,11 @@ class MADDMRunCmd(cmd.CmdShell):
                             out.write('# No peaks found: out of detection range.\n')
                             continue
                         else: # recompute energy_peaks without assuming values != -1
-                            energy_peaks = collections.OrderedDict(sorted([(k, v) for k, v in self.last_results.iteritems() if str_part_peak in k and '_states' not in k and '_error' not in k], key = lambda item: item[1])) # key = "line_<exp_name>_peak_<num>", value = energy peak
+                            energy_peaks = collections.OrderedDict(sorted([(k, v) for k, v in six.iteritems(self.last_results) if str_part_peak in k and '_states' not in k and '_error' not in k], key = lambda item: item[1])) # key = "line_<exp_name>_peak_<num>", value = energy peak
                     peaks_string  = ''
                     fluxes_string = ''
                     like_string = ''
-                    for k, peak in energy_peaks.iteritems():
+                    for k, peak in six.iteritems(energy_peaks):
                         num        = int(k.split('_')[-1])
                         error_code = self.last_results[str_part + "peak_%d_error"  % num]
                         error_str  = "# error: %s" % error_code if error_code != 0 else ''
@@ -3610,7 +3616,7 @@ class MADDMRunCmd(cmd.CmdShell):
              self._two2twoLO = False
         else:
             misc.sprint(os.listdir(self.dir_path))
-            raise Exception, 'Madevent output for indirect detection not available'
+            raise Exception('Madevent output for indirect detection not available')
         
         logger.debug('2to2: %s' % self._two2twoLO)
 
@@ -3658,7 +3664,7 @@ class MADDMRunCmd(cmd.CmdShell):
         if os.path.exists(pjoin(self.dir_path, 'src', 'maddm.x')) or os.path.exists(pjoin(self.dir_path, 'maddm.x')):
             logger.info("compilation done")
         else:
-            raise Exception, 'Compilation of maddm failed'
+            raise Exception('Compilation of maddm failed')
         
     ############################################################################
     def do_open(self, line):
@@ -4071,8 +4077,8 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
                                           }
                                           )
     
-        self.maddm_set = list(set(self.maddm_def.keys() + self.maddm_def.hidden_param))
-        return self.maddm.keys() 
+        self.maddm_set = list(set(list(self.maddm_def.keys()) + self.maddm_def.hidden_param))
+        return list(self.maddm.keys()) 
 
     
     def pass_to_fast_mode(self):
@@ -4163,7 +4169,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         
         try:
             return cmd.ControlSwitch.default(self, line, raise_error=True)
-        except cmd.NotValidInput, error:
+        except cmd.NotValidInput as error:
             return common_run.AskforEditCard.default(self, line)     
         
     def trigger_8(self, line):
@@ -4224,7 +4230,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         
         try:
             self.mother_interface.maddm_card = self.maddm
-        except Exception,error:
+        except Exception as error:
             logger.error("Invalid command: %s " % error)
             return
         return super(MadDMSelector, self).do_compute_widths(line)
@@ -4712,7 +4718,7 @@ class MadDMCard(banner_mod.RunCard):
         #
         # For Directional detection and direct detection rates
         #
-        self.add_param('material', 1, allowed = range(1,14),
+        self.add_param('material', 1, allowed = list(range(1,14)),
                         comment="""Choose the target material
     - 1: Xenon
     - 2: Germanium 
@@ -4869,10 +4875,10 @@ class MadDMCard(banner_mod.RunCard):
         super(MadDMCard, self).check_validity()
         
         if self['SPu'] + self['SPs'] + self['SPd'] + self['SPg'] -1 > 1e-3:
-            raise InvalidMaddmCard , 'The sum of SP* parameter should be 1.0 get %s' % (self['SPu'] + self['SPs'] + self['SPd'] + self['SPg'])
+            raise InvalidMaddmCard('The sum of SP* parameter should be 1.0 get %s' % (self['SPu'] + self['SPs'] + self['SPd'] + self['SPg']))
         
         if self['SNu'] + self['SNs'] + self['SNd'] - self['SNg'] -1 > 1e-3:
-            raise InvalidMaddmCard, 'The sum of SM* parameter should be 1.0 get %s' % (self['SNu'] + self['SNs'] + self['SNd'] + self['SNg'])
+            raise InvalidMaddmCard('The sum of SM* parameter should be 1.0 get %s' % (self['SNu'] + self['SNs'] + self['SNd'] + self['SNg']))
         
         if self['sigmav_method'] == 'inclusive':
             if self['indirect_flux_source_method'] == 'pythia8':
@@ -5054,7 +5060,7 @@ class Multinest(object):
 
 
         logger.info("Multinest will run with the following parameters: " )
-        for key, item in self.options.iteritems():
+        for key, item in six.iteritems(self.options):
             logger.info("%20s :  %s" %(key, item))
 
         pymultinest.run(self.myloglike, self.myprior,
@@ -5182,7 +5188,7 @@ class Multinest(object):
                 param_max = self.options['parameters'][i][2]
                 cube[i] = cube[i]
         else:
-            logger.error('Not a valid prior choice! Only allowed priors are %s '% str(Priors.priors.keys()))
+            logger.error('Not a valid prior choice! Only allowed priors are %s '% str(list(Priors.priors.keys())))
 
 
     def myloglike(self,cube, ndim, nparams):
@@ -5250,7 +5256,7 @@ class Multinest(object):
 
         ndim_obs = ndim + len(self.output_observables)
 
-        for obs, likelihood in self.options.get('loglikelihood').iteritems():
+        for obs, likelihood in six.iteritems(self.options.get('loglikelihood')):
 
             #relic density
             if obs == 'relic' and self.maddm_run.mode['relic']:
@@ -5398,7 +5404,7 @@ class Multinest(object):
                 if likelihood != '':
                     logger.warning("Likelihood for indirect detection (line spectrum) can't be specified, because it is taken from the Fermi-LAT 2015 searches in the Galactic Centre.")
                 # find the most constraining peak: -2log(L) higher, but exclude -1 (not computed or out of range peaks)
-                like_peaks = [v for k, v in results.iteritems() if k.startswith(self.line_experiment + 'like') and v != -1.]
+                like_peaks = [v for k, v in six.iteritems(results) if k.startswith(self.line_experiment + 'like') and v != -1.]
                 spectral_contrib = max(like_peaks) if len(like_peaks) != 0 else 0.
                 # add to cube
                 cube[ndim_obs+self.likelihood_parts.index('spectral')] = spectral_contrib
