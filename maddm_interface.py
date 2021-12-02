@@ -607,9 +607,13 @@ class MadDM_interface(master_interface.MasterCmd):
     #     else:
     #         logger.info("No coannihilation partners found.", '$MG:BOLD')
 
-    def search_coannihilator(self):
+    def search_coannihilator(self,excluded=None):
         ''' automatically make the coannihilators list equal to the list of Z2-odd particles found, exclude dark matter candidates. '''
-        self._coannihilation[:] = [p for p in self._z2_odd if p.get_pdg_code() not in [dm.get_pdg_code() for dm in self._dm_candidate]]
+        if excluded is None:
+            excluded = []
+        self._coannihilation[:] = [p for p in self._z2_odd if 
+                           (p.get_pdg_code() not in [dm.get_pdg_code() for dm in self._dm_candidate] and 
+                           p.get_pdg_code() not in excluded)]
         logger.info("Found coannihilator(s): " + ", ".join([p.get_name() for p in self._coannihilation]))
 
     def find_z2_odd_particles(self):

@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+#from __future__ import absolute_import
 from __future__ import print_function
 import logging
 import math
@@ -7,11 +7,15 @@ import shutil
 import sys
 import collections
 import random
-from StringIO import StringIO
+import six
+StringIO = six
 import re
 
-from . import maddm_run_interface
-
+try:
+    from . import maddm_run_interface
+except ImportError:
+    import maddm_run_interface
+    
 # python routines from MadGraph
 import madgraph.iolibs.export_v4 as export_v4
 import madgraph.iolibs.file_writers as writers
@@ -32,13 +36,13 @@ from six.moves import range
 from six.moves import zip
 
 
-class MYStringIO(StringIO):
+class MYStringIO(six.StringIO):
     """one stringIO behaving like our dedicated writer for writelines"""
     def writelines(self, lines):
         if isinstance(lines, list):
-            return StringIO.writelines(self, '\n'.join(lines))
+            return six.StringIO.writelines(self, '\n'.join(lines))
         else:
-            return StringIO.writelines(self, lines)
+            return six.StringIO.writelines(self, lines)
         
 # Root path
 MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
