@@ -4269,7 +4269,7 @@ Note that you can
         > set mxd scan:[10, 20, 40]
         > set mxd scan:[10**i for i in range(5)]
    3) ask to compute the width automatically for a particle
-        > set my0 Auto  
+        > set wy0 Auto  
         
 When you are done with such edition, just press enter (or write 'done' or '0')          
 """) 
