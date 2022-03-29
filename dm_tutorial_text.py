@@ -29,14 +29,14 @@ and to use those to compute the relic density, direct and/or indirect detection.
 
 First you need to import your model of interest. If you do not have a favorite model you
 can use one of those available online (that can be download automatically). For example:
-MadDM> import model DMsimp_s_spin0
+MadDM> import model DMsimp_s_spin0_MD
 """
 
 help=tutorial
 
 display_modellist="""
 The second stage is to define what is your darkmatter candidate
-MadDM> define darkmatter xd
+MadDM> define darkmatter ~xd
 
 If your model has R-parity and that you do not know what is your DM for a given
 benchmark, you can ask us to find it for you with:
@@ -53,7 +53,7 @@ MadDM> display modellist
 """ +display_modellist
 
 
-define_coannihilator = """Now that the dark matter candidate  and coannihilator(s) are defined.
+define_coannihilator = """Now that the dark matter candidate and coannihilator(s) are defined.
 
  You can specify what type of computation you want to do
    - computation of relic density
@@ -74,9 +74,9 @@ define_coannihilator = """Now that the dark matter candidate  and coannihilator(
 define_darkmatter = """
 Now that the dark matter candidate is defined. You can either 
 
-1) search/define coannihilator
+1) define coannihilator
 [Note that we do not have such particles for the proposed model]
-MadDM> define coannihilator xr
+MadDM> define coannihilator ~xr
 
 2) specify what type of computation you want to do
    - computation of relic density
