@@ -330,7 +330,7 @@ class MadDM_interface(master_interface.MasterCmd):
             elif args[0] == 'coannihilator':
                 if not self._dm_candidate:
                     self.search_dm_candidate([])
-                for i in range(1,len(args)):
+                for i in range(1,len(args)): # convert pdgs to int
                     try:
                         args[i] = int(args[i])
                     except:
@@ -1180,7 +1180,7 @@ class MadDM_interface(master_interface.MasterCmd):
             self.search_dm_candidate(excluded_particles)
             if not self._dm_candidate:
                 return
-            self.search_coannihilator(excluded=excluded_particles)
+            self.search_coannihilator()
             self.history.append('add relic_density %s %s' % ( '/' if excluded_particles else '',
                                                       ' '.join(excluded_particles)))
 
