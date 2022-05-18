@@ -2015,7 +2015,9 @@ class MADDMRunCmd(cmd.CmdShell):
             for key, value in self.me_cmd.Presults.iteritems():
                 clean_key_list = key.split("/")
                 clean_key =clean_key_list[len(clean_key_list)-1].split('_')[1] +'_'+  clean_key_list[len(clean_key_list)-1].split('_')[2]
-                clean_key = self.processes_names_map[clean_key] # conversion to pdg codes
+                clean_key = self.processes_names_map.get(clean_key, clean_key) # conversion to pdg codes, but if there is no process like this, then keep it as it is
+                if clean_key=="xdxdx_vlvl":
+                    value=1e-18
                 if key.startswith('xsec'):
                     value = halo_vel * math.sqrt(3)/2 * 2 * value
                     self.last_results['taacsID#%s' %(clean_key)] = value* pb2cm3
