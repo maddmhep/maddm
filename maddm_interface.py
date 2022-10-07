@@ -1344,15 +1344,16 @@ class MadDM_interface(master_interface.MasterCmd):
     #-----------------------------------------------------------------------#
     @misc.mute_logger(['madgraph','aloha','cmdprint'], [30,30,30])
     def DiagramsDD(self, SI_name, SD_name, type, excluded=[]):
-        """Generates direct detection diagrams. i_dm is the index of DM part. 
-                 Whether spin dependent or spin independent diagrams should be                 
-                 calculated. XX_order parameters determine maximum order of  a
-                 coupling. For instance, if you only want effective vertices for
-                 spin independent coupling you would set SI_order = 2 and all others
-                 to zero. If you want the spin independent full lagrangian + eff.
-                 then you need to set SI_order=2 and QED_order=2...
-                 WARNING: This function is a proxy to be used inside
-                 GenerateDiagramsDirDetect() function and no where else!
+        """Generates direct detection diagrams between DM part.
+            and SM quarks. i_dm is the index of DM part. 
+            Whether spin dependent or spin independent diagrams should be                 
+            calculated. XX_order parameters determine maximum order of  a
+            coupling. For instance, if you only want effective vertices for
+            spin independent coupling you would set SI_order = 2 and all others
+            to zero. If you want the spin independent full lagrangian + eff.
+            then you need to set SI_order=2 and QED_order=2...
+            WARNING: This function is a proxy to be used inside
+            GenerateDiagramsDirDetect() function and no where else!
         """                                                             
 
         quarks = list(range(1,7)) # ['d', 'u', 's', 'c', 'b','t']
