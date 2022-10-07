@@ -1406,6 +1406,54 @@ class MadDM_interface(master_interface.MasterCmd):
         self._last_amps = [amp for amp in self._curr_amps if amp.get('process').get('id') == self.process_tag['DD']]
         return has_diagram
 
+    @misc.mute_logger(['madgraph','aloha','cmdprint'], [30,30,30])
+    def DiagramsDD_e(self, SI_name, SD_name, type, excluded=[]):
+        """Generates direct detection diagrams between DM part.
+            and SM electrons. i_dm is the index of DM part.
+            Whether spin dependent or spin independent diagrams should be                 
+            calculated. XX_order parameters determine maximum order of  a
+            coupling. For instance, if you only want effective vertices for
+            spin independent coupling you would set SI_order = 2 and all others
+            to zero. If you want the spin independent full lagrangian + eff.
+            then you need to set SI_order=2 and QED_order=2...
+            WARNING: This function is a proxy to be used inside
+            GenerateDiagramsDirDetect() function and no where else!
+        """   
+        
+        if type == 'SI':
+            orders = '%s==2' % SI_name
+        elif type == 'SD':
+            orders = '%s==2' % SD_name
+        elif type == 'QED':
+            orders = '%s=0 %s=0' % (SD_name, SI_name)
+        elif type == 'SI+QED':
+            orders = '%s=0 %s<=99' % (SD_name, SI_name)
+        elif type == 'SD+QED':
+            orders = '%s<=99 %s=0' % (SD_name, SI_name)
+                
+        #if no DD diagrams
+        has_diagram = False
+
+        #PDG number of the electron
+        electron = 11
+
+        proc = ' %(DM)s %(P)s > %(DM)s %(P)s %(excluded)s %(orders)s @DD' %\
+                {'DM': self._dm_candidate[0].get('name'),
+                 'P': electron,
+                 'excluded': ('/ %s' % ' '.join(excluded) if excluded else ''),
+                 'orders': orders
+                 }
+
+        try:
+            self.do_add('process %s' %proc, user=False)
+        except (self.InvalidCmd, diagram_generation.NoDiagramException) as error:
+            logger.debug(error)
+        else:
+            has_diagram = True
+           
+        self._last_amps = [amp for amp in self._curr_amps if amp.get('process').get('id') == self.process_tag['DD']]
+        return has_diagram
+
     def check_indirect_and_spectral(self, cmd, argument):
         ''' takes the name of the command in cmd (either 'indirect_detection' or 'indirect_spectral_features')
             check that everything is ok and returns the value to set to _has_<cmd> and a number: if != 0 the generation function should return, otherwise should go ahead
