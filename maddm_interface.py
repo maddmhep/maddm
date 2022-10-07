@@ -1742,7 +1742,7 @@ class MadDM_interface(master_interface.MasterCmd):
         if self._dm_candidate[0]['self_antipart']: 
             EFT = 'REAL'
         else:
-            EFT = 'COMPLEX'
+            EFT = 'COMPLEX_e'
 
         spin = int(DM['spin'])
         if spin not in eff_model_dm_names:
