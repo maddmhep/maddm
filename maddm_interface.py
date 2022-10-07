@@ -1450,6 +1450,21 @@ class MadDM_interface(master_interface.MasterCmd):
             logger.debug(error)
         else:
             has_diagram = True
+
+        if self._dm_candidate[0].get('antiname') != self._dm_candidate[0].get('name'):
+            proc = ' %(DM)s %(P)s > %(DM)s %(P)s %(excluded)s %(orders)s @DD' %\
+                {'DM': self._dm_candidate[0].get('antiname'),
+                 'P': electron,
+                 'excluded': ('/ %s' % ' '.join(excluded) if excluded else ''),
+                 'orders': orders
+                 }
+
+            try:
+                self.do_add('process %s' % proc, user=False)
+            except (self.InvalidCmd, diagram_generation.NoDiagramException) as error:
+                logger.debug(error)
+            else:
+                has_diagram = True
            
         self._last_amps = [amp for amp in self._curr_amps if amp.get('process').get('id') == self.process_tag['DD']]
         return has_diagram
