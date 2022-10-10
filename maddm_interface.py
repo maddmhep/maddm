@@ -1318,7 +1318,7 @@ class MadDM_interface(master_interface.MasterCmd):
         eff_operators_SD = self.eff_operators_SD[dm_spin]
         
         logger.info("Generating X Nucleon > X Nucleon diagrams from the full lagrangian...")
-        has_direct = self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'QED', excluded_particles)
+        has_direct = self.DiagramsDD_e(eff_operators_SI, eff_operators_SD, 'QED', excluded_particles)
 
         if not has_direct:
             logger.warning("No Direct Detection Feynman Diagram")
@@ -1326,20 +1326,20 @@ class MadDM_interface(master_interface.MasterCmd):
         
         logger.info("Generating X Nucleon > X Nucleon diagrams from the effective lagrangian...")
         #ONLY EFFECTIVE LAGRANGIAN
-        self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'SI',excluded_particles)
+        self.DiagramsDD_e(eff_operators_SI, eff_operators_SD, 'SI',excluded_particles)
 
         logger.info("INFO: Generating X Nucleon > X Nucleon diagrams from the effective+full lagrangian...")
         #EFFECTIVE + FULL
-        self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'SI+QED',excluded_particles)
+        self.DiagramsDD_e(eff_operators_SI, eff_operators_SD, 'SI+QED',excluded_particles)
         
         if (eff_operators_SD != False):
             logger.info("Doing the spin dependent part...")
             logger.info("Generating X Nucleon > X Nucleon diagrams from the effective lagrangian...")
 
-            self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'SD',excluded_particles)
+            self.DiagramsDD_e(eff_operators_SI, eff_operators_SD, 'SD',excluded_particles)
             #EFFECTIVE + FULL
             logger.info("Generating X Nucleon > X Nucleon diagrams from the effective + full lagrangian...")
-            self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'SD+QED',excluded_particles)
+            self.DiagramsDD_e(eff_operators_SI, eff_operators_SD, 'SD+QED',excluded_particles)
 
     #-----------------------------------------------------------------------#
     @misc.mute_logger(['madgraph','aloha','cmdprint'], [30,30,30])
