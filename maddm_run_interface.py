@@ -373,6 +373,9 @@ class Spectra:
 
         return interpolated
 
+    def initialize_spectra(self):
+        for k in self.spectra.keys():
+            self.spectra[k][:] = []
       
 ################################################################################                                                                                            
 ##    Fermi                                                                                                                                                               
@@ -1951,6 +1954,12 @@ class MADDMRunCmd(cmd.CmdShell):
         #     self._two2twoLO = True
             #return 
         
+        # initialize important variables at zero
+        ## cross section contributions from different directories
+        self.indirect_directories_cross_section_contribution = dict(zip(['Indirect_tree_cont', 'Indirect_tree_line', 'Indirect_LI_cont', 'Indirect_LI_line'], [0., 0., 0., 0.]))
+        ## Spectra object
+        self.Spectra.initialize_spectra()
+
         if not self.in_scan_mode: 
             logger.info('Running indirect detection \'%s\'' % indirect_directory)
         
