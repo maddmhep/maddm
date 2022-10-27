@@ -1072,6 +1072,7 @@ class MadDM_interface(master_interface.MasterCmd):
             ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps', '_done_export'],
             [ID_procs, ID_matrix_elements, ID_amps, None]):
             super(MadDM_interface, self).do_output('indirect %s/%s' % (path, directory))
+            ID_amps[:] = self._curr_amps
             
         #ensure to sync the param_card
         os.remove(pjoin(path, directory, 'Cards', 'param_card.dat'))
