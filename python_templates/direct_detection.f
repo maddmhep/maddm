@@ -31,8 +31,11 @@ c-------------------------------------------------------------------------------
       mr=(MN*mdm(1))/(MN+mdm(1))
       
       spin = dof_dm(1) !get the spin of the dm particle
+
+      if (proton .eq. 1) then
       
       if (SI.eq.1) then
+      write (*,*) "----------------------- SI -----------------------"
       ff_N=0
       ff_N_odd=0
 c--------------------------------------------------------------------------------
@@ -73,6 +76,7 @@ c-------------------------------------------------------------------------------
       sigma_nucleon=(4.d0/(pi))*(mr**2)*(ff_N*dconjg(ff_N))
 
       else
+      write (*,*) "----------------------- SD -----------------------"
 c--------------------------------------------------------------------------------
 c              SPIN DEPENDENT
 c--------------------------------------------------------------------------------
@@ -96,6 +100,8 @@ c-------------------------------------------------------------------------------
             ff_N=ff_N/2.0
       endif
       sigma_nucleon=(12.d0/(pi))*(mr**2)*(ff_N*dconjg(ff_N))
+      endif
+
       endif
       
       end function
@@ -299,16 +305,16 @@ c HERE DEFINE THE FOUR MOMENTA - RIGHT NOW JUST ANY NUMBERS
       Minterf_q = Minterf_q / smatrix_dd_eff(p_ext,1,1,jeff)
 
 c compute ff_p or ff_n
-c      write(*,*) '--------------------------------'
-c      write(*,*) 'full + eff: ',smatrix_dd_tot(p_ext,1,1,i)
-c      write(*,*) 'full      : ',smatrix_dd(p_ext,1,1,j)
-c      write(*,*) 'eff       : ',smatrix_dd_eff(p_ext,1,1,i)
-c      write(*,*) '--------------------------------'
+      write(*,*) '--------------------------------'
+      write(*,*) 'full + eff: ',smatrix_dd_tot(p_ext,1,1,jtot)
+      write(*,*) 'full      : ',smatrix_dd(p_ext,1,1,j)
+      write(*,*) 'eff       : ',smatrix_dd_eff(p_ext,1,1,jeff)
+      write(*,*) '--------------------------------'
       
       if (even .eq. 1) then 
         ! symmetric so do not have to distinguish quark from anti-quark
         Minterf=0.5d0*Minterf_q
-c        write(*,*) "Even contribution : ", Minterf
+        write(*,*) "Even contribution : ", Minterf
       else
         ! antisymmetric so we have to distinguish quark from anti-quark
          if (i.ge.0) then
@@ -316,7 +322,7 @@ c        write(*,*) "Even contribution : ", Minterf
          else
             Minterf=-0.5d0*Minterf_q
          endif
-c	write(*,*) "Odd contribution : ", Minterf
+	write(*,*) "Odd contribution : ", Minterf
       endif
 c      write(*,*) 'M_interf: ', Minterf
       NucleonFF=NucleonFF+(fNt(ABS(i))*Minterf)
