@@ -1,6 +1,6 @@
 # This file was automatically created by FeynRules 2.3.49
 # Mathematica version: 13.1.0 for Microsoft Windows (64-bit) (August 14, 2022)
-# Date: Tue 11 Oct 2022 15:56:41
+# Date: Fri 21 Oct 2022 11:22:11
 
 
 from __future__ import division
@@ -385,7 +385,7 @@ G__plus__ = Particle(pdg_code = 251,
 
 G__minus__ = G__plus__.anti()
 
-Xd = Particle(pdg_code = 999000007,
+Xd = Particle(pdg_code = 5000001,
               name = 'Xd',
               antiname = 'Xd~',
               spin = 2,

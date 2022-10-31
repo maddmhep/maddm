@@ -1,6 +1,6 @@
 # This file was automatically created by FeynRules 2.3.49
 # Mathematica version: 13.1.0 for Microsoft Windows (64-bit) (August 14, 2022)
-# Date: Tue 11 Oct 2022 15:56:38
+# Date: Fri 21 Oct 2022 11:22:06
 
 
 # 
@@ -38,7 +38,7 @@
 
 
 # Vertices
-   * Calling FeynmanRules for 1 Lagrangians.
+   * Calling FeynmanRules for 4 Lagrangians.
    * Number of classes vertices: 1
    * Number of flavored vertices: 1
    * Saved vertices in InterfaceRun[ 1 ].
@@ -59,13 +59,13 @@
 # Lorentz structure definitions
 #
 
-   * 1 lorentz structure written.
+   * 6 lorentz structures written.
    * lorentz.py written.
 #
 # Coupling definitions
 #
 
-   * 1 coupling written.
+   * 5 couplings written.
    * couplings.py written.
 #
 # Coupling order definitions
