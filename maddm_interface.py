@@ -1317,28 +1317,28 @@ class MadDM_interface(master_interface.MasterCmd):
         eff_operators_SI = self.eff_operators_SI[dm_spin]
         eff_operators_SD = self.eff_operators_SD[dm_spin]
         
-        logger.info("Generating X Nucleon > X Nucleon diagrams from the full lagrangian...")
+        logger.info("Generating X e > X e diagrams from the full lagrangian...")
         has_direct = self.DiagramsDD_e(eff_operators_SI, eff_operators_SD, 'QED', excluded_particles)
 
         if not has_direct:
             logger.warning("No Direct Detection Feynman Diagram")
             return
         
-        logger.info("Generating X Nucleon > X Nucleon diagrams from the effective lagrangian...")
+        logger.info("Generating X e > X e diagrams from the effective lagrangian...")
         #ONLY EFFECTIVE LAGRANGIAN
         self.DiagramsDD_e(eff_operators_SI, eff_operators_SD, 'SI',excluded_particles)
 
-        logger.info("INFO: Generating X Nucleon > X Nucleon diagrams from the effective+full lagrangian...")
+        logger.info("INFO: Generating X e > X e diagrams from the effective+full lagrangian...")
         #EFFECTIVE + FULL
         self.DiagramsDD_e(eff_operators_SI, eff_operators_SD, 'SI+QED',excluded_particles)
         
         if (eff_operators_SD != False):
             logger.info("Doing the spin dependent part...")
-            logger.info("Generating X Nucleon > X Nucleon diagrams from the effective lagrangian...")
+            logger.info("Generating X e > X e diagrams from the effective lagrangian...")
 
             self.DiagramsDD_e(eff_operators_SI, eff_operators_SD, 'SD',excluded_particles)
             #EFFECTIVE + FULL
-            logger.info("Generating X Nucleon > X Nucleon diagrams from the effective + full lagrangian...")
+            logger.info("Generating X e > X e diagrams from the effective + full lagrangian...")
             self.DiagramsDD_e(eff_operators_SI, eff_operators_SD, 'SD+QED',excluded_particles)
 
     #-----------------------------------------------------------------------#
@@ -1451,7 +1451,7 @@ class MadDM_interface(master_interface.MasterCmd):
                 logger.debug(error)
             else:
                 has_diagram = True
-
+            
             if self._dm_candidate[0].get('antiname') != self._dm_candidate[0].get('name'):
                 proc = ' %(DM)s %(P)s > %(DM)s %(P)s %(excluded)s %(orders)s @DD' %\
                     {'DM': self._dm_candidate[0].get('antiname'),
