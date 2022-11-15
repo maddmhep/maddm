@@ -1751,7 +1751,7 @@ class MadDM_interface(master_interface.MasterCmd):
     def update_model_with_EFT(self):
         """ """
         eff_operators_SD = {1:False, 2:'SDEFFF', 3:'SDEFFV'}
-        eff_model_dm_names = {1:'~sdm', 2:'Xd', 3:'~vdm'}
+        eff_model_dm_names = {1:'~sdm', 2:'fdm', 3:'~vdm'}
 
         DM = self._dm_candidate[0]
         
