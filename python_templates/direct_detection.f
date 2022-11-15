@@ -18,17 +18,17 @@ c-------------------------------------------------------------------------c
 
       contains
 
-            subroutine read_atomic_response(this,shell_filename,path)
+            subroutine read_atomic_response(this,shell_filename,atom_resp_path)
 
                   Use, intrinsic :: iso_fortran_env, Only : iostat_end
 
                   character(20) shell_filename
-                  character(100) path
+                  character(100) atom_resp_path
                   integer j,k,error
                   class(atomic_response_nl), intent(inout)::this
 
-                  open(2, FILE = trim(path)//trim(shell_filename), action="read")
-c                            write(*,*) 'Opened ', trim(path) // trim(shell_filename)
+                  open(2, FILE = trim(atom_resp_path)//trim(shell_filename), action="read")
+c                            write(*,*) 'Opened ', trim(atom_resp_path) // trim(shell_filename)
                   this%%shell_name = shell_filename(4:5)
 c                  Write(*, *) 'Printing shell : ', this(i)%%shell_name
                   Do j=1,100
@@ -57,7 +57,7 @@ c                                    Write(*,*) ''
 
 
 c-----------------------------------------------------------------------------c
-      subroutine get_shell_filenames(path,target,shell_filenames,num_shell)
+      subroutine get_shell_filenames(atom_resp_path,target,shell_filenames,num_shell)
 c-----------------------------------------------------------------------------c
 c
 c Read all names of the files that contains the tabulated atomic response
@@ -66,15 +66,15 @@ c
 c-----------------------------------------------------------------------------c
             Use, intrinsic :: iso_fortran_env, Only : iostat_end
 
-            character(100) path
+            character(100) atom_resp_path
             character(2) target
             character(20) filename, shell_filenames(50)
             integer error, num_shell
 
             num_shell = 0
 
-            call system('ls ' // trim(path) // ' > ' // trim(path) // 'fileNames.txt')
-            open(1, FILE = trim(path)//'fileNames.txt', action="read")
+            call system('ls ' // trim(atom_resp_path) // ' > ' // trim(atom_resp_path) // 'fileNames.txt')
+            open(1, FILE = trim(atom_resp_path)//'fileNames.txt', action="read")
                   Do
                         Read(1, *, iostat = error) filename
                         Select Case(error)
@@ -122,8 +122,7 @@ c-------------------------------------------------------------------------c
             integer i, j, k, tot_num_shell
             character(20) shell_filenames(50)
             character(2) target
-            character(100) path
-            character(100) maddm_path
+            character(100) maddm_path, atom_resp_path
             type(atomic_response_nl) atom_res_nl(50)
 
 
@@ -137,6 +136,7 @@ c           Initialize the parameters
             M_e = 0.0005109989      ! electron mass
             dm_spin = dof_dm(1)     ! spin of the dm particle
             %(maddm_path)s
+            atom_resp_path = trim(maddm_path) // '/Atomic_responses/'
             do j=1,100
                   do k=1,100
                               ioniz_amplitude(j,k) = 0
@@ -149,18 +149,17 @@ c           Initialize the parameters
 c --------------------------------------------------------------------------------
 c Read the atomic response functions
 c --------------------------------------------------------------------------------
-            path = '/home/gianmarcolucchetti/thesis/MG5_aMC_v2_9_9/PLUGIN/maddm/Atomic_responses/'
             target = 'Xe'
 
 c           Read all the names of the files that contains the tabulated atomic response function
 c           of the chosen target. There is one file for each shell.
-            call get_shell_filenames(path,target,shell_filenames,tot_num_shell)
+            call get_shell_filenames(atom_resp_path,target,shell_filenames,tot_num_shell)
 
 c           Read the atomic response function of each file.
             do i=1,(tot_num_shell)
                   atom_res_nl(i)%%shell_num = i
                   atom_res_nl(i)%%shell_tot_num = tot_num_shell
-                  call atom_res_nl(i)%%read_atomic_response(shell_filenames(i),path)
+                  call atom_res_nl(i)%%read_atomic_response(shell_filenames(i),atom_resp_path)
             enddo
 
 c --------------------------------------------------------------------------------
