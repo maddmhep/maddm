@@ -1,6 +1,6 @@
 # This file was automatically created by FeynRules 2.3.49
 # Mathematica version: 13.1.0 for Microsoft Windows (64-bit) (August 14, 2022)
-# Date: Fri 4 Nov 2022 18:20:51
+# Date: Thu 10 Nov 2022 12:15:26
 
 
 
@@ -215,7 +215,7 @@ MXd = Parameter(name = 'MXd',
                 value = 10.,
                 texname = '\\text{MXd}',
                 lhablock = 'MASS',
-                lhacode = [ 5000001 ])
+                lhacode = [ 999000007 ])
 
 WZ = Parameter(name = 'WZ',
                nature = 'external',
@@ -315,12 +315,6 @@ CKM3x3 = Parameter(name = 'CKM3x3',
                    value = '1',
                    texname = '\\text{CKM3x3}')
 
-GDMV = Parameter(name = 'GDMV',
-                 nature = 'internal',
-                 type = 'real',
-                 value = '1.',
-                 texname = 'G_V')
-
 GDMS = Parameter(name = 'GDMS',
                  nature = 'internal',
                  type = 'real',
@@ -333,11 +327,11 @@ GDMA = Parameter(name = 'GDMA',
                  value = '1.',
                  texname = 'G_A')
 
-GDMT = Parameter(name = 'GDMT',
+GDMP = Parameter(name = 'GDMP',
                  nature = 'internal',
                  type = 'real',
                  value = '1.',
-                 texname = 'G_T')
+                 texname = 'G_{\\text{DM} P}')
 
 MW = Parameter(name = 'MW',
                nature = 'internal',
