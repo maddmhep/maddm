@@ -1731,6 +1731,12 @@ class MADDMRunCmd(cmd.CmdShell):
 #            with misc.MuteLogger(names=['madevent','madgraph'],levels=[50,50]):
 #                self.launch_indirect(force)
 
+        # initialize important variables at zero
+        ## cross section contributions from different directories
+        self.indirect_directories_cross_section_contribution = dict(zip(['Indirect_tree_cont', 'Indirect_tree_line', 'Indirect_LI_cont', 'Indirect_LI_line'], [0., 0., 0., 0.]))
+        ## Spectra object
+        self.Spectra.initialize_spectra()
+
         if self.mode['indirect']:
             for directory in [d for d, v in self.indirect_directories.items() if 'cont' in d and v]:
                 self.launch_indirect(force, directory, self.maddm_card['vave_indirect_cont'])
@@ -1954,12 +1960,6 @@ class MADDMRunCmd(cmd.CmdShell):
         #     self._two2twoLO = True
             #return 
         
-        # initialize important variables at zero
-        ## cross section contributions from different directories
-        self.indirect_directories_cross_section_contribution = dict(zip(['Indirect_tree_cont', 'Indirect_tree_line', 'Indirect_LI_cont', 'Indirect_LI_line'], [0., 0., 0., 0.]))
-        ## Spectra object
-        self.Spectra.initialize_spectra()
-
         if not self.in_scan_mode: 
             logger.info('Running indirect detection \'%s\'' % indirect_directory)
         
