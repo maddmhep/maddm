@@ -133,9 +133,9 @@ c-------------------------------------------------------------------------c
             include 'dm_info.inc'
 
 c           Initialize the parameters
-            M_e = 0.0005109989      ! electron mass
+            %(electron_mass)s       ! electron mass M_e
             dm_spin = dof_dm(1)     ! spin of the dm particle
-            %(maddm_path)s
+            %(maddm_path)s          ! MadDM path
             atom_resp_path = trim(maddm_path) // '/Atomic_responses/'
             do j=1,100
                   do k=1,100
@@ -193,15 +193,14 @@ c ------------------------------------------------------------------------------
                   enddo
             enddo
 
-            write(*,*) 'DM response: ', dm_res
-            write(*,*) 'Ionization amplitude:'
-            do j=1,5
-                  do k=1,5
-                        write(*,*) ioniz_amplitude(j,k)
-                  enddo
-                  write(*,*) ''
-            enddo
-
+c            write(*,*) 'DM response: ', dm_res
+c            write(*,*) 'Ionization amplitude:'
+c            do j=1,5
+c                  do k=1,5
+c                        write(*,*) ioniz_amplitude(j,k)
+c                  enddo
+c                  write(*,*) ''
+c            enddo
 
             endif
             
