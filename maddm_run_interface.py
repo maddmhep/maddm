@@ -3305,7 +3305,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 logger.warning(roi_warning)
             logger.info("J = %.6e GeV^2 cm^-5" % self.last_results[str_part + "Jfactor"])
             logger.info("detection range: %.4e -- %.4e GeV" % (line_exp.detection_range[0], line_exp.detection_range[1]))
-            if len(energy_peaks) is 0:
+            if len(energy_peaks) == 0:
                 logger.info(bcolors.BOLD + "No peaks found: out of detection range." + bcolors.ENDC)
             else:
                 # find first column maximum length for nice table format
@@ -3492,7 +3492,7 @@ class MADDMRunCmd(cmd.CmdShell):
                     out.write(form_s("J-factor") + '= ' + form_n(self.last_results[str_part + "Jfactor"]) + '\n')
                     str_part_peak = str_part + 'peak'
                     energy_peaks = collections.OrderedDict(sorted([(k, v) for k, v in six.iteritems(self.last_results) if str_part_peak in k and '_states' not in k and '_error' not in k and v != -1], key = lambda item: item[1])) # key = "line_<exp_name>_peak_<num>", value = energy peak
-                    if len(energy_peaks) is 0:
+                    if len(energy_peaks) == 0:
                         # this happens when all the peaks are -1, so either if peaks are out of detection range or halo velocity is not compatible with galactic center
                         # if velocity is in the range, print out that peaks are not in the detection range, otherwise print out all -1
                         if (self.maddm_card['vave_indirect_line'] > self.vave_indirect_line_range[0] and self.maddm_card['vave_indirect_line'] < self.vave_indirect_line_range[1]):

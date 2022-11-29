@@ -21,6 +21,7 @@ c parameters used in this routine only
       double precision cross_sec_relic(size(process_names)), tot_cross_sec, channel_percent
       Integer process_relic_name_indexes(size(process_names)), process_index
       character(len=32) outfilename
+      double precision dm_resp, dm_response
 c      double precision total_cross
 
 c include files generated my the python side that contains necessary information
@@ -62,30 +63,24 @@ c      set up integration grid here so that it's only set up once.
 	  		sigmav_xf=-1d0
       endif
 
-c ---- SIGMA_NUCLEON CALCULATION -----
-c     calls are to sigma_nucleon(proton, spin_independent).
-c     proton = 1 is for proton, 0 for neutron
-c     spin_independent = 1 for SI and 0 for SD.
+c ---- IONIZATION AMPLITUDE CALCULATION -----
+c     calls are to ioniz_amplitude(target).
+c     Right now only target='Xe' is implemented
 
 
       prnt_tag = 0
 
       if (do_direct_detection) then
-      	   sigma_proton_SI = sigma_nucleon(1,1)
-      	   sigma_neutron_SI = sigma_nucleon(0,1)
-      	   sigma_proton_SD = sigma_nucleon(1,0)
-      	   sigma_neutron_SD = sigma_nucleon(0,0)
-
-           sigmawnSI  = sigma_neutron_SI*gevtopb
-           sigmawpSI  = sigma_proton_SI*gevtopb
-           sigmawnSD  = sigma_neutron_SD*gevtopb
-           sigmawpSD  = sigma_proton_SD*gevtopb
-
+          dm_resp = dm_response()
 
            if (do_directional_detection) then
 
-              call directional_detection(mdm(1),sigmawnSI,sigmawpSI,sigmawnSD,
-     &        sigmawpSD,prnt_tag,total_events)
+              call directional_detection(dm_resp,'Xe')
+
+              sigma_proton_SI  = 0
+      	  sigma_neutron_SI = 0
+      	  sigma_proton_SD  = 0
+              sigma_neutron_SD = 0
 
            endif
       else

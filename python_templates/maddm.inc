@@ -173,7 +173,8 @@ c  Directional detection switch
       common/detector/detector_size, En_threshold, lambd, smearing, sig_theta
 
 !  Declare simulation variables
-      Integer Energy_bins, cos_theta_bins, day_bins
+      integer Energy_bins, cos_theta_bins, day_bins, gridsize
+      parameter(gridsize=100)
       double precision En_min,En_max,cos_min,cos_max,day_min,day_max, m_proton, m_neutron, m_nucleon
       double precision Naa, G_fermi, g1,sec, GeV, cm, cs, fm, km, kmtocm, barn, picobarn, GeVtokev, pbtocm2,
      & GeVtoMeV, invcmtoGeV, cmtoinvGeV,Mevtokev,daytosec, hrtosec,tontokg,hukgtokg, gevtopb, pbtocm3
