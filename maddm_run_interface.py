@@ -2404,18 +2404,17 @@ class MADDMRunCmd(cmd.CmdShell):
 
         
         # Now write the card.
-        if not self.in_scan_mode: 
-            pythia_cmd_card = pjoin(self.dir_path, indirect_directory ,'Source', "spectrum.cmnd")
-            # Start by reading, starting from the default one so that the 'user_set'
-            # tag are correctly set.
-            PY8_Card = Indirect_PY8Card(pjoin(self.dir_path, 'Cards', 
-                                                    'pythia8_card_default.dat'))
-            PY8_Card['Main:spareParm1'] = mdm
-            PY8_Card.read(pjoin(self.dir_path, 'Cards', 'pythia8_card.dat'),
-                                                                  setter='user')
-            PY8_Card.write(pythia_cmd_card, 
-                           pjoin(self.dir_path, 'Cards', 'pythia8_card_default.dat'),
-                            direct_pythia_input=True)
+        pythia_cmd_card = pjoin(self.dir_path, indirect_directory ,'Source', "spectrum.cmnd")
+        # Start by reading, starting from the default one so that the 'user_set'
+        # tag are correctly set.
+        PY8_Card = Indirect_PY8Card(pjoin(self.dir_path, 'Cards', 
+                                                'pythia8_card_default.dat'))
+        PY8_Card['Main:spareParm1'] = mdm
+        PY8_Card.read(pjoin(self.dir_path, 'Cards', 'pythia8_card.dat'),
+                                                              setter='user')
+        PY8_Card.write(pythia_cmd_card, 
+                       pjoin(self.dir_path, 'Cards', 'pythia8_card_default.dat'),
+                        direct_pythia_input=True)
 
             
         run_name = self.me_cmd.run_name
