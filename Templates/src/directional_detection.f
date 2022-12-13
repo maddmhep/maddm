@@ -19,19 +19,19 @@
 
         include '../include/maddm.inc'
 
-        double precision dm_response, dm_response_c13(gridsize)
-        double precision  q_exc(gridsize), E_e(gridsize), k_e(gridsize), v_perp_squared(gridsize) ! REMOVE all
-        double precision m_reduced, gamma ! REMOVE all
-        real massDM, M_e
-        integer i, ik, iq, tot_num_shell
-        character(20) shell_filenames(50)
-        character(2) target
+        double precision dm_response, M_dm, M_e, binding_energy
+        integer i, ik, iq, id, tot_num_shell
+        character(20) shell_filenames(50), filename
+        character(2) target, shell_names(50)
         character(100) maddm_path, atom_resp_path
-        double precision Theory(gridsize,day_bins)
+        double precision diff_rate_shell(gridsize), rate_vs_time_shell(day_bins), tot_rate_shell
+        double precision diff_rate(gridsize), rate_vs_time(day_bins), tot_rate
         real(kind=10) atomic_response_matrix(gridsize,gridsize)
         real(kind=10) atomic_response_matrix_tot(gridsize,gridsize)
         real(kind=10) ioniz_amplitude(gridsize,gridsize)
-c        type(atomic_response_nl) atom_res_nl(50)
+        double precision k_min, k_max, dday
+        double precision k_e(gridsize), E_e(gridsize)
+        double precision dayvalue(day_bins+1), daymid(day_bins)
 
         include '../include/coupl.inc'
         include '../include/process_names.inc'
@@ -42,33 +42,22 @@ c        type(atomic_response_nl) atom_res_nl(50)
         write(*,*) '---------------------------------------------------------------'
 
 
-c       Initialize the parameters
-        massDM = 1 ! mdm(1) REMOVE 
+c       Initialize the parameters and variables
+        M_dm = 0.1 * GeV * cs**(-2) ! mdm(1) * GeV * cs**(-2) ! dark matter mass  REMOVE 
         %(electron_mass)s       ! electron mass M_e (GeV)
+        write(*,*) 'M_dm           :    ' , M_dm, 'GeV'
+        write(*,*) 'M_e            :    ' , M_e, 'GeV'
         %(maddm_path)s          ! MadDM path
-        atom_resp_path = trim(maddm_path) // '/Atomic_responses/'
+        atom_resp_path = trim(maddm_path) // '/Atomic_responses/atomic_response_1/'
         do ik=1,gridsize
             do iq=1,gridsize
                 ioniz_amplitude(ik,iq) = 0
                 atomic_response_matrix_tot(ik,iq) = 0
             enddo
         enddo
-
-c       REMOVE -----------------------------------------------------------------------------------------
-        m_reduced = massDM*M_e/(massDM + M_e)
-        do iq = 1,gridsize
-            q_exc(iq) = exp(log(1.0E-7) + (log(1.0E-3) - log(1.0E-7))*dble(iq-1)/dble(gridsize-1))
-            k_e(iq) = exp(log(1.0E-7) + (log(1.0E-3) - log(1.0E-7))*dble(iq-1)/dble(gridsize-1))
-            E_e(iq) = sqrt(M_e**2 + k_e(iq)**2) - M_e
-            gamma = sqrt(M_e**2 + k_e(iq)**2)/M_e 
-            v_perp_squared(iq) = (k_e(iq) * 1.0E+5 / (M_e*gamma) )**2 +
-     &                   (q_exc(iq)**2)/(4*m_reduced**2)*(massDM-M_e)*(massDM+M_e) * 1.0E+10 - 
-     &                   E_e(iq)/m_reduced * 1.0E+10
-            dm_response_c13(iq) = 1.0E-6 * (q_exc(iq) * 1.0E+5 / M_e)**2 * v_perp_squared(iq)
-        enddo
-c       REMOVE -----------------------------------------------------------------------------------------
-
-
+c        dm_response = (4.d0 * 1/sqrt(137.d0) * M_e * 1.0E-5)**2 ! O1 REMOVE
+c        dm_response = (3.d0/16.d0)*(16.d0 * 1/sqrt(137.d0) * M_dm * 1.0E-5)**2 ! O4 REMOVE
+        dm_response = 16*pi*((M_dm+M_e)**2)*2.56819*1.0E-9
 
 c ------------------------------------------------------------------------------------------------
 c Read the atomic response functions and compute the ionization amplitude
@@ -78,26 +67,133 @@ c       Read all the names of the files that contains the tabulated atomic respo
 c       of the chosen target. There is one file for each shell.
         call get_shell_filenames(atom_resp_path,target,shell_filenames,tot_num_shell)
 
-
-c       Read the atomic response function of each file, then sum the contributions of each each shell,
-c       multiplying for the dark matter response function
-        do i=1,(tot_num_shell)
-                call read_atomic_response(atomic_response_matrix,shell_filenames(i),atom_resp_path)
-                do ik=1,gridsize
-                    do iq=1,gridsize
-                            ioniz_amplitude(ik,iq) = ioniz_amplitude(ik,iq) +
-     &                                               dm_response_c13(iq) * atomic_response_matrix(ik,iq) ! REMOVE dm resp c13
-                    enddo
-                enddo
+c       Get the names of the shell in the order used to read them.
+c       The shell names should be in alphabetical order:
+c       i=1 -> 1s , i=2 -> 2p , i=3 -> 2s , i=4 -> 3d , i=5 -> 3p , i=6 -> 3s , i=7 -> 4d , 
+c       i=8 -> 4p , i=9 -> 4s , i=10 -> 5p , i=11 -> 5s , ...
+c       Please check this if you want to select a different combination of shells.
+        do i=1,tot_num_shell
+            filename = trim(shell_filenames(i))
+            shell_names(i) = filename(4:5)
         enddo
 
+c       Read the atomic response function of each file, multiply them for the dark matter
+c       response function obtaining the ioniziation amplitude. Integrate it obtaining the rate,
+c       and in the end sum over the selected shells.
+        do ik=1,gridsize
+            diff_rate(ik) = 0
+        enddo
+
+        do id=1,day_bins
+            rate_vs_time(id) = 0
+        enddo
+
+        tot_rate = 0
+
+        do i=1,tot_num_shell ! REMOVE . To sum in every shell: do i=1,tot_num_shell
+            call read_atomic_response(atomic_response_matrix,shell_filenames(i),atom_resp_path)
+            do ik=1,gridsize
+                do iq=1,gridsize
+                    ioniz_amplitude(ik,iq) = dm_response * atomic_response_matrix(ik,iq)
+                enddo
+            enddo
+
+            call Theory_Simulation(M_dm, M_e, ioniz_amplitude,
+     &                             binding_energy(target,shell_names(i)),
+     &                             diff_rate_shell, rate_vs_time_shell, tot_rate_shell)
+
+
+            do ik=1,gridsize
+                diff_rate(ik) = diff_rate(ik) + diff_rate_shell(ik) 
+            enddo
+
+            do id=1,day_bins
+                rate_vs_time(id) = rate_vs_time(id) + rate_vs_time_shell(id)
+            enddo
+
+            tot_rate = tot_rate + tot_rate_shell
+
+            write(*,*) '|  Reading: ', trim(shell_filenames(i)),
+     &                 '  |  shell name: ', shell_names(i), '  |  E_bind: ',
+     &                 binding_energy(target,shell_names(i)), 'GeV  |  tot rate (shell):' ,
+     &                 tot_rate_shell, '|'
+
+        enddo 
+
+
 c ------------------------------------------------------------------------------------------------
-c Compute the differential tot_rate and print it
+c       Setup the bins and write the results
 c ------------------------------------------------------------------------------------------------
 
-        call Theory_Simulation(massDM, M_e, ioniz_amplitude, Theory)
+c       Setting up the array of the momentum k_e and the array of the energy E_e of the final electron.
+c       The array k_e is written in log scale.
+        k_min = 1.0E-7 ! GeV
+        k_max = 1.0E-4 ! GeV
+
+        do ik = 1,gridsize
+            k_e(ik) = exp(log(k_min) + (log(k_max) - log(k_min))*dble(ik-1)/dble(gridsize-1))
+            E_e(ik) = sqrt(M_e**2 + k_e(ik)**2) - M_e
+        enddo
+
+c       Setup the array of day values. Each day value is in the centre of the bin
+        dday = (day_max - day_min)/dble(day_bins)
+
+        do id = 1, day_bins+1
+            dayvalue(id) =  day_min + dble(id-1)*dday
+        enddo
+
+        do id = 1, day_bins
+             daymid(id) = (dayvalue(id) + dayvalue(id+1))/2.d0
+        enddo
+
+c       Write the results
+        open(3,file='./output/dRdlogE_sm.dat',status='unknown') 
+        open(4,file='./output/rate_vs_time.dat',status='unknown')
+        open(5,file='./output/tot_rate.dat',status='unknown')
+
+c       Writing out the differential rate dRdlogE. 
+c       ================================================================
+c       Differential recoil rate dRdlogE  ./Output/DATA/dRdlogE_sm.dat    
+c       E_e(ik), dR/dlogE(ik)
+c       ================================================================
+        write(3,*) '## Momentum (keV), Energy(keV), dR/dlogE[events/kg/yr]' 
+        write(3,*) '## unsmeared  ##'
+
+        do ik = 1, gridsize
+            write(3,*) k_e(ik)*1.0E+6, E_e(ik)*1.0E+6, diff_rate(ik)    ! GeV to keV
+        enddo
+
+c       Writing out the rate as a function of days to show annual modulation. R = dN/dt(months)
+c       ================================================================
+c       Recoil Rate R        ./Output/DATA/rate_vs_time.dat
+c       day(i), rate_(i)
+c       ================================================================
+        write(4,*) '## Rates[events/kg/month]'
+        write(4,*) '## unsmeared  ##'
+
+        do id = 1, day_bins
+            write(4,*) daymid(id), rate_vs_time(id)
+        enddo
+
+c       Writing out the total rate. R = dN/dt(years)
+c       ================================================================
+c       Recoil Rate R        ./Output/DATA/tot_rate.dat
+c       rate
+c       ================================================================
+        write(5,*) '## Rate[events/kg/year]'
+        write(5,*) '## unsmeared  ##'
+
+        write(5,'(E11.5)') tot_rate
+        
+
+        close(3)
+        close(4)
+        close(5)
 
 
+c       Writing out the total rate
+        write(*,'(A21,E11.5,A13)') 'Total rate     :    ' , tot_rate , ' events/kg/yr'
+        write(*,*) ''
 
         Return
 
@@ -107,36 +203,35 @@ c ------------------------------------------------------------------------------
 
 
 
-!-----------------------------------------------------------------------------------------------!
-        subroutine Theory_Simulation(massDM, M_e, ioniz_amplitude, Theory)
-!-----------------------------------------------------------------------------------------------!
+!-------------------------------------------------------------------------------------------------------!
+        subroutine Theory_Simulation(M_dm,M_e,ioniz_amplitude,E_binding,diff_rate,rate_vs_time,tot_rate)
+!-------------------------------------------------------------------------------------------------------!
         implicit none
         include '../include/maddm.inc'
 
-        real massDM, M_e
+        double precision M_dm, M_e, E_binding
         real(kind=10) ioniz_amplitude(gridsize,gridsize)
         double precision dRdlogE, q_min, q_max, k_min, k_max, dday
-        double precision Theory(gridsize,day_bins), diff_rate(gridsize), tot_rate(day_bins), tot_events
+        double precision Theory(gridsize,day_bins), diff_rate(gridsize), rate_vs_time(day_bins), tot_rate
 
-        Integer ik, iq, id
-        double precision dayvalue(day_bins+1)
+        integer ik, iq, id
+        double precision dayvalue(day_bins+1), daymid(day_bins)
         double precision q_exc(gridsize), k_e(gridsize), E_e(gridsize)
-        double precision dlogE(gridsize)
-        double precision k_e_upper, E_e_upper
-        double precision daymid(day_bins)
+        double precision dlogE(gridsize), dq(gridsize)
+        double precision q_upper, k_e_upper, E_e_upper
 
         include '../include/maddm_card.inc'
 
 
 c       Initialize the parameters
-        tot_events = 0
+        tot_rate = 0
 
         do ik=1,gridsize
             diff_rate(ik)=0
         enddo
 
         do id=1,day_bins
-            tot_rate(id)=0
+            rate_vs_time(id)=0
         enddo
 
 c       Range used in the computation of the ioniz_amplitude
@@ -157,20 +252,44 @@ c       Setting up the array of the momentum k_e and the array of the energy E_e
 c       The array k_e is written in log scale.
         do ik = 1,gridsize
             k_e(ik) = exp(log(k_min) + (log(k_max) - log(k_min))*dble(ik-1)/dble(gridsize-1))
+            E_e(ik) = sqrt(M_e**2 + k_e(ik)**2) - M_e
+        enddo
+
+c       Compute dlogE as dE/E
+        do ik=1,gridsize
+            if(ik.ne.gridsize) then
+                dlogE(ik) = (E_e(ik+1) - E_e(ik))/E_e(ik)
+            else
+c               Extrapolate the gridsize+1 interval lenght
+                k_e_upper = exp(log(k_min) + (log(k_max) - log(k_min))*dble(ik)/dble(gridsize-1))
+                E_e_upper = sqrt(M_e**2 + k_e_upper**2) - M_e
+                dlogE(ik) = (E_e_upper - E_e(ik))/E_e(ik)
+            endif
         enddo
 
 c       Setting up array of the exchanged momentum q_exc. The array q_exc is written in log scale.
         do iq = 1,gridsize
-                q_exc(iq) = exp(log(q_min) + (log(q_max) - log(q_min))*dble(iq-1)/dble(gridsize-1))
+            q_exc(iq) = exp(log(q_min) + (log(q_max) - log(q_min))*dble(iq-1)/dble(gridsize-1))
+        enddo
+
+c       Compute dq
+        do iq = 1,gridsize
+            if(iq.ne.gridsize) then
+                dq(iq) = q_exc(iq+1) - q_exc(iq)
+            else
+c               Extrapolate the gridsize+1 interval lenght
+                q_upper = exp(log(q_min) + (log(q_max) - log(q_min))*dble(iq)/dble(gridsize-1))
+                dq(iq) = q_upper - q_exc(iq)
+            endif
         enddo
         
-c       Setting up the values of "day" in the centre of the bin
+c       Setting up the day values in the centre of the bin
         do id = 1, day_bins+1
-          dayvalue(id) =  day_min + dble(id-1)*dday
+            dayvalue(id) =  day_min + dble(id-1)*dday
         enddo
 
         do id = 1, day_bins
-           daymid(id) = (dayvalue(id) + dayvalue(id+1))/2.d0
+             daymid(id) = (dayvalue(id) + dayvalue(id+1))/2.d0
         enddo
 
 
@@ -181,70 +300,20 @@ c ------------------------------------------------------------------------------
 c       Loop over the momenta of the outgoing electron k_e.
         do ik = 1,gridsize
 
-c           Compute the kinetic energy corresponding to k_e(ik) and the dlogE
-            E_e(ik) = sqrt(M_e**2 + k_e(ik)**2) - M_e
-            if(ik.ne.gridsize) then
-                E_e(ik+1) = sqrt(M_e**2 + k_e(ik+1)**2) - M_e
-                dlogE(ik) = log(E_e(ik+1)) - log(E_e(ik))
-            else
-c               Trying to extrapolate the gridsize+1 interval lenght
-                k_e_upper = exp(log(k_min) + (log(k_max) - log(k_min))*dble(ik)/dble(gridsize-1))
-                E_e_upper = sqrt(M_e**2 + k_e_upper**2) - M_e
-                dlogE(ik) = log(E_e_upper) - log(E_e(ik))
-            endif
-
 c           Loop over day_bins
             do id = 1, day_bins
+
 c               Compute the differential rate, than use to compute dR/dlogE, total rate and total events
                 Theory(ik,id) =
-     &             dRdlogE(ik,E_e(ik),q_exc,massDM,M_e,ioniz_amplitude,V_E(daymid(id)))
+     &             dRdlogE(ik,E_e(ik),E_binding,q_exc,dq,M_dm,M_e,ioniz_amplitude,V_E(daymid(id)))
      &             *dday
 
-                tot_events   = tot_events   + Theory(ik,id) * dlogE(ik)
-                tot_rate(id) = tot_rate(id) + Theory(ik,id) * dlogE(ik)
-                diff_rate(ik)  = diff_rate(ik)  + Theory(ik,id)
+                tot_rate         = tot_rate + Theory(ik,id) * dlogE(ik)
+                rate_vs_time(id) = rate_vs_time(id) + Theory(ik,id) * dlogE(ik)
+                diff_rate(ik)    = diff_rate(ik) + Theory(ik,id)
             enddo
         enddo
 
-
-c ------------------------------------------------------------------------------------------------
-c       Write the results
-c ------------------------------------------------------------------------------------------------
-
-        open(3,file='./output/dRdlogE_sm.dat',status='unknown') 
-        open(4,file='./output/rate_sm.dat',status='unknown')
-
-c       Writing out the energy distribution dRdlogE. 
-c       ================================================================
-c       Energy distribution  ./Output/DATA/dRdlogE_sm.dat    
-c       E_e(ik), dR/dlogE(ik)
-c       ================================================================
-        write(3,*) '## Momentum (keV), Energy(keV), dR/dlogE(SI+SD)[events/kg/yr]' 
-        write(3,*) '## unsmeared  ##'
-
-        do ik = 1, gridsize
-            write(3,*) k_e(ik)*1.0E6, E_e(ik)*1.0E6, diff_rate(ik)    ! GeV to keV
-        enddo
-
-c       Writing out the rate as a function of days to show annual modulation. R = dN/dt
-c       ================================================================
-c       Recoil Rate R        ./Output/DATA/rate_sm.dat
-c       day(i), rate_(i)
-c       ================================================================
-        write(4,*) '## cos\theta, rates(SI+SD)[events/kg/month]'
-        write(4,*) '## unsmeared  ##'
-
-        do id = 1, day_bins
-            write(4,*) daymid(id), tot_rate(id)
-        enddo
-
-        close(3)
-        close(4)
-
-
-c       Writing out the total rate
-        write(*,*) 'Total rate: ' , tot_events , 'events/kg/yr'
-        write(*,*) ''
 
         return
         end
@@ -254,60 +323,56 @@ c       Writing out the total rate
 
 
 !-----------------------------------------------------------------------------------------------!
-        Function dRdlogE(ik, ER, q_exc, massDM, M_e, ioniz_amplitude, ve)
+        Function dRdlogE(ik, ER, Eb, q_exc, dq, M_dm, M_e, ioniz_amplitude, ve)
 !-----------------------------------------------------------------------------------------------!
-!	This calculates the double differential spectrum for                                    !
-!       Dark Matter Directional detection	                                                !
-!	Uses the modulation information of the earth inside function V_E                        !
-!	To print out information flag = 1, otherwise flag = 0				        !
+!	This calculates the double differential spectrum for                                        !
+!       Dark Matter Directional detection	                                                    !
+!	Uses the modulation information of the earth inside function V_E                            !
+!	To print out information flag = 1, otherwise flag = 0				                        !
 !-----------------------------------------------------------------------------------------------!
         implicit none
 
         include '../include/maddm.inc'
 
         integer ik,iq
-        double precision dRdlogE, c, ER, ve, nDM
-        real massDM, M_dm, M_e, v0, vearth, vmin, RhoD
+        double precision dRdlogE, c, ER, Eb, ve, nDM
+        double precision M_dm, M_e, v0, vearth, vmin, RhoD
         double precision N_events, eta, r_kin, kNorm, vesc, const_integral
-        double precision q_exc(gridsize)
+        double precision q_exc(gridsize), dq(gridsize)
 
         real(kind=10) ioniz_amplitude(gridsize,gridsize)
 
         include '../include/maddm_card.inc'
 
-
 c       Parameters and variables
-        c       = 3.d+5                 ! Speed of light in km/s  
-        M_dm    = massDM*(GeV/cs**2)    ! dark matter mass (GeV)
-        M_e     = M_e*(GeV/cs**2)       ! e mass (GeV)
+        c       = 3.0E+5 * (km/sec)     ! Speed of light in km/s
 c        v0      = vMP*(km/sec)          ! Most Probable velocity of WIMPs in DM Halo
-        v0      = 220*(km/sec)          ! REMOVE
+        v0      = 220.d0 * (km/sec)          ! REMOVE
 c        vesc    = vescape*(km/sec)      ! Escape velocity of a WIMP from the Galactic Halo
-        vesc    = 544 *(km/sec)         ! REMOVE
+        vesc    = 544.d0 * (km/sec)         ! REMOVE
 c        vearth  = ve*(km/sec)           ! Velocity of the Earth, taken from the V_E function (cm/s)
-        vearth  = 244*(km/sec)          ! REMOVE
+        vearth  = 232.d0 * (km/sec)          ! REMOVE
 c        RhoD    = rhoDM*GeV*cs**(-2)*cm**(-3) ! Density of Dark Matter in our local part of the Galaxy
-        RhoD = 0.4 ! REMOVE
-        nDM     = RhoD / M_dm           ! Number density of DM
-        const_integral = RhoD/(128*pi*(M_dm**2)*(M_e**2)) ! Constant in front of the integral
+c        nDM = RhoD / M_dm * cm**(-3)         ! Number density of DM
+        nDM     = 0.4 / M_dm * cm**(-3)         ! Number density of DM
+        const_integral = nDM/(128.d0*pi*(M_dm**2)*(M_e**2)) * c**4 ! Constant in front of the integral
 
-        kNorm   = (v0**3)*pi*(sqrt(pi)*erf(vesc/v0) - 2.d0*(vesc/v0)*exp(-(vesc/v0)**2)) ! Normalisation factor for velocity distribution integral
-
+        kNorm   = (v0**3)*pi*(sqrt(pi)*erf(vesc/v0) - 2.d0*(vesc/v0)*exp(-(vesc/v0)**2)) ! Normalization factor for velocity distribution integral
         dRdlogE = 0
 
 c       Loop over the exchanged momenta q_exc
         do iq=1,gridsize
 
 c           Minimum velocity required for recoil.
-            vmin = (ER/q_exc(iq) + q_exc(iq)/(2*M_dm)) * c * (km/sec)
+            vmin = ((ER+Eb)/q_exc(iq) + q_exc(iq)/(2*M_dm))*c
 
 c           Dark matter integrated velocity distibution eta (integrated also in cos(theta))
             if(vmin.le.(vesc-vearth)) then
                 eta = (v0**2 * pi)/(2*vearth*kNorm) *
-     &                ((-4)*exp(-(vesc/v0)**2)*vearth + sqrt(pi)*v0*(erf((vmin+vearth)/(v0)) - erf((vmin-vearth)/(v0))))
+     &                ((-4.d0)*exp(-(vesc/v0)**2)*vearth + sqrt(pi)*v0*(erf((vmin+vearth)/v0) - erf((vmin-vearth)/v0)))
             else if ((vesc-vearth).le.vmin.and.vmin.le.(vesc+vearth)) then
                 eta = (v0**2 * pi)/(2*vearth*kNorm) *
-     &                ((-2)*exp(-(vesc/v0)**2)*(vesc-vmin+vearth) + sqrt(pi)*v0*(erf(vesc/v0) - erf((vmin-vearth)/(v0))))
+     &                ((-2.d0)*exp(-(vesc/v0)**2)*(vesc-vmin+vearth) + sqrt(pi)*v0*(erf(vesc/v0) - erf((vmin-vearth)/v0)))
             else
                 eta = 0
             endif
@@ -315,7 +380,7 @@ c           Dark matter integrated velocity distibution eta (integrated also in 
 c           Integrate q_exc*eta*ioniz_amplitude over q_exc (second index of ioniz_amplitude).
 c           The first index ik is for the momenta of the outgoing electron.
 c           Multiply also for the constant in front of the integral
-            dRdlogE = dRdlogE + const_integral * (q_exc(iq) / c) * eta * ioniz_amplitude(ik,iq)
+            dRdlogE = dRdlogE + const_integral * dq(iq)/c * q_exc(iq)/c * eta * ioniz_amplitude(ik,iq)
 
         enddo
       
@@ -439,10 +504,10 @@ c                            write(*,*) 'Opened ', trim(atom_resp_path) // trim(
                 Read(2, *, iostat = error) (atomic_response_matrix(j,k), k=1,gridsize)
                 Select Case(error)
                 Case(0)
-c                              do k=1,gridsize
-c                                          Write(*, *) '(', j , ',' , k , ')' , this%%atomic_response_matrix(j,k)
-c                              enddo
-c                                    Write(*,*) ''
+c                        do k=1,gridsize
+c                                Write(*, *) '(', j , ',' , k , ')' , atomic_response_matrix(j,k)
+c                        enddo
+c                                Write(*,*) ''
                 Case(iostat_end)
                         Exit
                 Case Default
@@ -453,3 +518,66 @@ c                                    Write(*,*) ''
                 close(2)
 
         end subroutine read_atomic_response
+
+
+
+
+
+!---------------------------------------------------------------------------------------------!
+        function binding_energy(target,shell_name)
+!---------------------------------------------------------------------------------------------!
+!       Returns the binding energy in GeV of selected target.
+!       In case of two distinct binding energies for the different spins inside a shell,
+!       we took a simple mean.
+!       
+!       Please cite: 
+!           - https://www.webelements.com/xenon/atoms.html
+!---------------------------------------------------------------------------------------------!
+            double precision binding_energy
+            character(2) target, shell_name
+
+            if(target.eq.'Xe') then
+
+                if(shell_name.eq.'1s') then
+                    binding_energy = 33317.56055656222 * 1.0E-9 ! GeV
+
+                else if(shell_name.eq.'2s') then
+                    binding_energy = 5149.213639792182 * 1.0E-9 ! GeV
+
+                else if(shell_name.eq.'2p') then
+                    binding_energy = 4837.706588171414 * 1.0E-9 ! GeV
+
+                else if(shell_name.eq.'3s') then
+                    binding_energy = 1093.2351842564003 * 1.0E-9 ! GeV
+
+                else if(shell_name.eq.'3p') then
+                    binding_energy = 958.4299495823894 * 1.0E-9 ! GeV
+
+                else if(shell_name.eq.'3d') then
+                    binding_energy = 710.7303605534998 * 1.0E-9 ! GeV
+
+                else if(shell_name.eq.'4s') then
+                    binding_energy = 213.7805688618793 * 1.0E-9 ! GeV
+
+                else if(shell_name.eq.'4p') then
+                    binding_energy = 163.49493390058458 * 1.0E-9 ! GeV
+
+                else if(shell_name.eq.'4d') then
+                    binding_energy = 75.58972072252894 * 1.0E-9 ! GeV
+
+                else if(shell_name.eq.'5s') then
+                    binding_energy = 25.69862365041479 * 1.0E-9 ! GeV
+
+                else if(shell_name.eq.'5p') then
+                    binding_energy = 12.44330433672413 * 1.0E-9 ! GeV
+
+                else
+                    write(*,*) 'Invalid shell_name'
+
+                endif
+
+            endif
+
+            return
+
+        end function binding_energy
