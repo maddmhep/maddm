@@ -173,18 +173,22 @@ c  Directional detection switch
       common/detector/detector_size, En_threshold, lambd, smearing, sig_theta
 
 !  Declare simulation variables
-      integer Energy_bins, cos_theta_bins, day_bins, gridsize
-      parameter(gridsize=100)
+      integer Energy_bins, cos_theta_bins, day_bins
+      integer gridsize
+      double precision hbar, GeVtoKg, GeVtoJ, mtocm
       double precision En_min,En_max,cos_min,cos_max,day_min,day_max, m_proton, m_neutron, m_nucleon
+      double precision m_Xenon, au
       double precision Naa, G_fermi, g1,sec, GeV, cm, cs, fm, km, kmtocm, barn, picobarn, GeVtokev, pbtocm2,
      & GeVtoMeV, invcmtoGeV, cmtoinvGeV,Mevtokev,daytosec, hrtosec,tontokg,hukgtokg, gevtopb, pbtocm3
       common/simu/Energy_bins,cos_theta_bins,day_bins,En_min,En_max,cos_min,cos_max,day_min,day_max
 
 
 !  Constants
-      parameter(m_proton = 0.938d0)
+      parameter(gridsize  = 100)
+      parameter(m_proton  = 0.938d0)
       parameter(m_neutron = 0.940d0)
       parameter(m_nucleon = 0.939d0)
+      parameter(m_Xenon   = 131.293) ! au
       parameter(Naa       = 6.023d+26) ! Avogadro's number
       parameter(G_fermi   = 1.166d-5) ! Fermi Constant in (GeV**(-2))
       parameter(g1        = 0.357088d0) ! value of the U(1) gauge coupling constant
@@ -194,14 +198,17 @@ c  Directional detection switch
       parameter(GeV   = 1.d0)
       parameter(cm    = 1.d0)
       parameter(cs    = 1.d0)
+      parameter(hbar = 6.582E-25)  ! GeV s
 
 ! Some important constants and conversion factors.
 
+      parameter(au         = 1.660539E-27) ! Kg
       parameter(fm         = 1.d-13) ! cm
       parameter(km         = 1.d+5)  ! cm
       parameter(kmtocm     = 1.d+5)  !cm
+      parameter(mtocm      = 1.d+2)  ! cm
       parameter(barn       = 1.d-24) ! cm^2
-      parameter(picobarn    = 1.d-12*1.d-24) ! cm^2
+      parameter(picobarn   = 1.d-12*1.d-24) ! cm^2
       parameter(GeVtokev   = 1.d+6)
       parameter(GeVtoMeV   = 1.d+3)
       parameter(invcmtoGeV = 1.98d-14) ! converts cm^-1 to GeV
@@ -214,6 +221,8 @@ c  Directional detection switch
       parameter(gevtopb    = 3.89d+8)
       parameter(pbtocm3    = 2.99d-26)
       parameter(pbtocm2    = 1.00d-36)
+      parameter(GeVtoKg    = 1.78E-27) ! GeV**(-1) Kg
+      parameter(GeVtoJ     = 1.6022E-10) ! GeV**(-1) J
 
 c------------------------Capture rate---------------------------------
       logical do_capture
