@@ -336,7 +336,7 @@ class MadDM_interface(master_interface.MasterCmd):
             elif args[0] == 'coannihilator':
                 if not self._dm_candidate:
                     self.search_dm_candidate([])
-                for i in range(1,len(args)):
+                for i in range(1,len(args)): # convert pdgs to int
                     try:
                         args[i] = int(args[i])
                     except:
@@ -899,6 +899,7 @@ class MadDM_interface(master_interface.MasterCmd):
     @misc.mute_logger(['madgraph', 'models'], [30,30])    
     def add_model(self,*args,**opts):
         super(MadDM_interface, self).add_model(*args, **opts)
+        self.model_nlo = True
         self._pdg_particle_map.set_model_map(self._curr_model)
         possible_added_particles = ['999000006', '999000007', '999000008', '999000009', '999000010'] # from __REAL or __COMPLEX model
         self._unphysical_particles = []
@@ -1190,7 +1191,7 @@ class MadDM_interface(master_interface.MasterCmd):
             self.search_dm_candidate(excluded_particles)
             if not self._dm_candidate:
                 return
-            self.search_coannihilator(excluded=excluded_particles)
+            self.search_coannihilator()
             self.history.append('add relic_density %s %s' % ( '/' if excluded_particles else '',
                                                       ' '.join(excluded_particles)))
 
@@ -1471,7 +1472,7 @@ class MadDM_interface(master_interface.MasterCmd):
                     if 22 in self._multiparticles[arg]:
                         return True
                 except KeyError:
-                    raise err
+                    pass
         return False
 
     def generate_indirect(self, argument):
@@ -1509,7 +1510,7 @@ class MadDM_interface(master_interface.MasterCmd):
                     self.indirect_process_generation([final_state, '--noloop'], self._ID_cont_procs, self._ID_cont_matrix_elements, self._ID_cont_amps)
                 except diagram_generation.NoDiagramException:
                     continue
-                    logger.info('no diagram for %s' % final_state)
+                    # logger.info('no diagram for %s' % final_state)
             self._last_amps = [amp for amp in self._ID_cont_amps[0] + self._ID_cont_amps[1] if amp not in backup_amps]
             return
 
@@ -1554,7 +1555,7 @@ class MadDM_interface(master_interface.MasterCmd):
                     self.indirect_process_generation([final_state], self._ID_line_procs, self._ID_line_matrix_elements, self._ID_line_amps)
                 except diagram_generation.NoDiagramException:
                     continue
-                    logger.info('no diagram for %s' % final_state)
+                    # logger.info('no diagram for %s' % final_state)
             self._last_amps = [amp for amp in self._ID_line_amps[0] + self._ID_line_amps[1] if amp not in backup_amps]
             return
 
@@ -1588,10 +1589,10 @@ class MadDM_interface(master_interface.MasterCmd):
              You can compute the rate (no distribution) by typing 'add indirect 2to2lo'. ''')
         #    return
 
-        allow_loop_induce = True
+        allow_loops = True
         if '--noloop' in argument:
             argument.remove('--noloop')
-            allow_loop_induce = False
+            allow_loops = False
 
         # Check if the argument contains only two particles in the final state
         # if not, force the code to use madevent/reshuffling
@@ -1621,8 +1622,10 @@ class MadDM_interface(master_interface.MasterCmd):
                                      [ID_procs[0], ID_matrix_elements[0], ID_amps[0]]):
                     self.do_add('process %s' % proc, user=False)
                     last_amp = self._curr_amps[-1]
-            except (self.InvalidCmd, diagram_generation.NoDiagramException) as error:
-                if allow_loop_induce:
+            except diagram_generation.NoDiagramException as error:
+                if not self.model_nlo:
+                    logger.error(". ".join(error.args))
+                if allow_loops and self.model_nlo:
                     with misc.TMP_variable(self, ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps'], 
                                      [ID_procs[1], ID_matrix_elements[1], ID_amps[1]]):
                         proc = '%s %s > %s %s [noborn=QCD] @ID ' % (name, antiname, ' '.join(argument), coupling)
@@ -1631,6 +1634,11 @@ class MadDM_interface(master_interface.MasterCmd):
                             last_amp = self._curr_amps[-1]
                             self._forbid_fast = True
                         except (self.InvalidCmd, diagram_generation.NoDiagramException) as error:
+                            if "cannot handle loop processes" in error.args[0]:
+                                logger.error("No amplitudes have been generated at tree-level, and this model does not allow for loop-induced computations.")
+                                self.model_nlo = False
+                                self.change_principal_cmd('MadGraph')
+                                continue
                             proc = '%s %s > %s %s [noborn=QED] @ID ' % (name, antiname, ' '.join(argument), coupling)
                             try:
                                 self.do_add('process %s' % proc, user=False)
@@ -1640,6 +1648,8 @@ class MadDM_interface(master_interface.MasterCmd):
                                 # if no loop-induced diagrams have been found then change back the command interface to MadGraph
                                 logger.error(error.args[0].replace('noborn = QED', 'noborn = QCD or QED'))
                                 self.change_principal_cmd('MadGraph')
+            except self.InvalidCmd as error:
+                logger.error(". ".join(error.args))
             if self.is_amplitude_not_empty(last_amp):
                 temp_amps.append(last_amp)
 
