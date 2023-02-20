@@ -55,7 +55,6 @@ class MADDMProcCharacteristic(banner_mod.ProcCharacteristic):
     
     def default_setup(self):
         """initialize the directory to the default value""" 
-
         self.add_param('has_relic_density', False)
         self.add_param('relic_density_off', False)
         self.add_param('has_direct_detection', False)
@@ -1040,7 +1039,7 @@ class Indirect_Reweight(rwgt_interface.ReweightInterface):
         return super(Indirect_Reweight, self).do_change(line)
 
 
-class ProcessExporterIndirectD(object):
+class ProcessExporterIndirectD:
     """_________________________________________________________________________#
     #                                                                         #
     #  This class is used to export the matrix elements generated from        #

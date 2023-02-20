@@ -1357,17 +1357,22 @@ class MadDM_interface(master_interface.MasterCmd):
 
         quarks = list(range(1,7)) # ['d', 'u', 's', 'c', 'b','t']
         antiquarks = [-1*pdg for pdg in quarks] # ['d~', 'u~', 's~', 'c~', 'b~','t~']
-        
+
+        def format_order(name, order):
+            if not name:
+                return ''
+            return name+order
+
         if type == 'SI':
-            orders = '%s==2' % SI_name
+            orders = format_order(SI_name, '==2')
         elif type == 'SD':
-            orders = '%s==2' % SD_name
+            orders = format_order(SD_name, '==2')
         elif type == 'QED':
-            orders = '%s=0 %s=0' % (SD_name, SI_name)
+            orders = format_order(SD_name, '=0') + ' ' + format_order(SI_name, '=0')
         elif type == 'SI+QED':
-            orders = '%s=0 %s<=99' % (SD_name, SI_name)
+            orders = format_order(SD_name, '=0') + ' ' + format_order(SI_name, '<=99')
         elif type == 'SD+QED':
-            orders = '%s<=99 %s=0' % (SD_name, SI_name)
+            orders = format_order(SD_name, '<=99') + ' ' + format_order(SI_name, '=0')
                 
         #loop over quarks
         has_diagram = False
