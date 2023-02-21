@@ -1696,9 +1696,37 @@ class MADDMRunCmd(cmd.CmdShell):
                         oname = oname[0] + '_' + oname[1]
                         oname = self.processes_names_map[oname] # conversion to pdg codes
                         result["%%_relic_%s" % oname] = secure_float_f77(splitline[1])
+
+                    # --------------------- ADDED ---------------------
+                    if 'Xenon10_bins' in line:
+                        Xenon10_bins = []
+                        for i in range(1,9):
+                            Xenon10_bins.append(secure_float_f77(splitline[i]))
+                        result['Xenon10_bins'] = Xenon10_bins
+
+                    elif 'Xenon10_signal' in line:
+                        Xenon10_signal = []
+                        for i in range(1,8):
+                            Xenon10_signal.append(secure_float_f77(splitline[i]))
+                        result['Xenon10_signal'] = Xenon10_signal
+
+                    elif 'Xenon1T_bins' in line:
+                        Xenon1T_bins = []
+                        for i in range(1,6):
+                            Xenon1T_bins.append(secure_float_f77(splitline[i]))
+                        result['Xenon1T_bins'] = Xenon1T_bins
+
+                    elif 'Xenon1T_signal' in line:
+                        Xenon1T_signal = []
+                        for i in range(1,5):
+                            Xenon1T_signal.append(secure_float_f77(splitline[i]))
+                        result['Xenon1T_signal'] = Xenon1T_signal
+                    # ------------------------------------------------   
+
                     else:
-                        result[splitline[0].split(':')[0]] = secure_float_f77(splitline[1])
-                            
+                        result[splitline[0].split(':')[0]] = secure_float_f77(splitline[1])             
+
+        
         np_names = ['g','nue','numu','nutau']
         result['sigmav(xf)'] *= GeV2pb*pb2cm3
 

@@ -36,6 +36,12 @@ c direct_detection.f
 c directional_detection.f
       double precision d2RdEdcostheta, Fhelm, V_E, Gaussian
 
+c dm_response_direct_e.f
+      double precision dm_response
+
+c electron_recoil_signal.f
+      double precision v_earth
+
 c random seed
       integer idum
       common/randint/ idum
