@@ -93,6 +93,13 @@
 # Turn on detector smearing or not (both energy and angle)
    %(smearing)s     = smearing
 
+# Electronic recoil
+# select 'always' if you want to always do this computation independently on the
+# mass threshold, selected in direct_electron_dm_mass_max (hidden parameter),
+# default to 1.0 GeV
+   %(direct_electron_mode)s    = direct_electron_mode ! auto, always
+   %(direct_electron_dm_mass_max)s     = direct_electron_dm_mass_max
+
 ###################################################################################
 #
 # Nuclear Form Factors

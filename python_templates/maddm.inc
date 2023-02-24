@@ -107,6 +107,8 @@ c number of annihilation particles and associated diagrams
       character(30) dd_process_names(%(nb_me_dd)i)
       character(30) dd_eff_process_names(%(nb_me_dd_eff)i)
       character(30) dd_tot_process_names(%(nb_me_dd_tot)i)
+      character(10) direct_electron_mode
+      double precision direct_electron_dm_mass_max
       common/process_names/ process_names
       common/dd_process_names / dd_process_names
       common/dd_eff_process_names / dd_eff_process_names
@@ -119,7 +121,8 @@ c number of annihilation particles and associated diagrams
 	  common/ dd_tot_process_ids/ dd_tot_process_ids
       logical ann_process_iden_init(maxdms,maxdms, %(max_dm2sm)i), dm2dm_process_iden_init(maxdms,maxdms,%(max_dm2dm)i), is_line_process(%(nb_me)i)
       logical relic_canonical, calc_taacs_ann_array, calc_taacs_dm2dm_array, calc_taacs_scattering_array
-      logical do_relic_density, do_direct_detection, do_indirect_detection, do_indirect_spectral, xd_approx, only2to2lo
+      logical do_relic_density, do_direct_detection, do_direct_electron, do_indirect_detection, do_indirect_spectral
+      logical xd_approx, only2to2lo
       common/process_logical/ ann_process_iden_init, dm2dm_process_iden_init, is_line_process, relic_canonical,
      . calc_taacs_ann_array, calc_taacs_dm2dm_array, calc_taacs_scattering_array, xd_approx, only2to2lo
 

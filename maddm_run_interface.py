@@ -50,7 +50,7 @@ try:
     from scipy.special import gammainc
 except ImportError as error:
     print(error)
-    logger.warning('scipy module not found! Some Indirect detection features will be disabled.')
+    logger.warning('scipy module not found! Some Indirect/Direct detection features will be disabled.')
     HAS_SCIPY = False 
 else:
     HAS_SCIPY = True
@@ -58,7 +58,7 @@ else:
 try:
     import numpy as np 
 except ImportError:
-    logger.warning('numpy module not found! Indirect detection features will be disabled.')
+    logger.warning('numpy module not found! Indirect/Direct detection features will be disabled.')
     HAS_NUMPY = False
 else:
     HAS_NUMPY = True
@@ -1732,6 +1732,8 @@ class MADDMRunCmd(cmd.CmdShell):
         self.last_results = result
         self.last_results['run'] = self.run_name
 
+        if self.mode['direct_electron']:
+            self.launch_direct_electron()
                           
 #        if self.mode['indirect'] and not self._two2twoLO:
 #            with misc.MuteLogger(names=['madevent','madgraph'],levels=[50,50]):
@@ -1814,6 +1816,9 @@ class MADDMRunCmd(cmd.CmdShell):
            
             if self.mode['direct'] == 'directional':
                 order += ['Nevents', 'smearing']
+
+            if self.mode['direct_electron']:
+                order += []
 
             if self.mode['capture']:
                 detailled_keys = [k for k in self.last_results if k.startswith('ccap_') and '#' not in k]
@@ -1920,6 +1925,10 @@ class MADDMRunCmd(cmd.CmdShell):
 
 
             param_card_iterator.write(pjoin(self.dir_path,'Cards','param_card.dat'))
+
+    def launch_direct_electron(self):
+        pass
+
 
     def launch_multinest(self):
 
@@ -3061,7 +3070,7 @@ class MADDMRunCmd(cmd.CmdShell):
         logger.info('')
 
         if not self.param_card_iterator:
-            self.save_summary_single(relic = self.mode['relic'], direct = self.mode['direct'], \
+            self.save_summary_single(relic = self.mode['relic'], direct = self.mode['direct'], direct_electron = self.mode['direct_electron'], \
                                 indirect = self.mode['indirect'], spectral = self.mode['spectral'],
                                 fluxes_source= self.mode['indirect'].startswith('flux') if isinstance(self.mode['indirect'],str) else self.mode['indirect'], 
                                 fluxes_earth = False )                  
@@ -3354,7 +3363,7 @@ class MADDMRunCmd(cmd.CmdShell):
                         continue
                 logger.info("-"*len_headers)
 
-    def save_summary_single(self, relic = False, direct = False , indirect = False , spectral = False , fluxes_source = False , fluxes_earth = False):
+    def save_summary_single(self, relic = False, direct = False , direct_electron = False, indirect = False , spectral = False , fluxes_source = False , fluxes_earth = False):
 
         point = self.last_results['run']
         # creting symlink to Events folder in Inidrect output directory
@@ -3634,6 +3643,7 @@ class MADDMRunCmd(cmd.CmdShell):
             self.maddm_card.set('do_relic_density', self.mode['relic'], user=False)
             self.maddm_card.set('do_direct_detection', True if self.mode['direct'] else False, user=False)
             self.maddm_card.set('do_directional_detection', self.mode['direct'] == 'directional', user=False)
+            self.maddm_card.set('do_direct_electron', True if self.mode['direct_electron'] else False, user=False)
             self.maddm_card.set('do_capture', self.mode['capture'], user=False)
             self.maddm_card.set('do_indirect_detection', True if self.mode['indirect'] else False, user=False)
             self.maddm_card.set('do_indirect_spectral', self.mode['spectral'], user=False)
@@ -3771,10 +3781,13 @@ class Indirect_PY8Card(banner_mod.PY8Card):
 
 
 class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
-    """ """
+    """ 
+       self.switch is a dict of type string values
+    """
 
     to_control= [('relic', 'Compute the Relic Density'),
                  ('direct', 'Compute direct(ional) detection'),
+                 ('direct_electron', 'Compute direct detection electronic recoil'),
                  ('indirect', 'Compute indirect detection/flux (cont spectrum)'),
                  ('spectral', 'Compute indirect detection in aX (line spectrum)'),
                  ('nestscan', 'Run Multinest scan'),
@@ -3790,7 +3803,8 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
     def set_default_relic(self):
         """set the default value for relic=
            if relic has been generated when calling indirect detection, then it is set as 'OFF' by default.
-           the 'Not Avail.' case happens when relic has not been generated neither explicitly nor through indirect detection"""
+           the 'Not Avail.' case happens when relic has not been generated neither explicitly nor through indirect detection
+        """
         
         if self.availmode['relic_density_off']: # this can be True only if self.availmode['has_relic_density'] is True as well, that would correspond to generate relic_density during ID
             self.switch['relic'] = 'OFF'
@@ -3868,6 +3882,31 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
 
         return cmd
 
+    ####################################################################
+    # everything related to direct_electron option
+    ####################################################################    
+    def set_default_direct_electron(self):
+        """set the default value for direct_electron="""
+        
+        if not HAS_NUMPY:
+            self.switch['spectral'] = 'Not Avail. (numpy missing)'
+        elif not HAS_SCIPY:
+            self.switch['spectral'] = 'Not Avail. (scipy missing)'
+        elif self.availmode['has_direct_electron']:
+            self.switch['direct_electron'] = 'ON'
+        else:
+            self.switch['direct_electron'] = 'Not Avail.'
+
+    def get_allowed_direct_electron(self):
+        """Specify which parameter are allowed for direct_electron="""
+        
+        if hasattr(self, 'allowed_direct_electron'):
+            return getattr(self, 'allowed_direct_electron')
+
+        if self.availmode['has_direct_electron']:
+            self.allowed_direct_electron = ['ON', 'OFF']
+        else:
+            return []
 
     ####################################################################
     # everything related to indirect option
@@ -4132,7 +4171,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         
         # Technical note: 
         # Note that some special trigger happens for 
-        #    8/9 trigger via self.trigger_8 and self.trigger_9
+        #    8/9 trigger via self.trigger_9 and self.trigger_10
         #    If you change the numbering, please change the name of the 
         #    trigger function accordingly.
         
@@ -4142,16 +4181,16 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
  * Enter a path to a file to replace the card
  * Enter %(start_bold)sset NAME value%(stop)s to change any parameter to the requested value
  /=============================================================================\ 
- |  6. Edit the model parameters    [%(start_underline)sparam%(stop)s]                                    |  
- |  7. Edit the MadDM options       [%(start_underline)smaddm%(stop)s]                                    |
+ |  7. Edit the model parameters    [%(start_underline)sparam%(stop)s]                                    |  
+ |  8. Edit the MadDM options       [%(start_underline)smaddm%(stop)s]                                    |
 """
 
         current_val  = self.answer # use that to be secure with conflict -> always propose card
         if current_val['nestscan'] == "ON" or self.switch["nestscan"] ==  "ON":
-            question += """ |  8. Edit the Multinest options  [%(start_underline)smultinest%(stop)s]                                 |\n"""
+            question += """ |  9. Edit the Multinest options  [%(start_underline)smultinest%(stop)s]                                 |\n"""
     
         if current_val['indirect'].startswith('flux') or self.switch["indirect"].startswith('flux'):
-            question += """ |  9. Edit the Showering Card for flux  [%(start_underline)sflux%(stop)s]                                |\n"""
+            question += """ | 10. Edit the Showering Card for flux  [%(start_underline)sflux%(stop)s]                                |\n"""
         
         question+=""" \=============================================================================/\n"""
         self.question =  question % {'start_green' : '\033[92m',
@@ -4180,7 +4219,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         except cmd.NotValidInput as error:
             return common_run.AskforEditCard.default(self, line)     
         
-    def trigger_8(self, line):
+    def trigger_9(self, line):
         """ trigger function for default function:
             allows to modify the line/ trigger action.
             
@@ -4194,12 +4233,12 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         #  2) go to the line edition
         self.set_switch('nestscan', "ON", user=True) 
         if self.switch['nestscan'] == "ON":
-            return '8 %s' % line
+            return '9 %s' % line
         # not valid nestscan - > reask question
         else:
             return 
 
-    def trigger_9(self, line):
+    def trigger_10(self, line):
         """ trigger function for default function:
             allows to modify the line/ trigger action.
             
@@ -4229,9 +4268,9 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         if self.maddm['indirect_flux_source_method'] != 'pythia8':
             self.setDM('indirect_flux_source_method', 'pythia8',loglevel=30)
         
-        return '9 %s' % line
+        return '10 %s' % line
     
-    trigger_flux = trigger_9
+    trigger_flux = trigger_10
     
     def do_compute_widths(self, line):
         """normal fct but ensure that self.maddm_card is up-to-date"""
@@ -4347,6 +4386,10 @@ When you are done with such edition, just press enter (or write 'done' or '0')
         logger.info('     ')
         logger.info("  directional", "$MG:BOLD")
         logger.info("     Directional event rate (double differential event rate)")
+        
+    def help_direct_electron(self):
+        logger.info("direct_electron flag can take two values: ON/OFF")
+        logger.info("  It controls if you are going to compute the electronic recoil for direct detection")
         
     def help_relic(self):
         logger.info("relic flag can take two values: ON/OFF")
@@ -4667,10 +4710,10 @@ class MadDMCard(banner_mod.RunCard):
         self.add_param('relic_canonical', True)
         self.add_param('do_relic_density', True, system=True)
         self.add_param('do_direct_detection', False, system=True)
+        self.add_param('do_direct_electron', False, system=True)
         self.add_param('do_directional_detection', False, system=True)
         self.add_param('do_capture', False, system=True)
         self.add_param('do_flux', False, system=True, include=False)
-        
 
         self.add_param('do_indirect_detection', False, system=True)
         self.add_param('do_indirect_spectral', False, system=True)
@@ -4764,6 +4807,10 @@ class MadDMCard(banner_mod.RunCard):
         self.add_param('day_bins', 10)
         self.add_param('smearing', False)
         
+        # For electronic recoil
+        self.add_param('direct_electron_mode', 'auto', allowed=['auto', 'always'], include=True)
+        self.add_param('direct_electron_dm_mass_max', 1., comment="Max value of DM mass allowed to make the electronic recoil computation in case direct_electron_mode is set to 'auto'", include=True, hidden=True)
+
         #For the solar/earth capture rate
 
         # velocities for indirect detection
