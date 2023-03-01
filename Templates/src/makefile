@@ -9,7 +9,7 @@ flags = $(FFLAGS) -L$(libdir) -I$(incdir)
 
 libs = -lmatrix_elements -ldhelas -lmodel
 
-objs_all=init.o integrate.o interpolate.o maddm.o phasespace.o relic_canon.o relic_coupled.o relic_density.o direct_detection.o directional_detection.o indirect_detect_2to2.o tests.o capture_rate.o alfas_functions.o
+objs_all=init.o integrate.o interpolate.o maddm.o phasespace.o relic_canon.o relic_coupled.o relic_density.o direct_detection.o directional_detection.o indirect_detect_2to2.o tests.o capture_rate.o alfas_functions.o dm_response_direct_e.o electron_recoil_signal.o
 
 #Dependencies
 maddm.x: $(incdir)/maddm.inc $(incdir)/maddm_card.inc

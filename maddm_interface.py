@@ -92,8 +92,8 @@ class MadDM_interface(master_interface.MasterCmd):
     eff_operators_SI_nucleon = {1:'SIEFFS', 2:'SIEFFF', 3:'SIEFFV'}
     eff_operators_SD_nucleon = {1:False, 2:'SDEFFF', 3:'SDEFFV'} 
 
-    eff_operators_SI_electron = {}
-    eff_operators_SD_electron = {} 
+    eff_operators_SI_electron = {1:'SIEFFS', 2:'SIEFFF', 3:'SIEFFV'}
+    eff_operators_SD_electron = {1:False, 2:'SDEFFF', 3:'SDEFFV'}
     
     
     # for install command:
@@ -1327,12 +1327,12 @@ class MadDM_interface(master_interface.MasterCmd):
            The function also merges the dark matter model with the effective        
            vertex model.          
         """
-        # dm_spin = int(self._dm_candidate[0]['spin'])
-        # eff_operators_SI = self.eff_operators_SI_electron[dm_spin]
-        # eff_operators_SD = self.eff_operators_SD_electron[dm_spin]
-        # 
-        # logger.info("Generating X Electron > X Electron diagrams from the full lagrangian...")
-        # has_direct = self.DiagramsDD_electron(eff_operators_SI_electron, eff_operators_SD_electron, 'QED', excluded_particles)
+        dm_spin = int(self._dm_candidate[0]['spin'])
+        eff_operators_SI_electron = self.eff_operators_SI_electron[dm_spin]
+        eff_operators_SD_electron = self.eff_operators_SD_electron[dm_spin]
+        
+        logger.info("Generating X Electron > X Electron diagrams from the full lagrangian...")
+        has_direct = self.DiagramsDD_electron(eff_operators_SI_electron, eff_operators_SD_electron, 'QED', excluded_particles)
 
         #### ONLY FOR TESTING PURPOSES, REMOVE LATER
         has_direct = True
@@ -1341,22 +1341,22 @@ class MadDM_interface(master_interface.MasterCmd):
             logger.warning("No Direct Detection Feynman Diagram for DM-electron scattering")
             return False
         
-        # logger.info("Generating X Electron > X Electron diagrams from the effective lagrangian...")
-        # #ONLY EFFECTIVE LAGRANGIAN
-        # self.DiagramsDD_electron(eff_operators_SI, eff_operators_SD, 'SI',excluded_particles)
-        #
-        # logger.info("INFO: Generating X Electron > X Electron diagrams from the effective+full lagrangian...")
-        # #EFFECTIVE + FULL
-        # self.DiagramsDD_electron(eff_operators_SI, eff_operators_SD, 'SI+QED',excluded_particles)
-        # 
-        # if (eff_operators_SD != False):
-        #     logger.info("Doing the spin dependent part...")
-        #     logger.info("Generating X Electron > X Electron diagrams from the effective lagrangian...")
-        #
-        #     self.DiagramsDD_electron(eff_operators_SI, eff_operators_SD, 'SD',excluded_particles)
-        #     #EFFECTIVE + FULL
-        #     logger.info("Generating X Electron > X Electron diagrams from the effective + full lagrangian...")
-        #     self.DiagramsDD_electron(eff_operators_SI, eff_operators_SD, 'SD+QED',excluded_particles)
+        logger.info("Generating X Electron > X Electron diagrams from the effective lagrangian...")
+        #ONLY EFFECTIVE LAGRANGIAN
+        self.DiagramsDD_electron(eff_operators_SI_electron, eff_operators_SD_electron, 'SI',excluded_particles)
+
+        logger.info("INFO: Generating X Electron > X Electron diagrams from the effective+full lagrangian...")
+        #EFFECTIVE + FULL
+        self.DiagramsDD_electron(eff_operators_SI_electron, eff_operators_SD_electron, 'SI+QED',excluded_particles)
+    
+        if (eff_operators_SD_electron != False):
+            logger.info("Doing the spin dependent part...")
+            logger.info("Generating X Electron > X Electron diagrams from the effective lagrangian...")
+        
+            self.DiagramsDD_electron(eff_operators_SI_electron, eff_operators_SD_electron, 'SD',excluded_particles)
+            #EFFECTIVE + FULL
+            logger.info("Generating X Electron > X Electron diagrams from the effective + full lagrangian...")
+            self.DiagramsDD_electron(eff_operators_SI_electron, eff_operators_SD_electron, 'SD+QED',excluded_particles)
 
         return True
 
@@ -1481,8 +1481,58 @@ class MadDM_interface(master_interface.MasterCmd):
                  then you need to set SI_order=2 and QED_order=2...
         """                                                             
 
-        return None
+        def format_order(name, order):
+            if not name:
+                return ''
+            return name+order
+
+        if type == 'SI':
+            orders = format_order(SI_name, '==2')
+        elif type == 'SD':
+            orders = format_order(SD_name, '==2')
+        elif type == 'QED':
+            orders = format_order(SD_name, '=0') + ' ' + format_order(SI_name, '=0')
+        elif type == 'SI+QED':
+            orders = format_order(SD_name, '=0') + ' ' + format_order(SI_name, '<=99')
+        elif type == 'SD+QED':
+            orders = format_order(SD_name, '<=99') + ' ' + format_order(SI_name, '=0')
            
+        #if no DD diagrams
+        has_diagram = False
+
+        #PDG number of the electron
+        electron = 11
+
+        for i in [electron,-1*electron]:
+            proc = ' %(DM)s %(P)s > %(DM)s %(P)s %(excluded)s %(orders)s @DD' %\
+                    {'DM': self._dm_candidate[0].get('name'),
+                     'P': i,
+                     'excluded': ('/ %s' % ' '.join(excluded) if excluded else ''),
+                     'orders': orders
+                     }
+
+            try:
+                self.do_add('process %s' %proc, user=False)
+            except (self.InvalidCmd, diagram_generation.NoDiagramException) as error:
+                logger.debug(error)
+            else:
+                has_diagram = True
+            
+            if self._dm_candidate[0].get('antiname') != self._dm_candidate[0].get('name'):
+                proc = ' %(DM)s %(P)s > %(DM)s %(P)s %(excluded)s %(orders)s @DD' %\
+                    {'DM': self._dm_candidate[0].get('antiname'),
+                     'P': i,
+                     'excluded': ('/ %s' % ' '.join(excluded) if excluded else ''),
+                     'orders': orders
+                     }
+
+                try:
+                    self.do_add('process %s' % proc, user=False)
+                except (self.InvalidCmd, diagram_generation.NoDiagramException) as error:
+                    logger.debug(error)
+                else:
+                    has_diagram = True
+
         self._last_amps = [amp for amp in self._curr_amps if amp.get('process').get('id') == self.process_tag['DD']]
         return has_diagram
 

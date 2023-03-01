@@ -48,6 +48,7 @@ try:
     from scipy.integrate import quad, dblquad, tplquad
     from scipy.optimize import brute, fmin, minimize_scalar, bisect
     from scipy.special import gammainc
+    from scipy import stats
 except ImportError as error:
     print(error)
     logger.warning('scipy module not found! Some Indirect/Direct detection features will be disabled.')
@@ -1699,6 +1700,31 @@ class MADDMRunCmd(cmd.CmdShell):
                         oname = oname[0] + '_' + oname[1]
                         oname = self.processes_names_map[oname] # conversion to pdg codes
                         result["%%_relic_%s" % oname] = secure_float_f77(splitline[1])
+                        
+                    if 'Xenon10_bins' in line:
+                        Xenon10_bins = []
+                        for i in range(1,9):
+                            Xenon10_bins.append(secure_float_f77(splitline[i]))
+                        result['Xenon10_bins'] = Xenon10_bins
+
+                    elif 'Xenon10_signal' in line:
+                        Xenon10_signal = []
+                        for i in range(1,8):
+                            Xenon10_signal.append(secure_float_f77(splitline[i]))
+                        result['Xenon10_signal'] = Xenon10_signal
+
+                    elif 'Xenon1T_bins' in line:
+                        Xenon1T_bins = []
+                        for i in range(1,6):
+                            Xenon1T_bins.append(secure_float_f77(splitline[i]))
+                        result['Xenon1T_bins'] = Xenon1T_bins
+
+                    elif 'Xenon1T_signal' in line:
+                        Xenon1T_signal = []
+                        for i in range(1,5):
+                            Xenon1T_signal.append(secure_float_f77(splitline[i]))
+                        result['Xenon1T_signal'] = Xenon1T_signal
+
                     else:
                         result[splitline[0].split(':')[0]] = secure_float_f77(splitline[1])
                             
@@ -1927,7 +1953,37 @@ class MADDMRunCmd(cmd.CmdShell):
             param_card_iterator.write(pjoin(self.dir_path,'Cards','param_card.dat'))
 
     def launch_direct_electron(self):
-        pass
+
+        def get_pvalue(n_obs,expected_val):
+            test_statistic = 0
+            n_bins = len(n_obs)
+            if n_bins!=len(expected_val): print('Number of bins not matching!')
+            for n,nu in zip(n_obs,expected_val):
+                if n!=0:
+                    test_statistic += n*math.log(nu/n)-nu+n
+                else:
+                    test_statistic += n*math.log(nu)-nu
+            test_statistic *= -2
+            pvalue = abs(1 - stats.chi2.cdf(test_statistic , n_bins))
+            return pvalue
+        
+        if HAS_NUMPY is False:
+            logger.warning("numpy module not available, exclusion limits computation is disabled.")
+            return
+        elif HAS_SCIPY is False:
+            logger.warning("scipy module not available, exclusion limits computation is disabled.")
+            return
+        else:
+            Xenon10_sig = self.last_results['Xenon10_signal']
+            Xenon1T_sig = self.last_results['Xenon1T_signal']
+            Xenon10_obs = [126,60,12,3,2,0,2]
+            Xenon1T_obs = [8,7,2,1]
+            Xenon10_tot = [sig + bkg for sig,bkg in zip(Xenon10_sig,Xenon10_obs)]
+            Xenon1T_tot = [sig + bkg for sig,bkg in zip(Xenon1T_sig,Xenon1T_obs)]
+
+            self.last_results['pvalue_Xenon10'] = get_pvalue(Xenon10_obs,Xenon10_tot)
+            self.last_results['pvalue_Xenon1T'] = get_pvalue(Xenon1T_obs,Xenon1T_tot)
+
 
 
     def launch_multinest(self):
@@ -2963,7 +3019,27 @@ class MADDMRunCmd(cmd.CmdShell):
 #        if self.mode['direct'] == 'directional':
 #            logger.info(' Nevents          : %i', self.last_results['Nevents'])
 #            logger.info(' smearing         : %.2e', self.last_results['smearing'])
-        
+
+        if self.mode['direct_electron']:
+
+            def det_message_screen(n1,n2):
+                if n2 < 0 :                 return '%s NO LIMIT %s' % (bcolors.GRAY, bcolors.ENDC)
+                elif   n1 > n2 and n2 >= 0 : return '%s EXCLUDED %s' % (bcolors.FAIL, bcolors.ENDC)
+                elif   n2 > n1            : return '%s ALLOWED %s'  % (bcolors.OKGREEN, bcolors.ENDC) 
+                elif   n1 <= 0            : return 'No Theory Prediction'
+
+            tot_sig_Xenon10 = 0
+            for sig in self.last_results['Xenon10_signal']:
+                tot_sig_Xenon10 += sig
+            tot_sig_Xenon1T = 0
+            for sig in self.last_results['Xenon1T_signal']:
+                tot_sig_Xenon1T += sig
+            pval_Xenon10 = self.last_results['pvalue_Xenon10']
+            pval_Xenon1T = self.last_results['pvalue_Xenon1T']
+
+            logger.info( self.form_s('Total signal Xenon10       =  ') + self.form_n(tot_sig_Xenon10) + self.form_s('     ' + det_message_screen(0.90,pval_Xenon10)) + self.form_s('    pvalue  =') + self.form_n(pval_Xenon10))
+            logger.info( self.form_s('Total signal Xenon1T       =  ') + self.form_n(tot_sig_Xenon1T) + self.form_s('     ' + det_message_screen(0.90,pval_Xenon1T)) + self.form_s('    pvalue  =') + self.form_n(pval_Xenon1T))
+
         if self.mode['capture']:
             logger.info('\n capture coefficients: ')
             detailled_keys = [k for k in self.last_results.keys() if k.startswith('ccap')]
@@ -3322,7 +3398,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 logger.warning(roi_warning)
             logger.info("J = %.6e GeV^2 cm^-5" % self.last_results[str_part + "Jfactor"])
             logger.info("detection range: %.4e -- %.4e GeV" % (line_exp.detection_range[0], line_exp.detection_range[1]))
-            if len(energy_peaks) is 0:
+            if len(energy_peaks) == 0:
                 logger.info(bcolors.BOLD + "No peaks found: out of detection range." + bcolors.ENDC)
             else:
                 # find first column maximum length for nice table format
@@ -3509,7 +3585,7 @@ class MADDMRunCmd(cmd.CmdShell):
                     out.write(form_s("J-factor") + '= ' + form_n(self.last_results[str_part + "Jfactor"]) + '\n')
                     str_part_peak = str_part + 'peak'
                     energy_peaks = collections.OrderedDict(sorted([(k, v) for k, v in six.iteritems(self.last_results) if str_part_peak in k and '_states' not in k and '_error' not in k and v != -1], key = lambda item: item[1])) # key = "line_<exp_name>_peak_<num>", value = energy peak
-                    if len(energy_peaks) is 0:
+                    if len(energy_peaks) == 0:
                         # this happens when all the peaks are -1, so either if peaks are out of detection range or halo velocity is not compatible with galactic center
                         # if velocity is in the range, print out that peaks are not in the detection range, otherwise print out all -1
                         if (self.maddm_card['vave_indirect_line'] > self.vave_indirect_line_range[0] and self.maddm_card['vave_indirect_line'] < self.vave_indirect_line_range[1]):

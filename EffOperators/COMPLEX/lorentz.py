@@ -37,6 +37,14 @@ FFFF6 = Lorentz(name = 'FFFF6',
                 spins = [ 2, 2, 2, 2 ],
                 structure = 'Gamma(-1,2,-2)*Gamma(-1,4,-3)*ProjP(-3,3)*ProjP(-2,1)')
 
+FFFF7 = Lorentz(name = 'FFFF7',
+                spins = [ 2, 2, 2, 2 ],
+                structure = 'Gamma5(-3,3)*Gamma5(-2,1)*Gamma(-1,2,-2)*Gamma(-1,4,-3)')
+
+FFFF8 = Lorentz(name = 'FFFF8',
+                spins = [ 2, 2, 2, 2 ],
+                structure = 'Identity(2,1)*Identity(4,3)')
+
 FFVV1 = Lorentz(name = 'FFVV1',
                 spins = [ 2, 2, 3, 3 ],
                 structure = 'Identity(2,1)*Metric(3,4)')

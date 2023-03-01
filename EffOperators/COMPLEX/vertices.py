@@ -118,3 +118,8 @@ V_18 = Vertex(name = 'V_18',
               lorentz = [ L.FFVV1, L.FFVV2 ],
               couplings = {(0,0):C.GC_6,(0,1):C.GC_5})
 
+V_19 = Vertex(name = 'V_19',
+             particles = [ P.e__plus__, P.e__minus__, P.fdm__tilde__, P.P__tilde__fdm ],
+             color = [ '1' ],
+             lorentz = [ L.FFFF7, L.FFFF8 ],
+             couplings = {(0,0):C.GC_7,(0,1):C.GC_8})
