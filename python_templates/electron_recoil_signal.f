@@ -18,21 +18,20 @@
         integer i, ik, iq, id, iS2, tot_num_shell
         character(20) shell_filenames(50), filename
         character(2) target, shell_names(50)
-        character(100) maddm_path, atom_resp_path, Xenon10_efficency_path, Xenon1T_efficency_path
-        double precision diff_rate_shell(gridsize), rate_vs_time_shell(day_bins), tot_rate_shell
-        double precision dRdS2_shell(gridsize)
-        double precision diff_rate(gridsize), rate_vs_time(day_bins), tot_rate
-        real(kind=10) atomic_response_matrix(gridsize,gridsize)
-        real(kind=10) atomic_response_matrix_tot(gridsize,gridsize)
-        real(kind=10) ioniz_amplitude(gridsize,gridsize)
+        character(200) maddm_path, atom_resp_path, Xenon10_efficency_path, Xenon1T_efficency_path
+        double precision diff_rate_shell(gridsize_k), rate_vs_time_shell(day_bins), tot_rate_shell
+        double precision dRdS2_shell(gridsize_k)
+        double precision diff_rate(gridsize_k), rate_vs_time(day_bins), tot_rate
+        real(kind=10) atomic_response_matrix(gridsize_k,gridsize_q)
+        real(kind=10) atomic_response_matrix_tot(gridsize_k,gridsize_q)
+        real(kind=10) ioniz_amplitude(gridsize_k,gridsize_q)
         double precision dday
-        double precision k_e(gridsize+1), E_e(gridsize+1)
+        double precision k_e(gridsize_k+1), E_e(gridsize_k+1)
         double precision dayvalue(day_bins+1), daymid(day_bins)
-        double precision dRdS2_shell_Xenon10(S2_max), dRdS2_shell_Xenon1T(S2_max)
-        double precision dRdS2_Xenon10(S2_max), dRdS2_Xenon1T(S2_max)
-        double precision Xenon10_efficency(S2_max), Xenon1T_efficency(S2_max)
-        double precision S2_Xenon10(S2_max), S2_Xenon1T(S2_max)
-        double precision exposure_Xenon10, exposure_Xenon1T
+        double precision dRdS2_shell_Xenon10(S2_max_Xenon10), dRdS2_shell_Xenon1T(S2_max_Xenon1T)
+        double precision dRdS2_Xenon10(S2_max_Xenon10), dRdS2_Xenon1T(S2_max_Xenon1T)
+        double precision Xenon10_trigger_efficency(S2_max_Xenon10), Xenon1T_tot_efficency(S2_max_Xenon1T)
+        double precision Xenon10_flat_efficency, exposure_Xenon10, exposure_Xenon1T
         parameter(exposure_Xenon10 = 25)        ! Kg days
         parameter(exposure_Xenon1T = 80755)     ! Kg days
         double precision tot_sig_Xenon10, tot_sig_Xenon1T
@@ -52,29 +51,25 @@ c       Initialize the parameters and variables
         %(electron_mass)s       ! electron mass M_e (GeV)
         %(maddm_path)s          ! MadDM path
         atom_resp_path = trim(maddm_path) // '/Atomic_responses/atomic_response_1/'
-        Xenon10_efficency_path = trim(maddm_path) // '/Efficencies/tot_efficency_Xenon10.txt'
-        Xenon1T_efficency_path = trim(maddm_path) // '/Efficencies/tot_efficency_Xenon1T.txt'
+        Xenon10_efficency_path = trim(maddm_path) // '/Efficencies/Xenon10_TriggerEfficiency.txt'
+        Xenon1T_efficency_path = trim(maddm_path) // '/Efficencies/Xenon1T_TotalEfficiency.txt'
 
-c       Read the efficencies
-        call read_efficency(S2_Xenon10,Xenon10_efficency,Xenon10_efficency_path)
-        call read_efficency(S2_Xenon1T,Xenon1T_efficency,Xenon1T_efficency_path)
 
-c       Multiply S2 for the efficency
-        do iS2 = 1,S2_max
-            S2_Xenon10(iS2) = S2_Xenon10(iS2) * Xenon10_efficency(iS2)
-            S2_Xenon1T(iS2) = S2_Xenon1T(iS2) * Xenon1T_efficency(iS2)
-        enddo
-
-        do ik=1,gridsize
-            do iq=1,gridsize
+        do ik=1,gridsize_k
+            do iq=1,gridsize_q
                 ioniz_amplitude(ik,iq) = 0
                 atomic_response_matrix_tot(ik,iq) = 0
             enddo
         enddo
 
-        do iS2 = 1,S2_max
-            dRdS2_Xenon10 = 0
-            dRdS2_Xenon1T = 0
+        do iS2 = 1,S2_max_Xenon10
+            dRdS2_shell_Xenon10(iS2) = 0
+            dRdS2_Xenon10(iS2) = 0
+        enddo
+
+        do iS2 = 1,S2_max_Xenon1T
+            dRdS2_shell_Xenon1T(iS2) = 0
+            dRdS2_Xenon1T(iS2) = 0
         enddo
 
         do i=1,7
@@ -92,10 +87,10 @@ c       Multiply S2 for the efficency
 
 c       Setting up the array of the momentum k_e and the array of the energy E_e of the final electron.
 c       The array k_e is written in log scale.
-c       The arrays are of shape gridsize+1 because we need (gridsize+1)-elements to compute
-c       (gridsize)-differentials
-        do ik = 1,gridsize+1
-            k_e(ik) = exp(log(k_min) + (log(k_max) - log(k_min))*dble(ik-1)/dble(gridsize-1))
+c       The arrays are of shape gridsize_k+1 because we need (gridsize_k+1)-elements to compute
+c       (gridsize_k)-differentials
+        do ik = 1,gridsize_k+1
+            k_e(ik) = exp(log(k_min) + (log(k_max) - log(k_min))*dble(ik-1)/dble(gridsize_k-1))
             E_e(ik) = sqrt(M_e**2 + k_e(ik)**2) - M_e
         enddo
 
@@ -108,9 +103,6 @@ c       of the chosen target. There is one file for each shell.
         call get_shell_filenames(atom_resp_path,target,shell_filenames,tot_num_shell)
 
 c       Get the names of the shell in the order used to read them.
-c       The shell names should be in alphabetical order:
-c       i=1 -> 1s , i=2 -> 2p , i=3 -> 2s , i=4 -> 3d , i=5 -> 3p , i=6 -> 3s , i=7 -> 4d , 
-c       i=8 -> 4p , i=9 -> 4s , i=10 -> 5p , i=11 -> 5s , ...
         do i=1,tot_num_shell
             filename = trim(shell_filenames(i))
             shell_names(i) = filename(4:5)
@@ -119,7 +111,7 @@ c       i=8 -> 4p , i=9 -> 4s , i=10 -> 5p , i=11 -> 5s , ...
 c       Read the atomic response function of each file, multiply them for the dark matter
 c       response function obtaining the ioniziation amplitude. Integrate it obtaining the rate,
 c       and in the end sum over the selected shells.
-        do ik=1,gridsize
+        do ik=1,gridsize_k
             diff_rate(ik) = 0
         enddo
 
@@ -131,9 +123,21 @@ c       and in the end sum over the selected shells.
 
 c       Sum over all shells
         do i=1,tot_num_shell
+
+            tot_rate_shell = 0
+
+            do ik=1,gridsize_k
+                diff_rate_shell(ik)=0
+            enddo
+
+            do id=1,day_bins
+                rate_vs_time_shell(id)=0
+            enddo
+
             call read_atomic_response(atomic_response_matrix,shell_filenames(i),atom_resp_path)
-            do ik=1,gridsize
-                do iq=1,gridsize
+
+            do ik=1,gridsize_k
+                do iq=1,gridsize_q
                     ioniz_amplitude(ik,iq) = atomic_response_matrix(ik,iq) *
      &                                       dm_response * GeVtoKg**2 * gevtopb * picobarn
                 enddo
@@ -146,8 +150,8 @@ c       Sum over all shells
             open(200+i, file='./output/dRdE_' // trim(shell_names(i)) // '.dat', status='unknown')
             write(200+i,*) '# shell: ' // shell_names(i)
             write(200+i,*) '# E (eV)                    dR/dE (Kg^-1 day^-1 KeV^-1)'
-            do ik=1,gridsize
-                write(200+i,*) E_e(ik)*1E+9 , diff_rate(ik) / E_e(ik) * 1E-6 / 365 ! E_e (eV), dR/dE (Kg^-1 day^-1 KeV^-1)
+            do ik=1,gridsize_k
+                write(200+i,*) E_e(ik)*1E+9 , diff_rate_shell(ik) / E_e(ik) * 1E-6 / 365 ! E_e (eV), dR/dE (Kg^-1 day^-1 KeV^-1)
             enddo
             close(200+i)
 
@@ -156,22 +160,26 @@ c           Avoid to compute the limits for the shells that doesn't contribute t
             if (tot_rate_shell.ne.0) then
                 call get_dRdS2_shell(E_e, diff_rate_shell, dRdS2_shell_Xenon10, dRdS2_shell_Xenon1T,
      &                              target, shell_names(i), i)
+
+                do ik=1,gridsize_k
+                    diff_rate(ik) = diff_rate(ik) + diff_rate_shell(ik)
+                enddo
+
+                do id=1,day_bins
+                    rate_vs_time(id) = rate_vs_time(id) + rate_vs_time_shell(id)
+                enddo
+
+                do iS2 = 1,S2_max_Xenon10
+                    dRdS2_Xenon10(iS2) = dRdS2_Xenon10(iS2) + dRdS2_shell_Xenon10(iS2)
+                enddo
+
+                do iS2 = 1,S2_max_Xenon1T
+                    dRdS2_Xenon1T(iS2) = dRdS2_Xenon1T(iS2) + dRdS2_shell_Xenon1T(iS2)
+                enddo
+
+                tot_rate = tot_rate + tot_rate_shell
+
             endif
-
-            do ik=1,gridsize
-                diff_rate(ik) = diff_rate(ik) + diff_rate_shell(ik)
-            enddo
-
-            do id=1,day_bins
-                rate_vs_time(id) = rate_vs_time(id) + rate_vs_time_shell(id)
-            enddo
-
-            do iS2 = 1,S2_max
-                dRdS2_Xenon10(iS2) = dRdS2_Xenon10(iS2) + dRdS2_shell_Xenon10(iS2)
-                dRdS2_Xenon1T(iS2) = dRdS2_Xenon1T(iS2) + dRdS2_shell_Xenon1T(iS2)
-            enddo
-
-            tot_rate = tot_rate + tot_rate_shell
 
 c            write(*,*) '|  Readed: ', trim(shell_filenames(i)),
 c     &                 '  |  shell name: ', shell_names(i), '  |  E_bind: ',
@@ -180,10 +188,18 @@ c     &                 tot_rate_shell, '|'
 
         enddo
 
-c       Multiply for the exposure
-        do iS2 = 1,S2_max
-            dRdS2_Xenon10(iS2) = dRdS2_Xenon10(iS2) * exposure_Xenon10
-            dRdS2_Xenon1T(iS2) = dRdS2_Xenon1T(iS2) * exposure_Xenon1T
+c       Read the efficencies
+        call read_efficency(Xenon10_trigger_efficency,S2_max_Xenon10,Xenon10_efficency_path)
+        call read_efficency(Xenon1T_tot_efficency,S2_max_Xenon1T,Xenon1T_efficency_path)
+        Xenon10_flat_efficency = 0.92
+
+c       Multiply for the exposure and efficency
+        do iS2 = 1,S2_max_Xenon10
+            dRdS2_Xenon10(iS2) = dRdS2_Xenon10(iS2) * exposure_Xenon10 * Xenon10_trigger_efficency(iS2) * Xenon10_flat_efficency
+        enddo
+
+        do iS2 = 1,S2_max_Xenon1T
+            dRdS2_Xenon1T(iS2) = dRdS2_Xenon1T(iS2) * exposure_Xenon1T * Xenon1T_tot_efficency(iS2)
         enddo
 
 
@@ -195,10 +211,10 @@ c ------------------------------------------------------------------------------
         bin_Xenon1T = (/150,200,250,300,350/)
 
 c       Xenon10
-        do iS2=1,S2_max
+        do iS2=1,S2_max_Xenon10
             do i=1,7
-                if(bin_Xenon10(i).le.S2_Xenon10(iS2).and.S2_Xenon10(iS2).lt.bin_Xenon10(i+1)) then
-                    sig_Xenon10(i) = sig_Xenon10(i) + dRdS2_Xenon10(iS2)*(S2_Xenon10(iS2+1)-S2_Xenon10(iS2))
+                if(bin_Xenon10(i).le.iS2.and.iS2.lt.bin_Xenon10(i+1)) then
+                    sig_Xenon10(i) = sig_Xenon10(i) + dRdS2_Xenon10(iS2)
                 endif
             enddo
         enddo
@@ -217,10 +233,10 @@ c            write(*,'(A2,I3,A1,I3,A5,E23.17)') ' [' , bin_Xenon10(i), ',' , bin
 c        enddo
 
 c       Xenon1T
-        do iS2=1,S2_max
+        do iS2=1,S2_max_Xenon1T
             do i=1,4
-                if(bin_Xenon1T(i).le.S2_Xenon1T(iS2).and.S2_Xenon1T(iS2).lt.bin_Xenon1T(i+1)) then
-                    sig_Xenon1T(i) = sig_Xenon1T(i) + dRdS2_Xenon1T(iS2)*(S2_Xenon1T(iS2+1)-S2_Xenon1T(iS2))
+                if(bin_Xenon1T(i).le.iS2.and.iS2.lt.bin_Xenon1T(i+1)) then
+                    sig_Xenon1T(i) = sig_Xenon1T(i) + dRdS2_Xenon1T(iS2)
                 endif
             enddo
         enddo
@@ -248,7 +264,6 @@ c        write(*,*) "Total signal Xenon1T:" , tot_sig_Xenon1T, "Upper limit for 
         write(9,*) 'Xenon1T_bins' , bin_Xenon1T
         write(9,*) 'Xenon1T_signal' , sig_Xenon1T
         close(9)
-
 
 c ------------------------------------------------------------------------------------------------
 c       Setup the bins and write the results
@@ -280,7 +295,7 @@ c       ================================================================
         write(3,*) '## Momentum (keV), Energy(keV), dR/dlogE[events/kg/yr]' 
         write(3,*) '## unsmeared  ##'
 
-        do ik = 1, gridsize
+        do ik = 1, gridsize_k
             write(3,*) k_e(ik)*1.0E+6, E_e(ik)*1.0E+6, diff_rate(ik)    ! GeV to keV
         enddo
 
@@ -314,8 +329,8 @@ c       ================================================================
         write(6,*) '## S2      dR/dSE[events/kg/yr]' 
         write(6,*) '## unsmeared  ##'
 
-        do iS2 = 1, S2_max
-            write(6,*) S2_Xenon10(iS2), dRdS2_Xenon10(iS2)
+        do iS2 = 1, S2_max_Xenon10
+            write(6,*) iS2, dRdS2_Xenon10(iS2)
         enddo
 
 c       Writing out the differential rate dRdS2 for Xenon1T 
@@ -326,8 +341,8 @@ c       ================================================================
         write(7,*) '## S2      dR/dSE[events/kg/yr]' 
         write(7,*) '## unsmeared  ##'
 
-        do iS2 = 1, S2_max
-            write(7,*) S2_Xenon1T(iS2), dRdS2_Xenon1T(iS2)
+        do iS2 = 1, S2_max_Xenon1T
+            write(7,*) iS2, dRdS2_Xenon1T(iS2)
         enddo
         
 
@@ -352,14 +367,14 @@ c       ================================================================
         include '../include/maddm.inc'
 
         double precision M_dm, M_e, E_binding
-        real(kind=10) ioniz_amplitude(gridsize,gridsize)
+        real(kind=10) ioniz_amplitude(gridsize_k,gridsize_q)
         double precision dRdlogE, dday, v_earth
-        double precision rate_logE_days(gridsize,day_bins), diff_rate(gridsize), rate_vs_time(day_bins), tot_rate
+        double precision rate_logE_days(gridsize_k,day_bins), diff_rate(gridsize_k), rate_vs_time(day_bins), tot_rate
 
         integer ik, iq, id
         double precision dayvalue(day_bins+1), daymid(day_bins)
-        double precision q_exc(gridsize+1), E_e(gridsize+1)
-        double precision dlogE(gridsize), dq(gridsize)
+        double precision q_exc(gridsize_q+1), E_e(gridsize_k+1)
+        double precision dlogE(gridsize_k), dq(gridsize_q)
 
         include '../include/maddm_card.inc'
 
@@ -367,7 +382,7 @@ c       ================================================================
 c       Initialize the parameters
         tot_rate = 0
 
-        do ik=1,gridsize
+        do ik=1,gridsize_k
             diff_rate(ik)=0
         enddo
 
@@ -383,23 +398,23 @@ c       Setting up each bin to calculate the double differential distribution
 c ------------------------------------------------------------------------------------------------
 
 c       Compute dlogE as dE/E
-        do ik= 1,gridsize
+        do ik= 1,gridsize_k
             dlogE(ik) = (E_e(ik+1) - E_e(ik))/E_e(ik)
         enddo
 
 c       Setting up array of the exchanged momentum q_exc. The array q_exc is written in log scale.
-        do iq = 1,gridsize+1
-            q_exc(iq) = exp(log(q_min) + (log(q_max) - log(q_min))*dble(iq-1)/dble(gridsize-1))
+        do iq = 1,gridsize_q+1
+            q_exc(iq) = exp(log(q_min) + (log(q_max) - log(q_min))*dble(iq-1)/dble(gridsize_q-1))
         enddo
 
 c       Compute dq
-        do iq = 1,gridsize
+        do iq = 1,gridsize_q
             dq(iq) = q_exc(iq+1) - q_exc(iq)
         enddo
         
 c       Setting up the day values in the centre of the bin
         do id = 1,day_bins+1
-            dayvalue(id) =  day_min + dble(id-1)*dday
+            dayvalue(id) = day_min + dble(id-1)*dday
         enddo
 
         do id = 1,day_bins
@@ -412,7 +427,7 @@ c       Calculate the differential rate
 c ------------------------------------------------------------------------------------------------
 
 c       Loop over the momenta of the outgoing electron k_e.
-        do ik = 1,gridsize
+        do ik = 1,gridsize_k
 
 c           Loop over day_bins
             do id = 1, day_bins
@@ -420,7 +435,7 @@ c           Loop over day_bins
 c               Compute the differential rate, than use to compute dR/dlogE, total rate and total events
                 rate_logE_days(ik,id) =
      &             dRdlogE(ik,E_e(ik),E_binding,q_exc,dq,M_dm,M_e,ioniz_amplitude,v_earth(daymid(id)))
-     &             *dday*daytosec
+     &             *dday/365.d0*daytosec
 
                 tot_rate         = tot_rate + rate_logE_days(ik,id) * dlogE(ik)
                 rate_vs_time(id) = rate_vs_time(id) + rate_logE_days(ik,id) * dlogE(ik)
@@ -440,7 +455,7 @@ c               Compute the differential rate, than use to compute dR/dlogE, tot
         Function dRdlogE(ik, ER, Eb, q_exc, dq, M_dm, M_e, ioniz_amplitude, ve)
 !-----------------------------------------------------------------------------------------------!
 !	    Calculate the double differential spectrum for dark Matter detection.                   !
-!	    Uses the modulation information of the earth inside function v_earth.                       !
+!	    Uses the modulation information of the earth inside function v_earth.                   !
 !-----------------------------------------------------------------------------------------------!
         implicit none
 
@@ -450,14 +465,14 @@ c               Compute the differential rate, than use to compute dR/dlogE, tot
         double precision dRdlogE, ER, Eb, ve, nDM, c
         double precision M_dm, M_e, v0, vearth, vmin, RhoD
         double precision N_events, eta, r_kin, kNorm, vesc, const_integral
-        double precision q_exc(gridsize+1), dq(gridsize)
+        double precision q_exc(gridsize_q+1), dq(gridsize_q)
 
-        real(kind=10) ioniz_amplitude(gridsize,gridsize)
+        real(kind=10) ioniz_amplitude(gridsize_k,gridsize_q)
 
         include '../include/maddm_card.inc'
 
 c       Parameters and variables
-        c       = 3.0E+10                ! cm sec**(-1)
+        c       = 29979245800.d0        ! cm sec**(-1)
 c        v0      = vMP*(km/sec)          ! Most Probable velocity of WIMPs in DM Halo
         v0      = 220.d0 * (km/sec)          ! REMOVE
 c        vesc    = vescape*(km/sec)      ! Escape velocity of a WIMP from the Galactic Halo
@@ -474,7 +489,7 @@ c        nDM = RhoD / M_dm * cm**(-3)         ! Number density of DM
         dRdlogE = 0
 
 c       Loop over the exchanged momenta q_exc
-        do iq=1,gridsize
+        do iq=1,gridsize_q
 
 c           Minimum velocity required for recoil.
             vmin = ((ER+Eb)/q_exc(iq) + q_exc(iq)/(2*M_dm))*c ! [cm/sec]
@@ -517,15 +532,15 @@ c           Multiply also for the constant in front of the integral, and divide 
 
         include '../include/maddm.inc'
 
-        double precision E_e(gridsize+1), diff_rate_shell(gridsize)
-        double precision dRdS2_shell_Xenon10(S2_max), dRdS2_shell_Xenon1T(S2_max)
+        double precision E_e(gridsize_k+1), diff_rate_shell(gridsize_k)
+        double precision dRdS2_shell_Xenon10(S2_max_Xenon10), dRdS2_shell_Xenon1T(S2_max_Xenon1T)
         integer iE, i, g2_Xenon10, g2_Xenon1T, n_electr_max
         parameter(n_electr_max = 90)
         double precision dRdne_shell(n_electr_max)
         character(2) target, shell_name
-        integer n_1(gridsize), n_2(gridsize), n_e(gridsize), n_electr
+        integer n_1(gridsize_k), n_2(gridsize_k), n_e(gridsize_k), n_electr
         double precision W, f_e, binomial_prob, gauss_prob
-        parameter(f_e = 0.83)       ! Fraction of quanta observed as electrons
+        parameter(f_e = 0.833333)       ! Fraction of quanta observed as electrons
         double precision sigma_Xenon10, sigma_Xenon1T
         integer S2
         
@@ -534,8 +549,11 @@ c           Multiply also for the constant in front of the integral, and divide 
             dRdne_shell(n_electr) = 0
         enddo
 
-        do S2 = 1,S2_max
+        do S2 = 1,S2_max_Xenon10
             dRdS2_shell_Xenon10(S2) = 0
+        enddo
+
+        do S2 = 1,S2_max_Xenon1T
             dRdS2_shell_Xenon1T(S2) = 0
         enddo
 
@@ -558,7 +576,7 @@ c       Write the results in a file
 c       From the number of primary (n_1) and secondary (n_2) quanta (photons and electrons)
 c       generate the number of electrons (n_e) from a binomial distribution with n_1 + n_2
 c       trials and success probability f_e, plus the initial scattered electron     
-        do iE=1,gridsize
+        do iE=1,gridsize_k
 
             n_1(iE) = floor(E_e(iE)/W)
     
@@ -581,7 +599,7 @@ c     &                 ,'dRdlogE:' , diff_rate_shell(iE)
         
 c       Compute the differential rate (dRdne) wrt the number of initial scattered electrons (n_electr).
         do n_electr = 1, n_electr_max
-            do iE=1,gridsize
+            do iE=1,gridsize_k
 cc              dR/dn_e = integral(dE * P(n_e|E_e) * dR/dE) = integral(dE * P(n_e|E_e) * dR/dlogE * 1/E)
 cc              Where P(n_e|E_e) is given by a binomial distribution with number of events n_e, number of
 cc              trials is n_1(E_e)+n_2(E_e) and probability of success is f_e.
@@ -591,11 +609,8 @@ cc              N.B. : the binomial prob. is done for n_electr - 1 because we ne
      &                                  binomial_prob(n_electr-1, n_1(iE)+n_2(iE), f_e)
             enddo
 
-c           We don't see 0-electrons events
-            dRdne_shell(1) = 0
-
 c           Output the data
-            write(10+i,*) n_electr-1, dRdne_shell(n_electr)
+            write(10+i,*) n_electr, dRdne_shell(n_electr)
 
         enddo
 
@@ -607,23 +622,33 @@ c       Write the results in a file
         write(100+i,*) '#        S2     dR/dS2 (Xenon10)          dR/dS2 (Xenon1T)'
 
 c       Compute the differential rate (dRdS2) wrt the number of photomultiplied electrons (S2).
-        do S2 = 1, S2_max
+        do S2 = 1, S2_max_Xenon10
             do n_electr = 1, n_electr_max
 c               dR/dS2 = integral(dn_e * P(S2|n_e*g2,sigma) * dR/dn_e)
 c               Where P(S2|n_e*mean,sigma) is the probability to get S2 from a gaussian distribution
 c               with mean n_e*g2
                 dRdS2_shell_Xenon10(S2) = dRdS2_shell_Xenon10(S2) +
-     &                                  dRdne_shell(n_electr) *
-     &                                  gauss_prob(S2, n_electr*g2_Xenon10, sigma_Xenon10)
+     &                                  dRdne_shell(n_electr-1) *
+     &                                  gauss_prob(S2, n_electr*g2_Xenon10, sqrt(dble(n_electr))*sigma_Xenon10)
+            enddo
+        enddo
 
-
+        do S2 = 1, S2_max_Xenon1T
+            do n_electr = 1, n_electr_max
+c               dR/dS2 = integral(dn_e * P(S2|n_e*g2,sigma) * dR/dn_e)
+c               Where P(S2|n_e*mean,sigma) is the probability to get S2 from a gaussian distribution
+c               with mean n_e*g2
                 dRdS2_shell_Xenon1T(S2) = dRdS2_shell_Xenon1T(S2) +
-     &                                  dRdne_shell(n_electr) *
-     &                                  gauss_prob(S2, n_electr*g2_Xenon1T, sigma_Xenon1T)
+     &                                  dRdne_shell(n_electr-1) *
+     &                                  gauss_prob(S2, n_electr*g2_Xenon1T, sqrt(dble(n_electr))*sigma_Xenon1T)
             enddo
 
 c           Output the data
-            write(100+i,*) S2, dRdS2_shell_Xenon10(S2), dRdS2_shell_Xenon1T(S2)
+            if(S2.le.S2_max_Xenon10) then
+                write(100+i,*) S2, dRdS2_shell_Xenon10(S2), dRdS2_shell_Xenon1T(S2)
+            else
+                write(100+i,*) S2, 0, dRdS2_shell_Xenon1T(S2)
+            endif
 
         enddo
 
@@ -733,7 +758,7 @@ c           Output the data
 
                 include '../include/maddm.inc'                
 
-                real(kind=10) atomic_response_matrix(gridsize,gridsize)
+                real(kind=10) atomic_response_matrix(gridsize_k,gridsize_q)
                 character(20) shell_filename
                 character(100) atom_resp_path
                 integer j,k,error
@@ -746,11 +771,11 @@ c               Skip the firts 3 rows
                 Read(2,*)
                 Read(2,*)
 
-                Do j=1,gridsize
-                    Read(2, *, iostat = error) (atomic_response_matrix(j,k), k=1,gridsize)
+                Do j=1,gridsize_k
+                    Read(2, *, iostat = error) (atomic_response_matrix(j,k), k=1,gridsize_q)
                     Select Case(error)
                     Case(0)
-c                            do k=1,gridsize
+c                            do k=1,gridsize_q
 c                                    Write(*, *) '(', j , ',' , k , ')' , atomic_response_matrix(j,k)
 c                            enddo
 c                                    Write(*,*) ''
@@ -770,30 +795,24 @@ c                                    Write(*,*) ''
 
 
 !---------------------------------------------------------------------------------------------!
-        subroutine read_efficency(S2,efficency,path)
+        subroutine read_efficency(efficency,S2_max,path)
 !---------------------------------------------------------------------------------------------!
 
                 Use, intrinsic :: iso_fortran_env, Only : iostat_end
 
-                include '../include/maddm.inc'          
-
-                double precision S2(S2_max), efficency(S2_max)
-                character(100) path
+                integer S2_max
+                double precision efficency(S2_max)
+                character(200) path
                 integer iS2,error
 
                 open(99, FILE = trim(path), action="read")
-                
-c               Skip the firts 4 rows then read 
-                Read(99,*)
-                Read(99,*)
-                Read(99,*)
-                Read(99,*)
+            
                 do iS2 =1,S2_max
-                    Read(99, *, iostat = error) S2(iS2) , efficency(iS2)
+                    Read(99, *, iostat = error) efficency(iS2)
             
                     Select Case(error)
                     Case(0)
-c                        write(*,*) iS2 , S2(iS2) , efficency(iS2)
+c                        write(*,*) iS2, efficency(iS2)
                     Case(iostat_end)
                         Exit
                     Case Default

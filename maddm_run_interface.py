@@ -49,6 +49,8 @@ try:
     from scipy.optimize import brute, fmin, minimize_scalar, bisect
     from scipy.special import gammainc
     from scipy import stats
+    from scipy.stats import poisson
+
 except ImportError as error:
     print(error)
     logger.warning('scipy module not found! Some Indirect/Direct detection features will be disabled.')
@@ -1758,7 +1760,7 @@ class MADDMRunCmd(cmd.CmdShell):
         self.last_results = result
         self.last_results['run'] = self.run_name
 
-        if self.mode['direct_electron']:
+        if self.mode['direct_electron'] and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
             self.launch_direct_electron()
                           
 #        if self.mode['indirect'] and not self._two2twoLO:
@@ -1843,7 +1845,7 @@ class MADDMRunCmd(cmd.CmdShell):
             if self.mode['direct'] == 'directional':
                 order += ['Nevents', 'smearing']
 
-            if self.mode['direct_electron']:
+            if self.mode['direct_electron'] and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
                 order += []
 
             if self.mode['capture']:
@@ -1955,6 +1957,7 @@ class MADDMRunCmd(cmd.CmdShell):
     def launch_direct_electron(self):
 
         def get_pvalue(n_obs,expected_val):
+            '''
             test_statistic = 0
             n_bins = len(n_obs)
             if n_bins!=len(expected_val): print('Number of bins not matching!')
@@ -1964,26 +1967,33 @@ class MADDMRunCmd(cmd.CmdShell):
                 else:
                     test_statistic += n*math.log(nu)-nu
             test_statistic *= -2
-            pvalue = abs(1 - stats.chi2.cdf(test_statistic , n_bins))
-            return pvalue
+            pvalue = stats.chi2.cdf(test_statistic , n_bins)
+            '''
+            pvalues = []
+            for obs,exp in zip(n_obs,expected_val):
+                pvalues.append(poisson.cdf(obs,exp))
+            return min(pvalues)
         
-        if HAS_NUMPY is False:
-            logger.warning("numpy module not available, exclusion limits computation is disabled.")
-            return
-        elif HAS_SCIPY is False:
-            logger.warning("scipy module not available, exclusion limits computation is disabled.")
-            return
+        if ("Xenon10_signal" in self.last_results) and ("Xenon1T_signal" in self.last_results):
+            if HAS_NUMPY is False:
+                logger.warning("numpy module not available, exclusion limits computation is disabled.")
+                return
+            elif HAS_SCIPY is False:
+                logger.warning("scipy module not available, exclusion limits computation is disabled.")
+                return
+            else:
+                Xenon10_sig = self.last_results['Xenon10_signal']
+                Xenon1T_sig = self.last_results['Xenon1T_signal']
+                Xenon10_obs = [126,60,12,3,2,0,2]
+                Xenon1T_obs = [8,7,2,1]
+                Xenon10_tot = [sig + bkg for sig,bkg in zip(Xenon10_sig,Xenon10_obs)]
+                Xenon1T_tot = [sig + bkg for sig,bkg in zip(Xenon1T_sig,Xenon1T_obs)]
+
+                self.last_results['pvalue_Xenon10'] = get_pvalue(Xenon10_obs,Xenon10_tot)
+                self.last_results['pvalue_Xenon1T'] = get_pvalue(Xenon1T_obs,Xenon1T_tot)
         else:
-            Xenon10_sig = self.last_results['Xenon10_signal']
-            Xenon1T_sig = self.last_results['Xenon1T_signal']
-            Xenon10_obs = [126,60,12,3,2,0,2]
-            Xenon1T_obs = [8,7,2,1]
-            Xenon10_tot = [sig + bkg for sig,bkg in zip(Xenon10_sig,Xenon10_obs)]
-            Xenon1T_tot = [sig + bkg for sig,bkg in zip(Xenon1T_sig,Xenon1T_obs)]
-
-            self.last_results['pvalue_Xenon10'] = get_pvalue(Xenon10_obs,Xenon10_tot)
-            self.last_results['pvalue_Xenon1T'] = get_pvalue(Xenon1T_obs,Xenon1T_tot)
-
+            self.last_results['pvalue_Xenon10'] = -1
+            self.last_results['pvalue_Xenon1T'] = -1
 
 
     def launch_multinest(self):
@@ -3020,7 +3030,7 @@ class MADDMRunCmd(cmd.CmdShell):
 #            logger.info(' Nevents          : %i', self.last_results['Nevents'])
 #            logger.info(' smearing         : %.2e', self.last_results['smearing'])
 
-        if self.mode['direct_electron']:
+        if self.mode['direct_electron'] and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
 
             def det_message_screen(n1,n2):
                 if n2 < 0 :                 return '%s NO LIMIT %s' % (bcolors.GRAY, bcolors.ENDC)
@@ -3028,17 +3038,20 @@ class MADDMRunCmd(cmd.CmdShell):
                 elif   n2 > n1            : return '%s ALLOWED %s'  % (bcolors.OKGREEN, bcolors.ENDC) 
                 elif   n1 <= 0            : return 'No Theory Prediction'
 
-            tot_sig_Xenon10 = 0
-            for sig in self.last_results['Xenon10_signal']:
-                tot_sig_Xenon10 += sig
-            tot_sig_Xenon1T = 0
-            for sig in self.last_results['Xenon1T_signal']:
-                tot_sig_Xenon1T += sig
             pval_Xenon10 = self.last_results['pvalue_Xenon10']
             pval_Xenon1T = self.last_results['pvalue_Xenon1T']
-
-            logger.info( self.form_s('Total signal Xenon10       =  ') + self.form_n(tot_sig_Xenon10) + self.form_s('     ' + det_message_screen(0.90,pval_Xenon10)) + self.form_s('    pvalue  =') + self.form_n(pval_Xenon10))
-            logger.info( self.form_s('Total signal Xenon1T       =  ') + self.form_n(tot_sig_Xenon1T) + self.form_s('     ' + det_message_screen(0.90,pval_Xenon1T)) + self.form_s('    pvalue  =') + self.form_n(pval_Xenon1T))
+            if pval_Xenon10==-1 and pval_Xenon1T==-1:
+                logger.info( self.form_s('Total signal Xenon10       =  ') + self.form_n(-1) + self.form_s('     ' + det_message_screen(0.05,pval_Xenon10)) + self.form_s('    pvalue  =') + self.form_n(pval_Xenon10))
+                logger.info( self.form_s('Total signal Xenon1T       =  ') + self.form_n(-1) + self.form_s('     ' + det_message_screen(0.05,pval_Xenon1T)) + self.form_s('    pvalue  =') + self.form_n(pval_Xenon1T))
+            else:
+                tot_sig_Xenon10 = 0
+                for sig in self.last_results['Xenon10_signal']:
+                    tot_sig_Xenon10 += sig
+                tot_sig_Xenon1T = 0
+                for sig in self.last_results['Xenon1T_signal']:
+                    tot_sig_Xenon1T += sig
+                logger.info( self.form_s('Total signal Xenon10       =  ') + self.form_n(tot_sig_Xenon10) + self.form_s('     ' + det_message_screen(0.05,pval_Xenon10)) + self.form_s('    pvalue  =') + self.form_n(pval_Xenon10))
+                logger.info( self.form_s('Total signal Xenon1T       =  ') + self.form_n(tot_sig_Xenon1T) + self.form_s('     ' + det_message_screen(0.05,pval_Xenon1T)) + self.form_s('    pvalue  =') + self.form_n(pval_Xenon1T))
 
         if self.mode['capture']:
             logger.info('\n capture coefficients: ')
