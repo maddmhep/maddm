@@ -1846,7 +1846,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 order += ['Nevents', 'smearing']
 
             if self.mode['direct_electron'] and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
-                order += []
+                order += ['pvalue_Xenon10','pvalue_Xenon1T']
 
             if self.mode['capture']:
                 detailled_keys = [k for k in self.last_results if k.startswith('ccap_') and '#' not in k]
@@ -1989,8 +1989,8 @@ class MADDMRunCmd(cmd.CmdShell):
                 Xenon10_tot = [sig + bkg for sig,bkg in zip(Xenon10_sig,Xenon10_obs)]
                 Xenon1T_tot = [sig + bkg for sig,bkg in zip(Xenon1T_sig,Xenon1T_obs)]
 
-                self.last_results['pvalue_Xenon10'] = get_pvalue(Xenon10_obs,Xenon10_tot)
-                self.last_results['pvalue_Xenon1T'] = get_pvalue(Xenon1T_obs,Xenon1T_tot)
+                self.last_results['pvalue_Xenon10'] = get_pvalue(Xenon10_obs,Xenon10_sig)
+                self.last_results['pvalue_Xenon1T'] = get_pvalue(Xenon1T_obs,Xenon1T_sig)
         else:
             self.last_results['pvalue_Xenon10'] = -1
             self.last_results['pvalue_Xenon1T'] = -1

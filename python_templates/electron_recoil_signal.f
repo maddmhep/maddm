@@ -32,8 +32,8 @@
         double precision dRdS2_Xenon10(S2_max_Xenon10), dRdS2_Xenon1T(S2_max_Xenon1T)
         double precision Xenon10_trigger_efficency(S2_max_Xenon10), Xenon1T_tot_efficency(S2_max_Xenon1T)
         double precision Xenon10_flat_efficency, exposure_Xenon10, exposure_Xenon1T
-        parameter(exposure_Xenon10 = 25)        ! Kg days
-        parameter(exposure_Xenon1T = 80755)     ! Kg days
+        parameter(exposure_Xenon10 = 15)        ! Kg days
+        parameter(exposure_Xenon1T = 80755.2)     ! Kg days
         double precision tot_sig_Xenon10, tot_sig_Xenon1T
 
         include '../include/coupl.inc'
@@ -78,7 +78,7 @@ c       Initialize the parameters and variables
 
         tot_sig_Xenon10 = 0
 
-        do i=1,7
+        do i=1,4
             sig_Xenon1T(i) = 0
         enddo
 
@@ -89,11 +89,14 @@ c       Setting up the array of the momentum k_e and the array of the energy E_e
 c       The array k_e is written in log scale.
 c       The arrays are of shape gridsize_k+1 because we need (gridsize_k+1)-elements to compute
 c       (gridsize_k)-differentials
+
+        open(10000, file='/home/gianmarcolucchetti/thesis/Code/E.dat', status='unknown')
         do ik = 1,gridsize_k+1
             k_e(ik) = exp(log(k_min) + (log(k_max) - log(k_min))*dble(ik-1)/dble(gridsize_k-1))
             E_e(ik) = sqrt(M_e**2 + k_e(ik)**2) - M_e
+            write(10000,*) E_e(ik), ','
         enddo
-
+        close(10000)
 c ------------------------------------------------------------------------------------------------
 c Read the atomic response functions, compute the ionization amplitude and compute the rates
 c ------------------------------------------------------------------------------------------------
@@ -147,13 +150,13 @@ c       Sum over all shells
      &                             binding_energy(target,shell_names(i)),
      &                             diff_rate_shell, rate_vs_time_shell, tot_rate_shell)
             
-            open(200+i, file='./output/dRdE_' // trim(shell_names(i)) // '.dat', status='unknown')
-            write(200+i,*) '# shell: ' // shell_names(i)
-            write(200+i,*) '# E (eV)                    dR/dE (Kg^-1 day^-1 KeV^-1)'
-            do ik=1,gridsize_k
-                write(200+i,*) E_e(ik)*1E+9 , diff_rate_shell(ik) / E_e(ik) * 1E-6 / 365 ! E_e (eV), dR/dE (Kg^-1 day^-1 KeV^-1)
-            enddo
-            close(200+i)
+c            open(200+i, file='./output/dRdE_' // trim(shell_names(i)) // '.dat', status='unknown')
+c            write(200+i,*) '# shell: ' // shell_names(i)
+c            write(200+i,*) '# E (eV)                    dR/dE (Kg^-1 day^-1 KeV^-1)'
+c            do ik=1,gridsize_k
+c                write(200+i,*) E_e(ik)*1E+9 , diff_rate_shell(ik) / E_e(ik) * 1E-6 / 365.d0 ! E_e (eV), dR/dE (Kg^-1 day^-1 KeV^-1)
+c            enddo
+c            close(200+i)
 
 
 c           Avoid to compute the limits for the shells that doesn't contribute to the rate
@@ -194,12 +197,12 @@ c       Read the efficencies
         Xenon10_flat_efficency = 0.92
 
 c       Multiply for the exposure and efficency
-        do iS2 = 1,S2_max_Xenon10
-            dRdS2_Xenon10(iS2) = dRdS2_Xenon10(iS2) * exposure_Xenon10 * Xenon10_trigger_efficency(iS2) * Xenon10_flat_efficency
+        do iS2 = 2,S2_max_Xenon10
+            dRdS2_Xenon10(iS2) = dRdS2_Xenon10(iS2) * exposure_Xenon10 * Xenon10_trigger_efficency(iS2-1) * Xenon10_flat_efficency
         enddo
 
-        do iS2 = 1,S2_max_Xenon1T
-            dRdS2_Xenon1T(iS2) = dRdS2_Xenon1T(iS2) * exposure_Xenon1T * Xenon1T_tot_efficency(iS2)
+        do iS2 = 2,S2_max_Xenon1T
+            dRdS2_Xenon1T(iS2) = dRdS2_Xenon1T(iS2) * exposure_Xenon1T * Xenon1T_tot_efficency(iS2-1)
         enddo
 
 
@@ -215,6 +218,7 @@ c       Xenon10
             do i=1,7
                 if(bin_Xenon10(i).le.iS2.and.iS2.lt.bin_Xenon10(i+1)) then
                     sig_Xenon10(i) = sig_Xenon10(i) + dRdS2_Xenon10(iS2)
+                    exit
                 endif
             enddo
         enddo
@@ -237,6 +241,7 @@ c       Xenon1T
             do i=1,4
                 if(bin_Xenon1T(i).le.iS2.and.iS2.lt.bin_Xenon1T(i+1)) then
                     sig_Xenon1T(i) = sig_Xenon1T(i) + dRdS2_Xenon1T(iS2)
+                    exit
                 endif
             enddo
         enddo
@@ -435,7 +440,7 @@ c           Loop over day_bins
 c               Compute the differential rate, than use to compute dR/dlogE, total rate and total events
                 rate_logE_days(ik,id) =
      &             dRdlogE(ik,E_e(ik),E_binding,q_exc,dq,M_dm,M_e,ioniz_amplitude,v_earth(daymid(id)))
-     &             *dday/365.d0*daytosec
+     &             *dday/365.0*daytosec
 
                 tot_rate         = tot_rate + rate_logE_days(ik,id) * dlogE(ik)
                 rate_vs_time(id) = rate_vs_time(id) + rate_logE_days(ik,id) * dlogE(ik)
@@ -540,7 +545,7 @@ c           Multiply also for the constant in front of the integral, and divide 
         character(2) target, shell_name
         integer n_1(gridsize_k), n_2(gridsize_k), n_e(gridsize_k), n_electr
         double precision W, f_e, binomial_prob, gauss_prob
-        parameter(f_e = 0.833333)       ! Fraction of quanta observed as electrons
+        parameter(f_e = 1.d0/1.2)       ! Fraction of quanta observed as electrons
         double precision sigma_Xenon10, sigma_Xenon1T
         integer S2
         
@@ -566,12 +571,11 @@ c       Secondary scintillation gain factor and sigma for Xenon10 and Xenon1T
 
         sigma_Xenon10 = 6.7
         sigma_Xenon1T = 7.0
-        
 
 c       Write the results in a file
-        open(10+i, file='./output/dRdne' // trim(shell_name) // '.dat', status='unknown')
-        write(10+i,*) '# shell: ' // shell_name
-        write(10+i,*) '#  n_electr              dR/dn_e'
+c        open(10+i, file='./output/dRdne' // trim(shell_name) // '.dat', status='unknown')
+c        write(10+i,*) '# shell: ' // shell_name
+c        write(10+i,*) '#  n_electr              dR/dn_e'
 
 c       From the number of primary (n_1) and secondary (n_2) quanta (photons and electrons)
 c       generate the number of electrons (n_e) from a binomial distribution with n_1 + n_2
@@ -610,16 +614,16 @@ cc              N.B. : the binomial prob. is done for n_electr - 1 because we ne
             enddo
 
 c           Output the data
-            write(10+i,*) n_electr, dRdne_shell(n_electr)
+c            write(10+i,*) n_electr, dRdne_shell(n_electr)
 
         enddo
 
-        close(10+i)
+c        close(10+i)
 
 c       Write the results in a file
-        open(100+i, file='./output/dRdS2_' // trim(shell_name) // '.dat', status='unknown')
-        write(100+i,*) '# shell: ' // shell_name
-        write(100+i,*) '#        S2     dR/dS2 (Xenon10)          dR/dS2 (Xenon1T)'
+c        open(100+i, file='./output/dRdS2_' // trim(shell_name) // '.dat', status='unknown')
+c        write(100+i,*) '# shell: ' // shell_name
+c        write(100+i,*) '#        S2     dR/dS2 (Xenon10)          dR/dS2 (Xenon1T)'
 
 c       Compute the differential rate (dRdS2) wrt the number of photomultiplied electrons (S2).
         do S2 = 1, S2_max_Xenon10
@@ -628,7 +632,7 @@ c               dR/dS2 = integral(dn_e * P(S2|n_e*g2,sigma) * dR/dn_e)
 c               Where P(S2|n_e*mean,sigma) is the probability to get S2 from a gaussian distribution
 c               with mean n_e*g2
                 dRdS2_shell_Xenon10(S2) = dRdS2_shell_Xenon10(S2) +
-     &                                  dRdne_shell(n_electr-1) *
+     &                                  dRdne_shell(n_electr) *
      &                                  gauss_prob(S2, n_electr*g2_Xenon10, sqrt(dble(n_electr))*sigma_Xenon10)
             enddo
         enddo
@@ -639,18 +643,20 @@ c               dR/dS2 = integral(dn_e * P(S2|n_e*g2,sigma) * dR/dn_e)
 c               Where P(S2|n_e*mean,sigma) is the probability to get S2 from a gaussian distribution
 c               with mean n_e*g2
                 dRdS2_shell_Xenon1T(S2) = dRdS2_shell_Xenon1T(S2) +
-     &                                  dRdne_shell(n_electr-1) *
+     &                                  dRdne_shell(n_electr) *
      &                                  gauss_prob(S2, n_electr*g2_Xenon1T, sqrt(dble(n_electr))*sigma_Xenon1T)
             enddo
 
 c           Output the data
-            if(S2.le.S2_max_Xenon10) then
-                write(100+i,*) S2, dRdS2_shell_Xenon10(S2), dRdS2_shell_Xenon1T(S2)
-            else
-                write(100+i,*) S2, 0, dRdS2_shell_Xenon1T(S2)
-            endif
+c            if(S2.le.S2_max_Xenon10) then
+c                write(100+i,*) S2, dRdS2_shell_Xenon10(S2), dRdS2_shell_Xenon1T(S2)
+c            else
+c                write(100+i,*) S2, 0, dRdS2_shell_Xenon1T(S2)
+c            endif
 
         enddo
+
+c        close(100+i)
 
         end subroutine get_dRdS2_shell
 

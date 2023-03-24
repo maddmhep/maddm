@@ -210,8 +210,8 @@ c  Directional detection switch
       parameter(g1        = 0.357088d0) ! value of the U(1) gauge coupling constant
       parameter(gridsize_k  = 100)
       parameter(gridsize_q  = 200)
-      parameter(S2_max_Xenon10 = 250)
-      parameter(S2_max_Xenon1T = 3000)
+      parameter(S2_max_Xenon10 = 203)
+      parameter(S2_max_Xenon1T = 250)
       parameter(m_Xenon   = 131.293) ! Average over all isotopes in (au)
 
 
