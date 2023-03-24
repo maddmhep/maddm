@@ -211,7 +211,7 @@ c  Directional detection switch
       parameter(gridsize_k  = 100)
       parameter(gridsize_q  = 200)
       parameter(S2_max_Xenon10 = 203)
-      parameter(S2_max_Xenon1T = 250)
+      parameter(S2_max_Xenon1T = 350)
       parameter(m_Xenon   = 131.293) ! Average over all isotopes in (au)
 
 
