@@ -218,6 +218,10 @@ c-------------------------------------------------------------------------------
             c_1 = 4*mdm(1)*M_e*(alpha_SI_odd + alpha_SI_even)
             c_4 = 16*mdm(1)*M_e*(2*alpha_SD_odd - alpha_SD_even)
             get_dm_response = (c_1)**2 + (3.d0/16)*(c_4)**2
+            
+            if(ISNAN(get_dm_response)) then
+                  get_dm_response = -1
+            endif
 
 c            write(*,*) '---------------------------------------------------------------'
 c            write(*,*) '                    dm_response_direct_e.f                     '

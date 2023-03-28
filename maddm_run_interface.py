@@ -1957,22 +1957,13 @@ class MADDMRunCmd(cmd.CmdShell):
     def launch_direct_electron(self):
 
         def get_pvalue(n_obs,expected_val):
-            '''
-            test_statistic = 0
-            n_bins = len(n_obs)
-            if n_bins!=len(expected_val): print('Number of bins not matching!')
-            for n,nu in zip(n_obs,expected_val):
-                if n!=0:
-                    test_statistic += n*math.log(nu/n)-nu+n
-                else:
-                    test_statistic += n*math.log(nu)-nu
-            test_statistic *= -2
-            pvalue = stats.chi2.cdf(test_statistic , n_bins)
-            '''
             pvalues = []
             for obs,exp in zip(n_obs,expected_val):
                 pvalues.append(poisson.cdf(obs,exp))
             return min(pvalues)
+        
+        self.last_results['pvalue_Xenon10'] = -1
+        self.last_results['pvalue_Xenon1T'] = -1
         
         if ("Xenon10_signal" in self.last_results) and ("Xenon1T_signal" in self.last_results):
             if HAS_NUMPY is False:
@@ -1981,7 +1972,7 @@ class MADDMRunCmd(cmd.CmdShell):
             elif HAS_SCIPY is False:
                 logger.warning("scipy module not available, exclusion limits computation is disabled.")
                 return
-            else:
+            elif self.last_results['DM_response']!=-1:
                 Xenon10_sig = self.last_results['Xenon10_signal']
                 Xenon1T_sig = self.last_results['Xenon1T_signal']
                 Xenon10_obs = [126,60,12,3,2,0,2]
@@ -1991,9 +1982,6 @@ class MADDMRunCmd(cmd.CmdShell):
 
                 self.last_results['pvalue_Xenon10'] = get_pvalue(Xenon10_obs,Xenon10_sig)
                 self.last_results['pvalue_Xenon1T'] = get_pvalue(Xenon1T_obs,Xenon1T_sig)
-        else:
-            self.last_results['pvalue_Xenon10'] = -1
-            self.last_results['pvalue_Xenon1T'] = -1
 
 
     def launch_multinest(self):
@@ -3506,6 +3494,22 @@ class MADDMRunCmd(cmd.CmdShell):
                 ul = D['lim']
                 exp = D['exp']
                 out.write(form_s(D['n']) + '= ' + form_s('['+ form_n(cross) + ',' + form_n(ul) + ']' ) + '# '+exp + '\n')
+
+        if direct_electron:
+
+            for name in ['dRdlogE_e_recoil.dat','dRdS2_Xenon1T_e_recoil.dat','dRdS2_Xenon10_e_recoil.dat','rate_vs_time_e_recoil.dat','signal_e_recoil.dat']:
+                if os.path.isfile(pjoin(self.dir_path, 'output',name)):
+                   shutil.move(pjoin(self.dir_path, 'output',name) ,  pjoin(self.dir_path, 'output', point , name))
+            
+            out.write('\n################################################\n')
+            out.write('# Direct Detection - Electronic Recoil [cm^2]  #\n')
+            out.write('################################################\n\n')
+
+            sig10 = self.last_results['Xenon10_signal']
+            sig1T = self.last_results['Xenon1T_signal']
+            out.write(form_s('Xenon10_signal') + '= ' + form_s('['+ form_n(sig10[0]) + ',' + form_n(sig10[1]) + ',' + form_n(sig10[2]) + ',' + form_n(sig10[3]) + ',' + form_n(sig10[4]) + ',' + form_n(sig10[5]) + ',' + form_n(sig10[6]) + ']' ) + '\n')
+            out.write(form_s('Xenon1T_signal') + '= ' + form_s('['+ form_n(sig1T[0]) + ',' + form_n(sig1T[1]) + ',' + form_n(sig1T[2]) + ',' + form_n(sig1T[3]) + ']' ) + '\n')
+        
 
         if indirect or spectral:      
 
