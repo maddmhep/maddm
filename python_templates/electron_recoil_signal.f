@@ -45,6 +45,19 @@ c        write(*,*) '                    electron_recoil_signal.f               
 c        write(*,*) '---------------------------------------------------------------'
 
 
+        bin_Xenon10 = (/14,41,68,95,122,149,176,203/)
+        bin_Xenon1T = (/150,200,250,300,350/)
+
+        if (dm_response.eq.-1) then
+            do i=1,7
+                sig_Xenon10(i)=-1
+            enddo
+            do i=1,4
+                sig_Xenon1T(i)=-1
+            enddo
+            Return
+        endif
+
 c       Initialize the parameters and variables
         target = 'Xe'
         M_dm = mdm(1) * GeV * cs**(-2) ! dark matter mass
@@ -210,9 +223,6 @@ c ------------------------------------------------------------------------------
 c       Get the number of observed events per bin
 c ------------------------------------------------------------------------------------------------
 
-        bin_Xenon10 = (/14,41,68,95,122,149,176,203/)
-        bin_Xenon1T = (/150,200,250,300,350/)
-
 c       Xenon10
         do iS2=1,S2_max_Xenon10
             do i=1,7
@@ -263,7 +273,7 @@ c        write(*,*)
 c        write(*,*) "Total signal Xenon10:" , tot_sig_Xenon10, "Upper limit for Xenon10: 25.1628"
 c        write(*,*) "Total signal Xenon1T:" , tot_sig_Xenon1T, "Upper limit for Xenon1T: 8.6918"
 
-        open(9,file='./output/signal.dat',status='unknown')
+        open(9,file='./output/signal_e_recoil.dat',status='unknown')
         write(9,*) 'Xenon10_bins' , bin_Xenon10
         write(9,*) 'Xenon10_signal' , sig_Xenon10
         write(9,*) 'Xenon1T_bins' , bin_Xenon1T
@@ -286,11 +296,11 @@ c       Setup the array of day values. Each day value is in the centre of the bi
         enddo
 
 c       Write the results
-        open(3,file='./output/dRdlogE_sm.dat',status='unknown') 
-        open(4,file='./output/rate_vs_time.dat',status='unknown')
-        open(5,file='./output/tot_rate.dat',status='unknown')
-        open(6,file='./output/dRdS2_Xenon10.dat',status='unknown')
-        open(7,file='./output/dRdS2_Xenon1T.dat',status='unknown')
+        open(3,file='./output/dRdlogE_e_recoil.dat',status='unknown') 
+        open(4,file='./output/rate_vs_time_e_recoil.dat',status='unknown')
+c        open(5,file='./output/tot_rate.dat',status='unknown')
+        open(6,file='./output/dRdS2_Xenon10_e_recoil.dat',status='unknown')
+        open(7,file='./output/dRdS2_Xenon1T_e_recoil.dat',status='unknown')
 
 c       Writing out the differential rate dRdlogE. 
 c       ================================================================
@@ -321,10 +331,10 @@ c       ================================================================
 c       Recoil Rate R        ./Output/tot_rate.dat
 c       rate
 c       ================================================================
-        write(5,*) '## Rate[events/kg/year]'
-        write(5,*) '## unsmeared  ##'
+c        write(5,*) '## Rate[events/kg/year]'
+c        write(5,*) '## unsmeared  ##'
 
-        write(5,'(E11.5)') tot_rate
+c        write(5,'(E11.5)') tot_rate
 
 c       Writing out the differential rate dRdS2 for Xenon10 
 c       ================================================================
