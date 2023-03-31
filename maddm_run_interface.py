@@ -39,7 +39,7 @@ except ImportError:
 
 try:
     from scipy.interpolate import interp1d
-    from scipy.integrate import quad, dblquad
+    from scipy.integrate import quad
     from scipy.optimize import brute, fmin, minimize_scalar, bisect
     from scipy.special import gammainc
 except ImportError, error:
@@ -1426,7 +1426,6 @@ class MADDMRunCmd(cmd.CmdShell):
 
         self.Spectra = Spectra()
         self.Fermi   = Fermi_bounds()
-        self.line_experiments = GammaLineExperimentsList()
         self.MadDM_version = '3.2'
 
         self.processes_names_map = self.proc_characteristics['processes_names_map']
@@ -2087,6 +2086,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
         ### Fill list with GammaLineExperiment
         if not self.in_scan_mode:
+            self.line_experiments = GammaLineExperimentsList()
             r_sun = self.maddm_card['r_sun']
             rho_sun = self.maddm_card['rho_sun']
             ### Fermi-LAT 2015
