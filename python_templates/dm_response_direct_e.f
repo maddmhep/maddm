@@ -26,15 +26,13 @@ c Select scalar, fermion or vector DM particle and compute the dark matter
 c response function
 c --------------------------------------------------------------------------------
             select case(dm_spin)
-                  case(1) ! will be implmented in future work
-                  write (*,*) "scalar DM-e scattering still not implemented!"
+                  case(1)
+                  dm_response = get_dm_response(dm_spin)
                   case(2)
-                  dm_response = get_dm_response()
+                  dm_response = get_dm_response(dm_spin)
                   case(3) ! will be implmented in future work
                   write (*,*) "vector DM-e scattering still not implemented!"
             end select
-
-
 
       end function
             
@@ -43,7 +41,7 @@ c ------------------------------------------------------------------------------
 
             
 c-------------------------------------------------------------------------c
-      function get_dm_response()
+      function get_dm_response(dm_spin)
 c-------------------------------------------------------------------------c
 c
 c Compute the non relativistic coefficients and use them to get the       c
@@ -52,7 +50,7 @@ c                                                                         c
 c-------------------------------------------------------------------------c
             implicit none
             
-            integer j, k
+            integer j, k, dm_spin
             integer j_dm_e, j_antidm_e
             integer j_eff_SI_dm_e, j_tot_SI_dm_e, j_eff_SI_dm_p, j_tot_SI_dm_p
             integer j_eff_SD_dm_e, j_tot_SD_dm_e, j_eff_SD_dm_p, j_tot_SD_dm_p
@@ -144,24 +142,26 @@ c                 JTOT same as JEFF but for the EFF+FULL
                         j_tot_SI_dm_p = k
                   endif
 
-                  process_name = 'EFT_SD_' // dm_e_process_name
-                  if (DD_EFF_PROCESS_NAMES(k).eq.process_name) then
-                        j_eff_SD_dm_e = k
-                  endif
+                  if(dm_spin.ne.1) then
+                        process_name = 'EFT_SD_' // dm_e_process_name
+                        if (DD_EFF_PROCESS_NAMES(k).eq.process_name) then
+                              j_eff_SD_dm_e = k
+                        endif
 
-                  process_name = 'EFT_SD_' // dm_p_process_name
-                  if (DD_EFF_PROCESS_NAMES(k).eq.process_name) then
-                        j_eff_SD_dm_p = k
-                  endif
+                        process_name = 'EFT_SD_' // dm_p_process_name
+                        if (DD_EFF_PROCESS_NAMES(k).eq.process_name) then
+                              j_eff_SD_dm_p = k
+                        endif
 
-                  process_name = 'TOT_SD_' // dm_e_process_name
-                  if (DD_TOT_PROCESS_NAMES(k).eq.process_name) then
-                        j_tot_SD_dm_e = k
-                  endif
+                        process_name = 'TOT_SD_' // dm_e_process_name
+                        if (DD_TOT_PROCESS_NAMES(k).eq.process_name) then
+                              j_tot_SD_dm_e = k
+                        endif
 
-                  process_name = 'TOT_SD_' // dm_p_process_name
-                  if (DD_TOT_PROCESS_NAMES(k).eq.process_name) then
-                        j_tot_SD_dm_p = k
+                        process_name = 'TOT_SD_' // dm_p_process_name
+                        if (DD_TOT_PROCESS_NAMES(k).eq.process_name) then
+                              j_tot_SD_dm_p = k
+                        endif
                   endif
             enddo
 
@@ -194,30 +194,37 @@ c-------------------------------------------------------------------------------
             Minterf_SI_p = 0.5d0*Minterf_SI_p
             Minterf_SI_p = Minterf_SI_p / smatrix_dd_eff(p_ext,1,1,j_eff_SI_dm_p)
 
-            Minterf_SD_e = smatrix_dd_tot(p_ext, 1,1,j_tot_SD_dm_e) - max(0d0, smatrix_dd(p_ext,1,1,j_dm_e)) 
-     &                   - smatrix_dd_eff(p_ext,1,1,j_eff_SD_dm_e)
-            Minterf_SD_e = 0.5d0*Minterf_SD_e
-            Minterf_SD_e = Minterf_SD_e / smatrix_dd_eff(p_ext,1,1,j_eff_SD_dm_e)
-            
-            Minterf_SD_p = smatrix_dd_tot(p_ext, 1,1,j_tot_SD_dm_p) - max(0d0, smatrix_dd(p_ext,1,1,j_antidm_e)) 
-     &                   - smatrix_dd_eff(p_ext,1,1,j_eff_SD_dm_p)
-            Minterf_SD_p = 0.5d0*Minterf_SD_p
-            Minterf_SD_p = Minterf_SD_p / smatrix_dd_eff(p_ext,1,1,j_eff_SD_dm_p)
-
-            
             alpha_SI_even = 0.5d0 * (Minterf_SI_e + Minterf_SI_p)
             alpha_SI_odd  = 0.5d0 * (Minterf_SI_e - Minterf_SI_p)
 
-            alpha_SD_even = 0.5d0 * (Minterf_SD_e + Minterf_SD_p)
-            alpha_SD_odd  = 0.5d0 * (Minterf_SD_e - Minterf_SD_p)
+            if(dm_spin.ne.1) then
+                  Minterf_SD_e = smatrix_dd_tot(p_ext, 1,1,j_tot_SD_dm_e) - max(0d0, smatrix_dd(p_ext,1,1,j_dm_e)) 
+     &                         - smatrix_dd_eff(p_ext,1,1,j_eff_SD_dm_e)
+                  Minterf_SD_e = 0.5d0*Minterf_SD_e
+                  Minterf_SD_e = Minterf_SD_e / smatrix_dd_eff(p_ext,1,1,j_eff_SD_dm_e)
+                  
+                  Minterf_SD_p = smatrix_dd_tot(p_ext, 1,1,j_tot_SD_dm_p) - max(0d0, smatrix_dd(p_ext,1,1,j_antidm_e)) 
+     &                         - smatrix_dd_eff(p_ext,1,1,j_eff_SD_dm_p)
+                  Minterf_SD_p = 0.5d0*Minterf_SD_p
+                  Minterf_SD_p = Minterf_SD_p / smatrix_dd_eff(p_ext,1,1,j_eff_SD_dm_p)
 
+                  alpha_SD_even = 0.5d0 * (Minterf_SD_e + Minterf_SD_p)
+                  alpha_SD_odd  = 0.5d0 * (Minterf_SD_e - Minterf_SD_p)
+            endif
 c--------------------------------------------------------------------------------
 c Compute the non relativistic coefficients and use them to get the
 c dark matter response function.
 c--------------------------------------------------------------------------------
-            c_1 = 4*mdm(1)*M_e*(alpha_SI_odd + alpha_SI_even)
-            c_4 = 16*mdm(1)*M_e*(2*alpha_SD_odd - alpha_SD_even)
-            get_dm_response = (c_1)**2 + (3.d0/16)*(c_4)**2
+            if(dm_spin.eq.1) then
+                  c_1 = 2*M_e*(alpha_SI_even + 2*mdm(1)*alpha_SI_odd)
+                  get_dm_response = (c_1)**2
+            else if(dm_spin.eq.2) then
+                  c_1 = 4*mdm(1)*M_e*(alpha_SI_odd + alpha_SI_even)
+                  c_4 = 16*mdm(1)*M_e*(2*alpha_SD_odd - alpha_SD_even)
+                  get_dm_response = (c_1)**2 + (3.d0/16.d0)*(c_4)**2
+            else if(dm_spin.eq.3) then
+                  ! will be implmented in future work
+            endif
             
             if(ISNAN(get_dm_response)) then
                   get_dm_response = -1
@@ -226,10 +233,10 @@ c-------------------------------------------------------------------------------
 c            write(*,*) '---------------------------------------------------------------'
 c            write(*,*) '                    dm_response_direct_e.f                     '
 c            write(*,*) '---------------------------------------------------------------'
-c          write(*,*) 'Minterf_SI_e   : ',Minterf_SI_e
-c          write(*,*) 'Minterf_SI_p   : ',Minterf_SI_p
-c          write(*,*) 'Minterf_SD_e   : ',Minterf_SD_e
-c           write(*,*) 'Minterf_SD_p   : ',Minterf_SD_p
+c            write(*,*) 'Minterf_SI_e   : ',Minterf_SI_e
+c            write(*,*) 'Minterf_SI_p   : ',Minterf_SI_p
+c            write(*,*) 'Minterf_SD_e   : ',Minterf_SD_e
+c            write(*,*) 'Minterf_SD_p   : ',Minterf_SD_p
 c            write(*,*) 'alpha_SI_even  : ', alpha_SI_even
 c            write(*,*) 'alpha_SI_odd   : ', alpha_SI_odd
 c            write(*,*) 'alpha_SD_even  : ', alpha_SD_even

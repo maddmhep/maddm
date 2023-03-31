@@ -263,7 +263,7 @@ C     LONG Determination of  JTOT
             do k=1, 2*dd_num_processes
                siorsd = dd_tot_process_names(k)(5:6) ! return 'SI' or 'SD'
                if (dd_tot_process_ids(k).eq.i.and.siorsd.eq.'SD')then
-                  jeff = k
+                  jtot = k
                   exit          ! exit the loop
                endif
             enddo

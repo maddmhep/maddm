@@ -123,3 +123,9 @@ V_19 = Vertex(name = 'V_19',
              color = [ '1' ],
              lorentz = [ L.FFFF7, L.FFFF8 ],
              couplings = {(0,0):C.GC_7,(0,1):C.GC_8})
+
+V_20 = Vertex(name = 'V_20',
+             particles = [ P.e__plus__, P.e__minus__, P.sdm__tilde__, P.P__tilde__sdm ],
+             color = [ '1' ],
+             lorentz = [ L.FFSS1 ],
+             couplings = {(0,0):C.GC_4})
