@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+
+import sys
+import argparse
 import numpy as np
 from scipy.integrate import quad, dblquad
 
@@ -27,6 +31,9 @@ class DensityProfile(object):
     def set_normalization(self, rho_sun, r_sun):
         self.r_sun = r_sun
         self.rho_s = rho_sun / self._functional_form(r_sun / self.r_s)
+
+    def set_rho_s(self, rho_s):
+        self.rho_s = rho_s
 
     def get_name(self):
         return self.name
@@ -66,8 +73,8 @@ class DensityProfile(object):
 
 class PROFILES:
     class NFW(DensityProfile):
-        def __init__(self, r_s, rho_sun = 0.4, r_sun = 8.5, **kwargs):
-            self.gamma = kwargs.get("gamma", 1.0)
+        def __init__(self, r_s, rho_sun = 0.4, r_sun = 8.5, gamma = 1.0, **kwargs):
+            self.gamma = gamma
             functional_form = lambda y: np.power(y, -self.gamma) * np.power(1 + y, self.gamma-3.)
             super(PROFILES.NFW, self).__init__(name = "NFW", functional_form = functional_form, r_s = r_s, rho_sun = rho_sun, r_sun = r_sun)
 
@@ -89,8 +96,8 @@ class PROFILES:
             return super(PROFILES.NFW, self).get_parameters_items() + [("profile_gamma", self.gamma)]
 
     class Einasto(DensityProfile):
-        def __init__(self, r_s, rho_sun = 0.4, r_sun = 8.5, **kwargs):
-            self.alpha = kwargs.get("alpha", 0.17)
+        def __init__(self, r_s, rho_sun = 0.4, r_sun = 8.5, alpha = 0.17, **kwargs):
+            self.alpha = alpha
             functional_form = lambda y: np.exp(-2/self.alpha * (np.power(y, self.alpha) - 1))
             super(PROFILES.Einasto, self).__init__(name = "Einasto", functional_form = functional_form, r_s = r_s, rho_sun = rho_sun, r_sun = r_sun)
 
@@ -219,7 +226,7 @@ def _jfactor_simplified_region(ang_2, ang_lat, profile_func, x_sun, ang_1, integ
     theta_prime = np.amax([ang_1, ang_lat])
     return 4 * (dblquad(func, np.cos(ang_2), np.cos(theta_prime), lambda t: x_sun, lambda t: integration_bound, epsrel = 1e-6, epsabs = 0)[0] + 2*quad(inte_func, np.cos(ang_2), np.cos(theta_prime), epsrel = 1e-6, epsabs = 0)[0])
 
-def _jfactor_gc_with_mask(ang_2, profile, mask, ang_1=None, ang_lat=None, ang_long=None, integration_bound=np.inf):
+def _jfactor_gc_with_mask(ang_2, profile, mask, ang_1, ang_lat, ang_long, integration_bound=np.inf):
     ''' if mask = False, then the mask is set to zero; while the circular mask can be included by setting ang_1 != 0 
         ang_lat and ang_long are the latitude and longitude of the mask according to the jfactor computation scheme '''
     if ang_1 >= ang_2:
@@ -237,10 +244,11 @@ def _jfactor_gc_with_mask(ang_2, profile, mask, ang_1=None, ang_lat=None, ang_lo
             else:
                 jfactor_mask_value = _jfactor_mask(ang_1 = ang_1, ang_2 = ang_2, ang_lat = ang_lat, ang_long = ang_long, profile_func = profile.functional_form(), x_sun = profile.r_sun/profile.r_s, integration_bound = integration_bound)
             return KPC_TO_CM * np.power(profile.rho_s, 2)*profile.r_s * (_jfactor_cone(ang_1 = ang_1, ang_2 = ang_2, profile_func = profile.functional_form(), x_sun = profile.r_sun/profile.r_s, integration_bound = integration_bound) - jfactor_mask_value)
-    else: # no mask = only cone integral
-        return KPC_TO_CM * np.power(profile.rho_s, 2)*profile.r_s * _jfactor_cone(ang_1 = ang_1, ang_2 = ang_2, profile_func = profile.functional_form(), x_sun = profile.r_sun/profile.r_s, integration_bound = integration_bound)
+    else: # no longitudinal and latitudinal mask = only cone integral with inner circular mask
+        inner_mask_amplitude = 0. if not mask else ang_1
+        return KPC_TO_CM * np.power(profile.rho_s, 2)*profile.r_s * _jfactor_cone(ang_1 = inner_mask_amplitude, ang_2 = ang_2, profile_func = profile.functional_form(), x_sun = profile.r_sun/profile.r_s, integration_bound = integration_bound)
 
-def jfactor_gc(ang_2, ang_lat, ang_long, profile, strategy="normal", mask=True, ang_1=0, r_max=np.inf):
+def jfactor_gc(ang_2, ang_lat, ang_long, profile, strategy="normal", mask=True, ang_1=0., r_max=np.inf):
     """ x_max = r_max/r_s
     y_max = sqrt(x_max**2 + x_sun**2 - 2 x_max x_sun t)
     """
@@ -255,5 +263,118 @@ def jfactor_gc(ang_2, ang_lat, ang_long, profile, strategy="normal", mask=True, 
         # a mask inverting latitude and longitude. In this way we can obtain the mask on the direction perpendicular
         # to the galactic plane. However, given the spherical symmetry of the density profile, this mask can be used
         # also for the galactic plane. Finally we subtrack this mask from the whole cone integral.
-        jfactor_mask_value = _jfactor_gc_with_mask(ang_2=ang_2, ang_lat=ang_long, ang_long=ang_lat, profile=profile, mask=mask, ang_1=ang_1, integration_bound=integration_bound)
-        return _jfactor_gc_with_mask(ang_2=ang_2, profile=profile, mask=False, integration_bound=integration_bound) - jfactor_mask_value
+        jfactor_mask_value = _jfactor_gc_with_mask(ang_2=ang_2, ang_lat=ang_long, ang_long=ang_lat, profile=profile, mask=True, ang_1=ang_1, integration_bound=integration_bound)
+        print(jfactor_mask_value)
+        return _jfactor_gc_with_mask(ang_2=ang_2, ang_1=0., ang_lat=0., ang_long=np.pi, profile=profile, mask=False, integration_bound=integration_bound) - jfactor_mask_value
+
+def _profile_args(args):
+    r_s = args.pop("r_s")
+    r_sun = args.pop("r_sun")
+    rho_sun = args.pop("rho_sun")
+    return r_s, r_sun, rho_sun
+
+def _set_normalization(args, profile):
+    try:
+        rho_s = args.pop("rho_s")
+        profile.set_rho_s(rho_s)
+    except KeyError:
+        pass
+    return profile
+
+def _build_nfw(args):
+    r_s, r_sun, rho_sun = _profile_args(args)
+    profile = PROFILES.NFW(
+        r_s=r_s,
+        r_sun=r_sun,
+        rho_sun=rho_sun,
+        gamma=args.pop("gamma")
+    )
+    return _set_normalization(args, profile)
+
+def _build_einasto(args):
+    r_s, r_sun, rho_sun = _profile_args(args)
+    profile = PROFILES.Einasto(
+        r_s=r_s,
+        r_sun=r_sun,
+        rho_sun=rho_sun,
+        alpha=args.pop("alpha")
+    )
+    return _set_normalization(args, profile)
+
+def _build_burkert(args):
+    r_s, r_sun, rho_sun = _profile_args(args)
+    profile = PROFILES.Burkert(
+        r_s=r_s,
+        r_sun=r_sun,
+        rho_sun=rho_sun
+    )
+    return _set_normalization(args, profile)
+
+def _build_isothermal(args):
+    r_s, r_sun, rho_sun = _profile_args(args)
+    profile = PROFILES.Isothermal(
+        r_s=r_s,
+        r_sun=r_sun,
+        rho_sun=rho_sun
+    )
+    return _set_normalization(args, profile)
+
+class ConvertDegToRadAction(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        if hasattr(values, "__len__"):
+            new_values = list(map(lambda angle: angle/180.*np.pi, values))
+        else:
+            new_values = values/180. * np.pi
+        setattr(namespace, self.dest, new_values)
+
+def command_parser():
+    parser = argparse.ArgumentParser(
+        prog="jfactor_gc.py",
+        description="Compute the J-factor on the Galactic Center, given a dark matter profile and the parameters of a possible mask over the galactic plane.\nThe normalization of the density profile is computed using rho_sun and r_sun: rho_s = rho(r_sun), unless rho_s is explicitly provided via the --rho_s option. The specified value in the latter case is used instead.\nReturns the J-factor expressed in GeV^2 cm^{-5}."
+    )
+    # main options
+    parser.add_argument("ang_2", metavar="alpha_2", action=ConvertDegToRadAction, type=float, help="amplitude (in deg) of the region of interest to integrate over")
+    ## mask
+    mask_options = parser.add_argument_group(title="mask-related options", description="to understand how to set the angles values, refer to the pictures of the possible masks that it is possible to consider.")
+    mask_options.add_argument("--mask-inner-amplitude", dest="ang_1", metavar="alpha_1", action=ConvertDegToRadAction, default=0., type=float, help="amplitude (in deg) of the inner circular mask over the Galactic Center")
+    mask_options.add_argument("--mask-longitude", dest="ang_long", metavar="beta", action=ConvertDegToRadAction, default=np.pi, type=float, help="longitude value (in deg) of the mask")
+    mask_options.add_argument("--mask-latitude", dest="ang_lat", metavar="lambda", action=ConvertDegToRadAction, default=0., type=float, help="latitude value (in deg) of the mask")
+    mask_options.add_argument("--strategy", dest="strategy", action="store", default="normal", type=str, choices=["normal", "inverted"], help="strategy used to compute the mask")
+    mask_options.add_argument("--no-mask", dest="mask", action="store_false", help="ignore the mask computation")
+    ## implemented profiles
+    # use the commented one for Python 3
+    # density_profiles_subparsers = parser.add_subparsers(title="density profiles", required=True)
+    density_profiles_subparsers = parser.add_subparsers(title="density profiles")
+    nfw_parser = density_profiles_subparsers.add_parser("nfw", help="Navarro-Frenk-White profile")
+    nfw_parser.add_argument("--gamma", dest="gamma", metavar="gamma", action="store", default=1., type=float, help="parameter 'gamma' of the profile")
+    nfw_parser.set_defaults(get_profile=_build_nfw)
+    einasto_parser = density_profiles_subparsers.add_parser("einasto", help="Einasto profile")
+    einasto_parser.add_argument("--alpha", dest="alpha", metavar="alpha", action="store", default=0.17, type=float, help="parameter 'alpha' of the profile")
+    einasto_parser.set_defaults(get_profile=_build_einasto)
+    burkert_parser = density_profiles_subparsers.add_parser("burkert", help="Burkert profile")
+    burkert_parser.set_defaults(get_profile=_build_burkert)
+    isothermal_parser = density_profiles_subparsers.add_parser("isothermal", help="isothermal profile")
+    isothermal_parser.set_defaults(get_profile=_build_isothermal)
+    ## density profiles
+    profile_options = parser.add_argument_group(title="density profile-related options")
+    profile_options.add_argument("--r_max", dest="r_max", metavar="r_max", action="store", default=np.inf, type=float, help="maximum line-of-sight value (in kpc) to integrate over")
+    profile_options.add_argument("--r_sun", dest="r_sun", metavar="r_sun", action="store", default=8.5, type=float, help="distance between the Sun and the Galactic Centre (in kpc)")
+    profile_options.add_argument("--rho_sun", dest="rho_sun", metavar="rho_sun", action="store", default=0.4, type=float, help="dark matter density at the position of the Sun (in GeV cm^{-3})")
+    profile_options.add_argument("--rho_s", dest="rho_s", metavar="rho_s", action="store", default=argparse.SUPPRESS, type=float, help="normalization of the density profile (in GeV cm^{-3}), note that providing this argument overwrites the normalization computed via rho_sun and r_sun.")
+    profile_options.add_argument("--r_s", dest="r_s", metavar="r_s", action="store", default=20., type=float, help="scale radius of the density profile (in kpc)")
+    # return the parser
+    return parser
+
+def parse_cmd_line(parser, cmd_line):
+    # parse cmd line
+    args = vars(parser.parse_args(cmd_line))
+    # create density profile
+    get_profile = args.pop("get_profile")
+    density_profile = get_profile(args)
+    # compute and return J-factor and density profile
+    return jfactor_gc(profile=density_profile, **args), density_profile
+
+if __name__ == "__main__":
+    parser = command_parser()
+    jfactor, _ = parse_cmd_line(parser, sys.argv[1:])
+    print(jfactor)
