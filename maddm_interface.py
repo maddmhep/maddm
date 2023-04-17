@@ -1036,6 +1036,10 @@ class MadDM_interface(master_interface.MasterCmd):
         tree_line_processes_names_map = self.extract_processes_names(self._ID_line_amps[0])
         li_cont_processes_names_map   = self.extract_processes_names(self._ID_cont_amps[1])
         li_line_processes_names_map   = self.extract_processes_names(self._ID_line_amps[1])
+
+        # store processes explicitly asked by indirect detection, so that we can consider them only when using fast mode
+        indirect_detection_asked_processes = list(tree_cont_processes_names_map.keys()) + list(tree_line_processes_names_map.keys()) + list(li_cont_processes_names_map.keys()) + list(li_line_processes_names_map.keys())
+
         import MGoutput
         proc_path = pjoin(path, 'matrix_elements', 'proc_characteristics')
         proc_charac = MGoutput.MADDMProcCharacteristic(proc_path)
@@ -1045,6 +1049,7 @@ class MadDM_interface(master_interface.MasterCmd):
         proc_charac['forbid_fast']            = self._forbid_fast
         proc_charac['pdg_particle_map']       = self._pdg_particle_map
         proc_charac['processes_names_map']    = dict(curr_processes_names_map.items() + tree_cont_processes_names_map.items() + tree_line_processes_names_map.items() + li_cont_processes_names_map.items() + li_line_processes_names_map.items())
+        proc_charac['indirect_detection_asked_processes'] = indirect_detection_asked_processes
         proc_charac.write(proc_path)
 
     def extract_processes_names(self, amplitude_list):

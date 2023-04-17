@@ -61,6 +61,7 @@ class MADDMProcCharacteristic(banner_mod.ProcCharacteristic):
         self.add_param('model', '')
         self.add_param('pdg_particle_map', {'':''})
         self.add_param('processes_names_map', {'':''})
+        self.add_param('indirect_detection_asked_processes', [''])
 
 #-------------------------------------------------------------------------#
 class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):

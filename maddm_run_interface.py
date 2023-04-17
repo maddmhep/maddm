@@ -1684,6 +1684,8 @@ class MADDMRunCmd(cmd.CmdShell):
                             sigv_temp = secure_float_f77(splitline[1])
                             oname = splitline[0].split(':',1)[1] .split('_')
                             oname = oname[0]+'_'+oname[1] #To eliminate the annoying suffix coming from the '/' notation
+                            if oname not in self.proc_characteristics['indirect_detection_asked_processes']:
+                                continue
                             oname = self.processes_names_map[oname] # conversion to pdg codes
                             result['taacsID#'     + oname] = sigv_temp 
                             result['err_taacsID#' + oname] = 0 
