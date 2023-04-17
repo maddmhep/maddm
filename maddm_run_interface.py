@@ -322,7 +322,7 @@ class Spectra:
             Spectra.PPPC_type = ('source', corr)
             return dic
         elif corr == 'ew':
-            dic =  np.load(PPPCDIR+'/PPPC_Tables_noEW.npy', allow_pickle= True).item()
+            dic =  np.load(PPPCDIR+'/PPPC_Tables_EW.npy', allow_pickle= True).item()
             logger.info('PPPC4DMID Spectra at source (with EW corrections) loaded')
             Spectra.PPPCdata = dic
             Spectra.PPPC_type = ('source', corr)
