@@ -19,6 +19,7 @@ import models.model_reader as model_reader
 from madgraph import MG5DIR
 
 import re
+
 pjoin = os.path.join
 
 logger = logging.getLogger('madgraph.plugin.maddm')
@@ -1030,11 +1031,11 @@ class MadDM_interface(master_interface.MasterCmd):
             self.output_indirect(path, 'Indirect_LI_line',   self._ID_line_procs[1], self._ID_line_matrix_elements[1], self._ID_line_amps[1])
 
         # find processes names map and write proc_characteristics file
-        curr_processes_names_map      = self.extract_processes_names(self._curr_amps)
-        tree_cont_processes_names_map = self.extract_processes_names(self._ID_cont_amps[0])
-        tree_line_processes_names_map = self.extract_processes_names(self._ID_line_amps[0])
-        li_cont_processes_names_map   = self.extract_processes_names(self._ID_cont_amps[1])
-        li_line_processes_names_map   = self.extract_processes_names(self._ID_line_amps[1])
+        curr_processes_names_map      = self.extract_processes_names(self._get_processes_from_amplitudes_list(self._curr_amps))
+        tree_cont_processes_names_map = self.extract_processes_names(self._get_processes_from_amplitudes_list(self._ID_cont_amps[0]))
+        tree_line_processes_names_map = self.extract_processes_names(self._get_processes_from_amplitudes_list(self._ID_line_amps[0]))
+        li_cont_processes_names_map   = self.extract_processes_names(self._get_processes_from_amplitudes_list(self._ID_cont_amps[1]))
+        li_line_processes_names_map   = self.extract_processes_names(self._get_processes_from_amplitudes_list(self._ID_line_amps[1]))
         import MGoutput
         proc_path = pjoin(path, 'matrix_elements', 'proc_characteristics')
         proc_charac = MGoutput.MADDMProcCharacteristic(proc_path)
@@ -1046,15 +1047,75 @@ class MadDM_interface(master_interface.MasterCmd):
         proc_charac['processes_names_map']    = dict(curr_processes_names_map.items() + tree_cont_processes_names_map.items() + tree_line_processes_names_map.items() + li_cont_processes_names_map.items() + li_line_processes_names_map.items())
         proc_charac.write(proc_path)
 
-    def extract_processes_names(self, amplitude_list):
-        proc_pdg = []
-        proc_names = []
-        for amplitude in amplitude_list:
-            initial_pdg = '(' + ')('.join(map(str,amplitude['process'].get_initial_ids())) + ')'
-            final_pdg = '(' + ')('.join(map(str,amplitude['process'].get_final_ids())) + ')'
-            proc_pdg.append(initial_pdg + '_' + final_pdg)
-            proc_names.append('_'.join(amplitude['process'].shell_string().split('_')[-2:]))
-        return dict(zip(proc_names, proc_pdg))
+    def _get_processes_from_amplitudes_list(self, amplitude_list):
+        return (amplitude["process"] for amplitude in amplitude_list)
+
+    def extract_processes_names(self, processes_iter):
+        '''Converts processes names to pdg sequences
+
+        The amplitude name assigned by MadGraph is converted into two forms:
+            - human-readable: contains the human-readable particle names;
+            - parsing-friendly: contains pdg codes of the particles ready to parse.
+
+        It leverages the methods of the internal Amplitude objects.
+
+        Parameters
+        ----------
+        processes_iter: iterator over madgraph.core.diagram_generation.Process
+            The list of amplitudes to extract the processes names from.
+
+        Returns
+        -------
+        dict[str,str]
+            The processes names with the human-readable string as key and the
+            parsing-friendly string as value.
+
+        Notes
+        -----
+        The name of each process is a sequence of particle strings human-readable
+        representing each particle involved in the process. Particles are
+        separated using an underscore. E.g. assuming dark matter is called 'n1',
+        and has a pdg '52', the following is a possible name for a process:
+        n1n1_wpwm_epveemvex
+        which represents the process n1 n1 > w+ w-, w+ > e+ ve, w- > e- ve~
+        With this method is possible to obtain the parsing-friendly string:
+        52.52>6.-6,(23>-11.12),(-23>11.-12)
+        where the '>' indicates a process; the '.' separates particles appearing
+        in the same initial/final state; the '(...)' contains each decay chain,
+        which is a full process using the same rules.
+        Moreover, in principle we can also have required s-channels.
+        To include them in a parsing-friendly string, we could insert them in 
+        '[...]', with the s-channels separated by '|' and the ones formed by 
+        multiple particles has them separated with '.'
+        Because the required s-channel are only important in the generation and
+        they are dropped in the results, they are dropped as well here.
+
+        Example
+        -------
+        Generating a process with the command:
+
+        n1 n1 > w+|w-|h|z > t t~, (t~ > w- b~, w- > e- ve~), t > u d~ b
+
+        would result in the following human-readable string:
+
+        n1n1_wp_or_wm_or_h_or_z_txt_tx_wmbx_wm_emvex_t_udxb (before computation)
+        n1n1_txt_tx_wmbx_wm_emvex_t_udxb (after computation)
+
+        and the parsing-friendly resulting string would be (after computation):
+
+        52.52>6.-6,(-6>-24.-5,(-24>11.-12)),(6>2.-1.5)
+        '''
+
+        proc_human_readable = []
+        proc_parsing_friendly = []
+        for proc in processes_iter:
+            str_human_readable = proc.shell_string().split("_", 1)[-1]
+            proc_human_readable.append(re.sub(r"_(?:[a-z]+_or_)+[a-z]+", "", str_human_readable, count=0))
+            str_parts = [ '.'.join(map(str,proc.get_initial_ids())) + '>' + '.'.join(map(str,proc.get_final_ids())) ]
+            decay_chains_dict = self.extract_processes_names(proc["decay_chains"])
+            str_parts.extend(map(lambda item: "(" + item + ")", decay_chains_dict.values()))
+            proc_parsing_friendly.append(",".join(str_parts))
+        return collections.OrderedDict(zip(proc_human_readable, proc_parsing_friendly))
 
     def output_indirect(self, path, directory, ID_procs, ID_matrix_elements, ID_amps):
         ''' Output commands for indirect_detection or loop-induced '''
