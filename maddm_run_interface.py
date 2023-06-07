@@ -2,6 +2,7 @@ from __future__ import division
 import collections
 import math
 import logging
+from multiprocessing import process
 import os
 import re
 import sys
@@ -75,7 +76,7 @@ class ExpConstraints:
 
     def __init__(self):
 
-        self._settable = ['(1)(-1)', '(2)(-2)', '(3)(-3)', '(4)(-4)', '(21)(21)', '(5)(-5)', '(6)(-6)', '(11)(-11)', '(13)(-13)', '(15)(-15)', '(24)(-24)', '(23)(23)', '(25)(25)']
+        self._settable = ['1.-1', '2.-2', '3.-3', '4.-4', '21.21', '5.-5', '6.-6', '11.-11', '13.-13', '15.-15', '24.-24', '23.23', '25.25']
 
         self._oh2_planck = 0.1200 # from 1807.06209 Tab. 2 (TT,TE,EE+lowE+lensing) quoted also in abstract
         self._oh2_planck_width = 0.0012
@@ -95,60 +96,60 @@ class ExpConstraints:
 
         self._id_limit_file = {
             # cont final states
-            '(1)(-1)'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_qq.dat'), # same qqx
-            '(2)(-2)'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_qq.dat'), # same qqx
-            '(3)(-3)'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_qq.dat'), # same qqx
-            '(4)(-4)'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_cc.dat'),
-            '(5)(-5)'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_bb.dat'),
-            '(6)(-6)'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_tt.dat'),
-            '(11)(-11)': pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_ee.dat'),
-            '(13)(-13)': pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_mumu.dat'),
-            '(15)(-15)': pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_tautau.dat'),
-            '(21)(21)' : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_gg.dat'),
-            '(23)(23)' : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_ZZ.dat'),
-            '(24)(-24)': pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_WW.dat'),
-            '(25)(25)' : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_hh.dat'),
+            '1.-1'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_qq.dat'), # same qqx
+            '2.-2'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_qq.dat'), # same qqx
+            '3.-3'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_qq.dat'), # same qqx
+            '4.-4'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_cc.dat'),
+            '5.-5'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_bb.dat'),
+            '6.-6'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_tt.dat'),
+            '11.-11': pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_ee.dat'),
+            '13.-13': pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_mumu.dat'),
+            '15.-15': pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_tautau.dat'),
+            '21.21' : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_gg.dat'),
+            '23.23' : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_ZZ.dat'),
+            '24.-24': pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_WW.dat'),
+            '25.25' : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_hh.dat'),
             # line final states = <final state>_<experiment label><year>R<roi>
-            '(22)(22)_hess2013R1'  : pjoin(MDMDIR,'ExpData', 'hess_I_2013_einasto.dat'),
-            '(22)(22)_hess2016R1'  : pjoin(MDMDIR,'ExpData', 'hess_2016_einasto.dat'),
-            '(22)(22)_hess2018R1'  : pjoin(MDMDIR,'ExpData', 'HESS_2018_lines_R1_Einasto.dat'), # <sigma v> limits
-            '(22)(22)_fermi2015R3' : pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_R3_NFWcontracted.dat'), # <sigma v> limits
-            '(22)(22)_fermi2015R16': pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_R16_Einasto.dat'), # <sigma v> limits
-            '(22)(22)_fermi2015R41': pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_R41_NFW.dat'), # <sigma v> limits
-            '(22)(22)_fermi2015R90': pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_R90_Isothermal.dat')} # <sigma v> limits
+            '22.22_hess2013R1'  : pjoin(MDMDIR,'ExpData', 'hess_I_2013_einasto.dat'),
+            '22.22_hess2016R1'  : pjoin(MDMDIR,'ExpData', 'hess_2016_einasto.dat'),
+            '22.22_hess2018R1'  : pjoin(MDMDIR,'ExpData', 'HESS_2018_lines_R1_Einasto.dat'), # <sigma v> limits
+            '22.22_fermi2015R3' : pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_R3_NFWcontracted.dat'), # <sigma v> limits
+            '22.22_fermi2015R16': pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_R16_Einasto.dat'), # <sigma v> limits
+            '22.22_fermi2015R41': pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_R41_NFW.dat'), # <sigma v> limits
+            '22.22_fermi2015R90': pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_R90_Isothermal.dat')} # <sigma v> limits
 
         self._id_limit_file_flux = {
             # line final states
-            '(22)(22)_hess2018R1'    : pjoin(MDMDIR,'ExpData', 'HESS_2018_lines_R1_Einasto.dat'), # Flux limits
-            '(22)(22)_fermi2015R3'   : pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_R3_NFWcontracted.dat'), # Flux limits
-            '(22)(22)_fermi2015R16'  : pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_R16_Einasto.dat'), # Flux limits
-            '(22)(22)_fermi2015R41'  : pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_R41_NFW.dat'), # Flux limits
-            '(22)(22)_fermi2015R90'  : pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_R90_Isothermal.dat') # Flux limits
+            '22.22_hess2018R1'    : pjoin(MDMDIR,'ExpData', 'HESS_2018_lines_R1_Einasto.dat'), # Flux limits
+            '22.22_fermi2015R3'   : pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_R3_NFWcontracted.dat'), # Flux limits
+            '22.22_fermi2015R16'  : pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_R16_Einasto.dat'), # Flux limits
+            '22.22_fermi2015R41'  : pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_R41_NFW.dat'), # Flux limits
+            '22.22_fermi2015R90'  : pjoin(MDMDIR,'ExpData', 'Fermi_2015_lines_R90_Isothermal.dat') # Flux limits
         }
         
         self._id_limit_vel = {
             # cont velocity
-            '(1)(-1)':2.0E-5,
-            '(2)(-2)':2.0E-5,
-            '(3)(-3)':2.0E-5,
-            '(4)(-4)':2.0E-5,
-            '(21)(21)':2.0E-5,
-            '(5)(-5)':2.0E-5,
-            '(6)(-6)':2.0E-5,
-            '(11)(-11)':2.0E-5,
-            '(13)(-13)':2.0E-5,
-            '(15)(-15)':2.0E-5,
-            '(24)(-24)':2.0E-5,
-            '(23)(23)':2.0E-5,
-            '(25)(25)':2.0E-5,
+            '1.-1':2.0E-5,
+            '2.-2':2.0E-5,
+            '3.-3':2.0E-5,
+            '4.-4':2.0E-5,
+            '21.21':2.0E-5,
+            '5.-5':2.0E-5,
+            '6.-6':2.0E-5,
+            '11.-11':2.0E-5,
+            '13.-13':2.0E-5,
+            '15.-15':2.0E-5,
+            '24.-24':2.0E-5,
+            '23.23':2.0E-5,
+            '25.25':2.0E-5,
             # line velocity
-            '(22)(22)_hess2013'    : 1e-3,
-            '(22)(22)_hess2016'    : 1e-3,
-            '(22)(22)_hess2018R1'  : 1e-3,
-            '(22)(22)_fermi2015R3' : 1e-3,
-            '(22)(22)_fermi2015R16': 1e-3,
-            '(22)(22)_fermi2015R41': 1e-3,
-            '(22)(22)_fermi2015R90': 1e-3
+            '22.22_hess2013'    : 1e-3,
+            '22.22_hess2016'    : 1e-3,
+            '22.22_hess2018R1'  : 1e-3,
+            '22.22_fermi2015R3' : 1e-3,
+            '22.22_fermi2015R16': 1e-3,
+            '22.22_fermi2015R41': 1e-3,
+            '22.22_fermi2015R90': 1e-3
         }
 
         self._id_limit_mdm = dict()
@@ -293,8 +294,8 @@ class Spectra:
 
         # self.map_allowed_final_state_PPPC = {'qqx':'qq', 'ccx':'cc', 'gg':'gg', 'bbx':'bb', 'ttx':'tt',
                                              # 'emep':'ee', 'mummup':'mumu', 'tamtap':'tautau', 'wpwm':'WW', 'zz':'ZZ', 'hh':'hh' }
-        self.map_allowed_final_state_PPPC = {'(1)(-1)':'qq', '(2)(-2)':'qq', '(3)(-3)':'qq', '(4)(-4)':'cc', '(21)(21)':'gg', '(5)(-5)':'bb', '(6)(-6)':'tt',
-                                             '(11)(-11)':'ee', '(13)(-13)':'mumu', '(15)(-15)':'tautau', '(24)(-24)':'WW', '(23)(23)':'ZZ', '(25)(25)':'hh' }
+        self.map_allowed_final_state_PPPC = {'1.-1':'qq', '2.-2':'qq', '3.-3':'qq', '4.-4':'cc', '21.21':'gg', '5.-5':'bb', '6.-6':'tt',
+                                             '11.-11':'ee', '13.-13':'mumu', '15.-15':'tautau', '24.-24':'WW', '23.23':'ZZ', '25.25':'hh' }
 
     def check_mass(self,mdm):
         if (mdm < 5.0 or mdm > 100000):
@@ -1221,10 +1222,10 @@ class GammaLineSpectrum(object):
         return lambda energy: flux * np.exp(-0.5 * np.power((energy-e_peak)/self.sigma(full_width_half_max), 2)) / (np.sqrt(2 * np.pi) * self.sigma(full_width_half_max))
 
     def find_lines(self, mdm, computed_sigmav, jfact):
-        ''' find lines peaks, FWHM and shape of the spectrum. Return a dictionary with key final_state and _peak, _FWHM, _shape '''
+        ''' find lines peaks, FWHM and shape of the spectrum. Append Peak objects with key final_state and _peak, _FWHM, _shape '''
         for fs, sigmav in computed_sigmav.items():
             particles = self.pdg_particle_map.find_particles(fs)
-            # it's a gamma spectrum, so remove one (22) and get the other particles
+            # it's a gamma spectrum, so remove one 22 and get the other particles
             particles.remove('22')
             particles = list(set(particles))
             if len(particles) == 1:
@@ -1239,7 +1240,7 @@ class GammaLineSpectrum(object):
             if e_peak_fs <= 0.:
                 continue # exclude negative energy peaks, meaning of a forbidden process
             fwhm_fs  = self.line_exp.energy_resolution(e_peak_fs) * e_peak_fs
-            flux     = self.line_exp.flux(mdm, sigmav, jfact, is_aa = fs == '(22)(22)')
+            flux     = self.line_exp.flux(mdm, sigmav, jfact, is_aa = fs == '22.22')
             shape_fs = self.gaussian_spectra(e_peak = e_peak_fs, full_width_half_max = fwhm_fs, flux = flux)
             self.append(GammaLineSpectrum.Peak(
                 label               = fs,
@@ -1358,12 +1359,12 @@ class PDGParticleMap(dict):
             return super(PDGParticleMap, self).__getitem__(str(pdg))
         except KeyError:
             logger.error("No PDG code '%d' in the model, please check the model." % pdg)
-            return '(?)'
+            return '?'
 
     def find_particles(self, string):
         ''' find all particles pdg of the form (pdg) in a string and return a list of them '''
-        matches = re.findall(r"\(-?\d+\)", string)
-        return list(map(lambda s: s.strip('()'), matches))
+        matches = re.findall(r"-?\d+", string)
+        return matches
 
     def format_particles(self, string):
         ''' given a string with pdg codes, substitutes them with the particle labels
@@ -1371,33 +1372,119 @@ class PDGParticleMap(dict):
         '''
         pdg_list = set(self.find_particles(string))
         for pdg in pdg_list:
-            string = string.replace('(%s)' % pdg, self[pdg])
-        return string
-
-    def format_print(self, string):
-        ''' implement a nice print style with pdg code: #1.#2>#3.#4|#4>#5.#6
-            It isolates all the other parts of the string which are not in the form (#)(#)_(#)...
-            It substitutes _ with > in odd places (because for decays we have also _ to separate them)
-            It separates the particles with dots.
-        '''
-        to_substitute = re.finditer(r"(?:(?:\(-?\d+\))+_?)+", string)
-        for match in to_substitute:
-            particle_string = match.group(0).strip('_')
-            splitted = particle_string.split('_')
-            out_string = ''
-            for i, part in enumerate(splitted):
-                out_string += ".".join(self.find_particles(part))
-                if i % 2 == 0:
-                    out_string += '>'
-                else:
-                    out_string += '|'
-            string = string.replace(particle_string, out_string[:-1])
+            string = string.replace(str(pdg), self[pdg])
         return string
 
     def format_process(self, string):
-        ''' from (#1)(#2)_(#3)(#4) to p1 p2 > p3 p4 '''
-        initial_particles, final_particles = string.split('_')
-        return self.format_particles(initial_particles.replace(')(',') (')) + ' > ' + self.format_particles(final_particles.replace(')(',') (')) # the replace allows to put a space between pdg
+        ''' From the string written with pdgs and symbols to a nice string with particles:
+            52.52>6.-6,(-6>-24.-5,(-24>11.-12)),(6>2.-1.5)
+            becomes: n1 n1 > t t~, (t~ > w- b~, (w- > e- ve~)), (t > u d~ b)
+        '''
+        return re.sub(r"-?\d+", lambda s: self[s.group(0)], string).replace(">", " > ").replace(".", " ").replace(",", ", ")
+
+    def format_process_readable(self, string):
+        ''' From the string written with pdgs and symbols to a raw readable string:
+            52.52>6.-6,(-6>-24.-5,(-24>11.-12)),(6>2.-1.5)
+            becomes: n1n1_ttx_tx_wm_bx_w_em_vex_t_udxb
+        '''
+        return re.sub(r"-?\d+", lambda s: self[s.group(0)], string)\
+            .replace(">", "_")\
+            .replace(",", "_")\
+            .replace(".", "")\
+            .replace("(", "")\
+            .replace(")", "")\
+            .replace("+", "p")\
+            .replace("-", "m")\
+            .replace("~", "x")
+
+class StrProcess(object):
+    ''' Class to handle processes names
+        In principle it could be used as key is a dictionary, becuase it has
+        both the __hash__ and __eq__ methods implemented.
+    '''
+    def __init__(self, string_human_friendly, processes_names_map):
+        self.processes_names_map = processes_names_map
+        self.human_friendly = string_human_friendly
+        self._particles_pdg, self.initial_states, self.final_states = self._process()
+
+    def __hash__(self):
+        return self.human_friendly
+
+    def __str__(self):
+        return str(self._particles_pdg)
+
+    def __eq__(self, other):
+        if not isinstance(other, StrProcess):
+            raise NotImplementedError
+        return self.human_friendly == other.human_friendly
+
+    def _process(self):
+        particles_pdg = {}
+        initial_states = []
+        final_states = []
+        try:
+            parsing_friendly = self.processes_names_map[self.human_friendly]
+        except KeyError:
+            logger.warning("The process %s does not have a descrition with pdg final states" % self.human_friendly)
+            return particles_pdg, initial_states, final_states
+        particles_pdg.update(self._extract_particles(parsing_friendly))
+        initial_states.extend(particles_pdg["initial_states"])
+        final_states.extend(self._extract_final_states(particles_pdg))
+        return particles_pdg, initial_states, final_states
+
+    def _match_nested_parentheses(self, text):
+        ''' To be substituted with a recursive regex from Python 3 on '''
+        stack = []
+        matches = []
+        for i, char in enumerate(text):
+            if char == '(':
+                stack.append(i)
+            elif char == ')':
+                if stack:
+                    start = stack.pop()
+                    matches.append(text[start:i+1])
+        return matches
+
+    def _extract_particles(self, parsing_friendly_string):
+        process_pdg = {}
+        hard_process = parsing_friendly_string.split(",", 1)[0]
+        # decay_chains = re.findall(r"\((?:[^()]|(?R))+\)", hard_process)
+        decay_chains = self._match_nested_parentheses(hard_process)
+        ini_s, fin_s = map(lambda part_s: re.findall(r"-?\d+", part_s), hard_process.split(">"))
+        process_pdg["initial_states"] = ini_s
+        process_pdg["final_states"] = fin_s
+        process_pdg["decay_chains"] = list(map(
+            lambda item: self._extract_particles(item[1:-1]),
+            decay_chains
+        ))
+        return process_pdg
+
+    def in_initial_states(self, pdg):
+        return str(pdg) in self.initial_states
+
+    def in_final_states(self, pdg):
+        return str(pdg) in self.final_states
+
+    def _extract_final_states(self, processes_list):
+        final_states = processes_list["final_states"]
+        if processes_list["decay_chains"]:
+            to_substitute = []
+            for decay_chain in processes_list["decay_chains"]:
+                ini_s = decay_chain["initial_states"][0]
+                to_substitute.append(final_states.count(ini_s))
+                final_states = list(filter(lambda item: item != ini_s, final_states))
+            # Do 2 different loop because in one we simply collect the number of occurrences
+            # of a certain particle, removing it from the final state, while in the other
+            # we add the new final states
+            # If we would do only one loop, then it could happen that in the first loop we
+            # add new final states that could by coincidence be particles to substitute in the
+            # next decay chains, which is not what we want to obtain.
+            for n_to_sub, decay_chain in zip(to_substitute, processes_list["decay_chains"]):
+                new_final_states = self._extract_final_states(processes_list["decay_chains"])
+                final_states.extend(n_to_sub * new_final_states)
+        return final_states
+
+    #
 
 
 class bcolors:
@@ -1496,6 +1583,7 @@ class MADDMRunCmd(cmd.CmdShell):
         self.auto_width = set() # keep track of width set on Auto
 
         self.pdg_particle_map = PDGParticleMap(self.proc_characteristics['pdg_particle_map'].items())
+        self.str_processes = {}
 
         self.limits = ExpConstraints()
         self.vave_indirect_cont_range = (3e-6, 1.4e-4)
@@ -1682,18 +1770,20 @@ class MADDMRunCmd(cmd.CmdShell):
                     if self._two2twoLO:
                         if 'sigma*v' in line: 
                             sigv_temp = secure_float_f77(splitline[1])
-                            oname = splitline[0].split(':',1)[1] .split('_')
+                            oname = splitline[0].split(':',1)[1].split('_')
                             oname = oname[0]+'_'+oname[1] #To eliminate the annoying suffix coming from the '/' notation
                             if oname not in self.proc_characteristics['indirect_detection_asked_processes']:
                                 continue
-                            oname = self.processes_names_map[oname] # conversion to pdg codes
+                            str_proc = StrProcess(oname, self.processes_names_map)
+                            self.str_processes[oname] = str_proc
                             result['taacsID#'     + oname] = sigv_temp 
                             result['err_taacsID#' + oname] = 0 
-                            result['lim_taacsID#' + oname] = self.limits.ID_max(mdm, oname.split('_')[1])
+                            result['lim_taacsID#' + oname] = self.limits.ID_max(mdm, ".".join(str_proc.final_states))
                     if '%' in line:
                         oname = splitline[0].split(':',1)[1].split('_')
                         oname = oname[0] + '_' + oname[1]
-                        oname = self.processes_names_map[oname] # conversion to pdg codes
+                        str_proc = StrProcess(oname, self.processes_names_map)
+                        self.str_processes[oname] = str_proc
                         result["%%_relic_%s" % oname] = secure_float_f77(splitline[1])
                     else:
                         result[splitline[0].split(':')[0]] = secure_float_f77(splitline[1])
@@ -1745,7 +1835,7 @@ class MADDMRunCmd(cmd.CmdShell):
             # compute total cross section only for continuum final states
             self.last_results['taacsID'] = 0.
             for process, sigmav in {k.replace('taacsID#', ''): v for k, v in self.last_results.iteritems() if k.startswith('taacsID#')}.iteritems():
-                if self.is_spectral_finalstate(process.split('_')[-1]):
+                if self.is_spectral_finalstate(self.str_processes[process]):
                     continue
                 self.last_results['taacsID'] += sigmav
             self.launch_indirect_computations(mdm)
@@ -1827,26 +1917,23 @@ class MADDMRunCmd(cmd.CmdShell):
                 fermi_dsph_vel = halo_vel_cont > self.vave_indirect_cont_range[0] and halo_vel_cont < self.vave_indirect_cont_range[1] # range of validity of Fermi limits
                 line_gc_vel = halo_vel_line > self.vave_indirect_line_range[0] and halo_vel_line < self.vave_indirect_line_range[1] # range of validity of line limits
                 for key in detailled_keys:
-                    clean_key_list = key.split("_")
-                    clean_key = clean_key_list[0]+"_"+clean_key_list[1]
-
-                    order +=[clean_key]
+                    order +=[key]
 
                     # add the lim key only if it has been computed
                     # if fermi_dsph_vel and line_gc_vel:
-                    #     order +=['lim_'+clean_key]
+                    #     order +=['lim_'+key]
                     # elif fermi_dsph_vel and not line_gc_vel:
-                    #     if self.is_spectral_finalstate(clean_key_list[1]):
+                    #     if self.is_spectral_finalstate(key):
                     #         continue
-                    #     order +=['lim_'+clean_key]
+                    #     order +=['lim_'+key]
                     # elif not fermi_dsph_vel and line_gc_vel:
-                    #     if not self.is_spectral_finalstate(clean_key_list[1]):
+                    #     if not self.is_spectral_finalstate(key):
                     #         continue
-                    #     order +=['lim_'+clean_key]
+                    #     order +=['lim_'+key]
 
                     # or give line limits anyway
-                    if fermi_dsph_vel or self.is_spectral_finalstate(clean_key_list[1]):
-                        order +=['lim_'+clean_key]
+                    if fermi_dsph_vel or self.is_spectral_finalstate(self.str_processes[key.replace("taacsID#")]):
+                        order +=['lim_'+key]
 
                 if self.mode['indirect']:
                     order.append('taacsID')
@@ -1872,7 +1959,7 @@ class MADDMRunCmd(cmd.CmdShell):
                     str_part = "line_%s_" % line_exp.get_name()
                     order.append(str_part + "Jfactor")
                     order.append(str_part + "roi")
-                    for i in range(len([k for k in self.last_results.keys() if self.is_spectral_finalstate(k.split('_')[-1])])):
+                    for i in range(len([k for k in detailled_keys if self.is_spectral_finalstate(self.str_processes[key.replace("taacsID#")])])):
                         order.append(str_part + "peak_%d"        % (i+1))
                         order.append(str_part + "flux_%d"        % (i+1))
                         order.append(str_part + "flux_UL_%d"     % (i+1))
@@ -1894,7 +1981,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
             with misc.TMP_variable(self, 'in_scan_mode', True):
                 with misc.MuteLogger(names=['cmdprint','madevent','madgraph','madgraph.plugin'],levels=[50,50,50,20]):
-                                        
+
                     for i,card in enumerate(param_card_iterator):
                         card.write(pjoin(self.dir_path,'Cards','param_card.dat'))
                         self.exec_cmd("launch -f -n %s_%02d" % (run_name, i+2),
@@ -1949,8 +2036,8 @@ class MADDMRunCmd(cmd.CmdShell):
         mnest.launch(resume = resume_chain)
         mnest.write_log()
 
-    def is_spectral_finalstate(self, finalstate):
-        return '(22)' in finalstate
+    def is_spectral_finalstate(self, str_proc):
+        return str_proc.in_final_states("22")
 
     def launch_indirect(self, force, indirect_directory, halo_vel):
         """running the indirect detection"""
@@ -2025,13 +2112,15 @@ class MADDMRunCmd(cmd.CmdShell):
             
             for key, value in self.me_cmd.Presults.iteritems():
                 clean_key_list = key.split("/")
-                clean_key =clean_key_list[len(clean_key_list)-1].split('_')[1] +'_'+  clean_key_list[len(clean_key_list)-1].split('_')[2]
-                clean_key = self.processes_names_map.get(clean_key, clean_key) # conversion to pdg codes, but if there is no process like this, then keep it as it is
+                # clean_key = clean_key_list[-1].split('_')[1] +'_'+  clean_key_list[-1].split('_')[2]
+                clean_key = clean_key_list[-1].split("_", 1)[-1]
                 if key.startswith('xsec'):
                     value = halo_vel * math.sqrt(3)/2 * 2 * value
                     self.last_results['taacsID#%s' %(clean_key)] = value* pb2cm3
                     self.indirect_directories_cross_section_contribution[indirect_directory] += self.last_results['taacsID#%s' %(clean_key)]
-                    self.last_results['lim_taacsID#'+clean_key] = self.limits.ID_max(mdm, clean_key.split('_')[1]) if velocity_in_range else -1
+                    str_proc = StrProcess(clean_key, self.processes_names_map)
+                    self.str_processes[clean_key] = str_proc
+                    self.last_results['lim_taacsID#'+clean_key] = self.limits.ID_max(mdm, ".".join(str_proc.final_states)) if velocity_in_range else -1
                     
                 elif key.startswith('xerr'):
                     self.last_results['err_taacsID#%s' %(clean_key)] = value * pb2cm3
@@ -2193,19 +2282,19 @@ class MADDMRunCmd(cmd.CmdShell):
                     info_dict             = { # the key is the angle of the ROI (in degrees)
                         3.  : [PROFILES.NFW(r_s = 20.0, gamma = 1.3, rho_sun = rho_sun, r_sun = r_sun),
                             {PROFILES.NFW(r_s = 20.0, gamma = 1.3, rho_sun = rho_sun, r_sun = r_sun) : 1.497e+23}, # GeV^2 cm^-5
-                            "(22)(22)_fermi2015R3",
+                            "22.22_fermi2015R3",
                             np.loadtxt(pjoin(MDMDIR, 'Fermi_line_likelihoods', 'R3_gamma_lines_ULflux_like.dat'), unpack = True)],
                         16. : [PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = rho_sun, r_sun = r_sun),
                             {PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = rho_sun, r_sun = r_sun) : 9.39e+22}, # GeV^2 cm^-5
-                            "(22)(22)_fermi2015R16",
+                            "22.22_fermi2015R16",
                             np.loadtxt(pjoin(MDMDIR, 'Fermi_line_likelihoods', 'R16_gamma_lines_ULflux_like.dat'), unpack = True)],
                         41. : [PROFILES.NFW(r_s = 20.0, gamma = 1.0, rho_sun = rho_sun, r_sun = r_sun),
                             {PROFILES.NFW(r_s = 20.0, gamma = 1.0, rho_sun = rho_sun, r_sun = r_sun) : 9.16e+22}, # GeV^2 cm^-5
-                            "(22)(22)_fermi2015R41",
+                            "22.22_fermi2015R41",
                             None],
                         90. : [PROFILES.Isothermal(r_s = 5.0, rho_sun = rho_sun, r_sun = r_sun),
                             {PROFILES.Isothermal(r_s = 5.0, rho_sun = rho_sun, r_sun = r_sun) : 6.94e+22}, # GeV^2 cm^-5
-                            "(22)(22)_fermi2015R90",
+                            "22.22_fermi2015R90",
                             None]
                     },
                     majorana_dirac_factor = self.norm_Majorana_Dirac() / 4., # divide by 4, because that methods return 4 if Majorana, 8 if Dirac
@@ -2227,7 +2316,7 @@ class MADDMRunCmd(cmd.CmdShell):
                     info_dict             = { # the key is the angle of the ROI (in degrees)
                         1. : [PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = rho_sun, r_sun = r_sun),
                             {PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = rho_sun, r_sun = r_sun) : 4.66e21}, # GeV^2 cm^-5
-                            "(22)(22)_hess2018R1"]
+                            "22.22_hess2018R1"]
                     },
                     majorana_dirac_factor = self.norm_Majorana_Dirac() / 4., # divide by 4, because that methods return 4 if Majorana, 8 if Dirac
                     check_profile_message = lambda is_optimized, roi: {True: "", False: "The chosen profile is not the default for this ROI"}.get(is_optimized),
@@ -2256,7 +2345,7 @@ class MADDMRunCmd(cmd.CmdShell):
                     info_dict             = { # the key is the angle of the ROI (in degrees)
                         template_roi : [template_profile,
                             {}, # GeV^2 cm^-5
-                            "(22)(22)_template"]
+                            "22.22_template"]
                     },
                     majorana_dirac_factor = self.norm_Majorana_Dirac() / 4., # divide by 4, because that methods return 4 if Majorana, 8 if Dirac
                     check_profile_message = lambda is_optimized, roi: {True: "", False: "The chosen profile is not the default for this ROI"}.get(is_optimized),
@@ -2266,9 +2355,9 @@ class MADDMRunCmd(cmd.CmdShell):
                 roi_to_analyse = template_roi
             )
             if (self.maddm_card['template_line_experiment_constraints_file'] != 'None') and (self.maddm_card['toggle_template_line_experiment'] != 'off'):
-                self.limits._id_limit_file['(22)(22)_template'] = pjoin(MDMDIR, 'ExpData', self.maddm_card['template_line_experiment_constraints_file'])
-                self.limits._id_limit_file_flux['(22)(22)_template'] = pjoin(MDMDIR, 'ExpData', self.maddm_card['template_line_experiment_constraints_file'])
-                self.limits._id_limit_vel['(22)(22)_template'] = self.vave_indirect_line_range[-1]
+                self.limits._id_limit_file['22.22_template'] = pjoin(MDMDIR, 'ExpData', self.maddm_card['template_line_experiment_constraints_file'])
+                self.limits._id_limit_file_flux['22.22_template'] = pjoin(MDMDIR, 'ExpData', self.maddm_card['template_line_experiment_constraints_file'])
+                self.limits._id_limit_vel['22.22_template'] = self.vave_indirect_line_range[-1]
                 logger.info("Reload constraints to include new gamma ray line experiment...")
                 self.limits.load_constraints()
               
@@ -2296,10 +2385,9 @@ class MADDMRunCmd(cmd.CmdShell):
         #     return 0   
         logger.info("Calculating line limits from " + ', '.join([name.replace('_', ' ') for name in self.line_experiments.iternames()]))
         # <sigma v> of the various final states
-        sigmavs = {k.split("_")[-1]: v for k, v in self.last_results.iteritems() if k.startswith('taacsID#') and self.is_spectral_finalstate(k.split("_")[-1])}
+        sigmavs = {".".join(self.str_processes[k.replace("taacsID#","")].final_states): v for k, v in self.last_results.iteritems() if k.startswith('taacsID#') and self.is_spectral_finalstate(self.str_processes[k.replace("taacsID#","")])}
         # dict for <sigma v> ul
-        sigmav_ul = {k: collections.OrderedDict([(name, np.inf) for name in self.line_experiments.iternames()]) for k in self.last_results.iterkeys() if "lim_taacsID#" in k and self.is_spectral_finalstate(k.split('_')[-1])} # if there is at least one '(22)' then we treat it as a spectral final state
-        initial_states = sigmav_ul.keys()[0].replace("lim_taacsID#", '').split('_')[0] # extract the initial particles, it is ok only for one DM candidate
+        sigmav_ul = {k: collections.OrderedDict([(name, np.inf) for name in self.line_experiments.iternames()]) for k in self.last_results.iterkeys() if "lim_taacsID#" in k and self.is_spectral_finalstate(self.str_processes[k.replace("lim_taacsID#","")])} # if there is at least one '22' then we treat it as a spectral final state
         # compute the main results
         for line_exp, line_exp_roi in zip(self.line_experiments, self.line_experiments.iterrois()):
             gamma_line_spectrum = GammaLineSpectrum(
@@ -2337,7 +2425,7 @@ class MADDMRunCmd(cmd.CmdShell):
             # the following dicts are for the testing errors
             for i, peak in enumerate(gamma_line_spectrum):
                 self.last_results[str_part + "peak_%d"        % (i+1)] = peak.e_peak
-                self.last_results[str_part + "peak_%d_states" % (i+1)] = self.pdg_particle_map.format_particles(peak.label)
+                self.last_results[str_part + "peak_%d_states" % (i+1)] = self.pdg_particle_map.format_particles(peak.label).replace(".", "")
                 # flux upper limits
                 peak.flux_UL = line_exp.get_flux_ul(e_peak = peak.e_peak, roi = line_exp_roi, id_constraints = self.limits)
                 self.last_results[str_part + "flux_%d"    % (i+1)] = peak.flux
@@ -2360,9 +2448,10 @@ class MADDMRunCmd(cmd.CmdShell):
                         continue
             # compute <sigma v> ul to display only if the profile chosen is equal to the default one for the ROIs
             # fill a list with the limits from each experiment and then take the minimum
+            possible_final_states = { ".".join(self.str_processes[sv_k.replace("lim_taacsID#","")].final_states) : sv_k for sv_k in sigmav_ul.keys() }
             for original_peak in original_gamma_spectrum: # fill value only for peaks which have been detected (are in the detection range), otherwise keep -1
                 # rescale it wirth respect to gamma gamma, according to (2)*(mdm^2/E_peak^2) : the 2 factor is comprised in the method get_sigmav_ul
-                sigmav_ul["lim_taacsID#" + initial_states + '_' + original_peak.label][line_exp.get_name()] = line_exp.get_sigmav_ul(e_peak = original_peak.e_peak, roi = line_exp_roi, profile = density_profile, id_constraints = self.limits, is_aa = original_peak.label == '(22)(22)') * np.power(mdm/original_peak.e_peak, 2)
+                sigmav_ul[possible_final_states[original_peak.label]][line_exp.get_name()] = line_exp.get_sigmav_ul(e_peak = original_peak.e_peak, roi = line_exp_roi, profile = density_profile, id_constraints = self.limits, is_aa = original_peak.label == '22.22') * np.power(mdm/original_peak.e_peak, 2)
         # get the <sigma v> ul: drop the -1 and get the minimum, in case everything is -1 then the list is empty, so return -1
         logger.debug(sigmav_ul)
         for k, v in sigmav_ul.items():
@@ -2487,8 +2576,8 @@ class MADDMRunCmd(cmd.CmdShell):
         available_channels = {}
         for x in self.last_results.keys():
             if 'err' not in x and 'taacsID#' in x and 'lim_' not in x:
-                available_channels[x] = x.split('_')[1] # list of available SM channel xsections
-                if self.is_spectral_finalstate(x.split('_')[-1]): # remove spectral finalstates
+                available_channels[x] = self.str_processes[x.replace("taacsID#","")]
+                if self.is_spectral_finalstate(available_channels[x]): # remove spectral finalstates
                     del available_channels[x]
         return available_channels
 
@@ -2519,13 +2608,14 @@ class MADDMRunCmd(cmd.CmdShell):
         self.Spectra.spectra['log10x'] = np.log10(self.Spectra.spectra['x'])
 
         available_channels = self.cont_spectra_available_channels()
+        available_final_states_strings = list(map(lambda item: ".".join(item.final_states), available_channels.values()))
         # {'taacsID#xxdxxdb_ccx': 'ccx', 'taacsID#xxdxxdb_y0y0': 'y0y0', 'taacsID#xxdxxdb_ttx': 'ttx', 'taacsID#xxdxxdb_ssx': 'ssx', 
         # 'taacsID#xxdxxdb_uux': 'uux', 'taacsID#xxdxxdb_ddx': 'ddx', 'taacsID#xxdxxdb_bbx': 'bbx'}
 
         # self.Spectra.spectra_id = {'px':'antiprotons', 'gx':'gammas', 'nuex':'neutrinos_e', 'numux':'neutrinos_mu', 'nutaux':'neutrinos_tau', 'ex':'positrons'}
 
         # Check that at lest one SM channel is available
-        if not any(i in self.Spectra.map_allowed_final_state_PPPC.keys() for i in available_channels.values()):
+        if not any(i in self.Spectra.map_allowed_final_state_PPPC.keys() for i in available_final_states_strings):
             logger.error('No SM annihilation channel available, cannot use PPPC4DMID Tables!')
             return
                   
@@ -2536,7 +2626,7 @@ class MADDMRunCmd(cmd.CmdShell):
             temp_dic = {}
 
             for CH_k in available_channels.keys():
-                CH = available_channels[CH_k]
+                CH = ".".join(available_channels[CH_k].final_states)
                 if CH in self.Spectra.map_allowed_final_state_PPPC.keys():
                     ch = self.Spectra.map_allowed_final_state_PPPC[CH]  # ch is the name of the channels in the Tables
                     
@@ -2588,16 +2678,17 @@ class MADDMRunCmd(cmd.CmdShell):
         self.Spectra.flux_earth_positrons['e'] = E
 
         channels = self.cont_spectra_available_channels()
+        available_final_states_strings = list(map(lambda item: ".".join(item.final_states), channels.values()))
 
         # Check that at lest one SM channel is available
-        if not any(i in self.Spectra.map_allowed_final_state_PPPC.keys() for i in channels.values()):
+        if not any(i in self.Spectra.map_allowed_final_state_PPPC.keys() for i in available_final_states_strings):
             logger.error('No SM annihilation channel available, cannot use PPPC4DMID Tables!')
             return
 
         # filling a dictionary with all non -zero cross section positrons fluxes from SM annihilations channels
         temp_dic = {}
-        for CH in channels.keys(): # e.g.  ccx, ttx ecc.
-            C = CH.split('_')[1]
+        for CH, proc in channels.items(): # e.g.  ccx, ttx ecc.
+            C = ".".join(proc.final_states)
             if C in self.Spectra.map_allowed_final_state_PPPC.keys():
                ch = self.Spectra.map_allowed_final_state_PPPC[C]  # ch is the name of the channels in the Tables                                                           
             #       # Mapping light quarks to qq in the Tables                                                                                                                      
@@ -2845,12 +2936,9 @@ class MADDMRunCmd(cmd.CmdShell):
             for k in keys:
                 if 'taacsID#' in k:
                     k = k.replace('taacsID#','')
-                    k = self.pdg_particle_map.format_print(k)
-                    #this_proc = [(proc_pdg, proc_names) for proc_names, proc_pdg in self.processes_names_map.iteritems() if proc_pdg in k][0]
-                    #k = k.replace(this_proc[0], this_proc[1])
-                if '%_relic_' in k:
-                    k = k.replace('%_relic_','')
-                    k = '%_relic_' + self.pdg_particle_map.format_print(k)
+                # if '%_relic_' in k:
+                #     k = k.replace('%_relic_','')
+                #     k = '%_relic_' + self.pdg_particle_map.format_particles(k)
                 k = k.replace('taacsID','tot_Xsec')
                 nice_keys.append(k)
             
@@ -2930,9 +3018,9 @@ class MADDMRunCmd(cmd.CmdShell):
             skip = []
             for proc in [k for k in self.last_results.keys() if k.startswith('%_relic_')]:
                 if self.last_results[proc] == 0.:
-                    skip.append(self.pdg_particle_map.format_particles(proc.split('_')[-1]))
+                    skip.append(proc.replace(r"%_relic_", ""))
                     continue
-                logger.info( self.form_s(self.pdg_particle_map.format_process(proc.replace('%_relic_',''))) + ': %.2f %%' % self.last_results[proc] )
+                logger.info( self.form_s(proc.replace(r"%_relic_", "")) + ': %.2f %%' % self.last_results[proc] )
             if len(skip) != 0:
                 logger.info('No contribution from processes: %s', ', '.join(skip))
 
@@ -2977,16 +3065,16 @@ class MADDMRunCmd(cmd.CmdShell):
                     process = key.split('#')[-1]
                     if not filter_(process):
                         continue
-                    finalstate = process.split("_")[-1]
-                    if '(3)(-3)' in finalstate or '(2)(-2)' in finalstate or '(1)(-1)' in finalstate:
+                    finalstate = ".".join(self.str_processes[process].final_states)
+                    if '3.-3' in finalstate or '2.-2' in finalstate or '1.-1' in finalstate:
                         light_s = True
                     s_alldm   = self.last_results[key]
                     s_thermal = s_alldm * xsi2
                     if s_alldm <= 10**(-100): 
-                        skip.append(self.pdg_particle_map.format_particles(finalstate))
+                        skip.append(process)
                         continue
                     s_ul = self.last_results['lim_' + key]
-                    self.print_ind(self.pdg_particle_map.format_process(process), s_thermal, s_alldm, s_ul, exp = exp_label, thermal= dm_scen, no_lim = no_lim) 
+                    self.print_ind(process, s_thermal, s_alldm, s_ul, exp = exp_label, thermal= dm_scen, no_lim = no_lim) 
 
             if len(skip) >= 1:        
                 logger.info('Skipping zero cross section processes for: %s', ', '.join(skip))
@@ -3007,7 +3095,7 @@ class MADDMRunCmd(cmd.CmdShell):
             sigtot_SM_th     = sigtot_SM_alldm * xsi2
 
             if halo_vel > self.vave_indirect_cont_range[0] and halo_vel < self.vave_indirect_cont_range[1]:
-                light_s = print_sigmav_with_limits(detailled_keys, filter_ = lambda process: not self.is_spectral_finalstate(process.split('_')[-1]), exp_label = 'Fermi dSph', no_lim = False)
+                light_s = print_sigmav_with_limits(detailled_keys, filter_ = lambda process: not self.is_spectral_finalstate(self.str_processes[process.replace("taacsID#","")]), exp_label = 'Fermi dSph', no_lim = False)
                 if light_s:
                     logger.info('Using generic Fermi dSph limits for light quarks (u,d,s)')
 
@@ -3025,7 +3113,7 @@ class MADDMRunCmd(cmd.CmdShell):
                     logger.info('')
             
             else:
-                light_s = print_sigmav_with_limits(detailled_keys, filter_ = lambda process: not self.is_spectral_finalstate(process.split('_')[-1]), exp_label = 'Fermi dSph', no_lim = True)
+                light_s = print_sigmav_with_limits(detailled_keys, filter_ = lambda process: not self.is_spectral_finalstate(self.str_processes[process.replace("taacsID#","")]), exp_label = 'Fermi dSph', no_lim = True)
                 if light_s:
                     logger.info('Using generic Fermi dSph limits for light quarks (u,d,s)')
                 
@@ -3044,7 +3132,7 @@ class MADDMRunCmd(cmd.CmdShell):
             logger.info('*** Print <sigma v> [cm^3 s^-1] with %s line limits' % ', '.join([name.replace('_', ' ') for name in self.line_experiments.iternames()]))
 
             # if halo_vel > self.vave_indirect_line_range[0] and halo_vel < self.vave_indirect_line_range[1]:
-            print_sigmav_with_limits(detailled_keys, filter_ = lambda process: self.is_spectral_finalstate(process.split('_')[-1]), exp_label = 'Line GC', no_lim = False)
+            print_sigmav_with_limits(detailled_keys, filter_ = lambda process: self.is_spectral_finalstate(self.str_processes[process.replace("taacsID#","")]), exp_label = 'Line GC', no_lim = False)
 
             if not (halo_vel > self.vave_indirect_line_range[0] and halo_vel < self.vave_indirect_line_range[1]):
                 logger.warning('DM halo velocity not compatible with GC, line limits application is this case is not guaranteed.')
@@ -3392,7 +3480,7 @@ class MADDMRunCmd(cmd.CmdShell):
             out.write(form_s('sigmav_xf') + '= ' + form_n(self.last_results['sigmav(xf)']) + ' \t # cm^3 s^-1\n' ) 
             out.write("# % of the relic density channels\n")
             for proc in [k for k in self.last_results.keys() if k.startswith('%_relic_')]:
-                out.write( form_s("%_" + self.pdg_particle_map.format_print(proc.replace('%_relic_',''))) + '= %.2f %%\n' % self.last_results[proc] )
+                out.write( form_s("%_" + proc.replace('%_relic_','')) + '= %.2f %%\n' % self.last_results[proc] )
 
 
         if direct:
@@ -3437,15 +3525,15 @@ class MADDMRunCmd(cmd.CmdShell):
                 for proc in proc_list:
                     #proc = [proc_names for proc_names, proc_pdg in self.processes_names_map.iteritems() if proc == proc_pdg][0] # this allows to convert back from PDG
                     proc_th, proc_ul = self.last_results['taacsID#' + proc] , self.last_results['lim_taacsID#' + proc]
-                    fileout.write(form_s(self.pdg_particle_map.format_print(proc)) + '= '+ form_s('['+ form_n(proc_th)+',' + form_n(proc_ul)+']') + '\n')
+                    fileout.write(form_s(proc) + '= '+ form_s('['+ form_n(proc_th)+',' + form_n(proc_ul)+']') + '\n')
 
             detailled_keys = [key for key in self.last_results.keys() if key.startswith('taacsID#')]
 
-            cont_procs = collect_processes(detailled_keys, filter_ = lambda process: not self.is_spectral_finalstate(process.split('_')[-1]))
+            cont_procs = collect_processes(detailled_keys, filter_ = lambda process: not self.is_spectral_finalstate(self.str_processes[process.replace("taacsID#","")]))
             if cont_procs:
                 out.write('\n# <sigma v>[cm^3 s^-1] of continuum spectrum final states and Fermi dSph limits (if available, else -1)\n')
                 print_sigmav(cont_procs, out)
-            line_procs = collect_processes(detailled_keys, filter_ = lambda process: self.is_spectral_finalstate(process.split('_')[-1]))
+            line_procs = collect_processes(detailled_keys, filter_ = lambda process: self.is_spectral_finalstate(self.str_processes[process.replace("taacsID#","")]))
             if line_procs:
                 out.write('\n# <sigma v>[cm^3 s^-1] of line spectrum final states and %s line limits (if available, else -1)]' % ', '.join([name.replace('_', ' ') for name in self.line_experiments.iternames()]) + '\n')
                 print_sigmav(line_procs, out)
@@ -5041,7 +5129,7 @@ class Multinest(object):
                 #    self.output_observables.append(key)
 
             if self.maddm_run.mode['spectral']:
-                xsecs = [k for k in self.maddm_run.last_results.keys() if k.startswith("taacsID#") and self.maddm_run.is_spectral_finalstate(k.split('_')[-1])]
+                xsecs = [k for k in self.maddm_run.last_results.keys() if k.startswith("taacsID#") and self.maddm_run.is_spectral_finalstate(self.maddm_run.str_processes[k.replace("taacsID#","")])]
                 for proc in xsecs:
                     self.output_observables.append(proc)
 
