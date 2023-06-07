@@ -1558,10 +1558,12 @@ class MadDM_interface(master_interface.MasterCmd):
                     continue
                     logger.info('no diagram for %s' % final_state)
             self._last_amps = [amp for amp in self._ID_cont_amps[0] + self._ID_cont_amps[1] if amp not in backup_amps]
+            self._has_indirect = len(self._last_amps) != 0 or len(backup_amps) != 0
             return
 
         self.indirect_process_generation(argument, self._ID_cont_procs, self._ID_cont_matrix_elements, self._ID_cont_amps)
         self._last_amps = [amp for amp in self._ID_cont_amps[0] + self._ID_cont_amps[1] if amp not in backup_amps]
+        self._has_indirect = len(self._last_amps) != 0 or len(backup_amps) != 0
     
     def generate_spectral(self, argument):
         """ Performs indirect detection in the final states 'a a', 'a z', 'a h' and 'a _bsm_'.
@@ -1603,10 +1605,12 @@ class MadDM_interface(master_interface.MasterCmd):
                     continue
                     logger.info('no diagram for %s' % final_state)
             self._last_amps = [amp for amp in self._ID_line_amps[0] + self._ID_line_amps[1] if amp not in backup_amps]
+            self._has_spectral = len(self._last_amps) != 0 or len(backup_amps) != 0
             return
 
         self.indirect_process_generation(argument, self._ID_line_procs, self._ID_line_matrix_elements, self._ID_line_amps)
         self._last_amps = [amp for amp in self._ID_line_amps[0] + self._ID_line_amps[1] if amp not in backup_amps]
+        self._has_spectral = len(self._last_amps) != 0 or len(backup_amps) != 0
 
     def indirect_bsm_multiparticle(self, excluded = []):
         ''' it defines the '_bsm_' particle for indirect detection processes generation,
