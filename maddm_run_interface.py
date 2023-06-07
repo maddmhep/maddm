@@ -2611,13 +2611,14 @@ class MADDMRunCmd(cmd.CmdShell):
         self.Spectra.spectra['x'] = PPPC_source['x']
 
         available_channels = self.cont_spectra_available_channels()
+        available_final_states_strings = list(map(lambda item: ".".join(item.final_states), available_channels.values()))
         # {'taacsID#xxdxxdb_ccx': 'ccx', 'taacsID#xxdxxdb_y0y0': 'y0y0', 'taacsID#xxdxxdb_ttx': 'ttx', 'taacsID#xxdxxdb_ssx': 'ssx', 
         # 'taacsID#xxdxxdb_uux': 'uux', 'taacsID#xxdxxdb_ddx': 'ddx', 'taacsID#xxdxxdb_bbx': 'bbx'}
 
         # self.Spectra.spectra_id = {'px':'antiprotons', 'gx':'gammas', 'nuex':'neutrinos_e', 'numux':'neutrinos_mu', 'nutaux':'neutrinos_tau', 'ex':'positrons'}
 
         # Check that at lest one SM channel is available
-        if not any(i in self.Spectra.map_allowed_final_state_PPPC.keys() for i in available_channels.values()):
+        if not any(i in self.Spectra.map_allowed_final_state_PPPC.keys() for i in available_final_states_strings):
             logger.error('No SM annihilation channel available, cannot use PPPC4DMID Tables!')
             return
                   
@@ -2628,7 +2629,7 @@ class MADDMRunCmd(cmd.CmdShell):
             temp_dic = {}
 
             for CH_k in available_channels.keys():
-                CH = available_channels[CH_k]
+                CH = ".".join(available_channels[CH_k].final_states)
                 if CH in self.Spectra.map_allowed_final_state_PPPC.keys():
                     ch = self.Spectra.map_allowed_final_state_PPPC[CH]  # ch is the name of the channels in the Tables
                     
@@ -2680,9 +2681,10 @@ class MADDMRunCmd(cmd.CmdShell):
         self.Spectra.flux_earth_positrons['e'] = E
 
         channels = self.cont_spectra_available_channels()
+        available_final_states_strings = list(map(lambda item: ".".join(item.final_states), channels.values()))
 
         # Check that at lest one SM channel is available
-        if not any(i in self.Spectra.map_allowed_final_state_PPPC.keys() for i in channels.values()):
+        if not any(i in self.Spectra.map_allowed_final_state_PPPC.keys() for i in available_final_states_strings):
             logger.error('No SM annihilation channel available, cannot use PPPC4DMID Tables!')
             return
 
