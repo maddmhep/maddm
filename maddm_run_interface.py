@@ -1378,9 +1378,24 @@ class PDGParticleMap(dict):
     def format_process(self, string):
         ''' From the string written with pdgs and symbols to a nice string with particles:
             52.52>6.-6,(-6>-24.-5,(-24>11.-12)),(6>2.-1.5)
-            becomes: n1 n1 > t tx, (tx > w- bx, (w- > e- vex)), (t > u dx b)
+            becomes: n1 n1 > t t~, (t~ > w- b~, (w- > e- ve~)), (t > u d~ b)
         '''
         return re.sub(r"-?\d+", lambda s: self[s.group(0)], string).replace(">", " > ").replace(".", " ").replace(",", ", ")
+
+    def format_process_readable(self, string):
+        ''' From the string written with pdgs and symbols to a raw readable string:
+            52.52>6.-6,(-6>-24.-5,(-24>11.-12)),(6>2.-1.5)
+            becomes: n1n1_ttx_tx_wm_bx_w_em_vex_t_udxb
+        '''
+        return re.sub(r"-?\d+", lambda s: self[s.group(0)], string)\
+            .replace(">", "_")\
+            .replace(",", "_")\
+            .replace(".", "")\
+            .replace("(", "")\
+            .replace(")", "")\
+            .replace("+", "p")\
+            .replace("-", "m")\
+            .replace("~", "x")
 
 class StrProcess(object):
     ''' Class to handle processes names
@@ -2999,9 +3014,9 @@ class MADDMRunCmd(cmd.CmdShell):
             skip = []
             for proc in [k for k in self.last_results.keys() if k.startswith('%_relic_')]:
                 if self.last_results[proc] == 0.:
-                    skip.append(proc)
+                    skip.append(proc.replace(r"%_relic_", ""))
                     continue
-                logger.info( self.form_s(proc) + ': %.2f %%' % self.last_results[proc] )
+                logger.info( self.form_s(proc.replace(r"%_relic_", "")) + ': %.2f %%' % self.last_results[proc] )
             if len(skip) != 0:
                 logger.info('No contribution from processes: %s', ', '.join(skip))
 
@@ -3052,7 +3067,7 @@ class MADDMRunCmd(cmd.CmdShell):
                     s_alldm   = self.last_results[key]
                     s_thermal = s_alldm * xsi2
                     if s_alldm <= 10**(-100): 
-                        skip.append(finalstate)
+                        skip.append(process)
                         continue
                     s_ul = self.last_results['lim_' + key]
                     self.print_ind(process, s_thermal, s_alldm, s_ul, exp = exp_label, thermal= dm_scen, no_lim = no_lim) 
