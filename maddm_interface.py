@@ -1056,7 +1056,7 @@ class MadDM_interface(master_interface.MasterCmd):
         proc_charac['has_indirect_spectral']  = self._has_spectral
         proc_charac['forbid_fast']            = self._forbid_fast
         proc_charac['pdg_particle_map']       = self._pdg_particle_map
-        proc_charac['processes_names_map']    = dict(curr_processes_names_map.items() + tree_cont_processes_names_map.items() + tree_line_processes_names_map.items() + li_cont_processes_names_map.items() + li_line_processes_names_map.items())
+        proc_charac['processes_names_map']    = { **curr_processes_names_map, **tree_cont_processes_names_map, **tree_line_processes_names_map, **li_cont_processes_names_map, **li_line_processes_names_map }
         proc_charac['indirect_detection_asked_processes'] = indirect_detection_asked_processes
         proc_charac.write(proc_path)
 

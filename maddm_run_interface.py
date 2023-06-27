@@ -1840,7 +1840,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 self.launch_indirect(force, directory, self.maddm_card['vave_indirect_cont'])
             # compute total cross section only for continuum final states
             self.last_results['taacsID'] = 0.
-            for process, sigmav in {k.replace('taacsID#', ''): v for k, v in self.last_results.iteritems() if k.startswith('taacsID#')}.iteritems():
+            for process, sigmav in six.iteritems({k.replace('taacsID#', ''): v for k, v in six.iteritems(self.last_results) if k.startswith('taacsID#')}):
                 if self.is_spectral_finalstate(self.str_processes[process]):
                     continue
                 self.last_results['taacsID'] += sigmav
@@ -2391,9 +2391,9 @@ class MADDMRunCmd(cmd.CmdShell):
         #     return 0   
         logger.info("Calculating line limits from " + ', '.join([name.replace('_', ' ') for name in self.line_experiments.iternames()]))
         # <sigma v> of the various final states
-        sigmavs = {".".join(self.str_processes[k.replace("taacsID#","")].final_states): v for k, v in self.last_results.iteritems() if k.startswith('taacsID#') and self.is_spectral_finalstate(self.str_processes[k.replace("taacsID#","")])}
+        sigmavs = {".".join(self.str_processes[k.replace("taacsID#","")].final_states): v for k, v in six.iteritems(self.last_results) if k.startswith('taacsID#') and self.is_spectral_finalstate(self.str_processes[k.replace("taacsID#","")])}
         # dict for <sigma v> ul
-        sigmav_ul = {k: collections.OrderedDict([(name, np.inf) for name in self.line_experiments.iternames()]) for k in self.last_results.iterkeys() if "lim_taacsID#" in k and self.is_spectral_finalstate(self.str_processes[k.replace("lim_taacsID#","")])} # if there is at least one '22' then we treat it as a spectral final state
+        sigmav_ul = {k: collections.OrderedDict([(name, np.inf) for name in self.line_experiments.iternames()]) for k in self.last_results.keys() if "lim_taacsID#" in k and self.is_spectral_finalstate(self.str_processes[k.replace("lim_taacsID#","")])} # if there is at least one '22' then we treat it as a spectral final state
         # compute the main results
         for line_exp, line_exp_roi in zip(self.line_experiments, self.line_experiments.iterrois()):
             gamma_line_spectrum = GammaLineSpectrum(
