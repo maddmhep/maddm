@@ -1840,7 +1840,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 self.launch_indirect(force, directory, self.maddm_card['vave_indirect_cont'])
             # compute total cross section only for continuum final states
             self.last_results['taacsID'] = 0.
-            for process, sigmav in {k.replace('taacsID#', ''): v for k, v in self.last_results.iteritems() if k.startswith('taacsID#')}.iteritems():
+            for process, sigmav in six.iteritems({k.replace('taacsID#', ''): v for k, v in six.iteritems(self.last_results) if k.startswith('taacsID#')}):
                 if self.is_spectral_finalstate(self.str_processes[process]):
                     continue
                 self.last_results['taacsID'] += sigmav
@@ -2154,9 +2154,9 @@ class MADDMRunCmd(cmd.CmdShell):
                 else:
                     for id_dir in cont_spectra_directories:
                         self.run_pythia8_for_flux(id_dir)
-                    if self.maddm_card['indirect_flux_source_method'] == 'pythia8':
-                        logger.info('Calculating Fermi dSph limit using pythia8 gamma rays spectrum')
-                    elif 'pythia' not in self.maddm_card['indirect_flux_source_method']:
+                    if self.maddm_card['indirect_flux_source_method'] == 'pythia8' or self.maddm_card['indirect_flux_source_method'] == 'vincia':
+                        logger.info('Calculating Fermi dSph limit using pythia8 ' + '(vincia)'*(self.maddm_card['indirect_flux_source_method'] == 'vincia') + ' gamma rays spectrum')
+                    elif 'pythia' not in self.maddm_card['indirect_flux_source_method'] and 'vincia' not in self.maddm_card['indirect_flux_source_method']:
                         logger.warning('Since pythia8 is run, using pythia8 gamma rays spectrum (not PPPC4DMID Tables)')
                     self.read_py8spectra(cont_spectra_directories)
             elif self.mode['indirect'] == 'sigmav':
@@ -2391,9 +2391,9 @@ class MADDMRunCmd(cmd.CmdShell):
         #     return 0   
         logger.info("Calculating line limits from " + ', '.join([name.replace('_', ' ') for name in self.line_experiments.iternames()]))
         # <sigma v> of the various final states
-        sigmavs = {".".join(self.str_processes[k.replace("taacsID#","")].final_states): v for k, v in self.last_results.iteritems() if k.startswith('taacsID#') and self.is_spectral_finalstate(self.str_processes[k.replace("taacsID#","")])}
+        sigmavs = {".".join(self.str_processes[k.replace("taacsID#","")].final_states): v for k, v in six.iteritems(self.last_results) if k.startswith('taacsID#') and self.is_spectral_finalstate(self.str_processes[k.replace("taacsID#","")])}
         # dict for <sigma v> ul
-        sigmav_ul = {k: collections.OrderedDict([(name, np.inf) for name in self.line_experiments.iternames()]) for k in self.last_results.iterkeys() if "lim_taacsID#" in k and self.is_spectral_finalstate(self.str_processes[k.replace("lim_taacsID#","")])} # if there is at least one '22' then we treat it as a spectral final state
+        sigmav_ul = {k: collections.OrderedDict([(name, np.inf) for name in self.line_experiments.iternames()]) for k in self.last_results.keys() if "lim_taacsID#" in k and self.is_spectral_finalstate(self.str_processes[k.replace("lim_taacsID#","")])} # if there is at least one '22' then we treat it as a spectral final state
         # compute the main results
         for line_exp, line_exp_roi in zip(self.line_experiments, self.line_experiments.iterrois()):
             gamma_line_spectrum = GammaLineSpectrum(
@@ -2752,8 +2752,8 @@ class MADDMRunCmd(cmd.CmdShell):
             if not self.options['pppc4dmid_path']:
                 logger.error("PPPC4DMID not installed, will not calculate fluxes.")
                 return
-        elif 'pythia' in self.maddm_card['indirect_flux_source_method']:
-            logger.info('Calculating cosmic rays fluxes using pythia8 gammas and neutrinos spectra.')
+        elif 'pythia' in self.maddm_card['indirect_flux_source_method'] or 'vincia' in self.maddm_card['indirect_flux_source_method']:
+            logger.info('Calculating cosmic rays fluxes using pythia8 ' + '(vincia)'*(self.maddm_card['indirect_flux_source_method'] == 'vincia') + ' gammas and neutrinos spectra.')
         else:
             return
              
@@ -3848,6 +3848,7 @@ class Indirect_PY8Card(banner_mod.PY8Card):
         self.add_param("PartonLevel:ISR", False, hidden=True, comment="initial-state radiation")
         self.add_param("PartonLevel:FSR", True, hidden=True, comment="final-state radiation")
         # Weakshower <- allow the user to switch this ON
+        self.add_param("PartonShowers:model", 1)
         self.add_param("TimeShower:weakShower", False, comment="Run weak-shower for FSR")
         self.add_param("TimeShower:weakShowerMode", 0, comment="Determine which branchings are allowed (0 -> W and Z)")
         self.add_param("TimeShower:pTminWeak", 0.1)
@@ -3864,7 +3865,26 @@ class Indirect_PY8Card(banner_mod.PY8Card):
         # disabling some events checks for bug below 100 GeV
         self.add_param("Check:event", False, hidden=True, comment="avoid pythia crushing")
         self.add_param("Check:beams", False, hidden=True, comment="avoid pythia crushing")
+        # Tuning for the following parameters taken from Tab 2 of https://arxiv.org/pdf/2303.11363.pdf
+        self.add_param("StringZ:deriveBLund", True)
+        self.add_param("StringZ:aLund", 0.601)
+        self.add_param("StringZ:bLund", 0.897)
+        self.add_param("StringZ:avgZLund", 0.540)
+        self.add_param("StringPT:Sigma", 0.307)
+        self.add_param("StringZ:aExtraDiquark", 1.671)
 
+class Indirect_VinciaCard(Indirect_PY8Card):
+    def default_setup(self):
+        super().default_setup()
+        self.add_param("Vincia:ewMode", 3, comment="Vincia EW mode")
+        self["PartonShowers:model"] = 2
+        self["TimeShower:weakShower"] = True
+        self["StringZ:deriveBLund"] = False # default
+        self["StringZ:aLund"] = 0.337409
+        self["StringZ:bLund"] = 0.784682
+        self["StringZ:avgZLund"] = 0.55 # default
+        self["StringPT:Sigma"] = 0.296569
+        self["StringZ:aExtraDiquark"] = 1.246986
 
 class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
     """ """
@@ -4322,8 +4342,10 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
             self.setDM('sigmav_method', 'reshuffling',loglevel=30)
             
         #3. ensure pythia8 is on
-        if self.maddm['indirect_flux_source_method'] != 'pythia8':
+        if self.maddm['indirect_flux_source_method'] != 'pythia8' and self.maddm['indirect_flux_source_method'] != 'vincia':
             self.setDM('indirect_flux_source_method', 'pythia8',loglevel=30)
+        if self.maddm['indirect_flux_source_method'] == 'pythia8' or self.maddm['indirect_flux_source_method'] == 'vincia':
+            self.paths['flux'] = pjoin(self.me_dir,'Cards', self.maddm['indirect_flux_source_method'] + '_card.dat')
         
         return '9 %s' % line
     
@@ -4879,8 +4901,8 @@ class MadDMCard(banner_mod.RunCard):
         
         self.fill_jfactors()
 
-        self.add_param('indirect_flux_source_method', 'pythia8', comment='choose between pythia8,PPPC4DMID and PPPC4DMID_ew', include=False,
-                       allowed=['pythia8','PPPC4DMID','PPPC4DMID_ew'])
+        self.add_param('indirect_flux_source_method', 'pythia8', comment='choose between pythia8, vincia, PPPC4DMID and PPPC4DMID_ew', include=False,
+                       allowed=['pythia8','vincia','PPPC4DMID','PPPC4DMID_ew'])
         self.add_param('indirect_flux_earth_method', 'dragon', comment='choose between dragon and PPPC4DMID_ep', include=False,
                        allowed=['dragon', 'PPPC4DMID_ep'])
         self.add_param('sigmav_method', 'reshuffling', comment='choose between inclusive, madevent, reshuffling', include=False,
@@ -4985,7 +5007,7 @@ class MadDMCard(banner_mod.RunCard):
             raise InvalidMaddmCard('The sum of SM* parameter should be 1.0 get %s' % (self['SNu'] + self['SNs'] + self['SNd'] + self['SNg']))
         
         if self['sigmav_method'] == 'inclusive':
-            if self['indirect_flux_source_method'] == 'pythia8':
+            if self['indirect_flux_source_method'] == 'pythia8' or self['indirect_flux_source_method'] == 'vincia':
                 if self['do_indirect_detection']:
                     logger.warning('since sigmav_method is on inclusive, indirect_flux_source_method has been switched to PPPC4DMID')
                 #if self['do_flux']:
