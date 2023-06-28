@@ -2075,9 +2075,9 @@ class MADDMRunCmd(cmd.CmdShell):
                 else:
                     for id_dir in cont_spectra_directories:
                         self.run_pythia8_for_flux(id_dir)
-                    if self.maddm_card['indirect_flux_source_method'] == 'pythia8':
-                        logger.info('Calculating Fermi dSph limit using pythia8 gamma rays spectrum')
-                    elif 'pythia' not in self.maddm_card['indirect_flux_source_method']:
+                    if self.maddm_card['indirect_flux_source_method'] == 'pythia8' or self.maddm_card['indirect_flux_source_method'] == 'vincia':
+                        logger.info('Calculating Fermi dSph limit using pythia8 ' + '(vincia) '*(self.maddm_card['indirect_flux_source_method'] == 'vincia') + 'gamma rays spectrum')
+                    elif 'pythia' not in self.maddm_card['indirect_flux_source_method'] and 'vincia' not in self.maddm_card['indirect_flux_source_method']:
                         logger.warning('Since pythia8 is run, using pythia8 gamma rays spectrum (not PPPC4DMID Tables)')
                     self.read_py8spectra(cont_spectra_directories)
             elif self.mode['indirect'] == 'sigmav':
@@ -2404,15 +2404,15 @@ class MADDMRunCmd(cmd.CmdShell):
         pythia_cmd_card = pjoin(self.dir_path, indirect_directory ,'Source', "spectrum.cmnd")
         # Start by reading, starting from the default one so that the 'user_set'
         # tag are correctly set.
-        PY8_Card = Indirect_PY8Card(pjoin(self.dir_path, 'Cards', 
-                                                'pythia8_card_default.dat'))
+        PY8_Card = Indirect_PY8Card(pjoin(self.dir_path, 'Cards', 'pythia8_card_default.dat'))
+        if self.maddm_card['indirect_flux_source_method'] == "vincia":
+            PY8_Card.add_param("Vincia:ewMode", 3, comment="Vincia EW mode")
         PY8_Card['Main:spareParm1'] = mdm
-        PY8_Card.read(pjoin(self.dir_path, 'Cards', 'pythia8_card.dat'),
-                                                              setter='user')
+        PY8_Card.read(pjoin(self.dir_path, 'Cards', 'pythia8_card.dat'), setter='user')
+
         PY8_Card.write(pythia_cmd_card, 
                        pjoin(self.dir_path, 'Cards', 'pythia8_card_default.dat'),
                         direct_pythia_input=True)
-
             
         run_name = self.me_cmd.run_name
         # launch pythia8
@@ -2652,8 +2652,8 @@ class MADDMRunCmd(cmd.CmdShell):
             if not self.options['pppc4dmid_path']:
                 logger.error("PPPC4DMID not installed, will not calculate fluxes.")
                 return
-        elif 'pythia' in self.maddm_card['indirect_flux_source_method']:
-            logger.info('Calculating cosmic rays fluxes using pythia8 gammas and neutrinos spectra.')
+        elif 'pythia' in self.maddm_card['indirect_flux_source_method'] or 'vincia' in self.maddm_card['indirect_flux_source_method']:
+            logger.info('Calculating cosmic rays fluxes using pythia8 ' + '(vincia) '*(self.maddm_card['indirect_flux_source_method'] == 'vincia') + 'gammas and neutrinos spectra.')
         else:
             return
              
@@ -3765,7 +3765,6 @@ class Indirect_PY8Card(banner_mod.PY8Card):
         self.add_param("Check:event", False, hidden=True, comment="avoid pythia crushing")
         self.add_param("Check:beams", False, hidden=True, comment="avoid pythia crushing")
 
-
 class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
     """ """
 
@@ -4068,6 +4067,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
             logger.error('problem detected: %s' % e) 
             files.cp(self.paths['maddm_default'], self.paths['maddm'])
             self.maddm = MadDMCard(self.paths['maddm'])
+
         self.already_warned = set([])
         self.old_vave_indirect = self.maddm['vave_indirect']
         
@@ -4112,6 +4112,28 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         self.do_set("indirect_flux_earth_method dragon")
         self.do_set("Main:numberOfEvents 1000000")
         self.do_set("TimeShower:weakShower = on")
+
+    # def toggle_vincia(self):
+    #     """Toggle Vincia"""
+    #     
+    #     indirect = self.answer['indirect']
+    #     if 'flux' not in indirect:
+    #         logger.error("setting Vincia is only valid when computation of the spectra is activated")
+    #         return
+    #
+    #     old_value = self.maddm['indirect_flux_source_method']
+    #     if old_value == "pythia8":
+    #         self.do_set("indirect_flux_source_method vincia")
+    #         self.PY8Card_class = Indirect_VinciaCard
+    #     else:
+    #         self.do_set("indirect_flux_source_method pythia8")
+    #         self.PY8Card_class = Indirect_PY8Card
+    #     self.do_set("TimeShower:weakShower = on")
+    #
+    #     pythia8_card_path = pjoin(self.me_dir, 'Cards', 'pythia8_card.dat')
+    #     default_card_path = pjoin(self.me_dir, 'Cards', self.maddm['indirect_flux_source_method'] + '_card_default.dat')
+    #     shutil.copy(default_card_path, pythia8_card_path)
+    #     logger.info("Set new pythia8_card.dat on " + self.maddm['indirect_flux_source_method'] + " template", "$MG:BOLD")
 
     def get_cardcmd(self):
         """ return the list of command that need to be run to have a consistent 
@@ -4425,6 +4447,30 @@ When you are done with such edition, just press enter (or write 'done' or '0')
             logger.warning("setting 'sigmav_method' to 'inclusive' is only valid when loop-induced processes are not considered. Switched to 'reshuffling'.")
             self.setDM('sigmav_method','reshuffling',loglevel=30)
 
+        # check pythia card consistency
+        card_parameters = {}
+        if self.maddm['indirect_flux_source_method'] == 'pythia8':
+            card_parameters = {
+                "PartonShowers:model": 1,
+                "StringZ:deriveBLund": True,
+                "StringZ:aLund": 0.601,
+                "StringZ:bLund": 0.897,
+                "StringZ:avgZLund": 0.540,
+                "StringPT:Sigma": 0.307,
+                "StringZ:aExtraDiquark": 1.671
+            }
+        elif self.maddm['indirect_flux_source_method'] == 'vincia':
+            card_parameters = {
+                "PartonShowers:model": 2,
+                "StringZ:deriveBLund": False,
+                "StringZ:aLund": 0.337409,
+                "StringZ:bLund": 0.784682,
+                "StringZ:avgZLund": 0.55,
+                "StringPT:Sigma": 0.296569,
+                "StringZ:aExtraDiquark": 1.246986
+            }
+        for par, value in card_parameters.items():
+            self.do_set('pythia8_card %s %s' % (par, value))
         
     def reload_card(self, path):
         """ensure that maddm object are kept in sync"""
