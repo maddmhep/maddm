@@ -43,6 +43,22 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
+try:
+    import scipy
+except ImportError:
+    HAS_SCIPY = False 
+else:
+    HAS_SCIPY = True
+
+try:
+    import numpy
+except ImportError:
+    HAS_NUMPY = False
+else:
+    HAS_NUMPY = True
+
+if HAS_NUMPY and HAS_SCIPY:
+    import jfactor_gc
 
 class DMError(Exception): pass
 
@@ -302,6 +318,44 @@ class MadDM_interface(master_interface.MasterCmd):
         logger.info("**************** MG5AMC OPTION ***************************")
         super(MadDM_interface, self).help_display()
 
+################################################################################        
+# J-FACTOR COMMAND
+################################################################################        
+    def do_jfactor(self, *args, **opts):
+        ''' compute the J-factor, leveraging the script jfactor_gc.py
+        '''
+        if not (HAS_NUMPY and HAS_SCIPY):
+            logger.error("numpy and/or scipy are required to run this command")
+        parser = jfactor_gc.command_parser()
+        arguments = self.split_arg(args[0]) #args[0] is the line of the command
+        jfactor_value, density_profile = jfactor_gc.parse_cmd_line(parser=parser, cmd_line=arguments)
+        logger.info("J-factor = %.4e GeV^2 cm^{-5}" % jfactor_value)
+        logger.info("Density profile: " + str(density_profile))
+
+    def complete_jfactor(self, text, line, begidx, endidx, formatting = True):
+        # args = self.split_arg(line[:begidx])
+        # 
+        # out = super(MadDM_interface, self).complete_display(text, line, begidx, endidx)
+        #
+        # if out is None:
+        #     out = []
+        # if not isinstance(out, dict):
+        #     out = {"standard options": out}
+        #
+        # if len(args) > 0 and all(arg in ['darkmatter', 'coannihilators', 'z2-odd', 'z2-even', 'disconnected'] for arg in args[1:]):
+        #     options = ['darkmatter', 'coannihilators', 'z2-odd', 'z2-even', 'disconnected']
+        #     out['maddm options'] = self.list_completion(text, options , line)
+        #
+        # if len(args) > 1 and args[1] in ['processes', 'diagrams', 'diagrams_text']:
+        #     options = ['relic', 'direct', 'indirect', 'all', 'last']
+        #     out['processes|diagrams|diagrams_text options'] = self.list_completion(text, options, line)
+        #
+        # return self.deal_multiple_categories(out, formatting)
+        pass
+
+    def help_jfactor(self):
+        parser = jfactor_gc.command_parser()
+        logger.info(parser.format_help().replace("usage: %s" % parser.prog, bcolors.BOLD + "Compute the J-Factor for the Galactic Center\n" + bcolors.ENDC + "             jfactor"))
 
 ################################################################################        
 # DEFINE COMMAND
