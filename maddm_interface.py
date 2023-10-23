@@ -58,7 +58,7 @@ else:
     HAS_NUMPY = True
 
 if HAS_NUMPY and HAS_SCIPY:
-    import jfactor_gc
+    from . import jfactor_gc as jfactor_gc
 
 class DMError(Exception): pass
 

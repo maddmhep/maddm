@@ -65,7 +65,7 @@ else:
     HAS_NUMPY = True
 
 if HAS_NUMPY and HAS_SCIPY:
-    from jfactor_gc import PROFILES, jfactor_gc
+    from .jfactor_gc import PROFILES, jfactor_gc
         
 class ModuleMissing(Exception): pass
 
