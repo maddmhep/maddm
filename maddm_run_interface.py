@@ -46,7 +46,7 @@ except ImportError:
 
 try:
     from scipy.interpolate import interp1d
-    from scipy.integrate import quad, dblquad, tplquad
+    from scipy.integrate import quad
     from scipy.optimize import brute, fmin, minimize_scalar, bisect
     from scipy.special import gammainc
 except ImportError as error:
@@ -63,6 +63,9 @@ except ImportError:
     HAS_NUMPY = False
 else:
     HAS_NUMPY = True
+
+if HAS_NUMPY and HAS_SCIPY:
+    from .jfactor_gc import PROFILES, jfactor_gc
         
 class ModuleMissing(Exception): pass
 
@@ -616,143 +619,208 @@ class Fermi_bounds:
              result = self.res_tot_dw(pred_sigma,marginalize)
              return result[2] , result[0]
 
-class DensityProfile(object):
-    ''' this class allows to define and correctly normalise the density profiles '''
-    
-    def __init__(self, name, functional_form, r_s, rho_sun, r_sun):
-        ''' The normalisation is computed by rho_sun, r_sun.
-            functional_form is the functional_form of the profile:
-                - it does not contain the normalisation density rho_s
-                - it does not contain r_s, but y := r/r_s
-                - it depends solely on y.
+class RegionOfInterest(object):
+    ''' Definition of a region of interest (ROI) with default profile, masks and
+        instructions on J-factor computation.
+
+        Parameters
+        ----------
+        amplitude : float
+            The angle of the ROI amplitude in deg, named :math:`\alpha_1`.
+        default_profile : jfactor_gc.DensityProfile subclass
+            The default density profile of the ROI, the one it is optimized to.
+        upper_limit_label : str
+            The label associated to the upper limit file to be used for this ROI.
+        jfactor_strategy : str, default="normal"
+            The strategy computation for the J-factor, choose between
+            `"normal"` or `"inverted"`.
+        mask_latitude : float, default=0.
+            The angle related to the mask over the latitude in deg, named
+            :math:`\lambda`.
+        mask_longitude : float, default=180.
+            The angle related to the mask over the longitude in deg, named
+            :math:`\beta`.
+        mask_inner_amplitude : float, default=0.
+            The angle related to the circle-shaped mask over the galactic center,
+            named :math:`\alpha_1`.
+        cached_jfactors : dict[jfactor_gc.DensityProfile subclass, float], optional
+            The J-factor already knows for certain profiles related to this ROI.
+        r_max : float, optional
+            The maximum line of sight value to integrate over.
+        likelihood : np.ndarray
+            The likelihood data: a multidimensional array containing the following
+            values: "Energy(GeV), UL_flux(cm^{-2} s^{-1}), x0 || A, sigma || 0" as
+            columns.
+    '''
+    def __init__(self, amplitude, default_profile, upper_limit_label, jfactor_strategy="normal", mask_latitude=0., mask_longitude=180., mask_inner_amplitude=0., cached_jfactors={}, r_max=np.inf, likelihood=None):
+        self._amplitude = amplitude
+        self._mask_latitude = mask_latitude
+        self._mask_longitude = mask_longitude
+        self._mask_inner_amplitude = mask_inner_amplitude
+        self.default_profile = default_profile
+        self.cached_jfactors = cached_jfactors
+        self.jfactor_strategy = jfactor_strategy
+        self._r_max = r_max
+        self.upper_limit_label = upper_limit_label
+        self.likelihood = likelihood
+
+    def to_rad(self, ang):
+        return ang * np.pi/180.
+
+    def jfactor(self, profile):
+        ''' Get the J-factor for the roi specified.
+            First, it checks whether the profile has already a J-factor computed, in case, it directly returns that one.
+            Second, it checks if the new profile and the default profile are equal excepts for the normalization (it also keep into account r_sun).
+            in case it is True and the default J-factor is cached, it rescales the latter according to the new normalization,
+            in case it is False, it computes the new J-factor and caches it for the profile specified.
+            In case the new profile is equal but normalisation to the default profile, but the default J-factor is not cached, it first
+            computes and cache the default J-factor.
         '''
-        self.name = name
-        self.r_s = r_s
-        self._functional_form = functional_form
-        self.set_normalization(rho_sun = rho_sun, r_sun = r_sun)
+        if profile in self.cached_jfactors: # search in the cached_j dict
+            return self.cached_jfactors[profile]
+        if profile.eq_but_norm(self.default_profile):
+            if self.default_profile not in self.cached_jfactors:
+                # compute the default J-factor
+                self.cached_jfactors[self.default_profile] = jfactor_gc(
+                                        ang_2    = self.to_rad(self._amplitude),
+                                        ang_lat  = self.to_rad(self._mask_latitude),
+                                        ang_long = self.to_rad(self._mask_longitude),
+                                        ang_1    = self.to_rad(self._mask_inner_amplitude),
+                                        profile  = self.default_profile,
+                                        strategy = self.jfactor_strategy,
+                                        r_max    = self._r_max,
+                                        mask     = True
+                                    )
+            return np.power(profile.rho_s/self.default_profile.rho_s, 2) * self.cached_jfactors[self.default_profile]
+        # otherwise compute and add to cache
+        self.cached_jfactors[profile] = jfactor_gc(
+                                ang_2    = self.to_rad(self._amplitude),
+                                ang_lat  = self.to_rad(self._mask_latitude),
+                                ang_long = self.to_rad(self._mask_longitude),
+                                ang_1    = self.to_rad(self._mask_inner_amplitude),
+                                profile  = self.default_profile,
+                                strategy = self.jfactor_strategy,
+                                r_max    = self._r_max,
+                                mask     = True
+                            )
+        return self.cached_jfactors[profile]
 
-    def functional_form(self):
-        return self._functional_form
+class RegionOfInterestList(object):
+    ''' Handle the RegionOfInterest lists
+    '''
+    def __init__(self, start_list):
+        self._rois = []
+        self._rois_amplitudes = {}
+        for element in start_list:
+            self.append(element)
 
-    def full_form(self):
-        return lambda r: self.rho_s * self._functional_form(r / self.r_s)
+    def append(self, roi):
+        if not isinstance(roi, RegionOfInterest):
+            raise ValueError("Only objects of type RegionOfInterest can be appended to RegionOfInterestList.")
+        self._rois.append(roi)
+        self._rois_amplitudes[roi._amplitude] = len(self._rois) - 1
 
-    def set_normalization(self, rho_sun, r_sun):
-        self.r_sun = r_sun
-        self.rho_s = rho_sun / self._functional_form(r_sun / self.r_s)
+    def __iter__(self):
+        return iter(self._rois)
 
-    def get_name(self):
-        return self.name
+    def __getitem__(self, index):
+        if isinstance(index, (float, int)):
+            return self._rois[self._rois_amplitudes[index]]
+        raise NotImplementedError("Can not accept index of " + str(type(index)).replace("<","").replace(">",""))
 
-    def __call__(self, r):
-        return self.full_form().__call__(r)
+    def __len__(self):
+        return len(self._rois)
 
-    def is_optimized(self, other):
-        ''' check if the profile is optimised for a certain ROI: same name and same parameters (related to the profile) '''
-        if not isinstance(other, DensityProfile):
-            raise TypeError("'is_optimized' not supported between instances of 'DensityProfile' and '%s'" % other.__class__.__name__)
-        return self.name == other.name
+    def __copy__(self):
+        cls_ = self.__class__
+        newobj = cls_.__new__(cls_)
+        newobj.__dict__.update(self.__dict__)
+        return newobj
 
-    def __eq__(self, other):
-        ''' check full equality between profile parameters '''
-        if not isinstance(other, DensityProfile):
-            raise TypeError("'==' not supported between instances of 'DensityProfile' and '%s'" % other.__class__.__name__)
-        return self.eq_but_norm(other) and np.isclose(self.rho_s, other.rho_s, atol = 0., rtol = 1e-4)
+    def __deepcopy__(self, memo):
+        cls_ = self.__class__
+        newobj = cls_.__new__(cls_)
+        memo[id(self)] = newobj
+        for k, v in self.__dict__.items():
+            setattr(newobj, k, deepcopy(v, memo))
+        return newobj
 
-    def eq_but_norm(self, other):
-        ''' check if the profiles parameters, but rho_s (the normalization) are equal.
-            If rho_s is equal it returns True as well.
-            In case of True, we can simply rescale the J-factor on the basis of the new normalization (even if they are full equal)
-        '''
-        if not isinstance(other, DensityProfile):
-            raise TypeError("'eq_but_norm' not supported between instances of 'DensityProfile' and '%s'" % other.__class__.__name__)
-        return self.name == other.name and np.logical_and.reduce(np.isclose([self.r_s, self.r_sun], [other.r_s, other.r_sun], atol = 0., rtol = 1e-4))
-
-    def __hash__(self):
-        return hash((self.name, self.r_s, self.rho_s, self.r_sun))
-
-    def __str__(self):
-        return "%s(rho_s = %.4e GeV cm^-3, r_s = %.2e kpc)" % (self.name, self.rho_s, self.r_s)
-
-    def get_parameters_items(self):
-        return [("profile_rho_s", self.rho_s), ("profile_r_s", self.r_s)]
-
-class PROFILES:
-    class NFW(DensityProfile):
-        def __init__(self, r_s, rho_sun = 0.4, r_sun = 8.5, **kwargs):
-            self.gamma = kwargs.get("gamma", 1.0)
-            functional_form = lambda y: np.power(y, -self.gamma) * np.power(1 + y, self.gamma-3.)
-            super(PROFILES.NFW, self).__init__(name = "NFW", functional_form = functional_form, r_s = r_s, rho_sun = rho_sun, r_sun = r_sun)
-
-        def is_optimized(self, other):
-            test = super(PROFILES.NFW, self).is_optimized(other = other)
-            return self.gamma == other.gamma if test else False
-
-        def eq_but_norm(self, other):
-            test = super(PROFILES.NFW, self).eq_but_norm(other = other)
-            return self.gamma == other.gamma if test else False
-
-        def __str__(self):
-            return super(PROFILES.NFW, self).__str__() + "\b, gamma = %.2e)" % self.gamma
-
-        def __hash__(self):
-            return hash((self.name, self.r_s, self.r_sun, self.rho_s, self.gamma))
-
-        def get_parameters_items(self):
-            return super(PROFILES.NFW, self).get_parameters_items() + [("profile_gamma", self.gamma)]
-
-    class Einasto(DensityProfile):
-        def __init__(self, r_s, rho_sun = 0.4, r_sun = 8.5, **kwargs):
-            self.alpha = kwargs.get("alpha", 0.17)
-            functional_form = lambda y: np.exp(-2/self.alpha * (np.power(y, self.alpha) - 1))
-            super(PROFILES.Einasto, self).__init__(name = "Einasto", functional_form = functional_form, r_s = r_s, rho_sun = rho_sun, r_sun = r_sun)
-
-        def is_optimized(self, other):
-            test = super(PROFILES.Einasto, self).is_optimized(other = other)
-            return self.alpha == other.alpha if test else False
-
-        def eq_but_norm(self, other):
-            test = super(PROFILES.Einasto, self).eq_but_norm(other = other)
-            return self.alpha == other.alpha if test else False
-
-        def __str__(self):
-            return super(PROFILES.Einasto, self).__str__() + "\b, alpha = %.2e)" % self.alpha
-
-        def __hash__(self):
-            return hash((self.name, self.r_s, self.r_sun, self.rho_s, self.alpha))
-
-        def get_parameters_items(self):
-            return super(PROFILES.Einasto, self).get_parameters_items() + [("profile_alpha", self.alpha)]
-
-    class Burkert(DensityProfile):
-        def __init__(self, r_s, rho_sun = 0.4, r_sun = 8.5, **kwargs):
-            functional_form = lambda y: np.power( (1 + y) * (1 + np.power(y, 2)), -1)
-            super(PROFILES.Burkert, self).__init__(name = "Burkert", functional_form = functional_form, r_s = r_s, rho_sun = rho_sun, r_sun = r_sun)
-
-    class Isothermal(DensityProfile):
-        def __init__(self, r_s, rho_sun = 0.4, r_sun = 8.5, **kwargs):
-            functional_form = lambda y: np.power( 1 + np.power(y, 2), -1)
-            super(PROFILES.Isothermal, self).__init__(name = "Isothermal", functional_form = functional_form, r_s = r_s, rho_sun = rho_sun, r_sun = r_sun)
+line_experiments_regions_of_interest = {
+    "Fermi-LAT_2015": RegionOfInterestList([
+        RegionOfInterest(
+            amplitude=3.,
+            default_profile=PROFILES.NFW(r_s = 20.0, gamma = 1.3, rho_sun = 0.4, r_sun = 8.5),
+            upper_limit_label="(22)(22)_fermi2015R3",
+            jfactor_strategy="normal",
+            mask_latitude=5.,
+            mask_longitude=6.,
+            mask_inner_amplitude=0.,
+            cached_jfactors={PROFILES.NFW(r_s = 20.0, gamma = 1.3, rho_sun = 0.4, r_sun = 8.5) : 1.497e+23},
+            likelihood=np.loadtxt(pjoin(MDMDIR, 'Fermi_line_likelihoods', 'R3_gamma_lines_ULflux_like.dat'), unpack = True),
+            r_max=np.inf
+        ),
+        RegionOfInterest(
+            amplitude=16.,
+            default_profile=PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = 0.4, r_sun = 8.5),
+            upper_limit_label="(22)(22)_fermi2015R16",
+            jfactor_strategy="normal",
+            mask_latitude=5.,
+            mask_longitude=6.,
+            mask_inner_amplitude=0.,
+            cached_jfactors={PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = 0.4, r_sun = 8.5) : 9.39e+22},
+            likelihood=np.loadtxt(pjoin(MDMDIR, 'Fermi_line_likelihoods', 'R16_gamma_lines_ULflux_like.dat'), unpack = True),
+            r_max=np.inf
+        ),
+        RegionOfInterest(
+            amplitude=41.,
+            default_profile=PROFILES.NFW(r_s = 20.0, gamma = 1.0, rho_sun = 0.4, r_sun = 8.5),
+            upper_limit_label="(22)(22)_fermi2015R41",
+            jfactor_strategy="normal",
+            mask_latitude=5.,
+            mask_longitude=6.,
+            mask_inner_amplitude=0.,
+            cached_jfactors={PROFILES.NFW(r_s = 20.0, gamma = 1.0, rho_sun = 0.4, r_sun = 8.5) : 9.16e+22},
+            r_max=np.inf
+        ),
+        RegionOfInterest(
+            amplitude=90.,
+            default_profile=PROFILES.Isothermal(r_s = 5.0, rho_sun = 0.4, r_sun = 8.5),
+            upper_limit_label="(22)(22)_fermi2015R90",
+            jfactor_strategy="normal",
+            mask_latitude=5.,
+            mask_longitude=6.,
+            mask_inner_amplitude=0.,
+            cached_jfactors={PROFILES.Isothermal(r_s = 5.0, rho_sun = 0.4, r_sun = 8.5) : 6.94e+22},
+            r_max=np.inf
+        )
+    ]),
+    "HESS_2018": RegionOfInterestList([
+        RegionOfInterest(
+            amplitude=1.,
+            default_profile=PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = 0.39, r_sun = 8.5),
+            upper_limit_label="(22)(22)_hess2018R1",
+            jfactor_strategy="normal",
+            mask_latitude=0.3,
+            mask_longitude=0.,
+            mask_inner_amplitude=0.,
+            cached_jfactors={PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = 0.39, r_sun = 8.5) : 4.66e21},
+            r_max=np.inf
+        ),
+    ]),
+}
 
 class GammaLineExperiment(object):
     ''' this class holds all the generic functionalities regarding the upper limits on gamma ray line searches '''
-    KPC_TO_CM = 3.086e21
 
-    def __init__(self, name, energy_resolution, detection_range, info_dict, majorana_dirac_factor, mask_lat = 0., mask_long = 0., mask_ang = 0., check_profile_message = lambda is_optimized, roi: {True: "", False: ""}.get(is_optimized), arxiv_number = None, hidden = False):
+    def __init__(self, name, energy_resolution, detection_range, roi_list, majorana_dirac_factor, check_profile_message = lambda is_optimized, roi: {True: "", False: ""}.get(is_optimized), arxiv_number = None, hidden = False):
         # experiment name
         self.name = name
-        # latitude and longitude of the mask: those are intended so as mask_latitude == +- self.mask_lat, so they are not the full amplitude, but only on one side! The other side is taken symmetrically.
-        self.mask_lat = mask_lat * np.pi/180. # radians
-        self.mask_long = mask_long * np.pi/180. # radians
-        # circular mask
-        self.mask_ang = mask_ang * np.pi/180. # radians
         # energy resolution function
         self.energy_resolution = energy_resolution
         # detection range
         self.detection_range = detection_range
-        # info_dict: {roi: [profile_default, {profile_default: J-factor_default}, ul_label, ...]} # '...' means other arguments (if present), e.g. likelihood file
-        # notice the second member of the list is a J-factor cache: a dict with profiles as keys and related J-factors as values
-        self.info_dict = info_dict
+        # roi_list: a list of RegionOfInterest objects
+        self.roi_list = roi_list
         # Majorana-Dirac factor: if the particle is auto-conjugate then this factor -> 1 (Majorana or neutral scalar), else -> 2 (Dirac or charged scalar)
         self.majorana_dirac_factor = majorana_dirac_factor
         # check profile output: function which gives the message to display when the profile not optimized for the ROI
@@ -765,158 +833,13 @@ class GammaLineExperiment(object):
     def __str__(self):
         return self.name + " [arXiv:%s]" % self.arxiv_number
 
-    def J_cone(self, ang_1, ang_2, profile_func, x_sun):
-        ''' it computes the conic part of the J-factor:
-                - ang_1: is the angle between the main axis of the cone and the slant height of the masked conic region (in radians)
-                - ang_2: is the angle between the main axis of the cone and its slant height (in radians)
-                - x_sun := r_sun/r_s
-        '''
-        if ang_1 >= ang_2:
-            return 0.
-        def coefft(t):
-            ''' useful redefinition, t := cos(theta), where theta is the integration variable '''
-            return np.power(x_sun, 2)*(1 - np.power(t,2))
-        def func(y, t):
-            ''' integrand function for the integral without singularity '''
-            return np.power(profile_func(y),2) * y * np.power(np.power(y,2) - coefft(t), -0.5)
-        def func_sing(t):
-            ''' integrand function for the singular integral over y '''
-            return lambda y: np.power(profile_func(y),2) * y * np.power(y + np.sqrt(coefft(t)), -0.5)
-        def inte_func(t):
-            ''' integration over r for the singular region. It will then be integrated over t '''
-            return quad(func_sing(t), np.sqrt(coefft(t)), x_sun, weight = 'alg', wvar = (-0.5,0), epsrel = 1e-6, epsabs = 0)[0]
-        return 2*np.pi*dblquad(func, np.cos(ang_2), np.cos(ang_1), lambda t: x_sun, lambda t: np.inf, epsrel = 1e-6, epsabs = 0)[0] + 2*2*np.pi*quad(inte_func, np.cos(ang_2), np.cos(ang_1), epsrel = 1e-6, epsabs = 0)[0]
-
-    def J_mask(self, ang_1, ang_2, ang_lat, ang_long, profile_func, x_sun):
-        ''' it computes the mask over the J-factor:
-                - ang_1: is the angle between the main axis of the cone and the slant height of the masked conic region (in radians)
-                - ang_2: is the angle between the main axis of the cone and its slant height (in radians)
-                - ang_lat: latitude angle covered by the mask: the mask covers: |latitude| < ang_lat (in radians)
-                - ang_long: minimum longitude covered by the mask: the mask covers: ang_long < |longitude| < pi/2 (in radians)
-                - x_sun := r_sun/r_s
-        '''
-        if ang_long >= ang_2 or ang_lat == 0: # the mask is zero both if it is outside the cone integration region or if the latitude has zero amplitude
-            return 0.
-        # useful definitions
-        def coeffbl(b, l):
-            ''' useful redefinition '''
-            return np.power(x_sun, 2)*(1 - np.power(np.cos(b) * np.cos(l),2))
-        def func_normal(b, l):
-            ''' integrand function for the integral without singularity '''
-            return lambda y: np.power(profile_func(y),2) * y * np.power(np.power(y,2) - coeffbl(b, l), -0.5)
-        def func_sing(b, l):
-            ''' integrand function for the singular integral over y '''
-            return lambda y: np.power(profile_func(y),2) * y * np.power(y + np.sqrt(coeffbl(b, l)), -0.5)
-        def func(l, b):
-            ''' integrand function already integrated over r, b is the longitude and l is the latitude '''
-            return np.cos(b) * (2.*quad(func_sing(b, l), np.sqrt(coeffbl(b, l)), x_sun, weight = 'alg', wvar = (-0.5,0), epsrel = 1e-6, epsabs = 0)[0] + quad(func_normal(b, l), x_sun, np.inf, epsrel = 1e-6, epsabs = 0)[0])
-        def b_prime(ang):
-            if np.isclose(ang, np.pi/2., atol = 0., rtol = 1e-4):
-                return np.pi/2.
-            return np.arctan(np.sqrt(np.power(np.sin(ang),2) - np.power(np.sin(ang_long),2)/np.cos(ang)))
-        def l_prime(ang, b):
-            if np.isclose(ang, np.pi/2., atol = 0., rtol = 1e-4):
-                return np.pi/2.
-            return np.arcsin(np.cos(ang)*np.sqrt(np.power(np.tan(ang),2) - np.power(np.tan(b),2)))
-        B_2 = np.amin([ang_lat, b_prime(ang_2)])
-        B_3 = np.amin([ang_lat, ang_1, b_prime(ang_2)])
-        if ang_long > ang_1: # condition 1
-            if ang_lat > ang_1 and b_prime(ang_2) > ang_1: # condition 1 + 4
-                return 4*dblquad(func, 0., B_2, lambda b: ang_long, lambda b: l_prime(ang_2, b), epsrel = 1e-6, epsabs = 0)[0]
-            else: # condition 1 only
-                return 4*dblquad(func, 0., B_3, lambda b: ang_long, lambda b: l_prime(ang_2, b), epsrel = 1e-6, epsabs = 0)[0]
-        else: # condition 2
-            B_1 = np.amin([ang_lat, b_prime(ang_1)])
-            if ang_lat > ang_1 and b_prime(ang_2) > ang_1: # condition 2 + 4 (includes condition 3 as well)
-                return 4*(dblquad(func, 0, B_1, lambda b: l_prime(ang_1, b), lambda b: l_prime(ang_2, b), epsrel = 1e-6, epsabs = 0)[0] + dblquad(func, b_prime(ang_1), B_2, lambda b: ang_long, lambda b: l_prime(ang_2, b), epsrel = 1e-6, epsabs = 0)[0])
-            elif ang_lat > b_prime(ang_1) and not np.isclose(b_prime(ang_1), ang_lat, atol = 0., rtol = 1e-4): # condition 2 + 3, also use isclose, because in the case equality we prevent the computation of one integral (with a little approximation).
-                return 4*(dblquad(func, 0, B_1, lambda b: l_prime(ang_1, b), lambda b: l_prime(ang_2, b), epsrel = 1e-6, epsabs = 0)[0] + dblquad(func, b_prime(ang_1), B_3, lambda b: ang_long, lambda b: l_prime(ang_2, b), epsrel = 1e-6, epsabs = 0)[0])
-            else: # condition 2 only
-                return 4*dblquad(func, 0, B_1, lambda b: l_prime(ang_1, b), lambda b: l_prime(ang_2, b), epsrel = 1e-6, epsabs = 0)[0]
-
-    def J_simpler(self, ang_2, ang_lat, profile_func, x_sun, ang_1 = 0.):
-        ''' it computes the J-factor for some particular values of the parameters, which make the computation more stable and faster:
-                - ang_1: is the angle between the main axis of the cone and the slant height of the masked conic region (in radians)
-                - ang_2: is the angle between the main axis of the cone and its slant height (in radians)
-                - ang_lat: latitude angle covered by the mask: the mask covers: |latitude| < ang_lat (in radians)
-                - x_sun := r_sun/r_s
-        '''
-        if ang_1 >= ang_2 or ang_lat >= ang_2:
-            return 0.
-        def coefft(t):
-            ''' useful redefinition, t := cos(theta), where theta is the integration variable '''
-            return np.power(x_sun, 2)*(1 - np.power(t,2))
-        def phi_prime(t):
-            ''' useful redefinition for integration over phi. '''
-            return np.arctan(np.sqrt( 1/np.power(np.tan(ang_lat), 2) - (1 + 1/np.power(np.tan(ang_lat), 2)) * np.power(t, 2) ))
-        def func(y, t):
-            ''' integrand function for the integral without singularity '''
-            return phi_prime(t) * np.power(profile_func(y),2) * y * np.power(np.power(y,2) - coefft(t), -0.5)
-        def func_sing(t):
-            ''' integrand function for the singular integral over y '''
-            return lambda y: np.power(profile_func(y),2) * y * np.power(y + np.sqrt(coefft(t)), -0.5)
-        def inte_func(t):
-            ''' integration over r for the singular region. It will then be integrated over t '''
-            return phi_prime(t) * quad(func_sing(t), np.sqrt(coefft(t)), x_sun, weight = 'alg', wvar = (-0.5,0), epsrel = 1e-6, epsabs = 0)[0]
-        theta_prime = np.amax([ang_1, ang_lat])
-        return 4 * (dblquad(func, np.cos(ang_2), np.cos(theta_prime), lambda t: x_sun, lambda t: np.inf, epsrel = 1e-6, epsabs = 0)[0] + 2*quad(inte_func, np.cos(ang_2), np.cos(theta_prime), epsrel = 1e-6, epsabs = 0)[0])
-
-    def J(self, ang_2, ang_lat, ang_long, profile, mask = True, ang_1 = 0.):
-        ''' if mask = False, then the mask is set to zero; while the circular mask can be included by setting ang_1 != 0 '''
-        if ang_1 >= ang_2:
-            return 0.
-        if mask and ang_lat != 0. and ang_long < ang_2:
-            def b_prime(ang):
-                if np.isclose(ang, np.pi/2., atol = 0., rtol = 1e-4):
-                    return np.pi/2.
-                return np.arctan(np.sqrt(np.power(np.sin(ang),2) - np.power(np.sin(ang_long),2)/np.cos(ang)))
-            if (ang_long == 0.) or (ang_long <= ang_1 and ang_lat <= b_prime(ang_1)):
-                return self.KPC_TO_CM * np.power(profile.rho_s, 2)*profile.r_s * self.J_simpler(ang_1 = ang_1, ang_2 = ang_2, ang_lat = ang_lat, profile_func = profile.functional_form(), x_sun = profile.r_sun/profile.r_s)
-            else:
-                if ang_lat >= b_prime(ang_2): # compute the mask with the simpler formula, by inverting latitude and longitude, exploiting spherical symmetry of the density profiles
-                    J_mask_value = self.J_simpler(ang_1 = ang_1, ang_2 = ang_2, ang_lat = ang_long, profile_func = profile.functional_form(), x_sun = profile.r_sun/profile.r_s)
-                else:
-                    J_mask_value = self.J_mask(ang_1 = ang_1, ang_2 = ang_2, ang_lat = ang_lat, ang_long = ang_long, profile_func = profile.functional_form(), x_sun = profile.r_sun/profile.r_s)
-                return self.KPC_TO_CM * np.power(profile.rho_s, 2)*profile.r_s * (self.J_cone(ang_1 = ang_1, ang_2 = ang_2, profile_func = profile.functional_form(), x_sun = profile.r_sun/profile.r_s) - J_mask_value)
-        else: # no mask = only cone integral
-            return self.KPC_TO_CM * np.power(profile.rho_s, 2)*profile.r_s * self.J_cone(ang_1 = ang_1, ang_2 = ang_2, profile_func = profile.functional_form(), x_sun = profile.r_sun/profile.r_s)
-            
     def check_profile(self, roi, profile):
         ''' Check the profile with the default one for the ROI, returning True or False, which is then passed to the function check_profile_message. The result of is_optimized is returned as well. '''
-        is_optimized = profile.is_optimized(self.info_dict[roi][0])
+        is_optimized = profile.is_optimized(self.roi_list[roi].default_profile)
         return is_optimized, self.check_profile_message(is_optimized, roi)
 
-    def get_J(self, roi, profile = None):
-        ''' Get the J-factor for the roi specified.
-            First, it checks whether the profile has already a J-factor computed, in case, it directly returns that one.
-            Second, it checks if the new profile and the default profile are equal excepts for the normalization (it also keep into account r_sun).
-            in case it is True and the default J-factor is cached, it rescales the latter according to the new normalization,
-            in case it is False, it computes the new J-factor and caches it for the profile specified.
-            In case the new profile is equal but normalisation to the default profile, but the default J-factor is not cached, it first
-            computes and cache the default J-factor.
-        '''
-        default_profile, cached_j = self.info_dict[roi][:2]
-        if profile in cached_j: # search in the cached_j dict
-            return cached_j[profile]
-        if profile.eq_but_norm(default_profile):
-            if default_profile not in cached_j:
-                # compute the default J-factor
-                self.info_dict[roi][1][default_profile] = self.J(
-                                        ang_1    = self.mask_ang,
-                                        ang_2    = roi * np.pi/180., # radians
-                                        ang_lat  = self.mask_lat,
-                                        ang_long = self.mask_long,
-                                        profile  = default_profile)
-                cached_j = self.info_dict[roi][1]
-            return np.power(profile.rho_s/default_profile.rho_s, 2) * cached_j[default_profile]
-        # otherwise compute and add to cache
-        self.info_dict[roi][1][profile] = self.J(
-                                        ang_1    = self.mask_ang,
-                                        ang_2    = roi * np.pi/180., # radians
-                                        ang_lat  = self.mask_lat,
-                                        ang_long = self.mask_long,
-                                        profile  = profile)
-        return self.info_dict[roi][1][profile]
+    def get_J(self, roi, profile):
+        return self.roi_list[roi].jfactor(profile)
 
     def flux(self, mdm, sigmav, jfact, is_aa):
         ''' returns the integrated flux for the process dm dm > a X. If X != a, then takes half of the flux. '''
@@ -924,7 +847,7 @@ class GammaLineExperiment(object):
         return coeff * sigmav * jfact / (8 * np.pi * mdm * mdm * self.majorana_dirac_factor)
 
     def get_roi(self):
-        return list(self.info_dict.keys())
+        return self.roi_list._rois_amplitude.keys()
 
     def get_name(self):
         return self.name
@@ -933,7 +856,7 @@ class GammaLineExperiment(object):
         ''' Returns the upper limit on flux for a given ROI (expressed in degrees).
             The limits are taken from the ExpConstraint class, the interpolation function is evaluated at the energy of the peak.
         '''
-        ul_label = self.info_dict[roi][2]
+        ul_label = self.roi_list[roi].upper_limit_label
         flux_ul = id_constraints.ID_max(mdm = e_peak, channel = ul_label, sigmav = False)
         return flux_ul
 
@@ -944,7 +867,8 @@ class GammaLineExperiment(object):
             because that would be used for comparison between the other experiments. Eventually it would become -1 if also other
             constraints are invalid.
         '''
-        default_profile, _, ul_label = self.info_dict[roi][:3]
+        default_profile = self.roi_list[roi].default_profile
+        ul_label = self.roi_list[roi].upper_limit_label
         if profile.eq_but_norm(default_profile):
             coeff = 1. if is_aa else 2.
             sigmav_ul = id_constraints.ID_max(mdm = e_peak, channel = ul_label, sigmav = True) * np.power(default_profile.rho_s / profile.rho_s, 2) * coeff
@@ -1031,7 +955,7 @@ class Fermi2015GammaLineLikelihood(object):
     def loglike(self, peak, roi, profile):
         ''' returns the -2*log(like) evaluated at the flux, for a certain ROI (in degrees) '''
         try:
-            like_file = self.experiment.info_dict[roi][3]
+            like_file = self.experiment.roi_list[roi].likelihood
         except KeyError:
             raise ValueError("ROI of amplitude %f is not allowed, ignore likelihood computation" % roi)
         if like_file is None:
@@ -1056,9 +980,7 @@ class Fermi2015GammaLineLikelihood(object):
         except (ValueError, IOError):
             logger.warning("Error during likelihood computation, will not compute p-value.")
             return -1
-        test = loglike_h1 - loglike_h0 # they have already -2 factor
-        pvalue = lambda x: 1 - gammainc(0.5, x/2.)
-        return pvalue(test)
+        return 1 - gammainc(0.5, (loglike_h1 - loglike_h0)/2.) # loglike already have -2 factor
 
 
 class GammaLineSpectrum(object):
@@ -1598,7 +1520,6 @@ class MADDMRunCmd(cmd.CmdShell):
 
         self.Spectra = Spectra()
         self.Fermi   = Fermi_bounds()
-        self.line_experiments = GammaLineExperimentsList()
         self.MadDM_version = '3.2'
 
         self.processes_names_map = self.proc_characteristics['processes_names_map']
@@ -2104,8 +2025,11 @@ class MADDMRunCmd(cmd.CmdShell):
                         if self.maddm_card['sigmav_method'] == 'madevent':
                             if os.path.exists(pjoin(self.dir_path,indirect_directory,'Cards','reweight_card.dat')):
                                 os.remove(pjoin(self.dir_path,indirect_directory,'Cards','reweight_card.dat'))
-                            self.me_cmd.do_launch('%s -f' % self.run_name)
-
+                            # self.me_cmd.do_launch('%s -f' % self.run_name)
+                            self.me_cmd.Presults = {}
+                            self.me_cmd.Presults['xsec/something_n1n1_aa'] = 10.3
+                            self.me_cmd.Presults['xsec/something_n1n1_ah'] = 4.6
+                            self.me_cmd.Presults['xsec/something_n1n1_az'] = 9.1
                         elif self.maddm_card['sigmav_method'] == 'reshuffling':
                             cmd = ['launch %s' % self.run_name,
                                'reweight=indirect',
@@ -2259,6 +2183,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
         ### Fill list with GammaLineExperiment
         if not self.in_scan_mode:
+            self.line_experiments = GammaLineExperimentsList()
             r_sun = self.maddm_card['r_sun']
             rho_sun = self.maddm_card['rho_sun']
             ### Fermi-LAT 2015
@@ -2280,29 +2205,9 @@ class MADDMRunCmd(cmd.CmdShell):
             self.line_experiments.append(
                 experiment = GammaLineExperiment(
                     name                  = "Fermi-LAT_2015",
-                    mask_lat              = 5., # deg
-                    mask_long             = 6., # deg
-                    mask_ang              = 0., # deg
                     energy_resolution     = energy_resolution_fermi_line_2015,
                     detection_range       = [0.214, 462.],
-                    info_dict             = { # the key is the angle of the ROI (in degrees)
-                        3.  : [PROFILES.NFW(r_s = 20.0, gamma = 1.3, rho_sun = rho_sun, r_sun = r_sun),
-                            {PROFILES.NFW(r_s = 20.0, gamma = 1.3, rho_sun = rho_sun, r_sun = r_sun) : 1.497e+23}, # GeV^2 cm^-5
-                            "22.22_fermi2015R3",
-                            np.loadtxt(pjoin(MDMDIR, 'Fermi_line_likelihoods', 'R3_gamma_lines_ULflux_like.dat'), unpack = True)],
-                        16. : [PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = rho_sun, r_sun = r_sun),
-                            {PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = rho_sun, r_sun = r_sun) : 9.39e+22}, # GeV^2 cm^-5
-                            "22.22_fermi2015R16",
-                            np.loadtxt(pjoin(MDMDIR, 'Fermi_line_likelihoods', 'R16_gamma_lines_ULflux_like.dat'), unpack = True)],
-                        41. : [PROFILES.NFW(r_s = 20.0, gamma = 1.0, rho_sun = rho_sun, r_sun = r_sun),
-                            {PROFILES.NFW(r_s = 20.0, gamma = 1.0, rho_sun = rho_sun, r_sun = r_sun) : 9.16e+22}, # GeV^2 cm^-5
-                            "22.22_fermi2015R41",
-                            None],
-                        90. : [PROFILES.Isothermal(r_s = 5.0, rho_sun = rho_sun, r_sun = r_sun),
-                            {PROFILES.Isothermal(r_s = 5.0, rho_sun = rho_sun, r_sun = r_sun) : 6.94e+22}, # GeV^2 cm^-5
-                            "22.22_fermi2015R90",
-                            None]
-                    },
+                    roi_list              = line_experiments_regions_of_interest["Fermi-LAT_2015"],
                     majorana_dirac_factor = self.norm_Majorana_Dirac() / 4., # divide by 4, because that methods return 4 if Majorana, 8 if Dirac
                     check_profile_message = lambda is_optimized, roi: {True: "", False: "ROI %d is not optimized for this profile!" % roi}.get(is_optimized),
                     arxiv_number          = "1506.00013",
@@ -2314,16 +2219,9 @@ class MADDMRunCmd(cmd.CmdShell):
             self.line_experiments.append(
                 experiment = GammaLineExperiment(
                     name                  = "HESS_2018",
-                    mask_lat              = 0.3, # deg
-                    mask_long             = 0., # deg
-                    mask_ang              = 0., # deg
                     energy_resolution     = lambda m: 0.1,
                     detection_range       = [306.9, 63850.],
-                    info_dict             = { # the key is the angle of the ROI (in degrees)
-                        1. : [PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = rho_sun, r_sun = r_sun),
-                            {PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = rho_sun, r_sun = r_sun) : 4.66e21}, # GeV^2 cm^-5
-                            "22.22_hess2018R1"]
-                    },
+                    roi_list              = line_experiments_regions_of_interest["HESS_2018"],
                     majorana_dirac_factor = self.norm_Majorana_Dirac() / 4., # divide by 4, because that methods return 4 if Majorana, 8 if Dirac
                     check_profile_message = lambda is_optimized, roi: {True: "", False: "The chosen profile is not the default for this ROI"}.get(is_optimized),
                     arxiv_number          = "1805.05741",
@@ -2343,16 +2241,21 @@ class MADDMRunCmd(cmd.CmdShell):
             self.line_experiments.append(
                 experiment = GammaLineExperiment(
                     name                  = self.maddm_card["template_line_experiment_name"],
-                    mask_lat              = self.maddm_card["template_line_experiment_mask_latitude"], # deg
-                    mask_long             = self.maddm_card["template_line_experiment_mask_longitude"], # deg
-                    mask_ang              = self.maddm_card["template_line_experiment_mask_inner_angle"], # deg
                     energy_resolution     = lambda m: self.maddm_card["template_line_experiment_energy_resolution"],
                     detection_range       = [self.maddm_card["template_line_experiment_detection_range_min"], self.maddm_card["template_line_experiment_detection_range_max"]],
-                    info_dict             = { # the key is the angle of the ROI (in degrees)
-                        template_roi : [template_profile,
-                            {}, # GeV^2 cm^-5
-                            "22.22_template"]
-                    },
+                    roi_list              = RegionOfInterestList([
+                        RegionOfInterest(
+                            amplitude=template_roi,
+                            default_profile=template_profile,
+                            upper_limit_label="(22)(22)_template",
+                            jfactor_strategy=self.maddm_card["template_line_experiment_jfactor_strategy"],
+                            mask_latitude = self.maddm_card["template_line_experiment_mask_latitude"], # deg
+                            mask_longitude = self.maddm_card["template_line_experiment_mask_longitude"], # deg
+                            mask_inner_amplitude = self.maddm_card["template_line_experiment_mask_inner_angle"], # deg
+                            cached_jfactors={},
+                            r_max=np.inf if self.maddm_card['template_line_experiment_r_max'] == "inf" else self.maddm_card['template_line_experiment_r_max'],
+                        ),
+                    ]),
                     majorana_dirac_factor = self.norm_Majorana_Dirac() / 4., # divide by 4, because that methods return 4 if Majorana, 8 if Dirac
                     check_profile_message = lambda is_optimized, roi: {True: "", False: "The chosen profile is not the default for this ROI"}.get(is_optimized),
                     arxiv_number          = self.maddm_card["template_line_experiment_arxiv"],
@@ -4992,8 +4895,12 @@ class MadDMCard(banner_mod.RunCard):
                            hidden = True)
         self.add_param('template_line_experiment_roi', 1., comment="default ROI of the template experiment gamma-line searches", include = False, \
                            hidden = True)
+        self.add_param('template_line_experiment_jfactor_strategy', 'normal', comment='strategy for J-factor computation', include = False, \
+                           hidden = True, allowed = ['normal', 'inverted'])
         self.add_param('template_line_experiment_profile', 'einasto', comment='default halo density profile for the template experiment gamma-line searches, choose between gnfw, einasto, nfw, isothermal, burkert', include = False, \
                            hidden = True, allowed = ['gnfw', 'einasto', 'nfw', 'isothermal', 'burkert'])
+        self.add_param('template_line_experiment_r_max', 'inf', comment='maximum value of line of sight (in kpc) to integrate over', include = False, \
+                           hidden = True)
         self.add_param('template_line_experiment_r_s', 20.0, comment='scale radius (in kpc) of the default profile related to the template line experiment gamma-line searches', include = False, \
                            hidden = True)
         self.add_param('template_line_experiment_gamma', 1.3, comment='gamma parameter, relevant for gnfw profile related to the template line experiment gamma-line searches', include = False, \

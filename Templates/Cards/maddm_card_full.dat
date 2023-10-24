@@ -200,6 +200,11 @@
    %(template_line_experiment_mask_latitude)s            = template_line_experiment_mask_latitude    # angle 'beta'   : mask P, if abs(latitude(P)) < beta
    %(template_line_experiment_mask_longitude)s          = template_line_experiment_mask_longitude   # angle 'lambda' : mask P, if abs(longitude(P)) > lambda
    %(template_line_experiment_mask_inner_angle)s            = template_line_experiment_mask_inner_angle # angle 'alpha_1': mask P, if abs(arctan(P.y/P.x)) < alpha_1/2
+# Maximum line of sight to integrate over
+   %(template_line_experiment_r_max)s            = template_line_experiment_r_max
+# J-factor computation strategy
+   %(template_line_experiment_jfactor_strategy)s        = template_line_experiment_jfactor_strategy
+#
 # - energy resolution: this is a percent value to be multiplied by the energy of the peak
    %(template_line_experiment_energy_resolution)s           = template_line_experiment_energy_resolution
 # - detection range in GeV
