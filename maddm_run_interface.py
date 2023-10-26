@@ -2404,9 +2404,7 @@ class MADDMRunCmd(cmd.CmdShell):
         pythia_cmd_card = pjoin(self.dir_path, indirect_directory ,'Source', "spectrum.cmnd")
         # Start by reading, starting from the default one so that the 'user_set'
         # tag are correctly set.
-        PY8_Card = Indirect_PY8Card(pjoin(self.dir_path, 'Cards', 'pythia8_card_default.dat'))
-        if self.maddm_card['indirect_flux_source_method'] == "vincia":
-            PY8_Card.add_param("Vincia:ewMode", 3, comment="Vincia EW mode")
+        PY8_Card = Indirect_PY8Card(pjoin(self.dir_path, 'Cards', 'pythia8_card_default.dat'), mode_vincia=(self.maddm_card['indirect_flux_source_method'] == "vincia"))
         PY8_Card['Main:spareParm1'] = mdm
         PY8_Card.read(pjoin(self.dir_path, 'Cards', 'pythia8_card.dat'), setter='user')
 
@@ -3723,6 +3721,9 @@ class MADDMRunCmd(cmd.CmdShell):
             raise self.InvalidCmd('No default path for this file')
 
 class Indirect_PY8Card(banner_mod.PY8Card):
+    def __init__(self, *args, **kwargs):
+        self.mode_vincia = kwargs.pop("mode_vincia", False)
+        super(Indirect_PY8Card, self).__init__(*args, **kwargs)
     
     def default_setup(self):
         """ Sets up the list of available PY8 parameters."""
@@ -3752,7 +3753,7 @@ class Indirect_PY8Card(banner_mod.PY8Card):
         self.add_param("TimeShower:weakShowerMode", 0, comment="Determine which branchings are allowed (0 -> W and Z)")
         self.add_param("TimeShower:pTminWeak", 0.1)
         self.add_param("WeakShower:vetoWeakJets", True)
-        self.add_param("WeakShower:singleEmission", True)
+        self.add_param("WeakShower:singleEmission", False)
         self.add_param("WeakShower:enhancement",1.0,comment="enhanced weak shower rate")
         # decay all particles
         self.add_param("13:mayDecay", True, hidden=True, comment="decays muons")
@@ -3764,6 +3765,25 @@ class Indirect_PY8Card(banner_mod.PY8Card):
         # disabling some events checks for bug below 100 GeV
         self.add_param("Check:event", False, hidden=True, comment="avoid pythia crushing")
         self.add_param("Check:beams", False, hidden=True, comment="avoid pythia crushing")
+        # Tuning for the following parameters taken from Tab 2 of https://arxiv.org/pdf/2303.11363.pdf
+        self.add_param("StringZ:deriveBLund", True)
+        self.add_param("StringZ:aLund", 0.601)
+        self.add_param("StringZ:bLund", 0.897)
+        self.add_param("StringZ:avgZLund", 0.540)
+        self.add_param("StringPT:Sigma", 0.307)
+        self.add_param("StringZ:aExtraDiquark", 1.671)
+        # Vincia?
+        if self.mode_vincia:
+            self.add_param("Vincia:ewMode", 3, comment="Vincia EW mode")
+
+        # self.add_param("PartonShowers:model", 2)
+        # self.add_param("Vincia:ewMode", 3, comment="Vincia EW mode")
+        # self.add_param("StringZ:deriveBLund", False)
+        # self.add_param("StringZ:aLund", 0.337409)
+        # self.add_param("StringZ:bLund", 0.784682)
+        # self.add_param("StringZ:avgZLund", 0.55)
+        # self.add_param("StringPT:Sigma", 0.296569)
+        # self.add_param("StringZ:aExtraDiquark", 1.246986)
 
 class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
     """ """
