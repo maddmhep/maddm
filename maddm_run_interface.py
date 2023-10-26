@@ -9,7 +9,6 @@ import os
 import re
 import sys
 import subprocess
-import time
 
 from numpy.core.fromnumeric import var
 from . import auxiliary as aux
@@ -2009,7 +2008,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 py8card = Indirect_PY8Card(pjoin(self.dir_path, 'Cards', 'pythia8_card.dat'))
                 if py8card['Main:NumberOfEvents'] != -1:
                     run_card['nevents'] = py8card['Main:NumberOfEvents']
-                    run_card['iseed'] = int(time.time())
+                    run_card['iseed'] = int(np.random.uniform(0, 10000))
                 run_card.write(runcardpath)
         
             if __debug__:
@@ -5014,6 +5013,20 @@ class Indirect_Cmd(me5_interface.MadEventCmdShell):
 
         return Presults.xsec, Presults.xerru
 
+    def check_nb_events(self):
+        """Redefine maximum number of events for MadDM"""
+        
+        nb_event = int(self.run_card['nevents'])
+        max_nb_events_allowed = int(1e8)
+        if nb_event > max_nb_events_allowed:
+            logger.warning("Attempting to generate more than 1M events")
+            logger.warning("Limiting number to 1M. Use multi_run for larger statistics.")
+            path = pjoin(self.me_dir, 'Cards', 'run_card.dat')
+            os.system(r"""perl -p -i.bak -e "s/\d+\s*=\s*nevents/%d = nevents/" %s""" \
+                                                                         % (max_nb_events_allowed, path))
+            self.run_card['nevents'] = max_nb_events_allowed
+
+        return
         
 
 
