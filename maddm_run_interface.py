@@ -9,6 +9,7 @@ import os
 import re
 import sys
 import subprocess
+import time
 
 from numpy.core.fromnumeric import var
 from . import auxiliary as aux
@@ -2008,7 +2009,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 py8card = Indirect_PY8Card(pjoin(self.dir_path, 'Cards', 'pythia8_card.dat'))
                 if py8card['Main:NumberOfEvents'] != -1:
                     run_card['nevents'] = py8card['Main:NumberOfEvents']
-        
+                    run_card['iseed'] = int(time.time())
                 run_card.write(runcardpath)
         
             if __debug__:
