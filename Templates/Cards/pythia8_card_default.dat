@@ -30,3 +30,8 @@ StringZ:bLund         = 0.897
 StringZ:avgZLund      = 0.540
 StringPT:Sigma        = 0.307
 StringZ:aExtraDiquark = 1.671
+
+! Coalescence parameters
+Main:p_coalescence = 0.180
+Main:d_coalescence = 2.0
+Main:sigma_coalescence = 1.0
