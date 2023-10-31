@@ -15,11 +15,8 @@ Main:NumberOfEvents      = -1
 ! WEAK SHOWER
 ! ============
 !
-<<<<<<< HEAD
 ! See: http://home.thep.lu.se/~torbjorn/pythia82html/WeakShowers.html 
-=======
 PartonShowers:model = 1
->>>>>>> f8ea2bd (Fix vincia implementation)
 TimeShower:weakShower = on
 TimeShower:weakShowerMode = 0
 WeakShower:enhancement = 1.  
@@ -27,10 +24,7 @@ TimeShower:pTminWeak = 0.1
 WeakShower:vetoWeakJets = off
 WeakShower:singleEmission = off
 
-<<<<<<< HEAD
 
-
-=======
 ! Tuning for the following parameters taken from Tab 2 of https://arxiv.org/pdf/2303.11363.pdf
 StringZ:deriveBLund   = on
 StringZ:aLund         = 0.601
@@ -38,4 +32,8 @@ StringZ:bLund         = 0.897
 StringZ:avgZLund      = 0.540
 StringPT:Sigma        = 0.307
 StringZ:aExtraDiquark = 1.671
->>>>>>> f8ea2bd (Fix vincia implementation)
+
+! Coalescence parameters
+Main:p_coalescence = 0.180
+Main:d_coalescence = 2.0
+Main:sigma_coalescence = 1.0

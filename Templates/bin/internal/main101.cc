@@ -182,12 +182,12 @@ int main(){
   double DeltaBin = (emaxh-eminh)/nbins; 
   double DeltaBin_Dbar = (emaxh-eminh)/nbins_Dbar; 
   
-  double pcoalescence = 0.180; //Coalescence momentum in GeV
+  double pcoalescence = pythia.parm("Main:p_coalescence"); //Coalescence momentum in GeV
   //double d = 2.5; //fm
-  double d = 2.0; //fm
+  double d = pythia.parm("Main:d_coalescence"); //fm
   //double d = 1.8; //fm
   //double d = 1.6; //fm
-  double sigma = 1.0; //fm
+  double sigma = pythia.parm("Main:sigma_coalescence"); //fm
   double mp = 0.938;
   double mn = 0.939;
   double D_m = mn+mp;
