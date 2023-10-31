@@ -2404,7 +2404,7 @@ class MADDMRunCmd(cmd.CmdShell):
         # Start by reading, starting from the default one so that the 'user_set'
         # tag are correctly set.
         PY8_Card = Indirect_PY8Card(pjoin(self.dir_path, 'Cards', 'pythia8_card_default.dat'), mode_vincia=(self.maddm_card['indirect_flux_source_method'] == "vincia"))
-        PY8_Card['Main:spareParm1'] = mdm
+        PY8_Card['Main:mDM'] = mdm
         PY8_Card.read(pjoin(self.dir_path, 'Cards', 'pythia8_card.dat'), setter='user')
 
         PY8_Card.write(pythia_cmd_card, 
@@ -3729,8 +3729,8 @@ class Indirect_PY8Card(banner_mod.PY8Card):
         
         self.add_param("Main:timesAllowErrors", 10, hidden=True, comment="allow a few failures before quitting")
         self.add_param("Main:NumberOfEvents", -1,  comment="number of events to go trough")
-        self.add_param("Main:spareParm1", 1000.0, hidden=True, comment=" mass of the Dark matter")
-        self.add_param("Main:spareWord1" , './', hidden=True, comment="specify output dir") 
+        self.add_param("Main:mDM", 1000.0, hidden=True, comment=" mass of the Dark matter")
+        self.add_param("Main:outdir" , './', hidden=True, comment="specify output dir") 
         # Init
         self.add_param("Init:showChangedSettings", True, hidden=True, comment="list changed settingspython")
         self.add_param("Init:showChangedParticleData", True, hidden=True, comment="print changed particle and decay data")
