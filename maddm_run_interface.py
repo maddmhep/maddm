@@ -2463,6 +2463,7 @@ class MADDMRunCmd(cmd.CmdShell):
     def read_py8spectra(self, directories):
         run_name = self.me_cmd.run_name
         temp_spectra = {}
+        temp_errors = {}
         for sp in self.Spectra.spectra.keys(): 
             if sp in ['x', 'log10x']: continue
             sp_name = sp + '_spectrum_pythia8.dat'
@@ -2472,9 +2473,15 @@ class MADDMRunCmd(cmd.CmdShell):
                 self.Spectra.spectra['log10x'] = np.loadtxt( out_dir(directories[0]) , unpack = True )[0]
                 self.Spectra.spectra['x'] = np.power(10,self.Spectra.spectra['log10x'])     # from log[10,x] to x
             temp_spectra[sp] = []
+            temp_errors[sp] = []
             for id_dir in directories: # loop over the indirect directories which have run pythia
-                temp_spectra[sp].append(np.loadtxt( out_dir(id_dir) , unpack = True )[1] * (self.indirect_directories_cross_section_contribution[id_dir]/self.last_results['taacsID']))
+                file_rows = np.loadtxt( out_dir(id_dir) , unpack = True )
+                br_factor = self.indirect_directories_cross_section_contribution[id_dir]/self.last_results['taacsID']
+                if len(file_rows) > 2: # errors are present
+                    temp_errors[sp].append( np.power(file_rows[2] * br_factor, 2) )
+                temp_spectra[sp].append( file_rows[1] * br_factor )
             self.Spectra.spectra[sp] = np.sum(temp_spectra[sp], axis = 0).tolist() # conversion to list is needed, because in the program we use bool(a_list) to see if a_list is not empty (this doesn't work for numpy.array objects)
+            self.Spectra.errors[sp] = np.sqrt(np.sum(temp_errors[sp], axis = 0)).tolist()
 
     def cont_spectra_available_channels(self):
         available_channels = {}
@@ -3232,25 +3239,26 @@ class MADDMRunCmd(cmd.CmdShell):
         if spec_source:
             x = self.Spectra.spectra['log10x']
             for spec in self.Spectra.spectra.keys():
-                header = '# Log10(x=Ekin/mDM)   dn/dlogx   ' + spec + '\t' + self.maddm_card['indirect_flux_source_method'] + ' spectra at source'
+                header = '# ' + spec + '\t' + self.maddm_card['indirect_flux_source_method'] + ' spectra at source\n' + '# Log10(x=Ekin/mDM)    dn/dlogx'
                 if 'x' not in spec:
                     dndlogx = self.Spectra.spectra[spec]
-                    aux.write_data_to_file(x, dndlogx, filename = pjoin(out_run, spec + '_spectrum_' + spec_method +'.dat'), header = header)
+                    errors = self.Spectra.errors[spec]
+                    aux.write_data_to_file(x, dndlogx, errors = errors, filename = pjoin(out_run, spec + '_spectrum_' + spec_method +'.dat'), header = header)
 
         if flux_earth:
             e = self.Spectra.flux_source['e']
             for flux in self.Spectra.flux_earth.keys():
-                header = '# E[GeV]   dPhi/dE [particles/(cm2 s sr)] ' + flux + '\t' + self.maddm_card['indirect_flux_earth_method'] +' flux at earth'
+                header = '# ' + flux + '\t' + self.maddm_card['indirect_flux_earth_method'] +' flux at earth\n' + '# E[GeV]    dPhi/dE [particles/(cm2 s sr)]'
                 if flux != 'e':
                     dPhidE = self.Spectra.flux_earth[flux]['dPhidE']
-                    aux.write_data_to_file(e, dPhidE, filename = pjoin(out_run, flux + '_dphide_' + spec_method + '.dat'), header = header)
+                    aux.write_data_to_file(e, dPhidE, errors = False, filename = pjoin(out_run, flux + '_dphide_' + spec_method + '.dat'), header = header)
 
 
             if 'PPPC' in self.maddm_card['indirect_flux_earth_method']: # for PPPC4DMID, I save also the positron at earth
                 e = self.Spectra.flux_earth_positrons['e']
-                header = '# E[GeV]   dPhi/dlogE [particles/(cm2 s sr)]  positrons \t PPPC4DMID flux at earth'
+                header = '# positrons \t PPPC4DMID flux at earth\n' + '# E[GeV]    dPhi/dlogE [particles/(cm2 s sr)]'
                 dPhidlogE = self.Spectra.flux_earth_positrons['positrons']['dPhidlogE']
-                aux.write_data_to_file(e, dPhidlogE, filename = pjoin(out_run, 'positrons_dphide_' + spec_method + '.dat'), header = header)
+                aux.write_data_to_file(e, dPhidlogE, errors = False, filename = pjoin(out_run, 'positrons_dphide_' + spec_method + '.dat'), header = header)
 
     
     def print_ind(self,what, sig_th, sig_alldm, ul,  thermal=False ,direc = False , exp='Fermi dSph', no_lim = False):
