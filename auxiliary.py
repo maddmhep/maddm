@@ -24,7 +24,7 @@ def integrate(integrand, x_grid=[], a=0, b=0, npts=0, **kwargs):
 
         return simpson
 
-def write_data_to_file(x_data, y_data, filename='', header=''):
+def write_data_to_file(x_data, y_data, errors = False, filename='', header=''):
 
     if len(x_data)!= len(y_data):
         print("ERROR: x and y columns don't have the same dimensions. Will not write the data.")
@@ -33,9 +33,12 @@ def write_data_to_file(x_data, y_data, filename='', header=''):
     try:
         with open(filename, 'w+') as f:
             if header!='':
-                f.write('%s \n' % header)
+                f.write('%s    %s\n' % (header, "Errors" if errors else ""))
             for i, x in enumerate(x_data):
-                f.write('%.5e   %.5e\n' %(x, y_data[i]))
+                if errors:
+                    f.write('%.5e    %.5e    %.5e\n' %(x, y_data[i], errors[i]))
+                else:
+                    f.write('%.5e    %.5e\n' %(x, y_data[i]))
 
     except OSError:
         print('ERROR: write_data_to_file can not open the file!')
