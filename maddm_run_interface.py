@@ -2025,11 +2025,7 @@ class MADDMRunCmd(cmd.CmdShell):
                         if self.maddm_card['sigmav_method'] == 'madevent':
                             if os.path.exists(pjoin(self.dir_path,indirect_directory,'Cards','reweight_card.dat')):
                                 os.remove(pjoin(self.dir_path,indirect_directory,'Cards','reweight_card.dat'))
-                            # self.me_cmd.do_launch('%s -f' % self.run_name)
-                            self.me_cmd.Presults = {}
-                            self.me_cmd.Presults['xsec/something_n1n1_aa'] = 10.3
-                            self.me_cmd.Presults['xsec/something_n1n1_ah'] = 4.6
-                            self.me_cmd.Presults['xsec/something_n1n1_az'] = 9.1
+                            self.me_cmd.do_launch('%s -f' % self.run_name)
                         elif self.maddm_card['sigmav_method'] == 'reshuffling':
                             cmd = ['launch %s' % self.run_name,
                                'reweight=indirect',
