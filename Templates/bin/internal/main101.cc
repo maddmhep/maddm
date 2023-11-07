@@ -130,41 +130,19 @@ double coalescence_function(double p_px,double p_py,double p_pz,double n_px,doub
 }
 
 int main(){
-  // You can always read an plain LHE file,
-  // but if you ran "./configure --with-gzip" before "make"
-  // then you can also read a gzipped LHE file.
-  //#ifdef GZIPSUPPORT
-  //bool useGzip = true;
-  //#else
-  //bool useGzip = false;
-  //#endif
-  //cout << " useGzip = " << useGzip << endl;
-  // Generator. We here stick with default values, but changes
-  // could be inserted with readString or readFile.
   Pythia pythia;
+  pythia.settings.addWord("Main:outdir", "./");
+  pythia.settings.addWord("Main:mDM", "100");
+  pythia.settings.addWord("Main:p_coalescence", "0.180");
+  pythia.settings.addWord("Main:d_coalescence", "2");
+  pythia.settings.addWord("Main:sigma_coalescence", "1");
   // Initialize Les Houches Event File run. List initialization information.
-  //pythia.readString("Beams:frameType = 4");
-  //if (useGzip) pythia.readString("Beams:LHEF = ww_events.lhe.gz");
-  //else         pythia.readString("Beams:LHEF = ww_events.lhe");
-  //pythia.readFile("../../Source/spectrum.cmnd");
-  pythia.readFile("spectrum.cmnd");
+  pythia.readFile("../../Source/spectrum.cmnd");
   
-  //double method_Dbar = pythia.parm("Main:method_Dbar"); // 
   double method_Dbar = 2; // 
   pythia.readString("Fragmentation:setVertices = on");
   pythia.readString("PartonVertex:setVertex = on");
   
-  //pythia.settings.mode("Next:numberCount",1000);
-  //pythia.settings.mode("Next:numberShowInfo",1);
-  //pythia.settings.mode("Next:numberShowProcess",1);
-  //pythia.settings.mode("Next:numberShowEvent",1);
-  
-  //pythia.settings.flag("PartonLevel:ISR",false);
-  //pythia.settings.flag("PartonLevel:MPI",false);
-  //pythia.settings.flag("PDF:lepton",false);
-  //pythia.settings.flag("TimeShower:weakShower",true);
-  //pythia.settings.mode("TimeShower:weakShowerMode",0);
-  //pythia.settings.mode("TimeShower:pTminWeak",0.1);
   // Initialization
   pythia.init();
   // Allow for possibility of a few faulty events.
@@ -172,22 +150,17 @@ int main(){
   int iAbort = 0;
   
   // Setting for the histrogram and choice of variables
-  double mDM = pythia.parm("Main:mDM"); // divide by the DM mass to get the x variable
+  double mDM = atof(pythia.word("Main:mDM").data()); // divide by the DM mass to get the x variable
   string outdir   = pythia.word("Main:outdir"); // Where to write the output file
   
   double eminh = -9.;
   double emaxh = 0.;
   double nbins = 100;
-  double nbins_Dbar = 50;
   double DeltaBin = (emaxh-eminh)/nbins; 
-  double DeltaBin_Dbar = (emaxh-eminh)/nbins_Dbar; 
   
-  double pcoalescence = pythia.parm("Main:p_coalescence"); //Coalescence momentum in GeV
-  //double d = 2.5; //fm
-  double d = pythia.parm("Main:d_coalescence"); //fm
-  //double d = 1.8; //fm
-  //double d = 1.6; //fm
-  double sigma = pythia.parm("Main:sigma_coalescence"); //fm
+  double pcoalescence = atof(pythia.word("Main:p_coalescence").data()); //Coalescence momentum in GeV
+  double d = atof(pythia.word("Main:d_coalescence").data()); //fm
+  double sigma = atof(pythia.word("Main:sigma_coalescence").data()); //fm
   double mp = 0.938;
   double mn = 0.939;
   double D_m = mn+mp;
@@ -196,7 +169,7 @@ int main(){
   int cont_pos = 0;
   int cont_Dbar = 0;
   // Histogram particle spectra
-  Hist Dbar("antideuteron spectrum", nbins_Dbar, eminh, emaxh);
+  Hist Dbar("antideuteron spectrum", nbins, eminh, emaxh);
   Hist gamma("gamma spectrum", nbins, eminh, emaxh);
   Hist electron("e+- spectrum", nbins, eminh, emaxh);
   Hist proton("p spectrum", nbins, eminh, emaxh);
@@ -248,11 +221,9 @@ int main(){
 	
 	//THE PART BELOW IS RELATED TO THE ANTIDEUTERON SPECTRUM
 	if (idap == -2212 and deuteroncheck==0){ //if the event is an antiproton
-		//cout << "found pbar " << "  " << iEvent << "  "  << i << endl;
 		for (int j = 0; j < pythia.event.size(); ++j){ //loop over the final particles
 			int jdap  = pythia.event[j].id();
 			if (jdap == -2112){ //if the second particle is an antineutrons
-				//cout << "found nbar  " << "  " << iEvent << "  "  << j << endl;
 			    double p_px = pythia.event[i].px();
 			    double p_py = pythia.event[i].py();
 				double p_pT = sqrt( p_px*p_px + p_py*p_py);
@@ -273,9 +244,6 @@ int main(){
 			    double n_yy = pythia.event[j].yProd()/1e-12; //fermi
 			    double n_zz = pythia.event[j].zProd()/1e-12; //fermi
 				
-				//cout << p_px << "  " << p_py << "  " << p_pz << "  " << n_px << "  " << n_py << "  " << n_pz << endl;
-				
-				//coalescence_function(double p_px,double p_py,double p_pz,double n_px,double n_py,double n_pz, double pcoal)
 				double source_size = 0.;
 				if(method_Dbar==2.){
 					double source_size = sourcesize_function(p_px,p_py,p_pz,n_px,n_py,n_pz,p_tt,p_xx,p_yy,p_zz,n_tt,n_xx,n_yy,n_zz);
@@ -303,7 +271,7 @@ int main(){
   //Statistic and histrograms
   pythia.stat();
   
-  Dbar.operator*=(1./nEvent/DeltaBin_Dbar);
+  Dbar.operator*=(1./nEvent/DeltaBin);
   gamma.operator*=(1./nEvent/DeltaBin);
   electron.operator*=(1./nEvent/DeltaBin);
   proton.operator*=(1./nEvent/DeltaBin);
@@ -311,7 +279,7 @@ int main(){
   numu.operator*=(1./nEvent/DeltaBin);
   nutau.operator*=(1./nEvent/DeltaBin);
   
-  Dbar.table("antideuterons_spectrum_pythia8_GWF_d2p0.dat");
+  Dbar.table("antideuterons_spectrum_pythia8.dat", false, true);  // _GWF_d2p0
   gamma.table("gammas_spectrum_pythia8.dat");
   electron.table("positrons_spectrum_pythia8.dat");
   proton.table("antiprotons_spectrum_pythia8.dat");
