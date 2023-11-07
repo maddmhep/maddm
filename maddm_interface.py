@@ -1063,7 +1063,7 @@ class MadDM_interface(master_interface.MasterCmd):
 
     def do_output(self, line):
         """ """
-        
+
         if not self._curr_amps:
             self.do_generate('relic_density')
             self.do_add('direct_detection')
@@ -1073,26 +1073,26 @@ class MadDM_interface(master_interface.MasterCmd):
             self.history.append('add direct_detection')            
             self.history.append('add indirect_detection')
             self.history.append('add indirect_spectral_features')
-        
+
         args = self.split_arg(line)
         if not args or args[0] not in self._export_formats + ['maddm']:
             if self._curr_amps:
                 if any(amp.get('process').get('id') in list(self.process_tag.values())
                         for amp in self._curr_amps):
                     args.insert(0, 'maddm')
-            
+
         if args and args[0] == 'maddm':
             line = ' '.join(args)
 
         if self._curr_amps:
             super(MadDM_interface, self).do_output(line)
-        
+
         path = self._done_export[0]
         if any(proc for proc in self._ID_cont_procs + self._ID_line_procs):
-            self.output_indirect(path, 'Indirect_tree_cont', self._ID_cont_procs[0], self._ID_cont_matrix_elements[0], self._ID_cont_amps[0])
-            self.output_indirect(path, 'Indirect_tree_line', self._ID_line_procs[0], self._ID_line_matrix_elements[0], self._ID_line_amps[0])
-            self.output_indirect(path, 'Indirect_LI_cont',   self._ID_cont_procs[1], self._ID_cont_matrix_elements[1], self._ID_cont_amps[1])
-            self.output_indirect(path, 'Indirect_LI_line',   self._ID_line_procs[1], self._ID_line_matrix_elements[1], self._ID_line_amps[1])
+            self.output_indirect(path, 'Indirect_tree_cont', self._ID_cont_procs[0], self._ID_cont_matrix_elements[0], self._ID_cont_amps[0], opts = args[2:])
+            self.output_indirect(path, 'Indirect_tree_line', self._ID_line_procs[0], self._ID_line_matrix_elements[0], self._ID_line_amps[0], opts = args[2:])
+            self.output_indirect(path, 'Indirect_LI_cont',   self._ID_cont_procs[1], self._ID_cont_matrix_elements[1], self._ID_cont_amps[1], opts = args[2:])
+            self.output_indirect(path, 'Indirect_LI_line',   self._ID_line_procs[1], self._ID_line_matrix_elements[1], self._ID_line_amps[1], opts = args[2:])
 
         # find processes names map and write proc_characteristics file
         curr_processes_names_map      = self.extract_processes_names(self._get_processes_from_amplitudes_list(self._curr_amps))
@@ -1184,7 +1184,7 @@ class MadDM_interface(master_interface.MasterCmd):
             proc_parsing_friendly.append(",".join(str_parts))
         return collections.OrderedDict(zip(proc_human_readable, proc_parsing_friendly))
 
-    def output_indirect(self, path, directory, ID_procs, ID_matrix_elements, ID_amps):
+    def output_indirect(self, path, directory, ID_procs, ID_matrix_elements, ID_amps, opts):
         ''' Output commands for indirect_detection or loop-induced '''
         if not ID_amps:
             return
@@ -1199,7 +1199,7 @@ class MadDM_interface(master_interface.MasterCmd):
         with misc.TMP_variable(self,
             ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps', '_done_export'],
             [ID_procs, ID_matrix_elements, ID_amps, None]):
-            super(MadDM_interface, self).do_output('indirect %s/%s' % (path, directory))
+            super(MadDM_interface, self).do_output('indirect %s/%s %s' % (path, directory, " ".join(opts)))
             ID_amps[:] = self._curr_amps
             
         #ensure to sync the param_card
