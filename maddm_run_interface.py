@@ -5032,8 +5032,8 @@ class Indirect_Cmd(me5_interface.MadEventCmdShell):
         nb_event = int(self.run_card['nevents'])
         max_nb_events_allowed = int(1e8)
         if nb_event > max_nb_events_allowed:
-            logger.warning("Attempting to generate more than 1M events")
-            logger.warning("Limiting number to 1M. Use multi_run for larger statistics.")
+            logger.warning("Attempting to generate more than 100M events")
+            logger.warning("Limiting number to 100M. Use multi_run for larger statistics.")
             path = pjoin(self.me_dir, 'Cards', 'run_card.dat')
             os.system(r"""perl -p -i.bak -e "s/\d+\s*=\s*nevents/%d = nevents/" %s""" \
                                                                          % (max_nb_events_allowed, path))
