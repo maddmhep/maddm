@@ -102,14 +102,11 @@ c       Setting up the array of the momentum k_e and the array of the energy E_e
 c       The array k_e is written in log scale.
 c       The arrays are of shape gridsize_k+1 because we need (gridsize_k+1)-elements to compute
 c       (gridsize_k)-differentials
-
-        open(10000, file='/home/gianmarcolucchetti/thesis/Code/E.dat', status='unknown')
         do ik = 1,gridsize_k+1
             k_e(ik) = exp(log(k_min) + (log(k_max) - log(k_min))*dble(ik-1)/dble(gridsize_k-1))
             E_e(ik) = sqrt(M_e**2 + k_e(ik)**2) - M_e
-            write(10000,*) E_e(ik), ','
         enddo
-        close(10000)
+
 c ------------------------------------------------------------------------------------------------
 c Read the atomic response functions, compute the ionization amplitude and compute the rates
 c ------------------------------------------------------------------------------------------------
@@ -162,7 +159,9 @@ c       Sum over all shells
             call get_rate(M_dm, M_e, E_e, ioniz_amplitude,
      &                             binding_energy(target,shell_names(i)),
      &                             diff_rate_shell, rate_vs_time_shell, tot_rate_shell)
-            
+
+cc          Print the differential rate for each shell
+
 c            open(200+i, file='./output/dRdE_' // trim(shell_names(i)) // '.dat', status='unknown')
 c            write(200+i,*) '# shell: ' // shell_names(i)
 c            write(200+i,*) '# E (eV)                    dR/dE (Kg^-1 day^-1 KeV^-1)'
@@ -196,11 +195,6 @@ c           Avoid to compute the limits for the shells that doesn't contribute t
                 tot_rate = tot_rate + tot_rate_shell
 
             endif
-
-c            write(*,*) '|  Readed: ', trim(shell_filenames(i)),
-c     &                 '  |  shell name: ', shell_names(i), '  |  E_bind: ',
-c     &                 binding_energy(target,shell_names(i)), 'GeV  |  tot rate (shell):' ,
-c     &                 tot_rate_shell, '|'
 
         enddo
 
@@ -469,7 +463,7 @@ c               Compute the differential rate, than use to compute dR/dlogE, tot
 !-----------------------------------------------------------------------------------------------!
         Function dRdlogE(ik, ER, Eb, q_exc, dq, M_dm, M_e, ioniz_amplitude, ve)
 !-----------------------------------------------------------------------------------------------!
-!	    Calculate the double differential spectrum for dark Matter detection.                   !
+!	    Calculate the double differential spectrum for DM detection.                            !
 !	    Uses the modulation information of the earth inside function v_earth.                   !
 !-----------------------------------------------------------------------------------------------!
         implicit none
@@ -537,12 +531,11 @@ c           Multiply also for the constant in front of the integral, and divide 
 
 
 
-!-----------------------------------------------------------------------------------------------!
+!--------------------------------------------------------------------------------------------------------------------!
         subroutine get_dRdS2_shell(E_e,diff_rate_shell,dRdS2_shell_Xenon10,dRdS2_shell_Xenon1T,target,shell_name,i)
-!-----------------------------------------------------------------------------------------------!
-!       Get the differential rate over the number of photomultiplied electrons in Xenon10 and
-!       Xenon1T.
-!-----------------------------------------------------------------------------------------------!
+!--------------------------------------------------------------------------------------------------------------------!
+!       Get the differential rate over the number of photomultiplied electrons in Xenon10 and Xenon1T.
+!--------------------------------------------------------------------------------------------------------------------!
         implicit none
 
         include '../include/maddm.inc'
@@ -582,7 +575,8 @@ c       Secondary scintillation gain factor and sigma for Xenon10 and Xenon1T
         sigma_Xenon10 = 6.7
         sigma_Xenon1T = 7.0
 
-c       Write the results in a file
+c       Write the rate vs n for each shell
+
 c        open(10+i, file='./output/dRdne' // trim(shell_name) // '.dat', status='unknown')
 c        write(10+i,*) '# shell: ' // shell_name
 c        write(10+i,*) '#  n_electr              dR/dn_e'
@@ -605,10 +599,6 @@ c           From Table II of arXiv:1703.00910v1
                 n_2(iE) = 0
             endif
 
-c            write(*,*) shell_name , iE , 'E_e:' , E_e(iE)
-c     &                 ,'  |  n_1:' , n_1(iE) , 'n_2:' , n_2(iE)
-c     &                 ,'dRdlogE:' , diff_rate_shell(iE)
-
         enddo
         
 c       Compute the differential rate (dRdne) wrt the number of initial scattered electrons (n_electr).
@@ -630,7 +620,7 @@ c            write(10+i,*) n_electr, dRdne_shell(n_electr)
 
 c        close(10+i)
 
-c       Write the results in a file
+c       Write the rate vs S2 in a file
 c        open(100+i, file='./output/dRdS2_' // trim(shell_name) // '.dat', status='unknown')
 c        write(100+i,*) '# shell: ' // shell_name
 c        write(100+i,*) '#        S2     dR/dS2 (Xenon10)          dR/dS2 (Xenon1T)'

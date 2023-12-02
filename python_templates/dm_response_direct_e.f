@@ -119,7 +119,7 @@ c                 j is the index that identifies the matrix element of the FULL 
             do k=1, 2*dd_num_processes
 
 c                 j_eff is the index of the matrix_element in the EFF case for the
-c                 SI/SD case, and dark matter - electorn/proton process
+c                 SI/SD case, and dark matter - electorn/proton process.
 c                 JTOT same as JEFF but for the EFF+FULL
 
                   process_name = 'EFT_SI_' // dm_e_process_name
@@ -180,8 +180,8 @@ c            write (*,*) "j_tot_SD_dm_p :" , j_tot_SD_dm_p
             
 
 c--------------------------------------------------------------------------------
-c Compute the interference terms and use them to get the even and odd effective 
-c coefficients in the SI and SD case
+c           Compute the interference terms and use them to get the even and odd effective 
+c           coefficients in the SI and SD case
 c--------------------------------------------------------------------------------
 
             Minterf_SI_e = smatrix_dd_tot(p_ext, 1,1,j_tot_SI_dm_e) - max(0d0, smatrix_dd(p_ext,1,1,j_dm_e)) 
@@ -212,8 +212,8 @@ c-------------------------------------------------------------------------------
                   alpha_SD_odd  = 0.5d0 * (Minterf_SD_e - Minterf_SD_p)
             endif
 c--------------------------------------------------------------------------------
-c Compute the non relativistic coefficients and use them to get the
-c dark matter response function.
+c           Compute the non relativistic coefficients and use them to get the
+c           dark matter response function.
 c--------------------------------------------------------------------------------
             if(dm_spin.eq.1) then
                   c_1 = 2*M_e*(alpha_SI_even + 2*mdm(1)*alpha_SI_odd)
