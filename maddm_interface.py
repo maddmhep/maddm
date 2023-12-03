@@ -1193,6 +1193,9 @@ class MadDM_interface(master_interface.MasterCmd):
         # if loop_induced:
         #     self._forbid_fast = True
 
+        if "--hel_recycling" not in opts:
+            opts += ["--hel_recycling=False"]
+
         import aloha.aloha_lib as aloha_lib
         aloha_lib.KERNEL = aloha_lib.Computation()
 
