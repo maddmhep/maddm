@@ -481,18 +481,14 @@ c               Compute the differential rate, than use to compute dR/dlogE, tot
         include '../include/maddm_card.inc'
 
 c       Parameters and variables
-        c       = 29979245800.d0        ! cm sec**(-1)
-c        v0      = vMP*(km/sec)          ! Most Probable velocity of WIMPs in DM Halo
-        v0      = 220.d0 * (km/sec)          ! REMOVE
-c        vesc    = vescape*(km/sec)      ! Escape velocity of a WIMP from the Galactic Halo
-        vesc    = 544.d0 * (km/sec)         ! REMOVE
-c        vearth  = ve*(km/sec)           ! Velocity of the Earth, taken from the v_earth function (cm/s)
-        vearth  = 232.d0 * (km/sec)          ! REMOVE
-c        RhoD    = rhoDM*GeV*cs**(-2)*cm**(-3) ! Density of Dark Matter in our local part of the Galaxy
-c        nDM = RhoD / M_dm * cm**(-3)         ! Number density of DM
-        nDM     = 0.4 / M_dm * cm**(-3)         ! Number density of DM [cm**(-3)]
+        c       = 29979245800.d0              ! cm sec**(-1)
+        v0      = vMP*(km/sec)                ! Most Probable velocity of WIMPs in DM Halo
+        vesc    = vescape*(km/sec)            ! Escape velocity of a WIMP from the Galactic Halo
+        vearth  = ve*(km/sec)                 ! Velocity of the Earth, taken from the v_earth function (cm/s)
+        RhoD    = rhoDM*GeV*cs**(-2)*cm**(-3) ! Density of Dark Matter in our local part of the Galaxy
+        nDM = RhoD / M_dm * cm**(-3)          ! Number density of DM [cm**(-3)]
+        
         const_integral = nDM/(128.d0*pi*((M_dm*GeVtoKg)**2)*((M_e*GeVtoKg)**2)) ! Constant in front of the integral [cm**(-3) Kg**(-4)]
-
         kNorm   = (v0**3)*pi*(sqrt(pi)*erf(vesc/v0) - 2.d0*(vesc/v0)*exp(-(vesc/v0)**2)) ! Normalization factor for velocity distribution integral [cm**(3) sec**(-3)]
 
         dRdlogE = 0
