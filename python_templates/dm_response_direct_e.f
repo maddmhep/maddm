@@ -51,7 +51,7 @@ c-------------------------------------------------------------------------c
             implicit none
             
             integer j, k, dm_spin
-            integer j_dm_e, j_antidm_e
+            integer j_dm_e, j_dm_p
             integer j_eff_SI_dm_e, j_tot_SI_dm_e, j_eff_SI_dm_p, j_tot_SI_dm_p
             integer j_eff_SD_dm_e, j_tot_SD_dm_e, j_eff_SD_dm_p, j_tot_SD_dm_p
             double precision p_ext(0:3,4)
@@ -111,7 +111,7 @@ c                 j is the index that identifies the matrix element of the FULL 
                   endif
             
                   if (DD_PROCESS_NAMES(j).eq.dm_p_process_name) then
-                        j_antidm_e = j
+                        j_dm_p = j
                   endif
             enddo
             
@@ -169,7 +169,7 @@ c            write (*,*) "j_dm_e        :" , j_dm_e
 c            write (*,*) "j_eff_SI_dm_e :" , j_eff_SI_dm_e
 c            write (*,*) "j_tot_SI_dm_e :" , j_tot_SI_dm_e
 
-c            write (*,*) "j_antidm_e    :" , j_antidm_e
+c            write (*,*) "j_dm_p        :" , j_dm_p
 c            write (*,*) "j_eff_SI_dm_p :" , j_eff_SI_dm_p
 c            write (*,*) "j_tot_SI_dm_p :" , j_tot_SI_dm_p
 
@@ -189,7 +189,7 @@ c-------------------------------------------------------------------------------
             Minterf_SI_e = 0.5d0*Minterf_SI_e
             Minterf_SI_e = Minterf_SI_e / smatrix_dd_eff(p_ext,1,1,j_eff_SI_dm_e)
 
-            Minterf_SI_p = smatrix_dd_tot(p_ext, 1,1,j_tot_SI_dm_p) - max(0d0, smatrix_dd(p_ext,1,1,j_antidm_e)) 
+            Minterf_SI_p = smatrix_dd_tot(p_ext, 1,1,j_tot_SI_dm_p) - max(0d0, smatrix_dd(p_ext,1,1,j_dm_p)) 
      &                   - smatrix_dd_eff(p_ext,1,1,j_eff_SI_dm_p)
             Minterf_SI_p = 0.5d0*Minterf_SI_p
             Minterf_SI_p = Minterf_SI_p / smatrix_dd_eff(p_ext,1,1,j_eff_SI_dm_p)
@@ -203,7 +203,7 @@ c-------------------------------------------------------------------------------
                   Minterf_SD_e = 0.5d0*Minterf_SD_e
                   Minterf_SD_e = Minterf_SD_e / smatrix_dd_eff(p_ext,1,1,j_eff_SD_dm_e)
                   
-                  Minterf_SD_p = smatrix_dd_tot(p_ext, 1,1,j_tot_SD_dm_p) - max(0d0, smatrix_dd(p_ext,1,1,j_antidm_e)) 
+                  Minterf_SD_p = smatrix_dd_tot(p_ext, 1,1,j_tot_SD_dm_p) - max(0d0, smatrix_dd(p_ext,1,1,j_dm_p)) 
      &                         - smatrix_dd_eff(p_ext,1,1,j_eff_SD_dm_p)
                   Minterf_SD_p = 0.5d0*Minterf_SD_p
                   Minterf_SD_p = Minterf_SD_p / smatrix_dd_eff(p_ext,1,1,j_eff_SD_dm_p)
