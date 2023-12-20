@@ -3782,6 +3782,7 @@ class Indirect_PY8Card(banner_mod.PY8Card):
         self.add_param("StringPT:Sigma", 0.307)
         self.add_param("StringZ:aExtraDiquark", 1.671)
         # Coalescence parameters
+        self.add_param("Main:methodDbar", 1.0)
         self.add_param("Main:p_coalescence", 0.180)
         self.add_param("Main:d_coalescence", 2.0)
         self.add_param("Main:sigma_coalescence", 1.0)
