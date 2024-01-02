@@ -3245,7 +3245,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 header = '# ' + spec + '\t' + self.maddm_card['indirect_flux_source_method'] + ' spectra at source\n' + '# Log10(x=Ekin/mDM)    dn/dlogx'
                 if 'x' not in spec:
                     dndlogx = self.Spectra.spectra[spec]
-                    if dndlogx < 1e-100:
+                    if isinstance(var, (int, float, complex)):
                         continue
                     errors = self.Spectra.errors[spec]
                     aux.write_data_to_file(x, dndlogx, errors = errors, filename = pjoin(out_run, spec + '_spectrum_' + spec_method +'.dat'), header = header)

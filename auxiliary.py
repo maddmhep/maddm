@@ -26,7 +26,10 @@ def integrate(integrand, x_grid=[], a=0, b=0, npts=0, **kwargs):
 
 def write_data_to_file(x_data, y_data, errors = False, filename='', header=''):
 
-    if len(x_data)!= len(y_data):
+    if isinstance(y_data, (int, float, complex)):
+        print("ERROR: y column is a number. Will not write the data.")
+        return False
+    elif len(x_data)!= len(y_data):
         print("ERROR: x and y columns don't have the same dimensions. Will not write the data.")
         return False
 

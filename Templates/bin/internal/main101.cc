@@ -113,6 +113,14 @@ double coalescence_function(double p_px,double p_py,double p_pz,double n_px,doub
 		}
 	}
 	if(method == 2){
+	    if(D_deltap<=pcoal and source_size<=sigma){
+			return D_E;
+		}
+	    else{
+			return 0.0;
+		}
+	}
+	if(method == 3){
 		double Prob_WF = WF_SG_probability(D_deltap,source_size,sigma,d);
 	    //double rndm = gRandom->Uniform(0.0, 1.0);
 		double rndm = (float) rand()/RAND_MAX;
@@ -148,14 +156,30 @@ int main(){
 	cout << "###########################################################################"<< endl;
 	cout << " INPUT PARAMETERS FOR THE DBAR PRODUCTION, NBAR DECAY AND VERTEX INFO" << endl;
 	cout << endl;
-    if(method_Dbar==2){//Gaussian WF
+    if(method_Dbar==2 || method_Dbar==3 || method_Dbar==10){//Gaussian WF
   	  pythia.readString("Fragmentation:setVertices = on"); //Setting on the vertex info for baryons and mesons
-  	  pythia.readString("PartonVertex:setVertex = off");
-  	  pythia.readString("2112:mayDecay=on"); //Setting on decay on neutrons and antineutrons
-  	  pythia.readString("-2112:mayDecay=on");
-  	  cout << "Producing Dbar spectrum with method Gaussian Wigner function and parameters d= " << d <<  "  sigma= " << sigma << endl;
-  	  cout << "Set vertex on" << endl;
-  	  cout << "n/nbar decay on" << endl;
+  	  pythia.readString("PartonVertex:setVertex = on");
+	  if(method_Dbar==2){//Coalescence
+  		pythia.readString("2112:mayDecay=off"); //Setting off decay on neutrons and antineutrons
+  		pythia.readString("-2112:mayDecay=off"); //This avoids producing Dbar with anti-nucleons produced after nbar decay.
+  	  	cout << "Producing Dbar spectrum with coalescence method and pcoal= " << pcoalescence <<  "  sigma= " << sigma << endl;
+  	  	cout << "Set vertex on" << endl;
+  	  	cout << "n/nbar decay off" << endl;
+  	  }
+	  if(method_Dbar==3){//Coalescence
+	  	pythia.readString("2112:mayDecay=on"); //Setting on decay on neutrons and antineutrons
+	  	pythia.readString("-2112:mayDecay=on");
+  	  	cout << "Producing Dbar spectrum with method Gaussian Wigner function and parameters d= " << d <<  "  sigma= " << sigma << endl;
+  	  	cout << "Set vertex on" << endl;
+  	  	cout << "n/nbar decay on" << endl;
+  	  }
+	  if(method_Dbar==10){//Coalescence
+	  	pythia.readString("2112:mayDecay=off"); //Setting on decay on neutrons and antineutrons
+	  	pythia.readString("-2112:mayDecay=off");
+  	  	cout << "Producing Dbar spectrum with all the methods and parameters pcoal= " << pcoalescence <<  "  d= " << d <<  "  sigma= " << sigma << endl;
+  	  	cout << "Set vertex on" << endl;
+  	  	cout << "n/nbar decay on" << endl;
+  	  }
     }
     else{
   	  pythia.readString("Fragmentation:setVertices = off"); //Setting off the vertex info for baryons and mesons
@@ -165,7 +189,7 @@ int main(){
   		  pythia.readString("-2112:mayDecay=off"); //This avoids producing Dbar with anti-nucleons produced after nbar decay.
   	  	  cout << "Producing Dbar spectrum with coalescence method and pcoal= " << pcoalescence << endl;
   		  cout << "Set vertex off" << endl;
-  		  cout << "n/nbar decay on" << endl;
+  		  cout << "n/nbar decay off" << endl;
   	  }
   	  if(method_Dbar==0){//No Dbar
   		  pythia.readString("2112:mayDecay=on"); //Setting off decay on neutrons and antineutrons to take the correct pbar energetics
@@ -191,7 +215,7 @@ int main(){
   
     double eminh = -9.;
     double emaxh = 0.;
-    double nbins = 100;
+    double nbins = 180; //Binninb modifed to account properly for the line spectra. The last bin is -0.05/-0.025/0.00+
     double DeltaBin = (emaxh-eminh)/nbins; 
   
     double mp = 0.938;
@@ -205,8 +229,16 @@ int main(){
     int cont_nutau = 0;
     int cont_pos = 0;
     int cont_Dbar = 0;
+	int cont_Dbar_1 = 0;
+	int cont_Dbar_2 = 0;
+	int cont_Dbar_3 = 0;
     // Histogram particle spectra
+	
     Hist Dbar("antideuteron spectrum", nbins, eminh, emaxh);
+	Hist Dbar_1("antideuteron spectrum", nbins, eminh, emaxh);
+	Hist Dbar_2("antideuteron spectrum", nbins, eminh, emaxh);
+	Hist Dbar_3("antideuteron spectrum", nbins, eminh, emaxh);
+
     Hist gamma("gamma spectrum", nbins, eminh, emaxh);
     Hist electron("e+- spectrum", nbins, eminh, emaxh);
     Hist proton("p spectrum", nbins, eminh, emaxh);
@@ -214,6 +246,7 @@ int main(){
     Hist numu("nu_mu spectrum", nbins, eminh, emaxh);
     Hist nutau("nu_tau spectrum", nbins, eminh, emaxh);
     Hist rest("remaining particle spectrum", nbins, eminh, emaxh);
+	
    // Begin event loop.
     int nEvent = 0;
     int maxevent = pythia.settings.mode("Main:NumberOfEvents");
@@ -229,6 +262,9 @@ int main(){
       }
       // Loop over all particles and select wished final state particles for histrograms.
   	int deuteroncheck=0; //Check ti avoid two deuterons produced with the same particles.
+	int deuteroncheck_1=0;
+	int deuteroncheck_2=0;
+	int deuteroncheck_3=0;
 		
   	//pythia.event.list();
 	
@@ -299,19 +335,51 @@ int main(){
   					  double n_zz = pythia.event[j].zProd()/1e-12; //fermi
 				
   					  double source_size = 0.;
-  					  if(method_Dbar==2.){
+  					  if(method_Dbar==2 || method_Dbar==3 || method_Dbar==10){
   					    	double source_size = sourcesize_function(p_px,p_py,p_pz,n_px,n_py,n_pz,p_tt,p_xx,p_yy,p_zz,n_tt,n_xx,n_yy,n_zz);
   					  }
-  				      source_size = sourcesize_function(p_px,p_py,p_pz,n_px,n_py,n_pz,p_tt,p_xx,p_yy,p_zz,n_tt,n_xx,n_yy,n_zz);
-  					  double D_E = coalescence_function(p_px,p_py,p_pz,n_px,n_py,n_pz,pcoalescence,source_size,d,sigma,method_Dbar);
-                	
-        			  	if(D_E>0.0){
-							//cout << "Dbar found. " << iEvent << "  " << D_E << "  " << cont_Dbar << "  " << cont_pbar << "  " << deuteroncheck << "  " << source_size << endl;
-         				 	deuteroncheck = 1;
-                      		double eI  = log10((D_E-D_m)/mDM);
-                      		Dbar.fill(eI);
-                      		cont_Dbar++;
-                  	}
+  				      //source_size = sourcesize_function(p_px,p_py,p_pz,n_px,n_py,n_pz,p_tt,p_xx,p_yy,p_zz,n_tt,n_xx,n_yy,n_zz);
+					  
+					  if(method_Dbar!=10){
+  					  	double D_E = coalescence_function(p_px,p_py,p_pz,n_px,n_py,n_pz,pcoalescence,source_size,d,sigma,method_Dbar);
+						
+          			    if(D_E>0.0){
+  							//cout << "Dbar found. " << iEvent << "  " << D_E << "  " << cont_Dbar << "  " << cont_pbar << "  " << deuteroncheck << "  " << source_size << endl;
+           				 	deuteroncheck = 1;
+                        		double eI  = log10((D_E-D_m)/mDM);
+                        		Dbar.fill(eI);
+                        		cont_Dbar++;
+                    	}
+                	  }
+					  else{
+  					  	double D_E_1 = coalescence_function(p_px,p_py,p_pz,n_px,n_py,n_pz,pcoalescence,source_size,d,sigma,1);
+						double D_E_2 = coalescence_function(p_px,p_py,p_pz,n_px,n_py,n_pz,pcoalescence+0.02,source_size,d,sigma,2);
+						double D_E_3 = coalescence_function(p_px,p_py,p_pz,n_px,n_py,n_pz,pcoalescence,source_size,d,sigma,3);
+						
+          			    if(D_E_1>0.0 and deuteroncheck_1==0){
+  							//cout << "Dbar found. " << iEvent << "  " << D_E << "  " << cont_Dbar << "  " << cont_pbar << "  " << deuteroncheck << "  " << source_size << endl;
+           				 	deuteroncheck_1 = 1;
+                        	double eI  = log10((D_E_1-D_m)/mDM);
+                        	Dbar_1.fill(eI);
+                        	cont_Dbar_1++;
+                    	}
+          			    if(D_E_2>0.0 and deuteroncheck_2==0){
+  							//cout << "Dbar found. " << iEvent << "  " << D_E << "  " << cont_Dbar << "  " << cont_pbar << "  " << deuteroncheck << "  " << source_size << endl;
+           				 	deuteroncheck_2 = 1;
+                        	double eI  = log10((D_E_2-D_m)/mDM);
+                        	Dbar_2.fill(eI);
+                        	cont_Dbar_2++;
+                    	}
+          			    if(D_E_3>0.0  and deuteroncheck_3==0){
+  							//cout << "Dbar found. " << iEvent << "  " << D_E << "  " << cont_Dbar << "  " << cont_pbar << "  " << deuteroncheck << "  " << source_size << endl;
+           				 	deuteroncheck_3 = 1;
+                        	double eI  = log10((D_E_3-D_m)/mDM);
+                        	Dbar_3.fill(eI);
+                        	cont_Dbar_3++;
+                    	}
+                	  }
+					  
+        			 
 				
   				}
   			} 
@@ -324,8 +392,15 @@ int main(){
     }
     //Statistic and histrograms
     pythia.stat();
-  
-    Dbar.operator*=(1./nEvent/DeltaBin);
+    
+    if(method_Dbar!=10 and method_Dbar!=0){
+    	Dbar.operator*=(1./nEvent/DeltaBin);
+	}
+	else if(method_Dbar==10){
+		Dbar_1.operator*=(1./nEvent/DeltaBin);
+		Dbar_2.operator*=(1./nEvent/DeltaBin);
+		Dbar_3.operator*=(1./nEvent/DeltaBin);
+	}
     gamma.operator*=(1./nEvent/DeltaBin);
     electron.operator*=(1./nEvent/DeltaBin);
     proton.operator*=(1./nEvent/DeltaBin);
@@ -333,22 +408,49 @@ int main(){
     numu.operator*=(1./nEvent/DeltaBin);
     nutau.operator*=(1./nEvent/DeltaBin);
   
-    Dbar.table("antideuterons_spectrum_pythia8.dat", false, true);
-    gamma.table("gammas_spectrum_pythia8.dat");
-    electron.table("positrons_spectrum_pythia8.dat");
-    proton.table("antiprotons_spectrum_pythia8.dat");
-    nue.table("neutrinos_e_spectrum_pythia8.dat");
-    numu.table("neutrinos_mu_spectrum_pythia8.dat");
-    nutau.table("neutrinos_tau_spectrum_pythia8.dat");
-    rest.table("restx_spectrum_pythia8.dat");
-  
-    cout << gamma << electron << proton << nue << numu << nutau << Dbar << rest;
+    if(method_Dbar!=10 and method_Dbar!=0){
+    	Dbar.table( outdir + "./antideuterons_spectrum_pythia8.dat", false, true);
+	}
+	else if(method_Dbar==10){
+		Dbar_1.table( outdir + "./antideuterons_pcoal_spectrum_pythia8.dat", false, true);
+		Dbar_2.table( outdir + "./antideuterons_pcoalsigma_spectrum_pythia8.dat", false, true);
+		Dbar_3.table( outdir + "./antideuterons_GWF_spectrum_pythia8.dat", false, true);
+	}
+    
+    gamma.table( outdir + "./gammas_spectrum_pythia8.dat");
+    electron.table( outdir + "./positrons_spectrum_pythia8.dat");
+    proton.table( outdir + "./antiprotons_spectrum_pythia8.dat");
+    nue.table( outdir + "./neutrinos_e_spectrum_pythia8.dat");
+    numu.table( outdir + "./neutrinos_mu_spectrum_pythia8.dat");
+    nutau.table( outdir + "./neutrinos_tau_spectrum_pythia8.dat");
+    rest.table( outdir + "./restx_spectrum_pythia8.dat");
+    
+    if(method_Dbar!=10 and method_Dbar!=0){
+    	cout << gamma << electron << proton << nue << numu << nutau << Dbar << rest;
+	}
+	else if(method_Dbar==10){
+		cout << gamma << electron << proton << nue << numu << nutau << Dbar_1  << Dbar_2  << Dbar_3 << rest;
+	}
+	else if(method_Dbar==0){
+		cout << gamma << electron << proton << nue << numu << nutau << rest;
+	}
+    
   
     cout << endl;
     cout << endl;
 	cout << "###########################################################################"<< endl;
     cout << "Multiplicity" << endl;
-    cout << "positrons= " << (double)cont_pos/maxevent << "  gammas= " << (double)cont_gamma/maxevent << "  antiprotons= " << (double)cont_pbar/maxevent << "  Dbar= " << (double)cont_Dbar/maxevent << endl;
+	
+    if(method_Dbar!=10 and method_Dbar!=0){
+    	cout << "positrons= " << (double)cont_pos/maxevent << "  gammas= " << (double)cont_gamma/maxevent << "  antiprotons= " << (double)cont_pbar/maxevent << "  Dbar= " << (double)cont_Dbar/maxevent << endl;
+	}
+	else if(method_Dbar==10){
+		cout << "positrons= " << (double)cont_pos/maxevent << "  gammas= " << (double)cont_gamma/maxevent << "  antiprotons= " << (double)cont_pbar/maxevent << "  Dbar pcoal= " << (double)cont_Dbar_1/maxevent << "  Dbar pcoalsigma= " << (double)cont_Dbar_2/maxevent << "  Dbar GWF= " << (double)cont_Dbar_3/maxevent << endl;
+	}
+	else if(method_Dbar=0){
+		cout << "positrons= " << (double)cont_pos/maxevent << "  gammas= " << (double)cont_gamma/maxevent << "  antiprotons= " << (double)cont_pbar/maxevent << endl;
+	}
+    
     cout << "nue= " << (double)cont_nue/maxevent << "  numu= " << (double)cont_numu/maxevent << "  nutau= " << (double)cont_nutau/maxevent << endl;
 	cout << "###########################################################################"<< endl;
     cout << endl;
