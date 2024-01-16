@@ -10,8 +10,8 @@ def integrate(integrand, x_grid=[], a=0, b=0, npts=0, **kwargs):
         #otherwise use the grid supplied by the user.
         if (a!=b):
             x_grid = [float(a)+ (float(b)-float(a))*k/npts for k in range(0, npts+1)]
-
-        if x_grid==[]:
+        
+        if np.array(x_grid).size == 0:
             print("ERROR: Integration grid in integrate() function not set up! Returning 0.")
             return simpson
 

@@ -33,6 +33,6 @@ StringZ:aExtraDiquark = 1.671
 
 ! Coalescence parameters
 Main:methodDbar=1.0000000000e+00
-Main:p_coalescence = 0.190
+Main:p_coalescence = 0.192
 Main:d_coalescence = 1.3
 Main:sigma_coalescence = 3.0
