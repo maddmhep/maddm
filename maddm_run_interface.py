@@ -1797,27 +1797,27 @@ class MADDMRunCmd(cmd.CmdShell):
                         
                     if 'Xenon10_bins' in line:
                         Xenon10_bins = []
-                        for i in range(1,9):
+                        for i in range(1,5):
                             Xenon10_bins.append(secure_float_f77(splitline[i]))
                         result['Xenon10_bins'] = Xenon10_bins
 
                     elif 'Xenon10_signal' in line:
                         Xenon10_signal = []
-                        for i in range(1,8):
+                        for i in range(1,4):
                             Xenon10_signal.append(secure_float_f77(splitline[i]))
                         result['Xenon10_signal'] = Xenon10_signal
 
-                    elif 'Xenon1T_bins' in line:
-                        Xenon1T_bins = []
-                        for i in range(1,6):
-                            Xenon1T_bins.append(secure_float_f77(splitline[i]))
-                        result['Xenon1T_bins'] = Xenon1T_bins
-
                     elif 'Xenon1T_signal' in line:
-                        Xenon1T_signal = []
-                        for i in range(1,5):
-                            Xenon1T_signal.append(secure_float_f77(splitline[i]))
-                        result['Xenon1T_signal'] = Xenon1T_signal
+                        result['Xenon1T_signal'] = secure_float_f77(splitline[1])
+
+                    elif 'Xenon1T_bkg' in line:
+                        result['Xenon1T_bkg'] = secure_float_f77(splitline[1])
+
+                    elif 'Xenon1T_obs' in line:
+                        result['Xenon1T_obs'] = secure_float_f77(splitline[1])
+
+                    elif 'sigma_e' in line:
+                        result['sigma_e'] = secure_float_f77(splitline[1])
 
                     else:
                         result[splitline[0].split(':')[0]] = secure_float_f77(splitline[1])
@@ -2045,16 +2045,23 @@ class MADDMRunCmd(cmd.CmdShell):
 
     def launch_direct_electron(self):
 
-        def get_pvalue(n_obs,expected_val):
+        def get_pvalue_min(n_obs,expected_val):
             pvalues = []
             for obs,exp in zip(n_obs,expected_val):
                 pvalues.append(poisson.cdf(obs,exp))
             return min(pvalues)
+
+        def get_pvalue(obs,sig,bkg):
+            pvalue = poisson.cdf(obs,sig+bkg)
+            return pvalue
         
         self.last_results['pvalue_Xenon10'] = -1
         self.last_results['pvalue_Xenon1T'] = -1
         
-        if ("Xenon10_signal" in self.last_results) and ("Xenon1T_signal" in self.last_results):
+        if ("Xenon10_signal" not in self.last_results) and ("Xenon1T_signal" not in self.last_results):
+            logger.warning("XENON10 or XENON1T signal not found, exclusion limits computation for electronic recoil is disabled.")
+            return
+        else:
             if HAS_NUMPY is False:
                 logger.warning("numpy module not available, exclusion limits computation is disabled.")
                 return
@@ -2063,14 +2070,13 @@ class MADDMRunCmd(cmd.CmdShell):
                 return
             elif self.last_results['DM_response']!=-1:
                 Xenon10_sig = self.last_results['Xenon10_signal']
+                Xenon10_obs = [147,44,8]
                 Xenon1T_sig = self.last_results['Xenon1T_signal']
-                Xenon10_obs = [126,60,12,3,2,0,2]
-                Xenon1T_obs = [8,7,2,1]
-                Xenon10_tot = [sig + bkg for sig,bkg in zip(Xenon10_sig,Xenon10_obs)]
-                Xenon1T_tot = [sig + bkg for sig,bkg in zip(Xenon1T_sig,Xenon1T_obs)]
+                Xenon1T_bkg = self.last_results['Xenon1T_bkg']
+                Xenon1T_obs = self.last_results['Xenon1T_obs']
 
-                self.last_results['pvalue_Xenon10'] = get_pvalue(Xenon10_obs,Xenon10_sig)
-                self.last_results['pvalue_Xenon1T'] = get_pvalue(Xenon1T_obs,Xenon1T_sig)
+                self.last_results['pvalue_Xenon10'] = get_pvalue_min(Xenon10_obs,Xenon10_sig)
+                self.last_results['pvalue_Xenon1T'] = get_pvalue(Xenon1T_obs,Xenon1T_sig,Xenon1T_bkg)
 
 
     def launch_multinest(self):
@@ -3119,23 +3125,23 @@ class MADDMRunCmd(cmd.CmdShell):
             def det_message_screen(n1,n2):
                 if n2 < 0 :                 return '%s NO LIMIT %s' % (bcolors.GRAY, bcolors.ENDC)
                 elif   n1 > n2 and n2 >= 0 : return '%s EXCLUDED %s' % (bcolors.FAIL, bcolors.ENDC)
-                elif   n2 > n1            : return '%s ALLOWED %s'  % (bcolors.OKGREEN, bcolors.ENDC) 
+                elif   n2 > n1            : return '%s ALLOWED  %s'  % (bcolors.OKGREEN, bcolors.ENDC) 
                 elif   n1 <= 0            : return 'No Theory Prediction'
 
             pval_Xenon10 = self.last_results['pvalue_Xenon10']
             pval_Xenon1T = self.last_results['pvalue_Xenon1T']
+            sigma_e = self.last_results['sigma_e']
             if pval_Xenon10==-1 and pval_Xenon1T==-1:
-                logger.info( self.form_s('Total signal Xenon10       =  ') + self.form_n(-1) + self.form_s('     ' + det_message_screen(0.05,pval_Xenon10)) + self.form_s('    pvalue  =') + self.form_n(pval_Xenon10))
-                logger.info( self.form_s('Total signal Xenon1T       =  ') + self.form_n(-1) + self.form_s('     ' + det_message_screen(0.05,pval_Xenon1T)) + self.form_s('    pvalue  =') + self.form_n(pval_Xenon1T))
+                logger.info( self.form_s('Sigma_e             All DM = ') + self.form_n(-1) + self.form_s('      ' + det_message_screen(0.05,pval_Xenon10)) + self.form_s('     Xenon10 p_val    = ') + self.form_n(pval_Xenon10))
+                logger.info( self.form_s('Sigma_e             All DM = ') + self.form_n(-1) + self.form_s('      ' + det_message_screen(0.05,pval_Xenon1T)) + self.form_s('     Xenon1ton p_val  = ') + self.form_n(pval_Xenon1T))
             else:
                 tot_sig_Xenon10 = 0
                 for sig in self.last_results['Xenon10_signal']:
                     tot_sig_Xenon10 += sig
-                tot_sig_Xenon1T = 0
-                for sig in self.last_results['Xenon1T_signal']:
-                    tot_sig_Xenon1T += sig
-                logger.info( self.form_s('Total signal Xenon10       =  ') + self.form_n(tot_sig_Xenon10) + self.form_s('     ' + det_message_screen(0.05,pval_Xenon10)) + self.form_s('    pvalue  =') + self.form_n(pval_Xenon10))
-                logger.info( self.form_s('Total signal Xenon1T       =  ') + self.form_n(tot_sig_Xenon1T) + self.form_s('     ' + det_message_screen(0.05,pval_Xenon1T)) + self.form_s('    pvalue  =') + self.form_n(pval_Xenon1T))
+                tot_sig_Xenon1T = self.last_results['Xenon1T_signal']
+                    
+                logger.info( self.form_s('Sigma_e             All DM = ') + self.form_n(sigma_e) + self.form_s('      ' + det_message_screen(0.05,pval_Xenon10)) + self.form_s('     Xenon10 p_val    = ') + self.form_n(pval_Xenon10))
+                logger.info( self.form_s('Sigma_e             All DM = ') + self.form_n(sigma_e) + self.form_s('      ' + det_message_screen(0.05,pval_Xenon1T)) + self.form_s('     Xenon1ton p_val  = ') + self.form_n(pval_Xenon1T))
 
         if self.mode['capture']:
             logger.info('\n capture coefficients: ')
@@ -3603,8 +3609,10 @@ class MADDMRunCmd(cmd.CmdShell):
 
             sig10 = self.last_results['Xenon10_signal']
             sig1T = self.last_results['Xenon1T_signal']
-            out.write(form_s('Xenon10_signal') + '= ' + form_s('['+ form_n(sig10[0]) + ',' + form_n(sig10[1]) + ',' + form_n(sig10[2]) + ',' + form_n(sig10[3]) + ',' + form_n(sig10[4]) + ',' + form_n(sig10[5]) + ',' + form_n(sig10[6]) + ']' ) + '\n')
-            out.write(form_s('Xenon1T_signal') + '= ' + form_s('['+ form_n(sig1T[0]) + ',' + form_n(sig1T[1]) + ',' + form_n(sig1T[2]) + ',' + form_n(sig1T[3]) + ']' ) + '\n')
+            bkg1T = self.last_results['Xenon1T_bkg']
+            out.write(form_s('Xenon10_signal') + '= ' + form_s('['+ form_n(sig10[0]) + ',' + form_n(sig10[1]) + ',' + form_n(sig10[2]) + ']' ) + '\n')
+            out.write(form_s('Xenon1T_signal') + '= ' + form_s('['+ form_n(sig1T)))
+            out.write(form_s('Xenon1T_bkg') + '= ' + form_s('['+ form_n(bkg1T)))
         
 
         if indirect or spectral:      

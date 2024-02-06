@@ -140,12 +140,16 @@ c     and to electron_recoil_signal that computes the signal.
       if (do_direct_electron.and.((direct_electron_mode.eq."always").or.
      &                            (mdm(1).le.direct_electron_dm_mass_max))) then
             dm_resp = dm_response()
-            call electron_recoil_signal(dm_resp,bin_Xenon10,bin_Xenon1T,sig_Xenon10,sig_Xenon1T)
-            write(33,*) 'DM_response:', dm_resp
+            call electron_recoil_signal(dm_resp,bin_Xenon10,sig_Xenon10,tot_sig_Xenon1T,
+     &                                  tot_bkg_Xenon1T, n_obs_Xenon1T)
+            sigma_e = dm_resp/(16.d0*pi*(mdm(1)+0.5109989e-3)**2)
+            write(33,*) 'DM_response', dm_resp
+            write(33,*) 'sigma_e', sigma_e
             write(33,*) 'Xenon10_bins' , bin_Xenon10
             write(33,*) 'Xenon10_signal' , sig_Xenon10
-            write(33,*) 'Xenon1T_bins' , bin_Xenon1T
-            write(33,*) 'Xenon1T_signal' , sig_Xenon1T
+            write(33,*) 'Xenon1T_signal', tot_sig_Xenon1T
+            write(33,*) 'Xenon1T_bkg', tot_bkg_Xenon1T
+            write(33,*) 'Xenon1T_obs', n_obs_Xenon1T
       endif
         
 c     Compute the relic density channels percentage

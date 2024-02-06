@@ -1,14 +1,14 @@
-!-----------------------------------------------------------------------------------------------------!
-        Subroutine electron_recoil_signal(dm_response,bin_Xenon10,bin_Xenon1T,sig_Xenon10,sig_Xenon1T)
-!-----------------------------------------------------------------------------------------------------!
-!       The main subroutine for the calculation of the electron recoil signal from DM-electron        !
-!       interaction.                                                                                  !
-!                                                                                                     !
-!       Please cite:                                                                                  !
-!               - arXiv:1912.08204v2 [hep-ph] 19 Aug 2020                                             !
-!               - arXiv:1509.01598 [hep-ph] JHEP 05, 046 (2016)                                       !
-!                                                                                                     !
-!-----------------------------------------------------------------------------------------------------!
+!------------------------------------------------------------------------------------------------!
+        Subroutine electron_recoil_signal(dm_response,bin_Xenon10,sig_Xenon10,tot_sig_Xenon1T,
+     &                                      tot_bkg_Xenon1T, n_obs_Xenon1T)
+!------------------------------------------------------------------------------------------------!
+!       The main subroutine for the calculation of the electron recoil signal from DM-electron   !
+!       interaction.                                                                             !
+!                                                                                                !
+!       Please cite:                                                                             !
+!               - arXiv:1912.08204v2 [hep-ph] 19 Aug 2020                                        !
+!               - arXiv:1509.01598 [hep-ph] JHEP 05, 046 (2016)                                  !
+!------------------------------------------------------------------------------------------------!
 
         implicit none
 
@@ -16,6 +16,7 @@
 
         double precision M_dm, M_e, binding_energy
         integer i, ik, iq, id, iS2, tot_num_shell
+        integer len_bin_Xenon10
         character(20) shell_filenames(50), filename
         character(2) target, shell_names(50)
         character(200) maddm_path, atom_resp_path, Xenon10_efficency_path, Xenon1T_efficency_path
@@ -34,7 +35,8 @@
         double precision Xenon10_flat_efficency, exposure_Xenon10, exposure_Xenon1T
         parameter(exposure_Xenon10 = 15)        ! Kg days
         parameter(exposure_Xenon1T = 80755.2)     ! Kg days
-        double precision tot_sig_Xenon10, tot_sig_Xenon1T
+        double precision tot_sig_Xenon10
+        integer s2_roi_min_Xenon1T, s2_roi_max_Xenon1T
 
         include '../include/coupl.inc'
         include '../include/process_names.inc'
@@ -45,15 +47,13 @@ c        write(*,*) '                    electron_recoil_signal.f               
 c        write(*,*) '---------------------------------------------------------------'
 
 
-        bin_Xenon10 = (/14,41,68,95,122,149,176,203/)
-        bin_Xenon1T = (/150,200,250,300,350/)
+        bin_Xenon10 = (/14,41,68,95/)
+
+        len_bin_Xenon10 = size(bin_Xenon10)
 
         if (dm_response.eq.-1) then
-            do i=1,7
+            do i=1,len_bin_Xenon10-1
                 sig_Xenon10(i)=-1
-            enddo
-            do i=1,4
-                sig_Xenon1T(i)=-1
             enddo
             Return
         endif
@@ -85,16 +85,11 @@ c       Initialize the parameters and variables
             dRdS2_Xenon1T(iS2) = 0
         enddo
 
-        do i=1,7
+        do i=1,len_bin_Xenon10-1
             sig_Xenon10(i) = 0
         enddo
 
         tot_sig_Xenon10 = 0
-
-        do i=1,4
-            sig_Xenon1T(i) = 0
-        enddo
-
         tot_sig_Xenon1T = 0
 
 
@@ -151,8 +146,7 @@ c       Sum over all shells
 
             do ik=1,gridsize_k
                 do iq=1,gridsize_q
-                    ioniz_amplitude(ik,iq) = atomic_response_matrix(ik,iq) *
-     &                                       dm_response * GeVtoKg**2 * gevtopb * picobarn
+                    ioniz_amplitude(ik,iq) = atomic_response_matrix(ik,iq) * dm_response * GeVtoKg**2
                 enddo
             enddo
 
@@ -219,7 +213,7 @@ c ------------------------------------------------------------------------------
 
 c       Xenon10
         do iS2=1,S2_max_Xenon10
-            do i=1,7
+            do i=1,len_bin_Xenon10-1
                 if(bin_Xenon10(i).le.iS2.and.iS2.lt.bin_Xenon10(i+1)) then
                     sig_Xenon10(i) = sig_Xenon10(i) + dRdS2_Xenon10(iS2)
                     exit
@@ -227,7 +221,7 @@ c       Xenon10
             enddo
         enddo
 
-        do i=1,7
+        do i=1,len_bin_Xenon10-1
             tot_sig_Xenon10 = tot_sig_Xenon10 + sig_Xenon10(i)
         enddo
 
@@ -241,27 +235,11 @@ c            write(*,'(A2,I3,A1,I3,A5,E23.17)') ' [' , bin_Xenon10(i), ',' , bin
 c        enddo
 
 c       Xenon1T
-        do iS2=1,S2_max_Xenon1T
-            do i=1,4
-                if(bin_Xenon1T(i).le.iS2.and.iS2.lt.bin_Xenon1T(i+1)) then
-                    sig_Xenon1T(i) = sig_Xenon1T(i) + dRdS2_Xenon1T(iS2)
-                    exit
-                endif
-            enddo
-        enddo
+        call Xenon1T_results(M_dm,s2_roi_min_Xenon1T,s2_roi_max_Xenon1T,n_obs_Xenon1T,tot_bkg_Xenon1T)
 
-        do i=1,4
-            tot_sig_Xenon1T = tot_sig_Xenon1T + sig_Xenon1T(i)
+        do iS2=s2_roi_min_Xenon1T,s2_roi_max_Xenon1T
+            tot_sig_Xenon1T = tot_sig_Xenon1T + dRdS2_Xenon1T(iS2)
         enddo
-
-c        write(*,*) ''
-c        write(*,*) 'Xenon1T signal'
-c        write(*,*) '------------------------------------'
-c        write(*,*) 'bin (S2)   | signal'
-c        write(*,*) '------------------------------------'
-c        do i=1,4
-c            write(*,'(A2,I3,A1,I3,A5,E23.17)') ' [' , bin_Xenon1T(i), ',' , bin_Xenon1T(i+1), ')  | ' , sig_Xenon1T(i)
-c        enddo
 
 c        write(*,*)
 c        write(*,*) "Total signal Xenon10:" , tot_sig_Xenon10, "Upper limit for Xenon10: 25.1628"
@@ -270,8 +248,6 @@ c        write(*,*) "Total signal Xenon1T:" , tot_sig_Xenon1T, "Upper limit for 
         open(9,file='./output/signal_e_recoil.dat',status='unknown')
         write(9,*) 'Xenon10_bins' , bin_Xenon10
         write(9,*) 'Xenon10_signal' , sig_Xenon10
-        write(9,*) 'Xenon1T_bins' , bin_Xenon1T
-        write(9,*) 'Xenon1T_signal' , sig_Xenon1T
         close(9)
 
 c ------------------------------------------------------------------------------------------------
@@ -935,3 +911,102 @@ c                        write(*,*) iS2, efficency(iS2)
             return
 
         end function gauss_prob
+
+
+
+
+
+
+!---------------------------------------------------------------------------------------------!
+        subroutine interpolate(x, y, n, x_interp, y_interp)
+!---------------------------------------------------------------------------------------------!
+!       Interpolate the values y(x) into a new set x_interp, returning y_interp
+!---------------------------------------------------------------------------------------------!
+            integer n                   ! Array size
+            double precision x(n)       ! Array of x values
+            double precision y(n)       ! Corresponding values for x
+            double precision x_interp   ! Input value to interpolate
+            double precision y_interp   ! Interpolated value
+
+            integer j
+            double precision slope, intercept
+
+            ! Check if x_interp is outside the range of x
+            if (x_interp < minval(x) .or. x_interp > maxval(x)) then
+                write(*,*) 'Error: x_interp is outside the range of x values.'
+                y_interp = 0.d0
+                return
+            end if
+
+            ! Find the two points around x_interp
+            do j = 1, n - 1
+                if (x_interp >= x(j) .and. x_interp <= x(j + 1)) then
+                    ! Calculate slope and intercept for linear interpolation
+                    slope = (y(j + 1) - y(j)) / (x(j + 1) - x(j))
+                    intercept = y(j) - slope * x(j)
+
+                    ! Perform linear interpolation
+                    y_interp = slope * x_interp + intercept
+                    exit
+                end if
+            end do
+
+        end subroutine interpolate
+
+
+
+
+
+
+!---------------------------------------------------------------------------------------------------!
+        subroutine Xenon1T_results(dm_mass, s2_roi_min, s2_roi_max, n_obs, n_bkg)
+!---------------------------------------------------------------------------------------------------!
+!       Returns the result obtained from the XENON collaborations, listed here:
+!       https://github.com/XENON1T/s2only_data_release/blob/master/limits/5d_results_dmelectron.csv
+!---------------------------------------------------------------------------------------------------!
+
+        double precision dm_mass, s2_roi_min_double, s2_roi_max_double, n_bkg, n_obs_double
+        double precision dm_mass_xenon(15),s2_roi_min_xenon(15),s2_roi_max_xenon(15),n_bkg_xenon(15),n_obs_xenon(15)
+        integer s2_roi_min, s2_roi_max, n_obs, size_dm_mass_xenon
+
+        s2_roi_min = 0
+        s2_roi_max = 0
+        n_obs = 0
+        n_bkg = 0
+        size_dm_mass_xenon = size(dm_mass_xenon)
+        
+        dm_mass_xenon = (/0.01,0.02,0.03,0.05,0.07,0.1,0.14,0.2,0.3,0.5,0.7,1.0,2.0,5.0,10.0/)
+
+        if ((dm_mass.lt.dm_mass_xenon(1)).or.(dm_mass.gt.dm_mass_xenon(size_dm_mass_xenon))) then
+            write(*,'(A33,F4.2,A3,F4.1,A5)') "DM mass outside XENON1T bounds: ("
+     &              ,dm_mass_xenon(1)," : ",dm_mass_xenon(size_dm_mass_xenon),") GeV"
+            return
+        endif
+        
+        s2_roi_min_xenon =
+     &      (/150.0, 150.0, 150.0, 151.36056733252408, 162.41396726487562, 165.30120974988552,
+     &      165.30120974988552, 165.30120974988552, 165.30120974988552, 165.30120974988552,
+     &      165.30120974988552, 165.30120974988552, 165.30120974988552, 165.30120974988552,
+     &      165.30120974988552/)
+        
+        s2_roi_max_xenon =
+     &      (/200.0, 200.0, 207.85504646089333, 231.03432867945907, 239.32156225578265, 256.79848498848366,
+     &      266.0098824431806, 270.7387555010616, 270.7387555010616, 270.7387555010616, 270.7387555010616,
+     &      270.7387555010616, 270.7387555010616, 270.7387555010616, 270.7387555010616/)
+    
+        n_obs_xenon = (/8.0, 8.0, 9.0, 14.0, 13.0, 14.0, 15.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0/)
+    
+        n_bkg_xenon =
+     &      (/2.429147965767682, 2.429147965767682, 2.723379181094673, 3.560164460077108, 2.9683432010305126,
+     &      3.2525520597626167, 3.7342708054194262, 3.7272835762603256, 3.7272835762603256, 3.7272835762603256,
+     &      3.7272835762603256, 3.7272835762603256, 3.7272835762603256, 3.7272835762603256, 3.7272835762603256/)
+        call interpolate(dm_mass_xenon, s2_roi_min_xenon, 15, dm_mass, s2_roi_min_double)
+        call interpolate(dm_mass_xenon, s2_roi_max_xenon, 15, dm_mass, s2_roi_max_double)
+        call interpolate(dm_mass_xenon, n_obs_xenon, 15, dm_mass, n_obs_double)
+        call interpolate(dm_mass_xenon, n_bkg_xenon, 15, dm_mass, n_bkg)
+
+        s2_roi_min = int(s2_roi_min_double)
+        s2_roi_max = int(s2_roi_max_double)
+        n_obs = int(n_obs_double)
+
+        end subroutine Xenon1T_results
