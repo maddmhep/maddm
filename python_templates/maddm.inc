@@ -188,7 +188,7 @@ c  Directional detection switch
       double precision Naa, G_fermi, g1,sec, GeV, cm, cs, fm, km, kmtocm, barn, picobarn, GeVtokev, pbtocm2,
      & GeVtoMeV, invcmtoGeV, cmtoinvGeV,Mevtokev,daytosec, hrtosec,tontokg,hukgtokg, gevtopb, pbtocm3
       common/simu/Energy_bins,cos_theta_bins,day_bins,En_min,En_max,cos_min,cos_max,day_min,day_max
-      integer gridsize_k, gridsize_q, S2_max_Xenon10, S2_max_Xenon1T
+      integer gridsize_k, gridsize_q, S2_max_Xenon10, S2_bin_max_Xenon1T, len_E_e_resp
       double precision hbar, GeVtoKg, GeVtoJ, mtocm
       double precision m_Xenon, au
       double precision q_min,q_max,k_min,k_max
@@ -211,7 +211,8 @@ c  Directional detection switch
       parameter(gridsize_k  = 100)
       parameter(gridsize_q  = 200)
       parameter(S2_max_Xenon10 = 203)
-      parameter(S2_max_Xenon1T = 350)
+      parameter(len_E_e_resp = 41)
+      parameter(S2_bin_max_Xenon1T = 63)
       parameter(m_Xenon   = 131.293) ! Average over all isotopes in (au)
 
 
