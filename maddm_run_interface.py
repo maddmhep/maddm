@@ -4984,8 +4984,8 @@ class MadDMCard(banner_mod.RunCard):
     - 13: CS2""")
         
         #Setting up the DM constants
-        self.add_param('vMP', 220.0)
-        self.add_param('vescape', 650.0)
+        self.add_param('vMP', 238.0)
+        self.add_param('vescape', 544.0)
         self.add_param('rhoDM', 0.3)
         #detector 
         self.add_param('detector_size', 1000.0)

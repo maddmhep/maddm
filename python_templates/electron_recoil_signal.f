@@ -43,7 +43,7 @@ c        write(*,*) '                    electron_recoil_signal.f               
 c        write(*,*) '---------------------------------------------------------------'
 
 
-        bin_Xenon10 = (/14,41,68,95/)
+        bin_Xenon10 = (/14,41,68,95,122,149,176,203/)
 
         len_bin_Xenon10 = size(bin_Xenon10)
 
@@ -221,12 +221,6 @@ c       Xenon1T
         do iS2=s2_roi_min_Xenon1T,s2_roi_max_Xenon1T
             tot_sig_Xenon1T = tot_sig_Xenon1T + dRdiS2_Xenon1T(iS2)
         enddo
-
-        write(*,*) 'tot sig XENON1T:', tot_sig_Xenon1T
-
-c        write(*,*)
-c        write(*,*) "Total signal Xenon10:" , tot_sig_Xenon10, "Upper limit for Xenon10: 25.1628"
-c        write(*,*) "Total signal Xenon1T:" , tot_sig_Xenon1T, "Upper limit for Xenon1T: 8.6918"
 
         open(9,file='./output/signal_e_recoil.dat',status='unknown')
         write(9,*) 'Xenon10_bins' , bin_Xenon10
@@ -1023,17 +1017,17 @@ c                        write(*,*) S2, efficency(S2)
 !       https://github.com/XENON1T/s2only_data_release/blob/master/limits/5d_results_dmelectron.csv
 !---------------------------------------------------------------------------------------------------!
 
-        double precision dm_mass, n_bkg
-        double precision dm_mass_xenon(15),s2_roi_min_xenon(15),s2_roi_max_xenon(15),n_bkg_xenon(15),n_obs_xenon(15)
-        integer i, s2_roi_min, s2_roi_max, n_obs, size_dm_mass_xenon, index
-
-        size_dm_mass_xenon = size(dm_mass_xenon)
+        integer i, s2_roi_min, s2_roi_max, n_obs, index, arr_size
+        parameter(arr_size = 15)
+        double precision dm_mass, n_bkg, dm_mass_xenon(arr_size), n_bkg_xenon(arr_size)
+        double precision s2_roi_min_double,s2_roi_max_double,n_obs_double
+        double precision s2_roi_min_xenon(arr_size),s2_roi_max_xenon(arr_size),n_obs_xenon(arr_size)
         
         dm_mass_xenon = (/0.01,0.02,0.03,0.05,0.07,0.1,0.14,0.2,0.3,0.5,0.7,1.0,2.0,5.0,10.0/)
 
-        s2_roi_min_xenon = (/30,30,30,30,34,35,35,35,35,35,35,35,35,35,35/)
+        s2_roi_min_xenon = (/30.0,30.0,30.0,30.0,34.0,35.0,35.0,35.0,35.0,35.0,35.0,35.0,35.0,35.0,35.0/)
         
-        s2_roi_max_xenon = (/46,46,48,54,56,60,62,63,63,63,63,63,63,63,63/)
+        s2_roi_max_xenon = (/46.0,46.0,48.0,54.0,56.0,60.0,62.0,63.0,63.0,63.0,63.0,63.0,63.0,63.0,63.0/)
     
         n_obs_xenon = (/8.0, 8.0, 9.0, 14.0, 13.0, 14.0, 15.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0/)
     
@@ -1042,21 +1036,18 @@ c                        write(*,*) S2, efficency(S2)
      &      3.2525520597626167, 3.7342708054194262, 3.7272835762603256, 3.7272835762603256, 3.7272835762603256,
      &      3.7272835762603256, 3.7272835762603256, 3.7272835762603256, 3.7272835762603256, 3.7272835762603256/)
 
-        if ((dm_mass.lt.dm_mass_xenon(1)).or.(dm_mass.gt.dm_mass_xenon(size_dm_mass_xenon))) then
+        if ((dm_mass.lt.dm_mass_xenon(1)).or.(dm_mass.gt.dm_mass_xenon(arr_size))) then
             write(*,'(A33,F4.2,A3,F4.1,A5)') "DM mass outside XENON1T bounds: ("
-     &              ,dm_mass_xenon(1)," : ",dm_mass_xenon(size_dm_mass_xenon),") GeV"
+     &              ,dm_mass_xenon(1)," : ",dm_mass_xenon(arr_size),") GeV"
             return
         else
-            do i=1,size_dm_mass_xenon
-                if ((dm_mass.le.dm_mass_xenon(i)).or.(dm_mass.ge.dm_mass_xenon(i+1))) then
-                    s2_roi_min = s2_roi_min_xenon(i)
-                    s2_roi_max = s2_roi_max_xenon(i)
-                    n_obs = n_obs_xenon(i)
-                    n_bkg = n_bkg_xenon(i)
-                endif
-            enddo
+            call interpolate(dm_mass_xenon, s2_roi_min_xenon, arr_size, dm_mass, s2_roi_min_double)
+            call interpolate(dm_mass_xenon, s2_roi_max_xenon, arr_size, dm_mass, s2_roi_max_double)
+            call interpolate(dm_mass_xenon, n_obs_xenon, arr_size, dm_mass, n_obs_double)
+            call interpolate(dm_mass_xenon, n_bkg_xenon, arr_size, dm_mass, n_bkg)
+            s2_roi_min = int(s2_roi_min_double)
+            s2_roi_max = int(s2_roi_max_double)
+            n_obs = int(n_obs_double)
         endif
-
-        write(*,*) 'mass:',dm_mass,'s2 min:',s2_roi_min,'s2 max:',s2_roi_max,'n obs:',n_obs,'n_bkg:',n_bkg
 
         end subroutine Xenon1T_results
