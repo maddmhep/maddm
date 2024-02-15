@@ -1797,13 +1797,13 @@ class MADDMRunCmd(cmd.CmdShell):
                         
                     if 'Xenon10_bins' in line:
                         Xenon10_bins = []
-                        for i in range(1,5):
+                        for i in range(1,8):
                             Xenon10_bins.append(secure_float_f77(splitline[i]))
                         result['Xenon10_bins'] = Xenon10_bins
 
                     elif 'Xenon10_signal' in line:
                         Xenon10_signal = []
-                        for i in range(1,4):
+                        for i in range(1,7):
                             Xenon10_signal.append(secure_float_f77(splitline[i]))
                         result['Xenon10_signal'] = Xenon10_signal
 
@@ -2070,7 +2070,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 return
             elif self.last_results['DM_response']!=-1:
                 Xenon10_sig = self.last_results['Xenon10_signal']
-                Xenon10_obs = [147,44,8]
+                Xenon10_obs = [126,60,12,3,2,0,2]
                 Xenon1T_sig = self.last_results['Xenon1T_signal']
                 Xenon1T_bkg = self.last_results['Xenon1T_bkg']
                 Xenon1T_obs = self.last_results['Xenon1T_obs']

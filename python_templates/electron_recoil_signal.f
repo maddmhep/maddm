@@ -1045,9 +1045,9 @@ c                        write(*,*) S2, efficency(S2)
             call interpolate(dm_mass_xenon, s2_roi_max_xenon, arr_size, dm_mass, s2_roi_max_double)
             call interpolate(dm_mass_xenon, n_obs_xenon, arr_size, dm_mass, n_obs_double)
             call interpolate(dm_mass_xenon, n_bkg_xenon, arr_size, dm_mass, n_bkg)
-            s2_roi_min = int(s2_roi_min_double)
-            s2_roi_max = int(s2_roi_max_double)
-            n_obs = int(n_obs_double)
+            s2_roi_min = nint(s2_roi_min_double)
+            s2_roi_max = nint(s2_roi_max_double)
+            n_obs = nint(n_obs_double)
         endif
 
         end subroutine Xenon1T_results
