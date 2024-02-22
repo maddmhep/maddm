@@ -2,6 +2,8 @@
 #add option to run it with x_min, x_max npts as well.
 from __future__ import print_function
 from six.moves import range
+import numpy as np
+
 def integrate(integrand, x_grid=[], a=0, b=0, npts=0, **kwargs):
 
         simpson = 0.0
