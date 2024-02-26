@@ -313,31 +313,37 @@ class Spectra:
             return 
         else: return True 
 
-    def load_PPPC_source(self, PPPCDIR, corr = '',load = True):
+    def load_PPPC_source(self, PPPCDIR, kind = '',load = True):
         """routine to load the PPPC table if installed already"""
         
         if not load:
             return
         
-        if Spectra.PPPC_type == ('source', corr):
+        if Spectra.PPPC_type == ('source', kind):
             return Spectra.PPPCdata
         
         if (not os.path.isfile(PPPCDIR+'/PPPC_Tables_EW.npy') and not os.path.isfile(PPPCDIR+'/PPPC_Tables_noEW.npy')):
             logger.error('PPPC4DMID Spectra at source not found! Please install by typing install PPPC4DMID') # Break and ask the user to download the Tables       
             return
 
-        if not corr:
-            dic =  np.load(PPPCDIR+'/PPPC_Tables_noEW.npy', allow_pickle = True).item()
-            logger.info('PPPC4DMID Spectra at source loaded')
-            Spectra.PPPCdata = dic
-            Spectra.PPPC_type = ('source', corr)
-            return dic
-        elif corr == 'ew':
-            dic =  np.load(PPPCDIR+'/PPPC_Tables_EW.npy', allow_pickle= True).item()
+        if (os.path.isfile(PPPCDIR+'/PPPC_Tables_EW.npy') and os.path.isfile(PPPCDIR+'/PPPC_Tables_noEW.npy') and not os.path.isfile(PPPCDIR+'/CosmiXs.npy')):
+            logger.error("PPPC4DMID is not updated, please update it with 'install PPPC4DMID'")
+            return
+
+        if kind == 'ew':
+            dic =  np.load(PPPCDIR+'/CosmiXs.npy', allow_pickle= True, encoding="latin1").item()
+            logger.info('EW spectra at source (updated version of PPPC) loaded')
+        elif kind == 'pppc_ew':
+            dic =  np.load(PPPCDIR+'/PPPC_Tables_EW.npy', allow_pickle= True, encoding="latin1").item()
             logger.info('PPPC4DMID Spectra at source (with EW corrections) loaded')
-            Spectra.PPPCdata = dic
-            Spectra.PPPC_type = ('source', corr)
-            return dic
+        else:
+            dic =  np.load(PPPCDIR+'/PPPC_Tables_noEW.npy', allow_pickle = True, encoding="latin1").item()
+            kind = "pppc"
+            logger.info('PPPC4DMID Spectra at source loaded')
+
+        Spectra.PPPCdata = dic
+        Spectra.PPPC_type = ('source', kind)
+        return dic
 
     def load_PPPC_earth(self, PPPCDIR, prof = 'Ein'):
         
@@ -349,7 +355,7 @@ class Spectra:
             return
         
         else:
-            dic = np.load(PPPCDIR+'/PPPC_Tables_epEarth_'+prof+'.npy' , allow_pickle= True).item()
+            dic = np.load(PPPCDIR+'/PPPC_Tables_epEarth_'+prof+'.npy' , allow_pickle= True, encoding="latin1").item()
             Spectra.PPPCdata = dic
             Spectra.PPPC_type = ('earth', prof)
             
@@ -2504,12 +2510,15 @@ class MADDMRunCmd(cmd.CmdShell):
             logger.error('using PPPC4DMID requires scipy module. Please install it (for example with "pip install scipy")')
             return
 
-        if 'PPPC4DMID' in self.maddm_card['indirect_flux_source_method'] or 'inclusive' in self.maddm_card['sigmav_method']:
+        if self.maddm_card['indirect_flux_source_method'] in ['PPPC4DMID', 'PPPC4DMID_ew', 'CosmiXs'] or 'inclusive' in self.maddm_card['sigmav_method']:
             if self.Spectra.check_mass(mdm):
-               if '_ew' in self.maddm_card['indirect_flux_source_method']:
-                    PPPC_source = self.Spectra.load_PPPC_source(self.options['pppc4dmid_path'],corr = 'ew')
-               else:
-                    PPPC_source = self.Spectra.load_PPPC_source(self.options['pppc4dmid_path'], corr = '')
+                if self.maddm_card['indirect_flux_source_method'] == 'CosmiXs':
+                    kind = 'ew'
+                if self.maddm_card['indirect_flux_source_method'] == 'PPPC4DMID_ew':
+                    kind = 'pppc_ew'
+                else:
+                    kind = 'pppc'
+                PPPC_source = self.Spectra.load_PPPC_source(self.options['pppc4dmid_path'], kind = kind)
 
         # Combine the spectra: multiply each channel by the BR                                                                                                  
         # I create a temporary list that at each loop in the channel, retains the partial sum of each x value multiplied by the channel BR                                      
@@ -4129,7 +4138,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
             logger.error("setting fast mode is only valid when indirect mode is getting called.")
             return 
         self.do_set("sigmav_method inclusive")
-        self.do_set("indirect_flux_source_method PPPC4DMID_ew")
+        self.do_set("indirect_flux_source_method CosmiXs")
         self.do_set("indirect_flux_earth_method PPPC4DMID_ep")
         
     def pass_to_precise_mode(self):
@@ -4479,6 +4488,22 @@ When you are done with such edition, just press enter (or write 'done' or '0')
         if self.availmode['forbid_fast'] and self.maddm['sigmav_method'] == 'inclusive':
             logger.warning("setting 'sigmav_method' to 'inclusive' is only valid when loop-induced processes are not considered. Switched to 'reshuffling'.")
             self.setDM('sigmav_method','reshuffling',loglevel=30)
+
+        # check whether the user selects PPPC4DMID
+        if self.maddm['indirect_flux_source_method'].startswith("PPPC"):
+            answer = ''
+            while(answer.lower() not in ['y', 'n']):
+                answer = input(bcolors.WARNING + "You selected " + self.maddm['indirect_flux_source_method'] + " as the method to compute indirect detection spectra.\nHowever, MadDM ships an improved version of the spectra, that can be selected with 'CosmiXs', do you want to use these? (Y/n) " + bcolors.ENDC).lower()
+                if answer == "" or answer == "y":
+                    logger.warning("Switching to 'CosmiXs'")
+                    self.setDM('indirect_flux_source_method','CosmiXs',loglevel=30)
+                    break
+                if answer == "n":
+                    logger.warning("Keep 'indirect_flux_source_method' to " + self.maddm['indirect_flux_source_method'])
+                    break
+            logger.warning("setting 'sigmav_method' to 'inclusive' is only valid when loop-induced processes are not considered. Switched to 'reshuffling'.")
+            self.setDM('sigmav_method','reshuffling',loglevel=30)
+
 
         # check pythia card consistency
         card_parameters = {}
@@ -4859,7 +4884,7 @@ class MadDMCard(banner_mod.RunCard):
         self.fill_jfactors()
 
         self.add_param('indirect_flux_source_method', 'pythia8', comment='choose between pythia8, vincia, PPPC4DMID and PPPC4DMID_ew', include=False,
-                       allowed=['pythia8','vincia','PPPC4DMID','PPPC4DMID_ew'])
+                       allowed=['pythia8','vincia','PPPC4DMID','PPPC4DMID_ew','CosmiXs'])
         self.add_param('indirect_flux_earth_method', 'dragon', comment='choose between dragon and PPPC4DMID_ep', include=False,
                        allowed=['dragon', 'PPPC4DMID_ep'])
         self.add_param('sigmav_method', 'reshuffling', comment='choose between inclusive, madevent, reshuffling', include=False,
@@ -4970,10 +4995,10 @@ class MadDMCard(banner_mod.RunCard):
         if self['sigmav_method'] == 'inclusive':
             if self['indirect_flux_source_method'] == 'pythia8' or self['indirect_flux_source_method'] == 'vincia':
                 if self['do_indirect_detection']:
-                    logger.warning('since sigmav_method is on inclusive, indirect_flux_source_method has been switched to PPPC4DMID')
+                    logger.warning("since sigmav_method is on inclusive, indirect_flux_source_method has been switched to 'CosmiXs'")
                 #if self['do_flux']:
                     #logger.warning('since sigmav_method is on inclusive, indirect_flux_source_method has been switch to PPPC4DMID')
-                self['indirect_flux_source_method'] = 'PPPC4DMID'
+                self['indirect_flux_source_method'] = 'CosmiXs'
             #if self['indirect_flux_earth_method'] != 'PPPC4DMID':
             #    if self['do_flux']:
             #        logger.warning('since sigmav_method is on inclusive, indirect_flux_earth_method has been switch to PPPC4DMID_ep')
