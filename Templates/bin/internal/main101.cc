@@ -46,7 +46,6 @@ void writeDbarspherical(double pcoalescence, double mDM, std::string filename, i
 	double DeltaTBin = (log10(T_pbar_max)-log10(T_pbar_min))/nbins;
 	
 	std::string inputFilePath = filename+"antiprotonsPrimordial_spectrum_pythia8.dat";
-	
 	std::string outputFilePath = filename+"antideuterons_spherical_spectrum_pythia8.dat";
 	
 	if(A==2 && Z==1){
@@ -673,6 +672,18 @@ int main(){
 		cout << gamma << electron << antiproton << nue << numu << nutau << rest;
 	}
     
+	/*
+	//std::string outputFilePath = filename+"antideuterons_spherical_spectrum_pythia8.dat";
+	std::string outputFilePath = outdir+"multiplicity_particles_pythia8.dat";
+	std::ofstream outputFile(outputFilePath);
+	outputFile << "#This files contains the particle multiplicities   " << std::endl;
+	outputFile << "#e+  " << std::setprecision(5) << std::scientific << (double)cont_pos/maxevent << "\t" << std::endl;
+	outputFile << "#gammas  " << std::setprecision(5) << std::scientific << (double)cont_pos/maxevent << "\t" << std::endl;
+	outputFile << "#antiprotons  " << std::setprecision(5) << std::scientific << (double)cont_pbar/maxevent << "\t" << std::endl;
+	outputFile << "#nue  " << std::setprecision(5) << std::scientific << (double)cont_nue/maxevent << "\t" << std::endl;
+	outputFile << "#numu  " << std::setprecision(5) << std::scientific << (double)cont_numu/maxevent << "\t" << std::endl;
+	outputFile << "#nutau  " << std::setprecision(5) << std::scientific << (double)cont_untau/maxevent << "\t" << std::endl;
+	*/
   
     cout << endl;
     cout << endl;
@@ -681,9 +692,15 @@ int main(){
 	
     if(method_Dbar!=10 and method_Dbar!=0){
     	cout << "positrons= " << (double)cont_pos/maxevent << "  gammas= " << (double)cont_gamma/maxevent << "  antiprotons= " << (double)cont_pbar/maxevent << "  antiprotons Primordial= " << (double)cont_pbarP/maxevent << "  Dbar= " << (double)cont_Dbar/maxevent << endl;
+		//outputFile << "#Dbar  " << std::setprecision(5) << std::scientific << (double)cont_Dbar_1/maxevent << "\t" << std::endl;
 	}
 	else if(method_Dbar==10){
 		cout << "positrons= " << (double)cont_pos/maxevent << "  gammas= " << (double)cont_gamma/maxevent << "  antiprotons= " << (double)cont_pbar/maxevent << "  antiprotons Primordial= " << (double)cont_pbarP/maxevent << "  Dbar pcoal= " << (double)cont_Dbar_1/maxevent << "  Dbar pcoalsigma= " << (double)cont_Dbar_2/maxevent << "  Dbar GWF= " << (double)cont_Dbar_3/maxevent << "  Dbar GWF(pvalue)= " << (double)cont_Dbar_31/maxevent << "  Dbar AWF= " << (double)cont_Dbar_4/maxevent << endl;
+		//outputFile << "#Dbar pcoal  " << std::setprecision(5) << std::scientific << (double)cont_Dbar_1/maxevent << "\t" << std::endl;
+		//outputFile << "#Dbar pcoal-sigma  " << std::setprecision(5) << std::scientific << (double)cont_Dbar_2/maxevent << "\t" << std::endl;
+		//outputFile << "#Dbar GWF  " << std::setprecision(5) << std::scientific << (double)cont_Dbar_3/maxevent << "\t" << std::endl;
+		//outputFile << "#Dbar GWF pvalue  " << std::setprecision(5) << std::scientific << (double)cont_Dbar_31/maxevent << "\t" << std::endl;
+		//outputFile << "#Dbar AWF  " << std::setprecision(5) << std::scientific << (double)cont_Dbar_4/maxevent << "\t" << std::endl;
 	}
 	else if(method_Dbar=0){
 		cout << "positrons= " << (double)cont_pos/maxevent << "  gammas= " << (double)cont_gamma/maxevent << "  antiprotons= " << (double)cont_pbar/maxevent << endl;
@@ -693,6 +710,8 @@ int main(){
 	cout << "###########################################################################"<< endl;
     cout << endl;
     cout << endl;
+	
+	//outputFile.close();
 	
 	if(method_Dbar==10 || method_Dbar==5){
 		writeDbarspherical(pcoalescence-0.07,mDM,outdir,nbins,2,1);
