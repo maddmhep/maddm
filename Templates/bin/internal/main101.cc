@@ -336,6 +336,7 @@ int main(){
     pythia.settings.addWord("Main:d_coalescence", "1.75");
     pythia.settings.addWord("Main:sigma_coalescence", "3");
     pythia.settings.addWord("Main:methodDbar", "1");
+	pythia.settings.addWord("Main:nbins", "180");
     // Initialize Les Houches Event File run. List initialization information.
     pythia.readFile("../../Source/spectrum.cmnd");
   
@@ -343,8 +344,9 @@ int main(){
     double d = atof(pythia.word("Main:d_coalescence").data()); //fm
     double sigma = atof(pythia.word("Main:sigma_coalescence").data()); //fm
     double method_Dbar = atof(pythia.word("Main:methodDbar").data()); //ADD PARAMETER IN MADDM.
-	
-	pythia.readString("Fragmentation:setVertices = on"); //Setting on the vertex info for baryons and mesons
+    double numberofbins = atof(pythia.word("Main:nbins").data()); //ADD PARAMETER IN MADDM.
+    
+    pythia.readString("Fragmentation:setVertices = on"); //Setting on the vertex info for baryons and mesons
     pythia.readString("PartonVertex:setVertex = on");
     pythia.readString("2112:mayDecay=on"); //Setting on decay on neutrons and antineutrons
     pythia.readString("-2112:mayDecay=on"); //Because in the Galaxy nbar decay happens
@@ -403,8 +405,11 @@ int main(){
   
     double eminh = -9.;
     double emaxh = 0.;
-    double nbins = 180; //Binninb modifed to account properly for the line spectra. The last bin is -0.05/-0.025/0.00+
+    double nbins = numberofbins; //Binninb modifed to account properly for the line spectra. The last bin is -0.05/-0.025/0.00+
     double DeltaBin = (emaxh-eminh)/nbins; 
+
+    double nbins_Dbar = 180; //Binninb modifed to account properly for the line spectra. The last bin is -0.05/-0.025/0.00+
+    double DeltaBin_Dbar = (emaxh-eminh)/nbins_Dbar; 
   
     int cont_pbar = 0;
 	int cont_pbarP = 0;
@@ -421,21 +426,21 @@ int main(){
 	int cont_Dbar_4 = 0;
     // Histogram particle spectra
 	
-    Hist Dbar("antideuteron spectrum", nbins, eminh, emaxh);
-    Hist Dbar_1("antideuteron spectrum", nbins, eminh, emaxh);
-    Hist Dbar_2("antideuteron spectrum", nbins, eminh, emaxh);
-    Hist Dbar_3("antideuteron spectrum", nbins, eminh, emaxh);
-	Hist Dbar_31("antideuteron spectrum", nbins, eminh, emaxh);
-    Hist Dbar_4("antideuteron spectrum", nbins, eminh, emaxh);
+    Hist Dbar("antideuteron spectrum", nbins_Dbar, eminh, emaxh, false, true);
+    Hist Dbar_1("antideuteron spectrum", nbins_Dbar, eminh, emaxh, false, true);
+    Hist Dbar_2("antideuteron spectrum", nbins_Dbar, eminh, emaxh, false, true);
+    Hist Dbar_3("antideuteron spectrum", nbins_Dbar, eminh, emaxh, false, true);
+	Hist Dbar_31("antideuteron spectrum", nbins_Dbar, eminh, emaxh, false, true);
+    Hist Dbar_4("antideuteron spectrum", nbins_Dbar, eminh, emaxh, false, true);
 
-    Hist gamma("gamma spectrum", nbins, eminh, emaxh);
-    Hist electron("e+- spectrum", nbins, eminh, emaxh);
-    Hist antiproton("pbar spectrum", nbins, eminh, emaxh);
-    Hist antiprotonP("pbar primordial spectrum", nbins, eminh, emaxh);
-    Hist nue("nu_e spectrum", nbins, eminh, emaxh);
-    Hist numu("nu_mu spectrum", nbins, eminh, emaxh);
-    Hist nutau("nu_tau spectrum", nbins, eminh, emaxh);
-    Hist rest("remaining particle spectrum", nbins, eminh, emaxh);
+    Hist gamma("gamma spectrum", nbins, eminh, emaxh, false, true);
+    Hist electron("e+- spectrum", nbins, eminh, emaxh, false, true);
+    Hist antiproton("pbar spectrum", nbins, eminh, emaxh, false, true);
+    Hist antiprotonP("pbar primordial spectrum", nbins, eminh, emaxh, false, true);
+    Hist nue("nu_e spectrum", nbins, eminh, emaxh, false, true);
+    Hist numu("nu_mu spectrum", nbins, eminh, emaxh, false, true);
+    Hist nutau("nu_tau spectrum", nbins, eminh, emaxh, false, true);
+    Hist rest("remaining particle spectrum", nbins, eminh, emaxh, false, true);
 	
    // Begin event loop.
     int nEvent = 0;
@@ -625,14 +630,14 @@ int main(){
     pythia.stat();
     
     if(method_Dbar!=10 and method_Dbar!=0){
-    	Dbar.operator*=(1./nEvent/DeltaBin);
+    	Dbar.operator*=(1./nEvent/DeltaBin_Dbar);
 	}
 	else if(method_Dbar==10){
-		Dbar_1.operator*=(1./nEvent/DeltaBin);
-		Dbar_2.operator*=(1./nEvent/DeltaBin);
-		Dbar_3.operator*=(1./nEvent/DeltaBin);
-		Dbar_31.operator*=(1./nEvent/DeltaBin);
-		Dbar_4.operator*=(1./nEvent/DeltaBin);
+		Dbar_1.operator*=(1./nEvent/DeltaBin_Dbar);
+		Dbar_2.operator*=(1./nEvent/DeltaBin_Dbar);
+		Dbar_3.operator*=(1./nEvent/DeltaBin_Dbar);
+		Dbar_31.operator*=(1./nEvent/DeltaBin_Dbar);
+		Dbar_4.operator*=(1./nEvent/DeltaBin_Dbar);
 	}
     gamma.operator*=(1./nEvent/DeltaBin);
     electron.operator*=(1./nEvent/DeltaBin);
