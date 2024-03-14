@@ -10,6 +10,7 @@
 ! ==================
 !
 Main:NumberOfEvents      = -1
+Main:nbins               = 180
 !
 ! ============
 ! WEAK SHOWER
