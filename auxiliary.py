@@ -12,7 +12,6 @@ def integrate(integrand, x_grid=[], a=0, b=0, npts=0, **kwargs):
         #otherwise use the grid supplied by the user.
         if (a!=b):
             x_grid = [float(a)+ (float(b)-float(a))*k/npts for k in range(0, npts+1)]
-        
         if np.array(x_grid).size == 0:
             print("ERROR: Integration grid in integrate() function not set up! Returning 0.")
             return simpson
@@ -22,8 +21,6 @@ def integrate(integrand, x_grid=[], a=0, b=0, npts=0, **kwargs):
             end_pt =  x_grid[ii+1]
             simpson = simpson + (end_pt - start_pt)/6.0*(integrand(start_pt, **kwargs) + 4.0*integrand(0.5*\
                                        (start_pt+end_pt), **kwargs) + integrand(end_pt, **kwargs))
-
-
         return simpson
 
 def write_data_to_file(x_data, y_data, errors = False, filename='', header=''):
