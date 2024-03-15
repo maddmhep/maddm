@@ -3752,6 +3752,7 @@ class Indirect_PY8Card(banner_mod.PY8Card):
         self.add_param("Main:NumberOfEvents", -1,  comment="number of events to go trough")
         self.add_param("Main:mDM", 1000.0, hidden=True, comment=" mass of the Dark matter")
         self.add_param("Main:outdir" , './', hidden=True, comment="specify output dir") 
+        self.add_param("Main:nbins" , 180, comment="number of bins unsed for the spetra") 
         # Init
         self.add_param("Init:showChangedSettings", True, hidden=True, comment="list changed settingspython")
         self.add_param("Init:showChangedParticleData", True, hidden=True, comment="print changed particle and decay data")
