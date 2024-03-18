@@ -648,24 +648,24 @@ int main(){
     nutau.operator*=(1./nEvent/DeltaBin);
   
     if(method_Dbar!=10 and method_Dbar!=0){
-    	Dbar.table(outdir + "./antideuterons_spectrum_pythia8.dat", false, true);
+    	Dbar.table(outdir + "./antideuterons_spectrum_pythia8.dat", false, true, true);
 	}
 	else if(method_Dbar==10){
-		Dbar_1.table(outdir + "./antideuterons_pcoal_spectrum_pythia8.dat", false, true);
-		Dbar_2.table(outdir + "./antideuterons_pcoalsigma_spectrum_pythia8.dat", false, true);
-		Dbar_3.table(outdir + "./antideuterons_GWF_spectrum_pythia8.dat", false, true);
-		Dbar_31.table(outdir + "./antideuterons_GWF_pvalue_spectrum_pythia8.dat", false, true);
-		Dbar_4.table(outdir + "./antideuterons_AWF_spectrum_pythia8.dat", false, true);
+		Dbar_1.table(outdir + "./antideuterons_pcoal_spectrum_pythia8.dat", false, true, true);
+		Dbar_2.table(outdir + "./antideuterons_pcoalsigma_spectrum_pythia8.dat", false, true, true);
+		Dbar_3.table(outdir + "./antideuterons_GWF_spectrum_pythia8.dat", false, true, true);
+		Dbar_31.table(outdir + "./antideuterons_GWF_pvalue_spectrum_pythia8.dat", false, true, true);
+		Dbar_4.table(outdir + "./antideuterons_AWF_spectrum_pythia8.dat", false, true, true);
 	}
     
-    gamma.table(outdir + "./gammas_spectrum_pythia8.dat");
-    electron.table(outdir + "./positrons_spectrum_pythia8.dat");
-    antiproton.table(outdir + "./antiprotons_spectrum_pythia8.dat");
+    gamma.table(outdir + "./gammas_spectrum_pythia8.dat", false, true, true);
+    electron.table(outdir + "./positrons_spectrum_pythia8.dat", false, true, true);
+    antiproton.table(outdir + "./antiprotons_spectrum_pythia8.dat", false, true, true);
 	antiprotonP.table(outdir + "./antiprotonsPrimordial_spectrum_pythia8.dat");
-    nue.table(outdir + "./neutrinos_e_spectrum_pythia8.dat");
-    numu.table(outdir + "./neutrinos_mu_spectrum_pythia8.dat");
-    nutau.table(outdir + "./neutrinos_tau_spectrum_pythia8.dat");
-    rest.table(outdir + "./restx_spectrum_pythia8.dat");
+    nue.table(outdir + "./neutrinos_e_spectrum_pythia8.dat", false, true, true);
+    numu.table(outdir + "./neutrinos_mu_spectrum_pythia8.dat", false, true, true);
+    nutau.table(outdir + "./neutrinos_tau_spectrum_pythia8.dat", false, true, true);
+    rest.table(outdir + "./restx_spectrum_pythia8.dat", false, true, true);
     
     if(method_Dbar!=10 and method_Dbar!=0){
     	cout << gamma << electron << antiproton << antiprotonP << nue << numu << nutau << Dbar << rest;
@@ -707,7 +707,7 @@ int main(){
 		//outputFile << "#Dbar GWF pvalue  " << std::setprecision(5) << std::scientific << (double)cont_Dbar_31/maxevent << "\t" << std::endl;
 		//outputFile << "#Dbar AWF  " << std::setprecision(5) << std::scientific << (double)cont_Dbar_4/maxevent << "\t" << std::endl;
 	}
-	else if(method_Dbar=0){
+	else if(method_Dbar==0){
 		cout << "positrons= " << (double)cont_pos/maxevent << "  gammas= " << (double)cont_gamma/maxevent << "  antiprotons= " << (double)cont_pbar/maxevent << endl;
 	}
     
