@@ -23,7 +23,7 @@ double const D_m=1.8756;
 void writeArgonne(){
   float a1, a2, a3, a4;
   
-  std::ifstream infile("/Users/mattiadimauro/Dropbox/Antinuclei/workdir/test_coalescence/DM/Argonne_WF.txt");
+  std::ifstream infile("../../../Cards/Argonne_WF.txt");
   std::string line; std::getline(infile, line);
   
   int count = 0;
@@ -731,9 +731,9 @@ int main(){
 	//outputFile.close();
 	
 	if(method_Dbar==10 || method_Dbar==5){
-		writeDbarspherical(pcoalescence-0.07,mDM,outdir,nbins,2,1);
-		writeDbarspherical(pcoalescence-0.07,mDM,outdir,nbins,3,2);
-		writeDbarspherical(pcoalescence-0.07,mDM,outdir,nbins,4,2);
+		writeDbarspherical(pcoalescence-0.041,mDM,outdir,nbins,2,1);
+		writeDbarspherical(pcoalescence-0.041,mDM,outdir,nbins,3,2);
+		writeDbarspherical(pcoalescence-0.041,mDM,outdir,nbins,4,2);
 	}
     
     //Done

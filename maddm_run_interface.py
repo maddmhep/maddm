@@ -3814,7 +3814,6 @@ class Indirect_PY8Card(banner_mod.PY8Card):
         # Vincia?
         if self.mode_vincia:
             self.add_param("Vincia:ewMode", 3, comment="Vincia EW mode")
-
         # self.add_param("PartonShowers:model", 2)
         # self.add_param("Vincia:ewMode", 3, comment="Vincia EW mode")
         # self.add_param("StringZ:deriveBLund", False)
@@ -4517,8 +4516,6 @@ When you are done with such edition, just press enter (or write 'done' or '0')
                 if answer == "n":
                     logger.warning("Keep 'indirect_flux_source_method' to " + self.maddm['indirect_flux_source_method'])
                     break
-
-
         # check pythia card consistency
         card_parameters = {}
         if self.maddm['indirect_flux_source_method'] == 'pythia8':
@@ -4532,8 +4529,10 @@ When you are done with such edition, just press enter (or write 'done' or '0')
                 "StringZ:aExtraDiquark": 1.671
             }
         elif self.maddm['indirect_flux_source_method'] == 'vincia':
+            #self.add_param("Vincia:ewMode", 3, comment="Vincia EW mode")
             card_parameters = {
                 "PartonShowers:model": 2,
+                "Vincia:ewMode": 3,
                 "StringZ:deriveBLund": False,
                 "StringZ:aLund": 0.337409,
                 "StringZ:bLund": 0.784682,
