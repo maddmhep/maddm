@@ -620,14 +620,14 @@ int main(){
                         	double eI  = log10((D_E_31-D_m)/mDM);
                         	Dbar_31.fill(eI);
                         	cont_Dbar_31++;
-							cout << cont_Dbar_4 << "  " << cont_Dbar_3 << "  " << cont_Dbar_2 << "  " << cont_Dbar_1 << endl;
+							//cout << cont_Dbar_4 << "  " << cont_Dbar_3 << "  " << cont_Dbar_2 << "  " << cont_Dbar_1 << endl;
                     	}
           			    if(D_E_4>0.0 and deuteroncheck_4==0){
            				 	deuteroncheck_4 = 1;
                         	double eI  = log10((D_E_4-D_m)/mDM);
                         	Dbar_4.fill(eI);
                         	cont_Dbar_4++;
-							cout << cont_Dbar_4 << "  " << cont_Dbar_3 << "  " << cont_Dbar_2 << "  " << cont_Dbar_1 << endl;
+							//cout << cont_Dbar_4 << "  " << cont_Dbar_3 << "  " << cont_Dbar_2 << "  " << cont_Dbar_1 << endl;
                     	}
                 	  }
   				}
