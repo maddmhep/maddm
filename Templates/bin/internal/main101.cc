@@ -587,7 +587,7 @@ int main(){
 					  
 					  if(method_Dbar==10){
   					  	double D_E_1 = coalescence_function(p_px,p_py,p_pz,n_px,n_py,n_pz,pcoalescence,source_size,sigma,d,1);
-						double D_E_2 = coalescence_function(p_px,p_py,p_pz,n_px,n_py,n_pz,pcoalescence+0.013,source_size,sigma,d,2);
+						double D_E_2 = coalescence_function(p_px,p_py,p_pz,n_px,n_py,n_pz,pcoalescence+0.016,source_size,sigma,d,2);
 						double D_E_3 = coalescence_function(p_px,p_py,p_pz,n_px,n_py,n_pz,pcoalescence,source_size,sigma,d,3);
 						double D_E_31= coalescence_function(p_px,p_py,p_pz,n_px,n_py,n_pz,pcoalescence,source_size,sigma,d-0.87,31);
 						double D_E_4 = coalescence_function(p_px,p_py,p_pz,n_px,n_py,n_pz,pcoalescence,source_size,sigma,d,4);
