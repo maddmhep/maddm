@@ -24,7 +24,8 @@ TimeShower:pTminWeak = 0.1
 WeakShower:vetoWeakJets = off
 WeakShower:singleEmission = off
 
-! Tuning for the following parameters taken from Tab 2 of https://arxiv.org/pdf/2303.11363.pdf
+! Tuning for the following parameters taken from Tab 2 of https://arxiv.org/pdf/2303.11363.pdf for Pythia
+! and https://arxiv.org/abs/2312.01153 for VINCIA
 StringZ:deriveBLund   = on
 StringZ:aLund         = 0.601
 StringZ:bLund         = 0.897
@@ -34,6 +35,6 @@ StringZ:aExtraDiquark = 1.671
 
 ! Coalescence parameters
 Main:methodDbar=1.0000000000e+00
-Main:p_coalescence = 0.195
+Main:p_coalescence = 0.196
 Main:d_coalescence = 1.75
 Main:sigma_coalescence = 3.0

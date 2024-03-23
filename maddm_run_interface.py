@@ -2696,7 +2696,7 @@ class MADDMRunCmd(cmd.CmdShell):
              self.Spectra.flux_source['e'] = E
              for spec in cr_spectra:
                    if spec in ['x', 'log10x']: continue
-                   if ('positrons' in spec) or ('antiprotons' in spec) or ('antideuterons' in spec): continue
+                   if ('positrons' in spec) or ('antiprotons' in spec) or ('antideuterons' in spec) or ('antihelions' in spec): continue
                    self.dNdE_dPhidE(channel = spec)           
                    Phi = self.Phi(chan= spec) # Phi takes care of the J factor so it is calculate at earth!
                    
@@ -2738,7 +2738,7 @@ class MADDMRunCmd(cmd.CmdShell):
            dNdE = dndlogx / (E*2.30259)
            self.Spectra.flux_source[channel]['dNdE'] = dNdE  # simply convertion from dNdlogx to dN/dE                                                                             
            dPhidE = 1.0/(self.norm_Majorana_Dirac() *2* math.pi*mdm*mdm)*sigv*jfact * dNdE  # diff.flux for the energy == interp.  
-            
+        
         self.Spectra.flux_earth[channel]['dPhidE'] = dPhidE
 
     
