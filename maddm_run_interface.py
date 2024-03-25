@@ -1755,7 +1755,6 @@ class MADDMRunCmd(cmd.CmdShell):
 
         self.last_results = result
         self.last_results['run'] = self.run_name
-
                           
 #        if self.mode['indirect'] and not self._two2twoLO:
 #            with misc.MuteLogger(names=['madevent','madgraph'],levels=[50,50]):
@@ -1767,15 +1766,15 @@ class MADDMRunCmd(cmd.CmdShell):
         ## Spectra object
         # Eliminate antideuterons spectra in case of fast
         if self.maddm_card['sigmav_method']=='inclusive':
-            for key in ['Dx','DxS','DxGWF','DxAWF','DxGWFp','Dxpcoals','Dxpcoal']:
-                self.spectra_id.pop(key,None)
+            for key in ['He3x','He4x','Dx','DxS','DxGWF','DxAWF','DxGWFp','Dxpcoals','Dxpcoal','pxP']:
+                self.Spectra.spectra_id.pop(key,None)
                             
-            for key in ['antideuterons_spherical','antideuterons_AWF','antideuterons_GWF','antideuterons_GWF_pvalue','antideuterons_pcoalsigma','antideuterons_pcoal','antideuterons','antihelions3_spherical','antihelions4_spherical']:
-                self.errors.pop(key,None)
-                self.spectra.pop(key,None)
-                self.flux_source.pop(key,None)
+            for key in ['antideuterons_spherical','antideuterons_AWF','antideuterons_GWF','antideuterons_GWF_pvalue','antideuterons_pcoalsigma','antideuterons_pcoal','antideuterons','antihelions3_spherical','antihelions4_spherical','antiprotonsP']:
+                self.Spectra.errors.pop(key,None)
+                self.Spectra.spectra.pop(key,None)
+                self.Spectra.flux_source.pop(key,None)
         #lo scan funziona con le lineee
-            
+        
         self.Spectra.initialize_spectra()
 
         if self.mode['indirect']:
@@ -2516,7 +2515,7 @@ class MADDMRunCmd(cmd.CmdShell):
     # This function reads the spectra from the PPPC tables from each annihilation channel, and adds them up according to the BR 
     def read_tabulatedspectra(self):
         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
-
+        
         if not self.options['pppc4dmid_path']:
             logger.error('PPPC4DMID not installed. Please install by typing "install PPPC4DMID".')
             return
