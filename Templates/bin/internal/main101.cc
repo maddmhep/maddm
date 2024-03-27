@@ -98,7 +98,7 @@ void writeDbarspherical(double pcoalescence, double mDM, std::string filename, i
 		T_A = T_pbar[t];
 		Tpbar_val = T_A/A;
 		
-		if(Tpbar_val<T_pbar_min){
+		if(Tpbar_val<=T_pbar_min){
 			dNdlog10x_A = 0.;
 		    dNdPbar_TA = 0.;
 		}
@@ -106,7 +106,19 @@ void writeDbarspherical(double pcoalescence, double mDM, std::string filename, i
 			K_A = sqrt( (T_A+mA)*(T_A+mA) - mA*mA );
 			//BA = (mp*Z+mn*(A-Z))*pow(pcoalescence,3.)/(6.*mp*Z*mn*(A-Z)*K_Dbar);
 			BA = ((mp*Z+mn*(A-Z))/(mp*Z*mn*(A-Z))) * pow(A,A) * pow(pow(pcoalescence,3.)/(24.*K_A),A-1.);
-			binint = round( (log10(Tpbar_val)-log10(T_pbar_min))/DeltaTBin );
+			float valbin = round( (log10(Tpbar_val)-log10(T_pbar_min))/DeltaTBin );
+			binint =  valbin;
+			
+			if(Tpbar_val>T_pbar[binint]){
+				binint = binint + 1;
+			}
+			else if(Tpbar_val<T_pbar[binint-1]){
+				binint = binint - 1;
+			}
+			if(binint==0){
+				binint = 1;
+			}
+			
 			dNdPbar_TA =  dNdE_pbar[binint-1] + (Tpbar_val-T_pbar[binint-1])/(T_pbar[binint]-T_pbar[binint-1])*(dNdE_pbar[binint]-dNdE_pbar[binint-1]);
 		}
 		
@@ -608,7 +620,6 @@ int main(){
           			    if(D_E_3>0.0 and deuteroncheck_3==0){
 							//pythia.event.list();
 							source_size = sourcesize_function(p_px,p_py,p_pz,n_px,n_py,n_pz,p_tt,p_xx,p_yy,p_zz,n_tt,n_xx,n_yy,n_zz);
-							cout << source_size << endl;
            				 	deuteroncheck_3 = 1;
                         	double eI  = log10((D_E_3-D_m)/mDM);
                         	Dbar_3.fill(eI);
@@ -620,15 +631,15 @@ int main(){
                         	double eI  = log10((D_E_31-D_m)/mDM);
                         	Dbar_31.fill(eI);
                         	cont_Dbar_31++;
-							//cout << cont_Dbar_4 << "  " << cont_Dbar_3 << "  " << cont_Dbar_2 << "  " << cont_Dbar_1 << endl;
                     	}
           			    if(D_E_4>0.0 and deuteroncheck_4==0){
            				 	deuteroncheck_4 = 1;
                         	double eI  = log10((D_E_4-D_m)/mDM);
                         	Dbar_4.fill(eI);
                         	cont_Dbar_4++;
-							//cout << cont_Dbar_4 << "  " << cont_Dbar_3 << "  " << cont_Dbar_2 << "  " << cont_Dbar_1 << endl;
+							//cout << "Multiplicites for Dbar with methods 1/2/3/4  " << (double)cont_Dbar_1/iEvent << "  " << (double)cont_Dbar_2/iEvent << "  " << (double)cont_Dbar_3/iEvent << "  " << (double)cont_Dbar_4/iEvent << endl;
                     	}
+						
                 	  }
   				}
   			} 
