@@ -1774,6 +1774,16 @@ class MADDMRunCmd(cmd.CmdShell):
                 self.Spectra.spectra.pop(key,None)
                 self.Spectra.flux_source.pop(key,None)
         #lo scan funziona con le lineee
+        else:
+            py8card = Indirect_PY8Card(pjoin(self.dir_path, 'Cards', 'pythia8_card.dat'))
+            if py8card['Main:methodDbar'] != 10:
+                for key in ['He3x','He4x','DxS','DxGWF','DxAWF','DxGWFp','Dxpcoals','Dxpcoal','pxP']:
+                    self.Spectra.spectra_id.pop(key,None)
+                            
+                for key in ['antideuterons_spherical','antideuterons_AWF','antideuterons_GWF','antideuterons_GWF_pvalue','antideuterons_pcoalsigma','antideuterons_pcoal','antihelions3_spherical','antihelions4_spherical','antiprotonsP']:
+                    self.Spectra.errors.pop(key,None)
+                    self.Spectra.spectra.pop(key,None)
+                    self.Spectra.flux_source.pop(key,None)
         
         self.Spectra.initialize_spectra()
 
