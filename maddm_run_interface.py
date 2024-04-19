@@ -636,7 +636,7 @@ class RegionOfInterest(object):
             `"normal"` or `"inverted"`.
         mask_latitude : float, default=0.
             The angle related to the mask over the latitude in deg, named
-            :math:`\lambda`.
+            :math:`\\lambda`.
         mask_longitude : float, default=180.
             The angle related to the mask over the longitude in deg, named
             :math:`\beta`.
@@ -1461,10 +1461,10 @@ class MADDMRunCmd(cmd.CmdShell):
   "       ########//#####\\\\###########                   "+bcolors.FAIL+"arXiv:2107.04598        \n"+bcolors.ENDC+\
   "       ######################### ## ___________________________________________\n"+\
   "       ####################### 0  # "+bcolors.OKGREEN+" _     _               _  _____   _     _  \n"+bcolors.ENDC+\
-  "       #############   0  ###    ## "+bcolors.OKGREEN+"| \   / |   ___    ___|| | ___ \ | \   / | \n"+bcolors.ENDC+\
+  "       #############   0  ###    ## "+bcolors.OKGREEN+"| \\   / |   ___    ___|| | ___ \\ | \\   / | \n"+bcolors.ENDC+\
   "       ##############    #########  "+bcolors.OKGREEN+"||\\\\ //|| / __ |  / __ | ||   || ||\\\\ //|| \n"+bcolors.ENDC+\
   "        ##########################  "+bcolors.OKGREEN+"||  V  || ||__||  ||__|| ||___|| ||  V  || \n"+bcolors.ENDC+\
-  "         ###################   ##   "+bcolors.OKGREEN+"||     || \_____\ \____| |_____/ ||     || \n"+bcolors.ENDC+\
+  "         ###################   ##   "+bcolors.OKGREEN+"||     || \\_____\\ \\____| |_____/ ||     || \n"+bcolors.ENDC+\
   "          ############       ###    ___________________________________________\n"+\
   "           ##########    ######                                                 \n"+\
   "             ################                                                   \n"+\
@@ -4136,7 +4136,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
  * Enter the name/number to open the editor
  * Enter a path to a file to replace the card
  * Enter %(start_bold)sset NAME value%(stop)s to change any parameter to the requested value
- /=============================================================================\ 
+ /=============================================================================\\ 
  |  6. Edit the model parameters    [%(start_underline)sparam%(stop)s]                                    |  
  |  7. Edit the MadDM options       [%(start_underline)smaddm%(stop)s]                                    |
 """
@@ -4148,7 +4148,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         if current_val['indirect'].startswith('flux') or self.switch["indirect"].startswith('flux'):
             question += """ |  9. Edit the Showering Card for flux  [%(start_underline)sflux%(stop)s]                                |\n"""
         
-        question+=""" \=============================================================================/\n"""
+        question+=""" \\=============================================================================/\n"""
         self.question =  question % {'start_green' : '\033[92m',
                          'stop':  '\033[0m',
                          'start_underline': '\033[4m',

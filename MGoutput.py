@@ -1087,7 +1087,7 @@ class ProcessExporterIndirectD:
                      cwd=os.path.dirname(path))   
         
         filename = os.path.join(self.dir_path, 'Cards', 'me5_configuration.txt')
-        self.cmd.do_save('options %s' % filename.replace(' ', '\ '), check=False,
+        self.cmd.do_save('options %s' % filename.replace(' ', r'\ '), check=False,
                          to_keep={'mg5_path':MG5DIR})
         
         self.write_procdef_mg5( pjoin(self.dir_path, 'SubProcesses', \
@@ -1130,7 +1130,7 @@ class ProcessExporterIndirectD:
         indirect_done = False
 
         for line in history:
-            line = re.sub('\s+', ' ', line)
+            line = re.sub(r'\s+', ' ', line)
         
             if line.startswith(('define darkmatter', 'define benchmark','define coannihilator')):
                 continue
