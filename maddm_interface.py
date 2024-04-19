@@ -375,17 +375,19 @@ class MadDM_interface(master_interface.MasterCmd):
                     self._dm_candidate = [dm for dm in self._dm_candidate if dm]
                     if not self._dm_candidate:
                         raise DMError('%s is not a valid particle for the model.' % args[1]) 
+                    self._z2_odd.extend([p for p in self._dm_candidate])
+                    self.find_z2_odd_particles()
+
                     if len(self._dm_candidate) == 1:
                         # No update of the model if 2(or more) DM since DD is not possible
-                        self._z2_odd.extend([p for p in self._dm_candidate])
-                        self.find_z2_odd_particles()
                         self.update_model_with_EFT()
                     else:
                         txt = self._curr_model.write_param_card()
                         ff = open('/tmp/param_card.dat','w')
                         ff.write(txt)
                         ff.close()
-                        self.define_benchmark(answer=True, path='/tmp/param_card.dat')
+                        with misc.TMP_variable(self, '_dm_candidate', []):
+                            self.define_benchmark(answer=True, path='/tmp/param_card.dat')
                         
             elif args[0] == 'coannihilator':
                 if not self._dm_candidate:
