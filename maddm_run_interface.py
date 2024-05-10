@@ -391,7 +391,10 @@ class Spectra:
             value =  interp_function(mdm)
             interpolated.append(value)
 
-        return interpolated
+        if len(interpolated)==99:
+            return np.concatenate(([0.0],interpolated))
+        else:
+            return interpolated
 
     def initialize_spectra(self):
         for k in self.spectra.keys():
