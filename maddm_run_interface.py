@@ -1768,7 +1768,7 @@ class MADDMRunCmd(cmd.CmdShell):
         self.indirect_directories_cross_section_contribution = dict(zip(['Indirect_tree_cont', 'Indirect_tree_line', 'Indirect_LI_cont', 'Indirect_LI_line'], [0., 0., 0., 0.]))
         ## Spectra object
         # Eliminate antideuterons spectra in case of fast
-        if self.maddm_card['sigmav_method']=='inclusive':
+        if self.maddm_card['indirect_flux_source_method']!='pythia8':
             for key in ['He3x','He4x','Dx','DxS','DxGWF','DxAWF','DxGWFp','Dxpcoals','Dxpcoal','pxP']:
                 self.Spectra.spectra_id.pop(key,None)
                             
