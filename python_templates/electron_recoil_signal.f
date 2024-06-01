@@ -22,7 +22,7 @@
         double precision dRdlogE_shell_kg_day(gridsize_k), rate_vs_time_shell(day_bins), tot_rate_shell
         double precision dRdS2_shell_Xenon10(S2_max_Xenon10)
         double precision diff_rate_logE(gridsize_k),dRdE_kg_day_GeV(gridsize_k),rate_vs_time(day_bins),tot_rate_kg_day
-        real(kind=10) atomic_response_matrix(gridsize_k,gridsize_q), ioniz_amplitude(gridsize_k,gridsize_q)
+        double precision atomic_response_matrix(gridsize_k,gridsize_q), ioniz_amplitude(gridsize_k,gridsize_q)
         double precision k_e(gridsize_k+1), E_e(gridsize_k+1), dayvalue(day_bins+1), daymid(day_bins), dday
         double precision dRdS2_Xenon10(S2_max_Xenon10), dRdiS2_Xenon1T(S2_bin_max_Xenon1T), S2_val(S2_bin_max_Xenon1T)
         double precision tot_sig_Xenon10
@@ -300,7 +300,7 @@ c        close(5)
         include '../include/maddm.inc'
 
         double precision M_dm, M_e, E_binding
-        real(kind=10) ioniz_amplitude(gridsize_k,gridsize_q)
+        double precision ioniz_amplitude(gridsize_k,gridsize_q)
         double precision get_dRdlogE, dday, v_earth
         double precision dRdlogEdday_kg_day(gridsize_k,day_bins),diff_rate_logE(gridsize_k)
         double precision rate_vs_time(day_bins),tot_rate_kg_day
@@ -401,7 +401,7 @@ c               Compute the differential rate, than use to compute dR/dlogE, tot
         double precision N_events, eta, r_kin, kNorm, vesc, const_integral
         double precision q_exc(gridsize_q+1), dq(gridsize_q)
 
-        real(kind=10) ioniz_amplitude(gridsize_k,gridsize_q)
+        double precision ioniz_amplitude(gridsize_k,gridsize_q)
 
         include '../include/maddm_card.inc'
 
@@ -590,7 +590,7 @@ c       Multiply for the exposure and efficency
         double precision rate, rate_interp(len_E_e_resp), s2_resp(len_E_e_resp,S2_bin_max_Xenon1T)
         integer i, ik, iE, iS2, error
         character(2) target, shell_name
-        character(100) path
+        character(200) path, maddm_path
         double precision exposure_Xenon1T
         
 c       Raw exposure, not the effective one. The selection cuts are considered inside the detector response.
@@ -608,7 +608,8 @@ c       S2 values corresponding to S2 bin number (iS2 = 1 -> S2 = 90.7964 ... et
      &  247.8964, 252.3033, 256.7885, 261.3535, 265.9996, 270.7282/)
 
 C       Read the XENON1T energy bins and S2 response
-        path = '/home/gianmarcolucchetti/thesis/MG5_aMC_v2_9_9/PLUGIN/maddm/Detector_responses/s2_response_er.csv'
+        %(maddm_path)s          ! MadDM path
+        path = trim(maddm_path) // '/Detector_responses/s2_response_er.csv'
         open(98, FILE = trim(path), action="read")
 c       Skip the first row
         Read(98,*)
@@ -769,7 +770,7 @@ c            https://github.com/XENON1T/s2only_data_release/blob/master/s2_binni
 
                 include '../include/maddm.inc'                
 
-                real(kind=10) atomic_response_matrix(gridsize_k,gridsize_q)
+                double precision atomic_response_matrix(gridsize_k,gridsize_q)
                 character(20) shell_filename
                 character(100) atom_resp_path
                 integer j,k,error
