@@ -3556,6 +3556,8 @@ class MADDMRunCmd(cmd.CmdShell):
         def form_n(num):
             formatted = '{0:3.2e}'.format(num)
             return formatted
+        
+        mdm= self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
 
         out = open(pjoin(self.dir_path, 'output', point, 'MadDM_results.txt'),'w')
  
@@ -3597,7 +3599,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 exp = D['exp']
                 out.write(form_s(D['n']) + '= ' + form_s('['+ form_n(cross) + ',' + form_n(ul) + ']' ) + '# '+exp + '\n')
 
-        if direct_electron:
+        if direct_electron and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
 
             for name in ['dRdlogE_e_recoil.dat','dRdS2_Xenon1T_e_recoil.dat','dRdS2_Xenon10_e_recoil.dat','rate_vs_time_e_recoil.dat','signal_e_recoil.dat']:
                 if os.path.isfile(pjoin(self.dir_path, 'output',name)):

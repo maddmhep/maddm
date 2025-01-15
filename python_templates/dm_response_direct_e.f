@@ -10,6 +10,8 @@ c-------------------------------------------------------------------------c
             
             integer dm_spin
             double precision get_dm_response
+            character(50) dm_e_process_name, dm_p_process_name
+            logical do_get_dm_response
 
             include 'maddm.inc'
             include 'coupl.inc'
@@ -19,20 +21,34 @@ c-------------------------------------------------------------------------c
 
 c           Initialize the parameters
             dm_spin = dof_dm(1)     ! spin of the dm particle
+            dm_e_process_name = trim(DM_NAMES(1)) // 'em_' // trim(DM_NAMES(1)) // 'em'
+            dm_p_process_name = trim(DM_NAMES(1)) // 'ep_' // trim(DM_NAMES(1)) // 'ep'
+
+            do_get_dm_response = .false.
+c           Check if there are DM-e/DM-p processes
+            do j=1,(dd_num_processes)
+c                 j is the index that identifies the matrix element of the FULL Lagrangian
+                  if ((DD_PROCESS_NAMES(j).eq.dm_e_process_name).or.(DD_PROCESS_NAMES(j).eq.dm_p_process_name)) then
+                        do_get_dm_response = .true.
+                  endif
+            enddo
 
 
 c --------------------------------------------------------------------------------
 c Select scalar, fermion or vector DM particle and compute the dark matter
 c response function
 c --------------------------------------------------------------------------------
-            select case(dm_spin)
-                  case(1)
-                  dm_response = get_dm_response(dm_spin)
-                  case(2)
-                  dm_response = get_dm_response(dm_spin)
-                  case(3) ! will be implmented in future work
-                  write (*,*) "vector DM-e scattering still not implemented!"
-            end select
+            dm_response = -1
+            if (do_get_dm_response) then
+                  select case(dm_spin)
+                        case(1)
+                        dm_response = get_dm_response(dm_spin)
+                        case(2)
+                        dm_response = get_dm_response(dm_spin)
+                        case(3) ! will be implmented in future work
+                        write (*,*) "vector DM-e scattering still not implemented!"
+                  end select
+            endif
 
       end function
             
