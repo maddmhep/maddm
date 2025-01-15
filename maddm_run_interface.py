@@ -3611,8 +3611,8 @@ class MADDMRunCmd(cmd.CmdShell):
             sig1T = self.last_results['Xenon1T_signal']
             bkg1T = self.last_results['Xenon1T_bkg']
             out.write(form_s('Xenon10_signal') + '= ' + form_s('['+ form_n(sig10[0]) + ',' + form_n(sig10[1]) + ',' + form_n(sig10[2]) + ']' ) + '\n')
-            out.write(form_s('Xenon1T_signal') + '= ' + form_s('['+ form_n(sig1T)))
-            out.write(form_s('Xenon1T_bkg') + '= ' + form_s('['+ form_n(bkg1T)))
+            out.write(form_s('Xenon1T_signal') + '= ' + form_s(form_n(sig1T)) + '\n')
+            out.write(form_s('Xenon1T_bkg') + '= ' + form_s(form_n(bkg1T)) + '\n')
         
 
         if indirect or spectral:      

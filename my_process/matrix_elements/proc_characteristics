@@ -1,0 +1,17 @@
+#    Information about the process      #
+#########################################
+ has_relic_density = False 
+ relic_density_off = True 
+ has_direct_detection = True 
+ has_direct_electron = True 
+ has_directional_detection = True 
+ has_indirect_detection = False 
+ has_indirect_spectral = False 
+ has_capture = True 
+ dm_candidate = [52] 
+ coannihilator = [] 
+ forbid_fast = False 
+ model = /Users/gianmarcolucchetti/PhD/MadDM/MG5_aMC_v2_9_9/models/DMsimp_s_spin0__COMPLEX 
+ pdg_particle_map = {'22': 'a', '23': 'z', '24': 'w+', '-24': 'w-', '21': 'g', '9000001': 'gha', '-9000001': 'gha~', '9000002': 'ghz', '-9000002': 'ghz~', '9000003': 'ghwp', '-9000003': 'ghwp~', '9000004': 'ghwm', '-9000004': 'ghwm~', '82': 'ghg', '-82': 'ghg~', '12': 've', '-12': 've~', '14': 'vm', '-14': 'vm~', '16': 'vt', '-16': 'vt~', '11': 'e-', '-11': 'e+', '13': 'mu-', '-13': 'mu+', '15': 'ta-', '-15': 'ta+', '2': 'u', '-2': 'u~', '4': 'c', '-4': 'c~', '6': 't', '-6': 't~', '1': 'd', '-1': 'd~', '3': 's', '-3': 's~', '5': 'b', '-5': 'b~', '25': 'h', '5000001': 'xr', '51': 'xc', '-51': 'xc~', '52': 'xd', '-52': 'xd~', '54': 'y0', '999000006': '~sdm', '-999000006': 'sdm~', '999000008': '~vdm', '-999000008': 'vdm~'} 
+ processes_names_map = {'xdt_xdt': '52.6>52.6', 'xdxt_xdxt': '-52.6>-52.6', 'xdtx_xdtx': '52.-6>52.-6', 'xdxtx_xdxtx': '-52.-6>-52.-6', 'xdd_xdd': '52.1>52.1', 'xdxd_xdxd': '-52.1>-52.1', 'xddx_xddx': '52.-1>52.-1', 'xdxdx_xdxdx': '-52.-1>-52.-1', 'xdu_xdu': '52.2>52.2', 'xdxu_xdxu': '-52.2>-52.2', 'xdux_xdux': '52.-2>52.-2', 'xdxux_xdxux': '-52.-2>-52.-2', 'xds_xds': '52.3>52.3', 'xdxs_xdxs': '-52.3>-52.3', 'xdsx_xdsx': '52.-3>52.-3', 'xdxsx_xdxsx': '-52.-3>-52.-3', 'xdc_xdc': '52.4>52.4', 'xdxc_xdxc': '-52.4>-52.4', 'xdcx_xdcx': '52.-4>52.-4', 'xdxcx_xdxcx': '-52.-4>-52.-4', 'xdb_xdb': '52.5>52.5', 'xdxb_xdxb': '-52.5>-52.5', 'xdbx_xdbx': '52.-5>52.-5', 'xdxbx_xdxbx': '-52.-5>-52.-5', 'xdem_xdem': '52.11>52.11', 'xdxem_xdxem': '-52.11>-52.11', 'xdep_xdep': '52.-11>52.-11', 'xdxep_xdxep': '-52.-11>-52.-11'} 
+ indirect_detection_asked_processes = [] 
