@@ -969,7 +969,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
             p = self.model.get_particle(pdg)
             to_replace['quark_masses'].append('M(%s) = %s' % (pdg, p.get('mass')))
         to_replace['quark_masses'] = '\n           '.join(to_replace['quark_masses'])
-        
+
         writer.write(open(pjoin(MDMDIR, 'python_templates', 'direct_detection.f')).read() % to_replace)
 
         """Adding the electron mass definition in dm_response_direct_e.f"""
@@ -990,6 +990,14 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         to_replace['electron_mass'] = 'M_e = %s' % (p.get('mass'))
         to_replace['maddm_path'] = 'maddm_path = "' + MDMDIR +'"'
         writer.write(open(pjoin(MDMDIR, 'python_templates', 'electron_recoil_signal.f')).read() % to_replace)
+
+        writer = open(pjoin(self.dir_path, 'src', 'direct_detection_RAPIDD.f'), 'w')
+        to_replace = {'quark_masses':[]}
+        for pdg in range(1,7):
+            p = self.model.get_particle(pdg)
+            to_replace['quark_masses'].append('M(%s) = %s' % (pdg, p.get('mass')))
+        to_replace['quark_masses'] = '\n           '.join(to_replace['quark_masses'])
+        writer.write(open(pjoin(MDMDIR, 'python_templates', 'direct_detection_RAPIDD.f')).read() % to_replace)
         
         
 

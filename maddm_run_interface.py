@@ -1794,6 +1794,8 @@ class MADDMRunCmd(cmd.CmdShell):
                         str_proc = StrProcess(oname, self.processes_names_map)
                         self.str_processes[oname] = str_proc
                         result["%%_relic_%s" % oname] = secure_float_f77(splitline[1])
+
+                ##### explicitly tell the code how to read alphas here 
                         
                     if 'Xenon10_bins' in line:
                         Xenon10_bins = []
@@ -1839,6 +1841,8 @@ class MADDMRunCmd(cmd.CmdShell):
 
         else: result['xsi'] = 1.0
 
+        print("here")
+        print(result)
         if self.mode['direct']:
             result['sigmaN_SI_n']    *= GeV2pb*pb2cm2
             result['sigmaN_SI_p']    *= GeV2pb*pb2cm2
@@ -1848,6 +1852,7 @@ class MADDMRunCmd(cmd.CmdShell):
             result['lim_sigmaN_SI_p'] = self.limits.SI_max(mdm)
             result['lim_sigmaN_SD_p'] = self.limits.SD_max(mdm, 'p')
             result['lim_sigmaN_SD_n'] = self.limits.SD_max(mdm, 'n')
+
 
         self.last_results = result
         self.last_results['run'] = self.run_name

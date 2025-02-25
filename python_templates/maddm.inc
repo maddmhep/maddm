@@ -43,6 +43,9 @@ c electron_recoil_signal.f
       double precision sig_Xenon10(7),tot_sig_Xenon1T,tot_bkg_Xenon1T
       integer bin_Xenon10(8), n_obs_Xenon1T
 
+c direct_detection_RAPIDD.f
+      
+
 c random seed
       integer idum
       common/randint/ idum

@@ -17,6 +17,10 @@ c parameters used in this routine only
       double precision Oh2, sigv
       double precision total_events, sigmawnSI, sigmawpSI
       double precision sigmawnSD, sigmawpSD
+      !double precision dmquark_alpha
+      double precision dalphas(4), ualphas(4), salphas(4), calphas(4)
+      double precision balphas(4), talphas(4)
+      !external dmquark_alpha
       double precision vID_natural
       double precision cross_sec_relic(size(process_names)), tot_cross_sec, channel_percent
       Integer process_relic_name_indexes(size(process_names)), process_index
@@ -133,6 +137,27 @@ C      Here write the output.
 	  write(33,*) 'Nevents: ', Nint(total_events)
         write(33,*) 'smearing: ', sm_flag
 
+c ---- RAPIDD bit ---- c 
+c      calls and prints the alpha_quarks c
+c                                        c
+
+      
+      call dmquark_alpha(1, dalphas)
+      call dmquark_alpha(2, ualphas)
+      call dmquark_alpha(3, salphas)
+      call dmquark_alpha(4, calphas)
+      call dmquark_alpha(5, balphas)
+      call dmquark_alpha(6, talphas)
+
+      
+
+      !write(33,*) "DM_quark_alphas aSIe, aSIo, aSDe, aSIo"
+      write(33,*) "alpha_d: ", dalphas(1), ": ", dalphas(2), ": ", dalphas(3), ": ", dalphas(4)
+      write(33,*) "alpha_u: ", ualphas(1), ": ", ualphas(2), ": ", ualphas(3), ": ", ualphas(4)
+      write(33,*) "alpha_s: ", salphas(1), ": ", salphas(2), ": ", salphas(3), ": ", salphas(4)
+      write(33,*) "alpha_c: ", calphas(1), ": ", calphas(2), ": ", calphas(3), ": ", calphas(4)
+      write(33,*) "alpha_b: ", balphas(1), ": ", balphas(2), ": ", balphas(3), ": ", balphas(4)
+      write(33,*) "alpha_t: ", talphas(1), ": ", talphas(2), ": ", talphas(3), ": ", talphas(4)
 
 c ---- DM-e SIGNAL CALCULATION -----
 c     calls are to dm_response() that returns the DM response function,
