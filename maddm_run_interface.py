@@ -95,9 +95,9 @@ class ExpConstraints:
         # self._dd_sd_neutron_limit_file = pjoin(MDMDIR, 'ExpData', 'Lux_2017_sd_neutron.dat')
 
         self._dd_limit_file = {
-            'si'        : pjoin(MDMDIR, 'ExpData', 'Xenon1T_data_2018.dat'),
-            'sd_proton' : pjoin(MDMDIR, 'ExpData', 'Pico60_sd_proton.dat'),
-            'sd_neutron': pjoin(MDMDIR, 'ExpData', 'Lux_2017_sd_neutron.dat')
+            'si'        : pjoin(MDMDIR, 'ExpData', 'LZ2024_SI.dat'),  
+            'sd_proton' : pjoin(MDMDIR, 'ExpData', 'Pico60_sd_proton_2019.dat'),
+            'sd_neutron': pjoin(MDMDIR, 'ExpData', 'LZ2024_SDn.dat')
         }
 
         self._dd_limit_mdm = dict()
@@ -3106,10 +3106,10 @@ class MADDMRunCmd(cmd.CmdShell):
 
         if self.mode['direct']:
             # units = self.last_results['GeV2pb*pb2cm2']
-            direct_names = [ { 'n': 'SigmaN_SI_p', 'sig': self.last_results['sigmaN_SI_p'], 'lim': self.last_results['lim_sigmaN_SI_p'], 'exp': 'Xenon1ton' },
-                             { 'n': 'SigmaN_SI_n', 'sig': self.last_results['sigmaN_SI_n'], 'lim': self.last_results['lim_sigmaN_SI_n'], 'exp': 'Xenon1ton' },
-                             { 'n': 'SigmaN_SD_p', 'sig': self.last_results['sigmaN_SD_p'], 'lim': self.last_results['lim_sigmaN_SD_p'], 'exp': 'Pico60'    },
-                             { 'n': 'SigmaN_SD_n', 'sig': self.last_results['sigmaN_SD_n'], 'lim': self.last_results['lim_sigmaN_SD_n'], 'exp': 'Lux2017'   } ]
+            direct_names = [ { 'n': 'SigmaN_SI_p', 'sig': self.last_results['sigmaN_SI_p'], 'lim': self.last_results['lim_sigmaN_SI_p'], 'exp': 'LZ2024' },
+                             { 'n': 'SigmaN_SI_n', 'sig': self.last_results['sigmaN_SI_n'], 'lim': self.last_results['lim_sigmaN_SI_n'], 'exp': 'LZ2024' },
+                             { 'n': 'SigmaN_SD_p', 'sig': self.last_results['sigmaN_SD_p'], 'lim': self.last_results['lim_sigmaN_SD_p'], 'exp': 'Pico60 (2019)'    },
+                             { 'n': 'SigmaN_SD_n', 'sig': self.last_results['sigmaN_SD_n'], 'lim': self.last_results['lim_sigmaN_SD_n'], 'exp': 'LZ2024'   } ]
 
             self.last_results['direct_results'] = direct_names
 
