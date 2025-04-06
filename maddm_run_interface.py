@@ -1823,7 +1823,9 @@ class MADDMRunCmd(cmd.CmdShell):
                         result[splitline[0].split(':')[0]] = secure_float_f77(splitline[1])
                             
         np_names = ['g','nue','numu','nutau']
-        result['sigmav(xf)'] *= GeV2pb*pb2cm3
+        
+        if result['sigmav(xf)']!=-1:
+            result['sigmav(xf)'] *= GeV2pb*pb2cm3
 
         if str(self.mode['indirect']).startswith('flux'):
             for chan in np_names + ['gammas','neutrinos_e', 'neutrinos_mu' , 'neutrinos_tau']: # set -1 to the possible cases
