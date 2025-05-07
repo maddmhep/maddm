@@ -1765,6 +1765,7 @@ class MADDMRunCmd(cmd.CmdShell):
         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
 
         result['tot_SM_xsec'] = -1
+        alphaq_values = {"alpha_d": [], "alpha_u": [], "alpha_s": [], "alpha_c": [], "alpha_b": [], "alpha_t": [] }
 
         for line in open(pjoin(self.dir_path, output)):
       
@@ -1774,6 +1775,20 @@ class MADDMRunCmd(cmd.CmdShell):
                     oname = splitline[0].strip(':')+'_'+splitline[1]
                     val = splitline[2]
                     result[oname.split(':')[0] ] = val
+
+                ##### explicitly tell the code how to read alphas here 
+
+
+                parts = line.split(":")
+                #print(parts)
+                if parts[0].strip() in alphaq_values.keys():
+                    values = list(map(float, parts[1:5]))
+                    alphaq_values[parts[0].strip()] = np.array(values)  # Store as NumPy array
+
+    
+
+
+                #####
 
                 else:
                     if self._two2twoLO:
@@ -1795,7 +1810,7 @@ class MADDMRunCmd(cmd.CmdShell):
                         self.str_processes[oname] = str_proc
                         result["%%_relic_%s" % oname] = secure_float_f77(splitline[1])
 
-                ##### explicitly tell the code how to read alphas here 
+
                         
                     if 'Xenon10_bins' in line:
                         Xenon10_bins = []
@@ -1841,9 +1856,15 @@ class MADDMRunCmd(cmd.CmdShell):
 
         else: result['xsi'] = 1.0
 
-        print("here")
-        print(result)
+        # print("here making dictionary")
+        # print(result)
+        #self.maddm_card['SPu']#### THIS IS WHERE I AM 
+        # import code
+        # code.interact(local=locals())
+        from rapidd import madDM_output as rp
         if self.mode['direct']:
+            result['sigmaN_SI_p'], result['sigmaN_SI_n'] = rp.sigmaSI_nucleon_mdm(self.maddm_card, alphaq_values, mdm)
+            result['sigmaN_SD_p'], result['sigmaN_SD_n'] = rp.sigmaSD_nucleon_mdm(self.maddm_card, alphaq_values, mdm)
             result['sigmaN_SI_n']    *= GeV2pb*pb2cm2
             result['sigmaN_SI_p']    *= GeV2pb*pb2cm2
             result['sigmaN_SD_p']    *= GeV2pb*pb2cm2
@@ -1932,6 +1953,7 @@ class MADDMRunCmd(cmd.CmdShell):
             order.append('xsi')
 
             # *** Direct Detection
+            print("What happens here\n")
             if self.mode['direct'] :
                 order += ['sigmaN_SI_p', 'lim_sigmaN_SI_p', 
                           'sigmaN_SI_n', 'lim_sigmaN_SI_n',
@@ -1939,8 +1961,8 @@ class MADDMRunCmd(cmd.CmdShell):
                           'sigmaN_SD_n', 'lim_sigmaN_SD_n']
 
            
-            if self.mode['direct'] == 'directional':
-                order += ['Nevents', 'smearing']
+            # if self.mode['direct'] == 'directional':
+            #     order += ['Nevents', 'smearing']
 
             if self.mode['direct_electron'] and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
                 order += ['pvalue_Xenon10','pvalue_Xenon1T']
@@ -3846,7 +3868,7 @@ class MADDMRunCmd(cmd.CmdShell):
             # create the inc file for maddm
             self.maddm_card.set('do_relic_density', self.mode['relic'], user=False)
             self.maddm_card.set('do_direct_detection', True if self.mode['direct'] else False, user=False)
-            self.maddm_card.set('do_directional_detection', self.mode['direct'] == 'directional', user=False)
+            #self.maddm_card.set('do_directional_detection', self.mode['direct'] == 'directional', user=False)
             self.maddm_card.set('do_direct_electron', True if self.mode['direct_electron'] else False, user=False)
             self.maddm_card.set('do_capture', self.mode['capture'], user=False)
             self.maddm_card.set('do_indirect_detection', True if self.mode['indirect'] else False, user=False)
@@ -4038,10 +4060,12 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
     def set_default_direct(self):
         """set the default value for direct="""
         
+        # if self.availmode['has_directional_detection']:
+        #     self.switch['direct'] = 'directional'
         if self.availmode['has_directional_detection']:
-            self.switch['direct'] = 'directional'
-        elif self.availmode['has_direct_detection']:
-            self.switch['direct'] = 'direct'        
+            self.switch['direct'] = 'direct'
+        # elif self.availmode['has_direct_detection']:
+        #     self.switch['direct'] = 'direct'        
         else:
             self.switch['direct'] = 'Not Avail.'
 
@@ -4053,7 +4077,8 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
             return getattr(self, 'allowed_direct')
 
         if self.availmode['has_directional_detection']:
-            self.allowed_direct =  ['directional', 'direct','OFF']
+            # self.allowed_direct =  ['directional', 'direct','OFF']
+            self.allowed_direct =  ['direct','OFF']
         elif self.availmode['has_direct_detection']:
             self.allowed_direct =  ['direct','OFF']
         else:
@@ -4073,11 +4098,11 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         """return the command to set the maddm_card consistent with the switch"""
         
         cmd =[]
-        if value == 'directional':
-            cmd.append('set do_directional_detection True')
-            value = 'direct'
-        else:
-            cmd.append('set do_directional_detection False')
+        # if value == 'directional':
+        #     cmd.append('set do_directional_detection True')
+        #     value = 'direct'
+        # else:
+        #     cmd.append('set do_directional_detection False')
         
         if value in ['ON', 'direct']:
             cmd.append('set do_direct_detection True')

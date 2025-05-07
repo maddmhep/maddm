@@ -31,7 +31,7 @@ c           Initialize the parameters
             ! write(*,*) "dm spin:", dm_spin
             data quark_names /"d", "u", "s", "c", "b", "t"/
             ! write(*,*) "DM NAME:", trim(DM_NAMES(1))
-            write(*,*) "quark number call 1:", quark
+            ! write(*,*) "quark number call 1:", quark
             ! write(*,*) "quark name:", trim(quark_names(quark))
 
 
@@ -136,7 +136,7 @@ c-------------------------------------------------------------------------------
             !write (*,*) "here "
 
             ! write (*,*) "dm mass", mdm(1)
-            write (*,*) "quark number:", quark
+            !write (*,*) "quark number:", quark
             ! write (*,*) "q mass", M(quark)
 
             data quark_names /"d", "u", "s", "c", "b", "t"/
@@ -150,8 +150,8 @@ c-------------------------------------------------------------------------------
             dm_q_process_name = trim(initial_process_name) // "_" // trim(initial_process_name) 
             dm_qx_process_name = trim(initial_antiprocess_name) // "_" // trim(initial_antiprocess_name) 
 
-            write (*, *) "process name :", dm_q_process_name
-            write (*, *) "process name :", dm_qx_process_name
+            ! write (*, *) "process name :", dm_q_process_name
+            ! write (*, *) "process name :", dm_qx_process_name
 
 c HERE DEFINE THE FOUR MOMENTA - RIGHT NOW JUST ANY NUMBERS
             p_ext(0,1) = mdm(1)
@@ -285,10 +285,10 @@ c                 JTOT same as JEFF but for the EFF+FULL
             endif
 
             
-            write (*, *) "alpha SI even :", alpha_SI_even
-            write (*, *) "alpha SI odd:", alpha_SI_odd
-            write (*, *) "alpha SD even :", alpha_SD_even
-            write (*, *) "alpha SD odd:", alpha_SD_odd
+            ! write (*, *) "alpha SI even :", alpha_SI_even
+            ! write (*, *) "alpha SI odd:", alpha_SI_odd
+            ! write (*, *) "alpha SD even :", alpha_SD_even
+            ! write (*, *) "alpha SD odd:", alpha_SD_odd
       end subroutine get_dmquark_alpha
       
       

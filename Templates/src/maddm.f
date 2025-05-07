@@ -74,39 +74,39 @@ c     spin_independent = 1 for SI and 0 for SD.
 
       prnt_tag = 0
 
-      if (do_direct_detection) then
-      	   sigma_proton_SI = sigma_nucleon(1,1)
-      	   sigma_neutron_SI = sigma_nucleon(0,1)
-      	   sigma_proton_SD = sigma_nucleon(1,0)
-      	   sigma_neutron_SD = sigma_nucleon(0,0)
+!       if (do_direct_detection) then
+!       	   sigma_proton_SI = sigma_nucleon(1,1)
+!       	   sigma_neutron_SI = sigma_nucleon(0,1)
+!       	   sigma_proton_SD = sigma_nucleon(1,0)
+!       	   sigma_neutron_SD = sigma_nucleon(0,0)
 
-           sigmawnSI  = sigma_neutron_SI*gevtopb
-           sigmawpSI  = sigma_proton_SI*gevtopb
-           sigmawnSD  = sigma_neutron_SD*gevtopb
-           sigmawpSD  = sigma_proton_SD*gevtopb
+!            sigmawnSI  = sigma_neutron_SI*gevtopb
+!            sigmawpSI  = sigma_proton_SI*gevtopb
+!            sigmawnSD  = sigma_neutron_SD*gevtopb
+!            sigmawpSD  = sigma_proton_SD*gevtopb
 
 
-           if (do_directional_detection) then
+!            if (do_directional_detection) then
 
-              call directional_detection(mdm(1),sigmawnSI,sigmawpSI,sigmawnSD,
-     &        sigmawpSD,prnt_tag,total_events)
+!               call directional_detection(mdm(1),sigmawnSI,sigmawpSI,sigmawnSD,
+!      &        sigmawpSD,prnt_tag,total_events)
 
-           endif
-      else
-      	   sigma_proton_SI = -1d0
-      	   sigma_neutron_SI = -1d0
-      	   sigma_proton_SD = -1d0
-      	   sigma_neutron_SD = -1d0
+!            endif
+!       else
+!       	   sigma_proton_SI = -1d0
+!       	   sigma_neutron_SI = -1d0
+!       	   sigma_proton_SD = -1d0
+!       	   sigma_neutron_SD = -1d0
 
-c      	   write(*,*) 'SI : ', sigma_proton_SI, sigma_neutron_SI !Antony
-c      	   write(*,*) 'SD : ', sigma_proton_SD, sigma_neutron_SD !Antony
-      endif
+! c      	   write(*,*) 'SI : ', sigma_proton_SI, sigma_neutron_SI !Antony
+! c      	   write(*,*) 'SD : ', sigma_proton_SD, sigma_neutron_SD !Antony
+!       endif
 
-      if (.not. smearing ) then
-         sm_flag = 0
-      else
-         sm_flag = 1
-      endif
+      ! if (.not. smearing ) then
+      !    sm_flag = 0
+      ! else
+      !    sm_flag = 1
+      ! endif
 
       if (print_sigmas) then
          write(*,*) 'Contributions to the annihilation cross section at E = mdm(1) / x_f'
@@ -126,16 +126,16 @@ C      Here write the output.
 	  write(33,*) 'x_f: ', x_f
         write(33,*) 'Wimp_Mass: ', mdm(1), ' GeV'
 	  write(33,*) 'sigmav(xf): ', sigmav_xf
-	  write(33,*) 'sigmaN_SI_p: ', sigma_proton_SI, ' GeV^-2',
-     &                ':', sigma_proton_SI*gevtopb, ' pb'
-	  write(33,*) 'sigmaN_SI_n: ', sigma_neutron_SI,' GeV^-2',
-     &                ':', sigma_neutron_SI*gevtopb, ' pb'
-	  write(33,*) 'sigmaN_SD_p: ', sigma_proton_SD, ' GeV^-2',
-     &                ':', sigma_proton_SD*gevtopb, ' pb'
-	  write(33,*) 'sigmaN_SD_n: ', sigma_neutron_SD, ' GeV^-2',
-     &                ':', sigma_neutron_SD*gevtopb, ' pb'
-	  write(33,*) 'Nevents: ', Nint(total_events)
-        write(33,*) 'smearing: ', sm_flag
+! 	  write(33,*) 'sigmaN_SI_p: ', sigma_proton_SI, ' GeV^-2',
+!      &                ':', sigma_proton_SI*gevtopb, ' pb'
+! 	  write(33,*) 'sigmaN_SI_n: ', sigma_neutron_SI,' GeV^-2',
+!      &                ':', sigma_neutron_SI*gevtopb, ' pb'
+! 	  write(33,*) 'sigmaN_SD_p: ', sigma_proton_SD, ' GeV^-2',
+!      &                ':', sigma_proton_SD*gevtopb, ' pb'
+! 	  write(33,*) 'sigmaN_SD_n: ', sigma_neutron_SD, ' GeV^-2',
+!      &                ':', sigma_neutron_SD*gevtopb, ' pb'
+! 	  write(33,*) 'Nevents: ', Nint(total_events)
+!         write(33,*) 'smearing: ', sm_flag
 
 c ---- RAPIDD bit ---- c 
 c      calls and prints the alpha_quarks c
