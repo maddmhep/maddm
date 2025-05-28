@@ -20,6 +20,7 @@ Run the following command in the ``doc/`` folder previously created (where this 
    sphinx-quickstart
 
 and fill accordingly:
+
 - separate source and build directory: no;
 - project name: MadDM;
 - authors: list all authors in a “Name Surname” list separated by ``&``;
@@ -27,7 +28,7 @@ and fill accordingly:
 - project language: default is ``en``;
 
 Then the folder will be populated by several files.
-In particular, we will modify the ```conf.py`` <./conf.py>`__ file as you can check, in order to have dynamic copyright and release, and adding all the various extensions.
+In particular, we will modify the ``conf.py`` file as you can check, in order to have dynamic copyright and release, and adding all the various extensions.
 
 Requirements and extensions
 ---------------------------
@@ -50,7 +51,7 @@ To automatically build the tutorial and the examples gallery from ipython notebo
 
    python -m pip install sphinx-gallery
 
-and we modify the ```conf.py`` <./conf.py>`__ accordingly, by adding the following configuration (or something similar):
+and we modify the ``conf.py`` accordingly, by adding the following configuration (or something similar):
 
 .. code:: python
 
@@ -60,6 +61,7 @@ and we modify the ```conf.py`` <./conf.py>`__ accordingly, by adding the followi
    }
 
 where:
+
 - ``examples_dirs`` is the path to the folder created in the root of the repository, and containing the ``rst`` notebooks, **this folder should be created**, in this case we will name it ``examples``;
 - ``gallery_dirs`` is the name of the folder where the generated files from the extension would be placed after the build.
 
@@ -71,6 +73,7 @@ That folder contains a general header file, which should be named ``GALLERY_HEAD
 That file would also show a list of the files present in the gallery.
 The gallery is made of python files inside the ``examples`` folder.
 See also the `official documentation <https://sphinx-gallery.github.io/stable/getting_started.html#structure-the-examples-folder>`__, but, briefly, there are two kinds of files:
+
 - normal python files, like ``getting_started.py``, they will be parsed and presented in a rich literate programming fashion, but they won’t have any output file/plot associated to them;
 - python files with name starting with ``plot_``, they will be executed, their output will be captured and incorporated in the HTML that will be created.
 
