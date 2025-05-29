@@ -138,7 +138,7 @@ c            open(200+i, file='./output/dRdE_' // trim(shell_names(i)) // '.dat'
 c            write(200+i,*) '# shell: ' // shell_names(i)
 c            write(200+i,*) '# E (eV)                    dR/dE (Kg^-1 day^-1 KeV^-1)'
 c            do ik=1,gridsize_k
-c                write(200+i,*) E_e(ik)*1E+9 , dRdlogE_shell_kg_day(ik) / E_e(ik) * 1E-6 / 365.d0 ! E_e (eV), dR/dE (Kg^-1 day^-1 KeV^-1)
+c                write(200+i,*) E_e(ik)*1E+9 , dRdlogE_shell_kg_day(ik) / E_e(ik) * 1E-6 / ! E_e (eV), dR/dE (Kg^-1 day^-1 KeV^-1)
 c            enddo
 c            close(200+i)
 
@@ -223,22 +223,22 @@ c       Setup the array of day values. Each day value is in the centre of the bi
         enddo
 
 c       Write the results
-        open(3,file='./output/dRdlogE_e_recoil.dat',status='unknown') 
+        open(3,file='./output/dRdE_e_recoil.dat',status='unknown') 
         open(4,file='./output/rate_vs_time_e_recoil.dat',status='unknown')
 c        open(5,file='./output/tot_rate.dat',status='unknown')
         open(6,file='./output/dRdS2_Xenon10_e_recoil.dat',status='unknown')
         open(7,file='./output/dRdiS2_Xenon1T_e_recoil.dat',status='unknown')
 
-c       Writing out the differential rate dRdlogE. 
+c       Writing out the differential rate dRdE.
 c       ================================================================
-c       Differential recoil rate dRdlogE  ./Output/dRdlogE_sm.dat    
-c       E_e(ik), dR/dlogE(ik)
+c       Differential recoil rate dR/dE  ./Output/dRdE_e_recoil.dat
+c       E_e(ik), dR/dE(ik)
 c       ================================================================
-        write(3,*) '## Momentum (keV), Energy(keV), dR/dlogE[events/kg/yr]' 
+        write(3,*) '## Momentum (keV), Energy(keV), dR/dE[events/kg/day/keV]' 
         write(3,*) '## unsmeared  ##'
 
         do ik = 1, gridsize_k
-            write(3,*) k_e(ik)*1.0E+6, E_e(ik)*1.0E+6, diff_rate_logE(ik)    ! GeV to keV
+            write(3,*) k_e(ik)*1.0E+6, E_e(ik)*1.0E+6, dRdE_kg_day_GeV(ik)/1.0E+6    ! all to keV
         enddo
 
 c       Writing out the rate as a function of days to show annual modulation. R = dN/dt(months)
