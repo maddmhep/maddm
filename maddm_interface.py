@@ -65,10 +65,10 @@ class MadDM_interface(master_interface.MasterCmd):
   "       ########//#####\\\\###########                   "+bcolors.FAIL+"arXiv:2107.04598        \n"+bcolors.ENDC+\
   "       ######################### ## ___________________________________________\n"+\
   "       ####################### 0  # "+bcolors.OKGREEN+" _     _               _  _____   _     _  \n"+bcolors.ENDC+\
-  "       #############   0  ###    ## "+bcolors.OKGREEN+"| \   / |   ___    ___|| | ___ \ | \   / | \n"+bcolors.ENDC+\
+  "       #############   0  ###    ## "+bcolors.OKGREEN+"| \\   / |   ___    ___|| | ___ \\ | \\   / | \n"+bcolors.ENDC+\
   "       ##############    #########  "+bcolors.OKGREEN+"||\\\\ //|| / __ |  / __ | ||   || ||\\\\ //|| \n"+bcolors.ENDC+\
   "        ##########################  "+bcolors.OKGREEN+"||  V  || ||__||  ||__|| ||___|| ||  V  || \n"+bcolors.ENDC+\
-  "         ###################   ##   "+bcolors.OKGREEN+"||     || \_____\ \____| |_____/ ||     || \n"+bcolors.ENDC+\
+  "         ###################   ##   "+bcolors.OKGREEN+"||     || \\_____\\ \\____| |_____/ ||     || \n"+bcolors.ENDC+\
   "          ############       ###    ___________________________________________\n"+\
   "           ##########    ######                                                 \n"+\
   "             ################                                                   \n"+\
@@ -1398,11 +1398,8 @@ class MadDM_interface(master_interface.MasterCmd):
         logger.info("Generating X Electron > X Electron diagrams from the full lagrangian...")
         has_direct = self.DiagramsDD_electron(eff_operators_SI_electron, eff_operators_SD_electron, 'QED', excluded_particles)
 
-        #### ONLY FOR TESTING PURPOSES, REMOVE LATER
-        has_direct = True
-        ################################################
         if not has_direct:
-            logger.warning("No Direct Detection Feynman Diagram for DM-electron scattering")
+            logger.warning("No Direct Detection Feynman Diagram for DM-electron scattering.")
             return False
         
         logger.info("Generating X Electron > X Electron diagrams from the effective lagrangian...")
@@ -1442,7 +1439,7 @@ class MadDM_interface(master_interface.MasterCmd):
         has_direct = self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'QED', excluded_particles)
 
         if not has_direct:
-            logger.warning("No Direct Detection Feynman Diagram")
+            logger.warning("No Direct Detection Feynman Diagram for DM-nucleus scattering.")
             return False
         
         logger.info("Generating X Nucleon > X Nucleon diagrams from the effective lagrangian...")
