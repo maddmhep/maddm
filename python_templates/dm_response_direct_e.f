@@ -40,14 +40,7 @@ c response function
 c --------------------------------------------------------------------------------
             dm_response = -1
             if (do_get_dm_response) then
-                  select case(dm_spin)
-                        case(1)
-                        dm_response = get_dm_response(dm_spin)
-                        case(2)
-                        dm_response = get_dm_response(dm_spin)
-                        case(3) ! will be implmented in future work
-                        write (*,*) "vector DM-e scattering still not implemented!"
-                  end select
+                  dm_response = get_dm_response(dm_spin)
             endif
 
       end function
