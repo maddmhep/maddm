@@ -58,12 +58,6 @@
    %(vmp)s     = vMP  ! The most probable WIMP velocity v_0 (km/s)
    %(vescape)s     = vescape  ! The escape velocity of WIMPS in the Halo (km/s)
    %(rhodm)s       = rhoDM   ! The density of WIMPs in our local Universe (GeV/c^2/cm^-3)
-   %(vEarth_r)s      = vEarth_r
-   %(vEarth_phi)s    = vEarth_phi
-   %(vEarth_theta)s  = vEarth_theta
-   %(vSun_r)s      = vSun_r
-   %(vSun_phi)s    = vSun_phi
-   %(vSun_theta)s  = vSun_theta
 
 # choose the size of the detector
    %(detector_size)s    = detector_size  ! For 1 ton = 1000 kg detector

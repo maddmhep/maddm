@@ -4990,12 +4990,6 @@ class MadDMCard(banner_mod.RunCard):
         #Setting up the DM constants following Eur. Phys. J. C (2021) 81: 907.
         self.add_param('vMP', 238.0)
         self.add_param('vescape', 544.0)
-        self.add_param('vEarth_r', 29.2)
-        self.add_param('vEarth_phi', -0.1)
-        self.add_param('vEarth_theta', 5.9)
-        self.add_param('vSun_r', 11.1)
-        self.add_param('vSun_phi', 12.2)
-        self.add_param('vSun_theta', 7.3)
         self.add_param('rhoDM', 0.3)
         #detector 
         self.add_param('detector_size', 1000.0)

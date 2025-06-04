@@ -224,7 +224,7 @@ c       Setup the array of day values. Each day value is in the centre of the bi
 
 c       Write the results
         open(3,file='./output/dRdE_e_recoil.dat',status='unknown') 
-c        open(4,file='./output/rate_vs_time_e_recoil.dat',status='unknown')
+        open(4,file='./output/rate_vs_time_e_recoil.dat',status='unknown')
 c        open(5,file='./output/tot_rate.dat',status='unknown')
         open(6,file='./output/dRdS2_Xenon10_e_recoil.dat',status='unknown')
         open(7,file='./output/dRdiS2_Xenon1T_e_recoil.dat',status='unknown')
@@ -246,12 +246,12 @@ c       ================================================================
 c       Recoil Rate R        ./Output/rate_vs_time.dat
 c       day(i), rate_(i)
 c       ================================================================
-c        write(4,*) '## Rates[events/kg/month]'
-c        write(4,*) '## unsmeared  ##'
+        write(4,*) '## Rates[events/kg/month]'
+        write(4,*) '## unsmeared  ##'
 
-c        do id = 1, day_bins
-c            write(4,*) daymid(id), rate_vs_time(id)
-c        enddo
+        do id = 1, day_bins
+            write(4,*) daymid(id), rate_vs_time(id)
+        enddo
 
 c       Writing out the total rate. R = dN/dt(years)
 c       ================================================================
@@ -280,7 +280,7 @@ c       Writing out the expected numer of events for Xenon1T, using the center v
         enddo
         
         close(3)
-c        close(4)
+        close(4)
 c        close(5)
         close(6)
         close(7)
@@ -288,7 +288,6 @@ c        close(5)
         Return
 
         End
-
 
 
 
@@ -301,7 +300,7 @@ c        close(5)
 
         double precision M_dm, M_e, E_binding
         double precision ioniz_amplitude(gridsize_k,gridsize_q)
-        double precision get_dRdlogE, dday
+        double precision get_dRdlogE, dday, get_vEarth
         double precision dRdlogEdday_kg_day(gridsize_k,day_bins),diff_rate_logE(gridsize_k)
         double precision rate_vs_time(day_bins),tot_rate_kg_day
 
@@ -368,7 +367,7 @@ c           Loop over day_bins.
 
 c               Compute the differential rate, than use to compute dR/dlogE, total rate and total events
                 dRdlogEdday_kg_day(ik,id) =
-     &             get_dRdlogE(ik,E_e(ik),E_binding,q_exc,dq,M_dm,M_e,ioniz_amplitude)
+     &             get_dRdlogE(ik,E_e(ik),E_binding,q_exc,dq,M_dm,M_e,ioniz_amplitude,get_vEarth(daymid(id)))
      &             *dday/365.0*daytosec
 
                 tot_rate_kg_day         = tot_rate_kg_day + dRdlogEdday_kg_day(ik,id) * dlogE(ik)
@@ -386,16 +385,17 @@ c               Compute the differential rate, than use to compute dR/dlogE, tot
 
 
 !-----------------------------------------------------------------------------------------------!
-        Function get_dRdlogE(ik, ER, Eb, q_exc, dq, M_dm, M_e, ioniz_amplitude)
+        Function get_dRdlogE(ik, ER, Eb, q_exc, dq, M_dm, M_e, ioniz_amplitude, vEarth)
 !-----------------------------------------------------------------------------------------------!
 !	    Calculate the double differential spectrum for DM detection.                            !
+!       Uses the modulation information of the earth inside function get_vEarth.                !
 !-----------------------------------------------------------------------------------------------!
         implicit none
 
         include '../include/maddm.inc'
 
         integer ik,iq
-        double precision get_dRdlogE, ER, Eb, nDM, c, vE
+        double precision get_dRdlogE, ER, Eb, nDM, c, vE, vEarth
         double precision M_dm, M_e, v0, vmin, RhoD
         double precision N_events, eta, r_kin, kNorm, vesc, const_integral
         double precision q_exc(gridsize_q+1), dq(gridsize_q)
@@ -405,17 +405,12 @@ c               Compute the differential rate, than use to compute dR/dlogE, tot
         include '../include/maddm_card.inc'
 
 c       Parameters and variables
-        c       = 29979245800.d0              ! cm sec**(-1)
-        v0      = vMP*(km/sec)                ! Most Probable velocity of WIMPs in DM Halo
-        vesc    = vescape*(km/sec)            ! Escape velocity of a WIMP from the Galactic Halo
-        RhoD    = rhoDM*GeV*cs**(-2)*cm**(-3) ! Density of Dark Matter in our local part of the Galaxy
-        nDM = RhoD / M_dm * cm**(-3)          ! Number density of DM [cm**(-3)]
-
-c       Module of the velocity of the Earth respect to the centre of the Galaxy.
-c       coord: (r,phi,theta). 
-        vE = sqrt(((vearth_r+vSun_r)**2 +
-     &             (vearth_phi+vSun_phi+vMP)**2 +
-     &             (vearth_theta+vSun_theta)**2)) * (km/sec)
+        c    = 29979245800.d0                 ! cm sec**(-1)
+        v0   = vMP*(km/sec)                   ! Most Probable velocity of WIMPs in DM Halo
+        vesc = vescape*(km/sec)               ! Escape velocity of a WIMP from the Galactic Halo
+        vE   = vEarth*(km/sec)                ! Velocity of the Earth in the Galactic frame, taken from the get_vEarth function
+        RhoD = rhoDM*GeV*cs**(-2)*cm**(-3)    ! Density of Dark Matter in our local part of the Galaxy
+        nDM  = RhoD / M_dm * cm**(-3)         ! Number density of DM [cm**(-3)]
         
         const_integral = nDM/(128.d0*pi*((M_dm*GeVtoKg)**2)*((M_e*GeVtoKg)**2)) ! Constant in front of the integral [cm**(-3) Kg**(-4)]
         kNorm   = (v0**3)*pi*(sqrt(pi)*erf(vesc/v0) - 2.d0*(vesc/v0)*exp(-(vesc/v0)**2)) ! Normalization factor for velocity distribution integral [cm**(3) sec**(-3)]
@@ -446,7 +441,7 @@ c           Multiply also for the constant in front of the integral, and divide 
      &                                         * eta * ioniz_amplitude(ik,iq) / (m_Xenon*au)
 
         enddo
-      
+
       return
 
       end
@@ -579,11 +574,11 @@ c       Multiply for the exposure and efficency
 
 !--------------------------------------------------------------------------------------------------------------------!
         subroutine get_dRdiS2_Xenon1T(E_e,dRdE_kg_day_GeV,S2_val,dRdiS2_Xenon1T)
-!--------------------------------------------------------------------------------------------------------------------!
-!       Get the rate vs the S2 bin index of Xenon1T, using the S2 response from
-!       https://github.com/XENON1T/s2only_data_release/blob/master/s2_response_er.csv
-!       The S2 response considers all the detector effects, including the detector efficiency and the selection cuts.
-!--------------------------------------------------------------------------------------------------------------------!
+!---------------------------------------------------------------------------------------------------------------------!
+!       Get the rate vs the S2 bin index of Xenon1T, using the S2 response from                                       !
+!       https://github.com/XENON1T/s2only_data_release/blob/master/s2_response_er.                                    !
+!       The S2 response considers all the detector effects, including the detector efficiency and the selection cuts. !
+!---------------------------------------------------------------------------------------------------------------------!
 
         Use, intrinsic :: iso_fortran_env, Only : iostat_end
 
@@ -669,6 +664,54 @@ c            https://github.com/XENON1T/s2only_data_release/blob/master/s2_binni
         enddo
 
         end subroutine get_dRdiS2_Xenon1T
+
+
+
+
+
+!-----------------------------------------------------------------------------------------!
+        Real*8 Function get_vEarth(days)
+!-----------------------------------------------------------------------------------------!
+!       This function calculates the time-dependent Earth`s velocity in the Galactic      !
+!       frame, taking into account the Earth`s orbit around the Sun and the Sun`s         !
+!       peculiar velocity relative to the Galactic centre.                                !
+!       This function returns the velocity module given the number of days passed from    !
+!       March 22, 2018. Based on Eur. Phys. J. C (2021) 81: 907.                          !
+!-----------------------------------------------------------------------------------------!
+        Implicit none
+
+        include '../include/maddm.inc'
+
+        Real*8    omega, cosdt, sindt, u_E
+        Real*8    V_E1(3), days, vuGal(3), vuSun(3), vu_E(3)
+
+        include '../include/maddm_card.inc'
+
+c       Constants
+        vuGal = (/ 0.d0, vMP, 0.d0 /)       ! Galactic rotation velocity
+        vuSun = (/ 11.1d0, 12.2d0, 7.3d0 /) ! Sun`s peculiar velocity relative to nearby stars [km/s]
+        u_E = 29.79d0                       ! [km/s] average orbital speed of the Earth
+        omega = 0.0172d0                    ! [1/day] orbital frequency
+
+c       Precompute sine and cosine of omega * days
+        cosdt = cos(omega * days)
+        sindt = sin(omega * days)
+
+c       Time-dependent Earth orbital velocity in galactic coordinates
+        vu_E(1) = u_E * (0.9941d0 * cosdt - 0.0504d0 * sindt)
+        vu_E(2) = u_E * (0.1088d0 * cosdt + 0.4946d0 * sindt)
+        vu_E(3) = u_E * (0.0042d0 * cosdt - 0.8677d0 * sindt)
+
+c       Total velocity in Galactic frame
+        V_E1(1) = vuGal(1) + vuSun(1) + vu_E(1)
+        V_E1(2) = vuGal(2) + vuSun(2) + vu_E(2)
+        V_E1(3) = vuGal(3) + vuSun(3) + vu_E(3)
+
+c       Magnitude of the total velocity vector
+        get_vEarth = sqrt(V_E1(1)**2 + V_E1(2)**2 + V_E1(3)**2)
+
+        return
+        end
 
 
 
