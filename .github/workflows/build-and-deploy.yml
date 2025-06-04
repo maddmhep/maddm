@@ -40,7 +40,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./doc/_build/html
           # You can specify the target branch, which is gh-pages in this case
-          target_branch: gh-pages
+          publish_branch: gh-pages
           # If the branch is 'main', the folder will be 'stable',
           # otherwise 'dev'
           # Using the GitHub context variable `github.ref` to get
