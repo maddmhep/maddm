@@ -1,6 +1,6 @@
 !------------------------------------------------------------------------------------------------!
-        Subroutine electron_recoil_signal(dm_response,bin_Xenon10,sig_Xenon10,tot_sig_Xenon1T,
-     &                                      tot_bkg_Xenon1T, n_obs_Xenon1T)
+        Subroutine electron_recoil_signal(dm_response,bin_Xenon10,sig_Xenon10,n_obs_Xenon10,
+     &                                    tot_sig_Xenon1T,tot_bkg_Xenon1T, n_obs_Xenon1T)
 !------------------------------------------------------------------------------------------------!
 !       The main subroutine for the calculation of the electron recoil signal from DM-electron   !
 !       interaction.                                                                             !
@@ -35,6 +35,7 @@ c ------------------------------------------------------------------------------
 c       Initialize the parameters and variables
 c ------------------------------------------------------------------------------------------------
         bin_Xenon10 = (/14,41,68,95,122,149,176,203/)
+        n_obs_Xenon10 = (/126,60,12,3,2,0,2/)
         len_bin_Xenon10 = size(bin_Xenon10)
 
         if (dm_response.eq.-1) then
@@ -234,8 +235,7 @@ c       ================================================================
 c       Differential recoil rate dR/dE  ./Output/dRdE_e_recoil.dat
 c       E_e(ik), dR/dE(ik)
 c       ================================================================
-        write(3,*) '## Momentum (keV), Energy(keV), dR/dE[events/kg/day/keV]' 
-        write(3,*) '## unsmeared  ##'
+        write(3,*) '##    Momentum (keV)        Energy(keV)               dR/dE[events/kg/day/keV]' 
 
         do ik = 1, gridsize_k
             write(3,*) k_e(ik)*1.0E+6, E_e(ik)*1.0E+6, dRdE_kg_day_GeV(ik)/1.0E+6    ! all to keV
@@ -246,8 +246,7 @@ c       ================================================================
 c       Recoil Rate R        ./Output/rate_vs_time.dat
 c       day(i), rate_(i)
 c       ================================================================
-        write(4,*) '## Rates[events/kg/month]'
-        write(4,*) '## unsmeared  ##'
+        write(4,*) '## Days since 22-03-2018    Rate[events/kg/month]'
 
         do id = 1, day_bins
             write(4,*) daymid(id), rate_vs_time(id)
@@ -259,21 +258,18 @@ c       Recoil Rate R        ./Output/tot_rate.dat
 c       rate
 c       ================================================================
 c        write(5,*) '## Rate[events/kg/year]'
-c        write(5,*) '## unsmeared  ##'
 
 c        write(5,'(E11.5)') tot_rate_kg_day
 
 c       Writing out the expected numer of events for Xenon10 
-        write(6,*) '## S2      dN/dS2[events]' 
-        write(6,*) '## unsmeared  ##'
+        write(6,*) '##       S2   dN/dS2[events]'
 
         do S2 = 1, S2_max_Xenon10
             write(6,*) S2, dRdS2_Xenon10(S2)
         enddo
 
 c       Writing out the expected numer of events for Xenon1T, using the center values in log scale for the S2 bins
-        write(7,*) '## S2      dN/dS2[events]'
-        write(7,*) '## unsmeared  ##'
+        write(7,*) '##                S2        dN/dS2[events]'
 
         do iS2 = 1, S2_bin_max_Xenon1T
             write(7,*) S2_val(iS2), dRdiS2_Xenon1T(iS2)

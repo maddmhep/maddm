@@ -1797,15 +1797,21 @@ class MADDMRunCmd(cmd.CmdShell):
                         
                     if 'Xenon10_bins' in line:
                         Xenon10_bins = []
-                        for i in range(1,8):
+                        for i in range(1,9):
                             Xenon10_bins.append(secure_float_f77(splitline[i]))
                         result['Xenon10_bins'] = Xenon10_bins
 
                     elif 'Xenon10_signal' in line:
                         Xenon10_signal = []
-                        for i in range(1,7):
+                        for i in range(1,8):
                             Xenon10_signal.append(secure_float_f77(splitline[i]))
                         result['Xenon10_signal'] = Xenon10_signal
+
+                    elif 'Xenon10_obs' in line:
+                        Xenon10_obs = []
+                        for i in range(1,8):
+                            Xenon10_obs.append(secure_float_f77(splitline[i]))
+                        result['Xenon10_obs'] = Xenon10_obs
 
                     elif 'Xenon1T_signal' in line:
                         result['Xenon1T_signal'] = secure_float_f77(splitline[1])
@@ -2072,7 +2078,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 return
             elif self.last_results['DM_response']!=-1:
                 Xenon10_sig = self.last_results['Xenon10_signal']
-                Xenon10_obs = [126,60,12,3,2,0,2]
+                Xenon10_obs = self.last_results['Xenon10_obs']
                 Xenon1T_sig = self.last_results['Xenon1T_signal']
                 Xenon1T_bkg = self.last_results['Xenon1T_bkg']
                 Xenon1T_obs = self.last_results['Xenon1T_obs']
@@ -3612,12 +3618,12 @@ class MADDMRunCmd(cmd.CmdShell):
             out.write('# Direct Detection - Electronic Recoil [cm^2]  #\n')
             out.write('################################################\n\n')
 
-            sig10 = self.last_results['Xenon10_signal']
-            sig1T = self.last_results['Xenon1T_signal']
-            bkg1T = self.last_results['Xenon1T_bkg']
-            out.write(form_s('Xenon10_signal') + '= ' + form_s('['+ form_n(sig10[0]) + ',' + form_n(sig10[1]) + ',' + form_n(sig10[2]) + ']' ) + '\n')
-            out.write(form_s('Xenon1T_signal') + '= ' + form_s(form_n(sig1T)) + '\n')
-            out.write(form_s('Xenon1T_bkg') + '= ' + form_s(form_n(bkg1T)) + '\n')
+            cross_DMe = self.last_results['sigma_e']
+            pval10 = self.last_results['pvalue_Xenon10']
+            pval1T = self.last_results['pvalue_Xenon1T']
+            out.write(form_s('Sigma_e ref.') + '= ' + form_s(form_n(cross_DMe)) + '\n')
+            out.write(form_s('Xenon10_pvalue') + '= ' + form_s(form_n(pval10)) + '\n')
+            out.write(form_s('Xenon1T_pvalue') + '= ' + form_s(form_n(pval1T)) + '\n')
         
 
         if indirect or spectral:      

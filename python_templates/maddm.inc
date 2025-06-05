@@ -41,7 +41,7 @@ c dm_response_direct_e.f
 
 c electron_recoil_signal.f
       double precision sig_Xenon10(7),tot_sig_Xenon1T,tot_bkg_Xenon1T
-      integer bin_Xenon10(8), n_obs_Xenon1T
+      integer bin_Xenon10(8), n_obs_Xenon10(7), n_obs_Xenon1T
 
 c random seed
       integer idum
