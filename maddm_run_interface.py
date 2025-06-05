@@ -3603,7 +3603,8 @@ class MADDMRunCmd(cmd.CmdShell):
 
         if direct_electron and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
 
-            for name in ['dRdlogE_e_recoil.dat','dRdS2_Xenon1T_e_recoil.dat','dRdS2_Xenon10_e_recoil.dat','rate_vs_time_e_recoil.dat','signal_e_recoil.dat']:
+            for name in ['dRdlogE_e_recoil.dat','dRdS2_Xenon1T_e_recoil.dat','dRdS2_Xenon10_e_recoil.dat','rate_vs_time_e_recoil.dat',
+                         'signal_e_recoil.dat','dRdE_e_recoil.dat','dRdS2_Xenon1T_e_recoil.dat']:
                 if os.path.isfile(pjoin(self.dir_path, 'output',name)):
                    shutil.move(pjoin(self.dir_path, 'output',name) ,  pjoin(self.dir_path, 'output', point , name))
             

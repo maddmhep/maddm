@@ -227,7 +227,7 @@ c       Write the results
         open(4,file='./output/rate_vs_time_e_recoil.dat',status='unknown')
 c        open(5,file='./output/tot_rate.dat',status='unknown')
         open(6,file='./output/dRdS2_Xenon10_e_recoil.dat',status='unknown')
-        open(7,file='./output/dRdiS2_Xenon1T_e_recoil.dat',status='unknown')
+        open(7,file='./output/dRdS2_Xenon1T_e_recoil.dat',status='unknown')
 
 c       Writing out the differential rate dRdE.
 c       ================================================================
