@@ -1542,10 +1542,10 @@ class MADDMRunCmd(cmd.CmdShell):
   "       ########//#####\\\\###########                   "+bcolors.FAIL+"arXiv:2107.04598        \n"+bcolors.ENDC+\
   "       ######################### ## ___________________________________________\n"+\
   "       ####################### 0  # "+bcolors.OKGREEN+" _     _               _  _____   _     _  \n"+bcolors.ENDC+\
-  "       #############   0  ###    ## "+bcolors.OKGREEN+"| \   / |   ___    ___|| | ___ \ | \   / | \n"+bcolors.ENDC+\
+  "       #############   0  ###    ## "+bcolors.OKGREEN+"| \\   / |   ___    ___|| | ___ \\ | \\   / | \n"+bcolors.ENDC+\
   "       ##############    #########  "+bcolors.OKGREEN+"||\\\\ //|| / __ |  / __ | ||   || ||\\\\ //|| \n"+bcolors.ENDC+\
-  "        ##########################  "+bcolors.OKGREEN+"||  V  || ||__||  ||__|| ||___|| ||  V  || \n"+bcolors.ENDC+\
-  "         ###################   ##   "+bcolors.OKGREEN+"||     || \_____\ \____| |_____/ ||     || \n"+bcolors.ENDC+\
+  "        ##########################  "+bcolors.OKGREEN+"||  \\V  || ||__||  ||__|| ||___|| ||  \\V  || \n"+bcolors.ENDC+\
+  "         ###################   ##   "+bcolors.OKGREEN+"||     || \\_____\\ \\____| |_____/ ||     || \n"+bcolors.ENDC+\
   "          ############       ###    ___________________________________________\n"+\
   "           ##########    ######                                                 \n"+\
   "             ################                                                   \n"+\
@@ -4378,7 +4378,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         #    trigger function accordingly.
         
         question = cmd.ControlSwitch.create_question(self, help_text=False)
-        question +="""\n%(start_green)s You can also edit the various input card%(stop)s:
+        question +=r"""\n%(start_green)s You can also edit the various input card%(stop)s:
  * Enter the name/number to open the editor
  * Enter a path to a file to replace the card
  * Enter %(start_bold)sset NAME value%(stop)s to change any parameter to the requested value
@@ -4394,7 +4394,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         if current_val['indirect'].startswith('flux') or self.switch["indirect"].startswith('flux'):
             question += """ | 10. Edit the Showering Card for flux  [%(start_underline)sflux%(stop)s]                                |\n"""
         
-        question+=""" \=============================================================================/\n"""
+        question+=r""" \=============================================================================/\n"""
         self.question =  question % {'start_green' : '\033[92m',
                          'stop':  '\033[0m',
                          'start_underline': '\033[4m',
