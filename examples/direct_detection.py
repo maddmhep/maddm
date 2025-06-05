@@ -132,7 +132,7 @@ First, you need to set up your model and process as usual. For example, if you w
     MadDM> output SCAN_example
     MadDM> launch SCAN_example
 
-At the launch prompt, set the parameters you want to scan, using `set MXd scan:` followed by the python `range` function.
+At the launch prompt, set the parameters you want to scan, using `set MXd scan:` followed by the python ``range`` function.
 For instance, if you want to scan the dark matter mass (MXd) from 50 GeV to <700 GeV in steps of 25 GeV, you can do:
 
 .. code-block:: text
