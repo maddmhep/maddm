@@ -27,7 +27,6 @@ release = version
 
 extensions = [
     "sphinx.ext.githubpages",
-    "sphinxcontrib.mermaid",
     "sphinx_gallery.gen_gallery"
 ]
 

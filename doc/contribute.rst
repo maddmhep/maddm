@@ -28,7 +28,7 @@ and fill accordingly:
 - project language: default is ``en``;
 
 Then the folder will be populated by several files.
-In particular, we will modify the ``conf.py`` file as you can check, in order to have dynamic copyright and release, and adding all the various extensions.
+In particular, we will modify the `conf.py <./conf.py>`__ file as you can check, in order to have dynamic copyright and release, and adding all the various extensions.
 
 Requirements and extensions
 ---------------------------
@@ -51,7 +51,7 @@ To automatically build the tutorial and the examples gallery from ipython notebo
 
    python -m pip install sphinx-gallery
 
-and we modify the ``conf.py`` accordingly, by adding the following configuration (or something similar):
+and we modify the `conf.py <./conf.py>`__ accordingly, by adding the following configuration (or something similar):
 
 .. code:: python
 
