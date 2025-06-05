@@ -4384,11 +4384,11 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         #    trigger function accordingly.
         
         question = cmd.ControlSwitch.create_question(self, help_text=False)
-        question +=r"""\n%(start_green)s You can also edit the various input card%(stop)s:
+        question +="""\n%(start_green)s You can also edit the various input card%(stop)s:
  * Enter the name/number to open the editor
  * Enter a path to a file to replace the card
  * Enter %(start_bold)sset NAME value%(stop)s to change any parameter to the requested value
- /=============================================================================\ 
+ /=============================================================================\\ 
  |  7. Edit the model parameters    [%(start_underline)sparam%(stop)s]                                    |  
  |  8. Edit the MadDM options       [%(start_underline)smaddm%(stop)s]                                    |
 """
@@ -4400,7 +4400,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         if current_val['indirect'].startswith('flux') or self.switch["indirect"].startswith('flux'):
             question += """ | 10. Edit the Showering Card for flux  [%(start_underline)sflux%(stop)s]                                |\n"""
         
-        question+=r""" \=============================================================================/\n"""
+        question+=""" \\=============================================================================/\n"""
         self.question =  question % {'start_green' : '\033[92m',
                          'stop':  '\033[0m',
                          'start_underline': '\033[4m',
