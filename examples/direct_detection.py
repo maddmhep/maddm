@@ -1,0 +1,189 @@
+"""
+===========================
+Direct Detection Tutorial
+===========================
+
+MadDM allows for computing direct detection limits using two different methodologies,
+depending on the type of recoil: **nuclear** or **electronic**. Below we describe both.
+
+--------------------------------------------------
+1. Nuclear Recoils with RAPIDD and LZ likelihood
+--------------------------------------------------
+
+For nuclear recoil interactions, MadDM makes use of the **RAPIDD** module to efficiently evaluate 
+differential recoil spectra and likelihoods. It uses the **LZ experiment likelihood** to 
+place constraints on DM-nucleus interactions.
+
+Example
+-------
+
+.. code-block:: text
+
+    MadDM> import model DMsimp_s_spin0
+    MadDM> define darkmatter Xr
+    MadDM> generate direct
+    MadDM> ...
+    MadDM> output DD_NR_spin0
+    MadDM> launch DD_NR_spin0
+
+This will compute the nuclear recoil spectrum and compare it against LZ limits using RAPIDD.
+Make sure RAPIDD is properly installed and accessible from MadDM.
+
+---------------------------------------------------------
+2. Electronic Recoils with XENON10/XENON1T likelihoods
+---------------------------------------------------------
+
+MadDM also supports **electronic recoil** constraints, currently using the **XENON10** and **XENON1T**
+likelihoods. These are particularly relevant for models with sub-GeV DM that interact with electrons.
+With this module you can compute the DM-electron recoil rates and constrain the Lagrangian parameters, or the cross section, using experimental data from XENON10 and XENON1T.
+
+Example with a simplified scalar-mediated DM model
+--------------------------------------------------
+
+First, import the model, which will be downloaded automatically from `here <https://feynrules.irmp.ucl.ac.be/wiki/DMsimp>`_ if not already present: 
+
+.. code-block:: text
+
+    MadDM> import model eDMsimp_s_spin0
+
+Next, define the dark matter particle. Generally, for DMsimp models, you can choose between Xr (real scalar DM), Xc (complex scalar DM)
+and Xd (Dirac spinor DM). Then, generate the direct detection processes with:
+
+.. code-block:: text
+
+    MadDM> define darkmatter xd
+    MadDM> generate direct
+
+At this point, you can set the parameter values of the model, stored in ``param_card_orig.dat``, by pressing 1.
+Next, create the process folder. In this case, we call it ``DD_ER_spin0``, but you can choose any name you like. Then launch the process:
+
+.. code-block:: text
+
+    MadDM> output DD_ER_spin0
+    MadDM> launch DD_ER_spin0
+
+Note that once the process folder has been created with the ``output`` command in a previous session, you can always
+relaunch the same process in a new session with ``launch myprocessname`` skipping the previous steps.
+Once you launch the process, select to run the ``direct_electron`` module by entering:
+
+.. code-block:: text
+
+    MadDM> direct_nuclear = OFF
+    MadDM> direct_electron = ON
+
+If your model has both nuclear and electronic operators, you can set both nuclear and electronic modules to ON,
+and you will receive results for both types of interactions considered separately.
+
+You can set the model parameters in the ``param_card.dat`` by pressing 7, or by editing the file directly in the process folder (in this case ``DD_ER_spin0/Cards/param_card.dat``).
+
+You can set the MadDM parameters in the ``maddm_card.dat`` by pressing 8, or by editing the file directly in the process folder (in this case ``DD_ER_spin0/Cards/maddm_card.dat``).
+
+Note that in the ``direct_electron`` module, if the DM particle has a mass above 1 GeV, it will be ignored by default.
+To change this behavior, set ``direct_electron_mode`` to ``always`` in the ``maddm_card.dat`` file, which you can do by pressing 8 after launching the process.
+
+Once you are all set, you can run the process by pressing Enter. This module will evaluate the DM-electron recoil rates and constrain them using XENON10 + XENON1T data.
+
+After running the above commands, the output will look like:
+
+.. code-block:: text
+
+    INFO: compilation done 
+    INFO: MadDM Results 
+    INFO: Sigma_e             All DM = 3.23e-43       ALLOWED       Xenon10 p_val    = 1.00e+00 
+    INFO: Sigma_e             All DM = 3.23e-43       ALLOWED       Xenon1ton p_val  = 1.00e+00 
+    INFO:  
+    INFO: Results written in: /Users/yourname/yourprocessfolder/DD_ER_spin0/output/run_01/MadDM_results.txt
+
+where ``All DM`` refers to the reference DM-electron cross section in case the DM particle contributes to the entire dark matter density of the universe,
+``ALLOWED`` indicates that the model is consistent with the experimental limits from XENON10 and XENON1T. You can also see the p-values for the likelihoods used in the analysis.
+
+Results
+-------
+
+The results of each run will be stored inside the process folder you created, whose path is shown in the last line of the output.
+Each time you launch the same process, MadDM creates a new folder ``output/run_XX`` within the process folder.
+
+In this folder, you will find the results, such as the cross section, signal, background and p-values for the likelihoods used, in a file named ``MadDM_results.txt``.
+
+You can find all the output produced by MadDM in the ``maddm.out`` file.
+
+You can also find the differential recoil spectra vs energy or vs scintillation signal. The rates produced with this module are labeled with the suffix ``e_recoil`` at the end.
+
+
+=================
+3. Running a Scan
+=================
+
+MadDM allows users to efficiently perform scans over model parameters. This is particularly useful
+when studying constraints or signals across a range of dark matter masses or couplings.
+
+You can define a scan either through the command-line interface, by editing the `param_card.dat` file.
+
+Interactive Scan Setup
+=======================
+
+First, you need to set up your model and process as usual. For example, if you want to scan over a simplified scalar dark matter model, you can do the following:
+
+.. code-block:: text
+
+    MadDM> import model DMsimp_s_spin0
+    MadDM> define darkmatter Xr
+    MadDM> generate direct
+    MadDM> output SCAN_example
+    MadDM> launch SCAN_example
+
+At the launch prompt, set the parameters you want to scan, using `set MXd scan:` followed by the python `range` function.
+For instance, if you want to scan the dark matter mass (MXd) from 50 GeV to <700 GeV in steps of 25 GeV, you can do:
+
+.. code-block:: text
+
+    MadDM> set MXd scan:range(50,700,25)
+
+If you want to scan using a different parametrization, you can also use python arrays, as follows:
+
+.. code-block:: text
+
+    MadDM> set MXd scan:[10,20,30,40]
+
+or you can use list comprehension. For example, to scan over a logarithmic scale from 1 GeV to 10 GeV in 101 steps you can do:
+
+.. code-block:: text
+
+    MadDM> set MXd scan:[10 ** (i * 0.01) for i in range(101)]
+
+
+Then press Enter to start the scan. For scans, you will find in the ``output`` directory a ``run_XX_YY`` folder containing the ``maddm.out`` file  for each ``YY`` iteration.
+You will also find a ``scan_run_XX.txt`` file that summarizes the scan parameters and results.
+You can also make a scan over multiple parameters at once. For example, if you want to scan over the dark matter mass ``MXd`` and the coupling ,``gsxd`` you can do:
+
+.. code-block:: text
+
+    MadDM> set MXd scan:range(50,700,25)
+    MadDM> set gsxd scan:range(10,100,10)
+
+Then press Enter to start the scan. MadDM will generate one run for each combination of the parameters you specified, iterating first over the last parameter in the `param_card.dat`.
+Once all values of that parameter are exhausted, it steps the second-to-last parameter and repeats the process, and so on, like nested ``for`` loops, starting from the outermost (first)
+parameter to the innermost (last).
+
+===========================
+3. Launch MadDM as a script
+===========================
+
+You can also run MadDM as a script, which is useful for batch processing or automation.
+To do this, you can simply run ``maddm.py`` by providing a text file as an argument containing the commands you want to execute. For example:
+
+.. code-block:: text
+    python bin/maddm.py run.txt
+
+where ``run.txt`` should contain the commands you want to execute, one per line, for example:
+
+.. code-block:: text
+
+    import model DMsimp_s_spin0
+    define darkmatter Xr
+    generate direct
+    output SCAN_example
+    launch SCAN_example
+    set MXd scan:range(50,700,25)
+
+"""

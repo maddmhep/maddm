@@ -30,6 +30,40 @@ Below is a gallery of various examples on the usage of MadDM and its features.
     </div>
 
 
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="MadDM provides tools for computing indirect detection signals from dark matter annihilation, including the total annihilation cross sections and the expected spectra of final-state particles such as photons, electrons, and neutrinos.">
+
+.. only:: html
+
+  .. image:: /tutorial_and_examples/images/thumb/sphx_glr_indirect_detection_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_tutorial_and_examples_indirect_detection.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Indirect Detection Analysis</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="MadDM allows for computing direct detection limits using two different methodologies, depending on the type of recoil: nuclear or electronic. Below we describe both.">
+
+.. only:: html
+
+  .. image:: /tutorial_and_examples/images/thumb/sphx_glr_direct_detection_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_tutorial_and_examples_direct_detection.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Direct Detection Tutorial</div>
+    </div>
+
+
 .. thumbnail-parent-div-close
 
 .. raw:: html
@@ -41,6 +75,8 @@ Below is a gallery of various examples on the usage of MadDM and its features.
    :hidden:
 
    /tutorial_and_examples/getting_started
+   /tutorial_and_examples/indirect_detection
+   /tutorial_and_examples/direct_detection
 
 
 
