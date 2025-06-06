@@ -6,6 +6,9 @@
 import os
 import re
 from datetime import datetime
+from pygit2 import Repository
+
+branch = Repository(".").head.shorthand 
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -26,7 +29,6 @@ release = version
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
-    "sphinx.ext.githubpages",
     "sphinx_gallery.gen_gallery"
 ]
 
@@ -56,8 +58,12 @@ html_favicon = "_static/favicon.ico"
 # documentation.
 html_theme_options = {
     "navbar_center": ["navbar-nav"],
-    "navbar_end": ["theme-switcher", "navbar-icon-links"],
+    "navbar_end": ["theme-switcher", "version-switcher", "navbar-icon-links"],
     "logo": {"text": "MadDM"},
+    "switcher": dict(
+            json_url="https://maddmhep.github.io/maddm/dev/_static/switcher.json",
+            version_match="stable" if branch in ["master", "main"] else "dev",
+        ),
     "github_url": "https://github.com/maddmhep/maddm",
     "secondary_sidebar_items": ["page-toc", "sg_download_links", "sg_launcher_links"],
     "show_toc_level": 3,
