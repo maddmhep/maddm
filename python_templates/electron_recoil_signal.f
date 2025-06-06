@@ -685,8 +685,8 @@ c            https://github.com/XENON1T/s2only_data_release/blob/master/s2_binni
 
 c       Constants
         vuGal = (/ 0.d0, vMP, 0.d0 /)       ! Galactic rotation velocity
-        vuSun = (/ 11.1d0, 12.2d0, 7.3d0 /) ! Sun`s peculiar velocity relative to nearby stars [km/s]
-        u_E = 29.79d0                       ! [km/s] average orbital speed of the Earth
+        vuSun = (/vSun_r, vSun_phi, vSun_theta/) ! Sun`s peculiar velocity relative to nearby stars [km/s]
+        u_E = vEarth_mod                    ! [km/s] average orbital speed of the Earth
         omega = 0.0172d0                    ! [1/day] orbital frequency
 
 c       Precompute sine and cosine of omega * days

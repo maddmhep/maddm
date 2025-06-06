@@ -175,7 +175,12 @@ c  Directional detection switch
 
 !c Declare WIMP constants
       double precision rhoDM, vescape, vMP
+      double precision vEarth_mod
+      double precision vSun_r, vSun_phi, vSun_theta
+      common/const/vEarth_mod
+      common/const/vSun_r, vSun_phi, vSun_theta
       common/const/rhoDM, vescape, vMP
+      
 
 !c Declare detector specifics
       logical smearing
