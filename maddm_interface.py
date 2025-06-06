@@ -1058,6 +1058,7 @@ class MadDM_interface(master_interface.MasterCmd):
         proc_charac = MGoutput.MADDMProcCharacteristic(proc_path)
         proc_charac['relic_density_off']      = self._relic_off
         proc_charac['has_direct_detection'] = self._has_direct_nucleon # otherwise we should rename the other occurrences of has_direct_detection accordingly
+        proc_charac['has_directional_detection'] = self._has_direct_nucleon # if we have direct detection, then we have directional detection as well
         proc_charac['has_direct_electron'] = self._has_direct_electron
         proc_charac['has_indirect_detection'] = self._has_indirect
         proc_charac['has_indirect_spectral']  = self._has_spectral
