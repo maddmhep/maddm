@@ -64,6 +64,23 @@ Below is a gallery of various examples on the usage of MadDM and its features.
     </div>
 
 
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="MadDM allows users to efficiently perform scans over model parameters. This is particularly useful when studying constraints or signals across a range of dark matter masses or couplings.">
+
+.. only:: html
+
+  .. image:: /tutorial_and_examples/images/thumb/sphx_glr_scans_and_scripts_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_tutorial_and_examples_scans_and_scripts.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Scans and Scripts in MadDM</div>
+    </div>
+
+
 .. thumbnail-parent-div-close
 
 .. raw:: html
@@ -77,6 +94,7 @@ Below is a gallery of various examples on the usage of MadDM and its features.
    /tutorial_and_examples/getting_started
    /tutorial_and_examples/indirect_detection
    /tutorial_and_examples/direct_detection
+   /tutorial_and_examples/scans_and_scripts
 
 
 
