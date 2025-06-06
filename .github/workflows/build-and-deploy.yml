@@ -25,7 +25,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install sphinx pydata-sphinx-theme sphinx-gallery
+          pip install sphinx pydata-sphinx-theme sphinx-gallery pygit2
 
       # Step 4: Build the documentation
       - name: Build the documentation
