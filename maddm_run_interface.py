@@ -76,7 +76,6 @@ logger_tuto = logging.getLogger('tutorial_plugin')
 
 MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
 
-
 #Is there a better definition of infinity?
 __infty__ = float('inf')
 __mnestlog0__ = -1.0E90
@@ -1861,10 +1860,16 @@ class MADDMRunCmd(cmd.CmdShell):
         #self.maddm_card['SPu']#### THIS IS WHERE I AM 
         # import code
         # code.interact(local=locals())
-        from rapidd import madDM_output as rp
+        # from rapidd import madDM_output as rp
+        # import out2Xsec as rp
+        RP_rel_path = self.plugin_path[0] + "/maddm/vendor/RAPIDD_for_DM/rapidd/"
+        RP_abs_path = os.path.abspath(RP_rel_path)
+        sys.path.insert(0, RP_abs_path)
+        from alpha_map import sigmaSI_nucleon_mdm, sigmaSD_nucleon_mdm
+
         if self.mode['direct']:
-            result['sigmaN_SI_p'], result['sigmaN_SI_n'] = rp.sigmaSI_nucleon_mdm(self.maddm_card, alphaq_values, mdm)
-            result['sigmaN_SD_p'], result['sigmaN_SD_n'] = rp.sigmaSD_nucleon_mdm(self.maddm_card, alphaq_values, mdm)
+            result['sigmaN_SI_p'], result['sigmaN_SI_n'] = sigmaSI_nucleon_mdm(self.maddm_card, alphaq_values, mdm)
+            result['sigmaN_SD_p'], result['sigmaN_SD_n'] = sigmaSD_nucleon_mdm(self.maddm_card, alphaq_values, mdm)
             result['sigmaN_SI_n']    *= GeV2pb*pb2cm2
             result['sigmaN_SI_p']    *= GeV2pb*pb2cm2
             result['sigmaN_SD_p']    *= GeV2pb*pb2cm2
@@ -1875,8 +1880,24 @@ class MADDMRunCmd(cmd.CmdShell):
             result['lim_sigmaN_SD_n'] = self.limits.SD_max(mdm, 'n')
 
 
+        from calc_dRdE import DDrate_save
+        rapidd_out_path = pjoin(self.dir_path,'output', self.run_name)
+
+        if (self.maddm_card['vescape'] == 544.0) and (self.maddm_card['vmp'] == 238.0):
+            DDrate_save(self.maddm_card, alphaq_values, mdm, rapidd_out_path)
+
+        else:
+            from halo import gen_shm_table 
+            halo_path = rapidd_out_path + '/SHM.dat'
+            gen_shm_table(halo_path, self.maddm_card)
+            DDrate_save(self.maddm_card, alphaq_values, mdm, rapidd_out_path, halo_path=halo_path)
+
+
         self.last_results = result
         self.last_results['run'] = self.run_name
+
+        # if self.mode['direct'] == 'p-value':
+            
 
         if self.mode['direct_electron'] and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
             self.launch_direct_electron()
