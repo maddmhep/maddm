@@ -1,0 +1,10 @@
+[
+    {
+        "version": "stable",
+        "url": "https://maddmhep.github.io/maddm/stable/"
+    },
+    {
+        "version": "dev",
+        "url": "https://maddmhep.github.io/maddm/dev/"
+    }
+]
