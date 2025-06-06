@@ -30,7 +30,7 @@
   <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
 <link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
 
-    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=82a976d7" />
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=3ee1c6c6" />
     <link rel="stylesheet" type="text/css" href="_static/sg_gallery.css?v=d2d258e8" />
     <link rel="stylesheet" type="text/css" href="_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="_static/sg_gallery-dataframe.css?v=2082cf3c" />
@@ -46,6 +46,13 @@
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'contribute';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://maddmhep.github.io/maddm/dev/_static/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
     <link rel="icon" href="_static/favicon.ico"/>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -176,6 +183,26 @@
   <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
 </button></div>
       
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
         <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
         <li class="nav-item">
@@ -268,6 +295,26 @@
   <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
   <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
 </button></div>
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
         
           <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -363,14 +410,16 @@
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sphinx-quickstart
 </pre></div>
 </div>
-<p>and fill accordingly:
-- separate source and build directory: no;
-- project name: MadDM;
-- authors: list all authors in a “Name Surname” list separated by <code class="docutils literal notranslate"><span class="pre">&amp;</span></code>;
-- project release: leave empty;
-- project language: default is <code class="docutils literal notranslate"><span class="pre">en</span></code>;</p>
+<p>and fill accordingly:</p>
+<ul class="simple">
+<li><p>separate source and build directory: no;</p></li>
+<li><p>project name: MadDM;</p></li>
+<li><p>authors: list all authors in a “Name Surname” list separated by <code class="docutils literal notranslate"><span class="pre">&amp;</span></code>;</p></li>
+<li><p>project release: leave empty;</p></li>
+<li><p>project language: default is <code class="docutils literal notranslate"><span class="pre">en</span></code>;</p></li>
+</ul>
 <p>Then the folder will be populated by several files.
-In particular, we will modify the <code class="docutils literal notranslate"><span class="pre">`conf.py</span></code> &lt;./conf.py&gt;`__ file as you can check, in order to have dynamic copyright and release, and adding all the various extensions.</p>
+In particular, we will modify the <a class="reference external" href="./conf.py">conf.py</a> file as you can check, in order to have dynamic copyright and release, and adding all the various extensions.</p>
 <section id="requirements-and-extensions">
 <h3>Requirements and extensions<a class="headerlink" href="#requirements-and-extensions" title="Link to this heading">#</a></h3>
 <section id="theme">
@@ -386,16 +435,18 @@ In particular, we will modify the <code class="docutils literal notranslate"><sp
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>sphinx-gallery
 </pre></div>
 </div>
-<p>and we modify the <code class="docutils literal notranslate"><span class="pre">`conf.py</span></code> &lt;./conf.py&gt;`__ accordingly, by adding the following configuration (or something similar):</p>
+<p>and we modify the <a class="reference external" href="./conf.py">conf.py</a> accordingly, by adding the following configuration (or something similar):</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">sphinx_gallery_conf</span> <span class="o">=</span> <span class="p">{</span>
     <span class="s2">&quot;examples_dirs&quot;</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">package_root_path</span><span class="p">,</span> <span class="s2">&quot;examples&quot;</span><span class="p">),</span>
     <span class="s2">&quot;gallery_dirs&quot;</span><span class="p">:</span> <span class="s2">&quot;tutorial_and_examples&quot;</span><span class="p">,</span>
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>where:
-- <code class="docutils literal notranslate"><span class="pre">examples_dirs</span></code> is the path to the folder created in the root of the repository, and containing the <code class="docutils literal notranslate"><span class="pre">rst</span></code> notebooks, <strong>this folder should be created</strong>, in this case we will name it <code class="docutils literal notranslate"><span class="pre">examples</span></code>;
-- <code class="docutils literal notranslate"><span class="pre">gallery_dirs</span></code> is the name of the folder where the generated files from the extension would be placed after the build.</p>
+<p>where:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">examples_dirs</span></code> is the path to the folder created in the root of the repository, and containing the <code class="docutils literal notranslate"><span class="pre">rst</span></code> notebooks, <strong>this folder should be created</strong>, in this case we will name it <code class="docutils literal notranslate"><span class="pre">examples</span></code>;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">gallery_dirs</span></code> is the name of the folder where the generated files from the extension would be placed after the build.</p></li>
+</ul>
 </section>
 <section id="how-to-add-new-examples">
 <h4>How to add new examples<a class="headerlink" href="#how-to-add-new-examples" title="Link to this heading">#</a></h4>
@@ -403,9 +454,11 @@ In particular, we will modify the <code class="docutils literal notranslate"><sp
 That folder contains a general header file, which should be named <code class="docutils literal notranslate"><span class="pre">GALLERY_HEADER.rst</span></code>, that contains some information on the gallery, it will be the landpage for whoever would click on the <em>Tutorial and examples</em> entry in the menu.
 That file would also show a list of the files present in the gallery.
 The gallery is made of python files inside the <code class="docutils literal notranslate"><span class="pre">examples</span></code> folder.
-See also the <a class="reference external" href="https://sphinx-gallery.github.io/stable/getting_started.html#structure-the-examples-folder">official documentation</a>, but, briefly, there are two kinds of files:
-- normal python files, like <code class="docutils literal notranslate"><span class="pre">getting_started.py</span></code>, they will be parsed and presented in a rich literate programming fashion, but they won’t have any output file/plot associated to them;
-- python files with name starting with <code class="docutils literal notranslate"><span class="pre">plot_</span></code>, they will be executed, their output will be captured and incorporated in the HTML that will be created.</p>
+See also the <a class="reference external" href="https://sphinx-gallery.github.io/stable/getting_started.html#structure-the-examples-folder">official documentation</a>, but, briefly, there are two kinds of files:</p>
+<ul class="simple">
+<li><p>normal python files, like <code class="docutils literal notranslate"><span class="pre">getting_started.py</span></code>, they will be parsed and presented in a rich literate programming fashion, but they won’t have any output file/plot associated to them;</p></li>
+<li><p>python files with name starting with <code class="docutils literal notranslate"><span class="pre">plot_</span></code>, they will be executed, their output will be captured and incorporated in the HTML that will be created.</p></li>
+</ul>
 <p>See the <a class="reference external" href="https://sphinx-gallery.github.io/stable/syntax.html#python-script-syntax">following page</a> for the structure that each of these python files must have.</p>
 </section>
 </section>
@@ -506,7 +559,7 @@ The main files to build the documentation are already present when cloning the r
         <div class="footer-item">
 
   <p class="sphinx-version">
-    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
     <br/>
   </p>
 </div>
