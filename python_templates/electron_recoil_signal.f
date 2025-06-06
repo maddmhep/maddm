@@ -225,7 +225,7 @@ c       Setup the array of day values. Each day value is in the centre of the bi
 
 c       Write the results
         open(3,file='./output/dRdE_e_recoil.dat',status='unknown') 
-        open(4,file='./output/rate_vs_time_e_recoil.dat',status='unknown')
+c        open(4,file='./output/rate_vs_time_e_recoil.dat',status='unknown')
 c        open(5,file='./output/tot_rate.dat',status='unknown')
         open(6,file='./output/dRdS2_Xenon10_e_recoil.dat',status='unknown')
         open(7,file='./output/dRdS2_Xenon1T_e_recoil.dat',status='unknown')
@@ -246,11 +246,11 @@ c       ================================================================
 c       Recoil Rate R        ./Output/rate_vs_time.dat
 c       day(i), rate_(i)
 c       ================================================================
-        write(4,*) '## Days since 22-03-2018    Rate[events/kg/month]'
+c        write(4,*) '## Days since 22-03-2018    Rate[events/kg/month]'
 
-        do id = 1, day_bins
-            write(4,*) daymid(id), rate_vs_time(id)
-        enddo
+c        do id = 1, day_bins
+c            write(4,*) daymid(id), rate_vs_time(id)
+c        enddo
 
 c       Writing out the total rate. R = dN/dt(years)
 c       ================================================================
@@ -276,7 +276,7 @@ c       Writing out the expected numer of events for Xenon1T, using the center v
         enddo
         
         close(3)
-        close(4)
+c        close(4)
 c        close(5)
         close(6)
         close(7)
