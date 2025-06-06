@@ -172,7 +172,8 @@ parameter to the innermost (last).
 You can also run MadDM as a script, which is useful for batch processing or automation.
 To do this, you can simply run ``maddm.py`` by providing a text file as an argument containing the commands you want to execute. For example:
 
-.. code-block:: text
+.. code-block:: bash
+
     python bin/maddm.py run.txt
 
 where ``run.txt`` should contain the commands you want to execute, one per line, for example:
