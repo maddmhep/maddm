@@ -22,7 +22,7 @@
 Use MadDM as a Script
 =====================
 
-Run MadDM as a script, which is useful for batch processing or automation.
+Run MadDM as a script, allowing for batch processing or automation.
 
 1. Running MadDM as a Script
 ============================

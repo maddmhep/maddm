@@ -4,7 +4,7 @@
 Scan over model parameters
 ==========================
 
-Pperform scans over model parameters.
+Scan over a specified range of model parameters.
 
 1. Running a Scan
 =================
