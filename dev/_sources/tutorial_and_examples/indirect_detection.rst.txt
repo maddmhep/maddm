@@ -22,7 +22,7 @@
 Indirect Detection Analysis
 ===========================
 
-MadDM provides tools for computing indirect detection signals from dark matter annihilation, including the total annihilation cross sections and the expected spectra of final-state particles such as photons, electrons, and neutrinos.
+Compute indirect detection signals and limits from dark matter annihilation.
 
 Getting Started
 ===============

@@ -56,8 +56,8 @@
     <link rel="icon" href="../_static/favicon.ico"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Getting Started" href="getting_started.html" />
-    <link rel="prev" title="Indirect Detection Analysis" href="indirect_detection.html" />
+    <link rel="next" title="Use MadDM as a Script" href="scripts.html" />
+    <link rel="prev" title="Scan over model parameters" href="scans.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="3.2.13" />
@@ -344,9 +344,9 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="indirect_detection.html">Indirect Detection Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scans.html">Scan over model parameters</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Direct Detection Tutorial</a></li>
-
-
+<li class="toctree-l1"><a class="reference internal" href="scripts.html">Use MadDM as a Script</a></li>
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
 </ul>
 </div>
@@ -415,25 +415,55 @@ to download the full example code.</p>
 </div>
 <section class="sphx-glr-example-title" id="direct-detection-tutorial">
 <span id="sphx-glr-tutorial-and-examples-direct-detection-py"></span><h1>Direct Detection Tutorial<a class="headerlink" href="#direct-detection-tutorial" title="Link to this heading">#</a></h1>
-<p>MadDM allows for computing direct detection limits using two different methodologies,
-depending on the type of recoil: <strong>nuclear</strong> or <strong>electronic</strong>. Below we describe both.</p>
+<p>Compute direct detection signal and limits for both <strong>nuclear</strong> and <strong>electronic</strong> recoils.</p>
 <section id="nuclear-recoils-with-rapidd-and-lz-likelihood">
 <h2>1. Nuclear Recoils with RAPIDD and LZ likelihood<a class="headerlink" href="#nuclear-recoils-with-rapidd-and-lz-likelihood" title="Link to this heading">#</a></h2>
-<p>For nuclear recoil interactions, MadDM makes use of the <strong>RAPIDD</strong> module to efficiently evaluate
+<p>For nuclear recoil interactions, MadDM makes use of the <a class="reference external" href="https://github.com/cheekyparticle/RAPIDD_for_DM/tree/main">**RAPIDD**</a> module to efficiently evaluate
 differential recoil spectra and likelihoods. It uses the <strong>LZ experiment likelihood</strong> to
-place constraints on DM-nucleus interactions.</p>
-<section id="example">
-<h3>Example<a class="headerlink" href="#example" title="Link to this heading">#</a></h3>
+place constraints on DM-nucleus interactions, while also comparing the cross section against experimental limits from
+other experiments such as 🚧 <strong>FIXME</strong>.</p>
+<section id="example-with-a-simplified-scalar-mediated-dm-model">
+<h3>Example with a simplified scalar-mediated DM model<a class="headerlink" href="#example-with-a-simplified-scalar-mediated-dm-model" title="Link to this heading">#</a></h3>
+<p>First, import the model, which will be downloaded automatically from <a class="reference external" href="https://feynrules.irmp.ucl.ac.be/wiki/DMsimp">here</a> if not already present:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; import model DMsimp_s_spin0
-MadDM&gt; define darkmatter Xr
+</pre></div>
+</div>
+<p>Next, define the dark matter particle. Generally, for DMsimp models, you can choose between Xr (real scalar DM), Xc (complex scalar DM)
+and Xd (Dirac spinor DM). Then, generate the direct detection processes with:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; define darkmatter xd
 MadDM&gt; generate direct
-MadDM&gt; ...
-MadDM&gt; output DD_NR_spin0
+</pre></div>
+</div>
+<p>At this point, you can set the parameter values of the model, stored in <code class="docutils literal notranslate"><span class="pre">param_card_orig.dat</span></code>, by pressing 1.
+Next, create the process folder. In this case, we call it <code class="docutils literal notranslate"><span class="pre">DD_NR_spin0</span></code>, but you can choose any name you like. Then launch the process:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; output DD_NR_spin0
 MadDM&gt; launch DD_NR_spin0
 </pre></div>
 </div>
-<p>This will compute the nuclear recoil spectrum and compare it against LZ limits using RAPIDD.
-Make sure RAPIDD is properly installed and accessible from MadDM.</p>
+<p>Note that once the process folder has been created with the <code class="docutils literal notranslate"><span class="pre">output</span></code> command in a previous session, you can always
+relaunch the same process in a new session with <code class="docutils literal notranslate"><span class="pre">launch</span> <span class="pre">myprocessname</span></code> skipping the previous steps.
+Once you launch the process, select to run the <code class="docutils literal notranslate"><span class="pre">direct_nucleon</span></code> module (but it should be already ON) by entering:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; direct_nucleon = ON
+</pre></div>
+</div>
+<p>If your model has both DM-nucleon and DM-electron interactions, you can set both <code class="docutils literal notranslate"><span class="pre">direct_nucleon</span></code> and <code class="docutils literal notranslate"><span class="pre">direct_electron</span></code> modules to ON,
+and you will receive results for both types of interactions considered separately.</p>
+<p>You can set the model parameters in the <code class="docutils literal notranslate"><span class="pre">param_card.dat</span></code> by pressing 7, or by editing the file directly in the process folder (in this case <code class="docutils literal notranslate"><span class="pre">DD_NR_spin0/Cards/param_card.dat</span></code>).</p>
+<p>You can set the MadDM parameters in the <code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code> by pressing 8, or by editing the file directly in the process folder (in this case <code class="docutils literal notranslate"><span class="pre">DD_NR_spin0/Cards/maddm_card.dat</span></code>).</p>
+<p>Once you are all set, you can run the process by pressing Enter. This module will first evaluate the DM–nucleon cross section and compare it against the experimental limits
+🚧 <strong>FIXME</strong>: ADD EXPERIMENT LIST HERE.
+Next, it will use RAPIDD to compute the differential nuclear recoil rates, and from those, it will evaluate the p-values using the likelihoods derived from the most recent LZ data.
+After running the above commands, the output will look like:</p>
+<p>🚧 <strong>FIXME</strong></p>
+<p>where <code class="docutils literal notranslate"><span class="pre">All</span> <span class="pre">DM</span></code> refers to … 🚧 <strong>FIXME</strong></p>
+</section>
+<section id="results">
+<h3>Results<a class="headerlink" href="#results" title="Link to this heading">#</a></h3>
+<p>The results of each run will be stored inside the process folder you created, whose path is shown in the last line of the output.
+Each time you launch the same process, MadDM creates a new folder <code class="docutils literal notranslate"><span class="pre">output/run_XX</span></code> within the process folder.</p>
+<p>In this folder, you will find the results, such as 🚧 <strong>FIXME</strong>, in a file named <code class="docutils literal notranslate"><span class="pre">MadDM_results.txt</span></code>.</p>
+<p>You can find all the output produced by MadDM, such as 🚧 <strong>FIXME</strong>, in the <code class="docutils literal notranslate"><span class="pre">maddm.out</span></code> file.</p>
+<p>You can also find the differential recoil rate and … 🚧 <strong>FIXME</strong></p>
 </section>
 </section>
 <section id="electronic-recoils-with-xenon10-xenon1t-likelihoods">
@@ -441,8 +471,8 @@ Make sure RAPIDD is properly installed and accessible from MadDM.</p>
 <p>MadDM also supports <strong>electronic recoil</strong> constraints, currently using the <strong>XENON10</strong> and <strong>XENON1T</strong>
 likelihoods. These are particularly relevant for models with sub-GeV DM that interact with electrons.
 With this module you can compute the DM-electron recoil rates and constrain the Lagrangian parameters, or the cross section, using experimental data from XENON10 and XENON1T.</p>
-<section id="example-with-a-simplified-scalar-mediated-dm-model">
-<h3>Example with a simplified scalar-mediated DM model<a class="headerlink" href="#example-with-a-simplified-scalar-mediated-dm-model" title="Link to this heading">#</a></h3>
+<section id="id1">
+<h3>Example with a simplified scalar-mediated DM model<a class="headerlink" href="#id1" title="Link to this heading">#</a></h3>
 <p>First, import the model, which will be downloaded automatically from <a class="reference external" href="https://feynrules.irmp.ucl.ac.be/wiki/DMsimp">here</a> if not already present:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; import model eDMsimp_s_spin0
 </pre></div>
@@ -461,12 +491,11 @@ MadDM&gt; launch DD_ER_spin0
 </div>
 <p>Note that once the process folder has been created with the <code class="docutils literal notranslate"><span class="pre">output</span></code> command in a previous session, you can always
 relaunch the same process in a new session with <code class="docutils literal notranslate"><span class="pre">launch</span> <span class="pre">myprocessname</span></code> skipping the previous steps.
-Once you launch the process, select to run the <code class="docutils literal notranslate"><span class="pre">direct_electron</span></code> module by entering:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; direct_nuclear = OFF
-MadDM&gt; direct_electron = ON
+Once you launch the process, select to run the <code class="docutils literal notranslate"><span class="pre">direct_electron</span></code> module (but it should be already ON) by entering:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; direct_electron = ON
 </pre></div>
 </div>
-<p>If your model has both nuclear and electronic operators, you can set both nuclear and electronic modules to ON,
+<p>If your model has both DM-nucleon and DM-electron interactions, you can set both <code class="docutils literal notranslate"><span class="pre">direct_nucleon</span></code> and <code class="docutils literal notranslate"><span class="pre">direct_electron</span></code> modules to ON,
 and you will receive results for both types of interactions considered separately.</p>
 <p>You can set the model parameters in the <code class="docutils literal notranslate"><span class="pre">param_card.dat</span></code> by pressing 7, or by editing the file directly in the process folder (in this case <code class="docutils literal notranslate"><span class="pre">DD_ER_spin0/Cards/param_card.dat</span></code>).</p>
 <p>You can set the MadDM parameters in the <code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code> by pressing 8, or by editing the file directly in the process folder (in this case <code class="docutils literal notranslate"><span class="pre">DD_ER_spin0/Cards/maddm_card.dat</span></code>).</p>
@@ -485,69 +514,13 @@ INFO: Results written in: /Users/yourname/yourprocessfolder/DD_ER_spin0/output/r
 <p>where <code class="docutils literal notranslate"><span class="pre">All</span> <span class="pre">DM</span></code> refers to the reference DM-electron cross section in case the DM particle contributes to the entire dark matter density of the universe,
 <code class="docutils literal notranslate"><span class="pre">ALLOWED</span></code> indicates that the model is consistent with the experimental limits from XENON10 and XENON1T. You can also see the p-values for the likelihoods used in the analysis.</p>
 </section>
-<section id="results">
-<h3>Results<a class="headerlink" href="#results" title="Link to this heading">#</a></h3>
+<section id="id3">
+<h3>Results<a class="headerlink" href="#id3" title="Link to this heading">#</a></h3>
 <p>The results of each run will be stored inside the process folder you created, whose path is shown in the last line of the output.
 Each time you launch the same process, MadDM creates a new folder <code class="docutils literal notranslate"><span class="pre">output/run_XX</span></code> within the process folder.</p>
-<p>In this folder, you will find the results, such as the cross section, signal, background and p-values for the likelihoods used, in a file named <code class="docutils literal notranslate"><span class="pre">MadDM_results.txt</span></code>.</p>
-<p>You can find all the output produced by MadDM in the <code class="docutils literal notranslate"><span class="pre">maddm.out</span></code> file.</p>
+<p>In this folder, you will find the results, such as the cross section and p-values, in a file named <code class="docutils literal notranslate"><span class="pre">MadDM_results.txt</span></code>.</p>
+<p>You can find all the output produced by the Fortran module of MadDM, such as signal, background and binning, in the <code class="docutils literal notranslate"><span class="pre">maddm.out</span></code> file.</p>
 <p>You can also find the differential recoil spectra vs energy or vs scintillation signal. The rates produced with this module are labeled with the suffix <code class="docutils literal notranslate"><span class="pre">e_recoil</span></code> at the end.</p>
-</section>
-</section>
-</section>
-<section id="running-a-scan">
-<h1>3. Running a Scan<a class="headerlink" href="#running-a-scan" title="Link to this heading">#</a></h1>
-<p>MadDM allows users to efficiently perform scans over model parameters. This is particularly useful
-when studying constraints or signals across a range of dark matter masses or couplings.</p>
-<p>You can define a scan either through the command-line interface, by editing the <cite>param_card.dat</cite> file.</p>
-<p>First, you need to set up your model and process as usual. For example, if you want to scan over a simplified scalar dark matter model, you can do the following:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; import model DMsimp_s_spin0
-MadDM&gt; define darkmatter Xr
-MadDM&gt; generate direct
-MadDM&gt; output SCAN_example
-MadDM&gt; launch SCAN_example
-</pre></div>
-</div>
-<p>At the launch prompt, set the parameters you want to scan, using <cite>set MXd scan:</cite> followed by the python <code class="docutils literal notranslate"><span class="pre">range</span></code> function.
-For instance, if you want to scan the dark matter mass (MXd) from 50 GeV to &lt;700 GeV in steps of 25 GeV, you can do:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set MXd scan:range(50,700,25)
-</pre></div>
-</div>
-<p>If you want to scan using a different parametrization, you can also use python arrays, as follows:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set MXd scan:[10,20,30,40]
-</pre></div>
-</div>
-<p>or you can use list comprehension. For example, to scan over a logarithmic scale from 1 GeV to 10 GeV in 101 steps you can do:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set MXd scan:[10 ** (i * 0.01) for i in range(101)]
-</pre></div>
-</div>
-<p>Then press Enter to start the scan. For scans, you will find in the <code class="docutils literal notranslate"><span class="pre">output</span></code> directory a <code class="docutils literal notranslate"><span class="pre">run_XX_YY</span></code> folder containing the <code class="docutils literal notranslate"><span class="pre">maddm.out</span></code> file  for each <code class="docutils literal notranslate"><span class="pre">YY</span></code> iteration.
-You will also find a <code class="docutils literal notranslate"><span class="pre">scan_run_XX.txt</span></code> file that summarizes the scan parameters and results.
-You can also make a scan over multiple parameters at once. For example, if you want to scan over the dark matter mass <code class="docutils literal notranslate"><span class="pre">MXd</span></code> and the coupling ,``gsxd`` you can do:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set MXd scan:range(50,700,25)
-MadDM&gt; set gsxd scan:range(10,100,10)
-</pre></div>
-</div>
-<p>Then press Enter to start the scan. MadDM will generate one run for each combination of the parameters you specified, iterating first over the last parameter in the <cite>param_card.dat</cite>.
-Once all values of that parameter are exhausted, it steps the second-to-last parameter and repeats the process, and so on, like nested <code class="docutils literal notranslate"><span class="pre">for</span></code> loops, starting from the outermost (first)
-parameter to the innermost (last).</p>
-</section>
-<section id="launch-maddm-as-a-script">
-<h1>3. Launch MadDM as a script<a class="headerlink" href="#launch-maddm-as-a-script" title="Link to this heading">#</a></h1>
-<p>You can also run MadDM as a script, which is useful for batch processing or automation.
-To do this, you can simply run <code class="docutils literal notranslate"><span class="pre">maddm.py</span></code> by providing a text file as an argument containing the commands you want to execute. For example:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>bin/maddm.py<span class="w"> </span>run.txt
-</pre></div>
-</div>
-<p>where <code class="docutils literal notranslate"><span class="pre">run.txt</span></code> should contain the commands you want to execute, one per line, for example:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>import model DMsimp_s_spin0
-define darkmatter Xr
-generate direct
-output SCAN_example
-launch SCAN_example
-set MXd scan:range(50,700,25)
-</pre></div>
-</div>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorial-and-examples-direct-detection-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../_downloads/7ceeec24225d9174ca7aa40e10533084/direct_detection.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">direct_detection.ipynb</span></code></a></p>
@@ -561,6 +534,8 @@ set MXd scan:range(50,700,25)
 </div>
 <p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
 </section>
+</section>
+</section>
 
 
                 </article>
@@ -573,20 +548,20 @@ set MXd scan:range(50,700,25)
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="indirect_detection.html"
+       href="scans.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Indirect Detection Analysis</p>
+        <p class="prev-next-title">Scan over model parameters</p>
       </div>
     </a>
     <a class="right-next"
-       href="getting_started.html"
+       href="scripts.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Getting Started</p>
+        <p class="prev-next-title">Use MadDM as a Script</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -609,22 +584,17 @@ set MXd scan:range(50,700,25)
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#">Direct Detection Tutorial</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#nuclear-recoils-with-rapidd-and-lz-likelihood">1. Nuclear Recoils with RAPIDD and LZ likelihood</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#example">Example</a></li>
-</ul>
-</li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#electronic-recoils-with-xenon10-xenon1t-likelihoods">2. Electronic Recoils with XENON10/XENON1T likelihoods</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#example-with-a-simplified-scalar-mediated-dm-model">Example with a simplified scalar-mediated DM model</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#results">Results</a></li>
 </ul>
 </li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#electronic-recoils-with-xenon10-xenon1t-likelihoods">2. Electronic Recoils with XENON10/XENON1T likelihoods</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">Example with a simplified scalar-mediated DM model</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id3">Results</a></li>
 </ul>
 </li>
-<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#running-a-scan">3. Running a Scan</a></li>
-<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#launch-maddm-as-a-script">3. Launch MadDM as a script</a></li>
 </ul>
-
   </nav></div>
 
   <div class="sidebar-secondary-item">

@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Indirect Detection Analysis &#8212; MadDM 3.2.13 documentation</title>
+    <title>Scan over model parameters &#8212; MadDM 3.2.13 documentation</title>
   
   
   
@@ -45,7 +45,7 @@
     <script src="../_static/documentation_options.js?v=c0feab9b"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'tutorial_and_examples/indirect_detection';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'tutorial_and_examples/scans';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://maddmhep.github.io/maddm/dev/_static/switcher.json';
@@ -56,8 +56,8 @@
     <link rel="icon" href="../_static/favicon.ico"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Scan over model parameters" href="scans.html" />
-    <link rel="prev" title="Tutorial and examples" href="index.html" />
+    <link rel="next" title="Direct Detection Tutorial" href="direct_detection.html" />
+    <link rel="prev" title="Indirect Detection Analysis" href="indirect_detection.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="3.2.13" />
@@ -343,8 +343,8 @@
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Indirect Detection Analysis</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scans.html">Scan over model parameters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="indirect_detection.html">Indirect Detection Analysis</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Scan over model parameters</a></li>
 <li class="toctree-l1"><a class="reference internal" href="direct_detection.html">Direct Detection Tutorial</a></li>
 <li class="toctree-l1"><a class="reference internal" href="scripts.html">Use MadDM as a Script</a></li>
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
@@ -391,7 +391,7 @@
     
     <li class="breadcrumb-item"><a href="index.html" class="nav-link">Tutorial and examples</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Indirect Detection Analysis</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Scan over model parameters</span></li>
   </ul>
 </nav>
 </div>
@@ -410,97 +410,54 @@
                   
   <div class="sphx-glr-download-link-note admonition note">
 <p class="admonition-title">Note</p>
-<p><a class="reference internal" href="#sphx-glr-download-tutorial-and-examples-indirect-detection-py"><span class="std std-ref">Go to the end</span></a>
+<p><a class="reference internal" href="#sphx-glr-download-tutorial-and-examples-scans-py"><span class="std std-ref">Go to the end</span></a>
 to download the full example code.</p>
 </div>
-<section class="sphx-glr-example-title" id="indirect-detection-analysis">
-<span id="sphx-glr-tutorial-and-examples-indirect-detection-py"></span><h1>Indirect Detection Analysis<a class="headerlink" href="#indirect-detection-analysis" title="Link to this heading">#</a></h1>
-<p>Compute indirect detection signals and limits from dark matter annihilation.</p>
-<section id="getting-started">
-<h2>Getting Started<a class="headerlink" href="#getting-started" title="Link to this heading">#</a></h2>
-<p>To include indirect detection in your MadDM workflow, simply add the appropriate module after generating your process.</p>
-</section>
-<section id="basic-example">
-<h2>Basic Example<a class="headerlink" href="#basic-example" title="Link to this heading">#</a></h2>
+<section class="sphx-glr-example-title" id="scan-over-model-parameters">
+<span id="sphx-glr-tutorial-and-examples-scans-py"></span><h1>Scan over model parameters<a class="headerlink" href="#scan-over-model-parameters" title="Link to this heading">#</a></h1>
+<p>Pperform scans over model parameters.</p>
+<section id="running-a-scan">
+<h2>1. Running a Scan<a class="headerlink" href="#running-a-scan" title="Link to this heading">#</a></h2>
+<p>First, you need to set up your model and process as usual. For example, if you want to scan over a simplified scalar dark matter model, you can do the following:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; import model DMsimp_s_spin0
-MadDM&gt; define darkmatter xd
-MadDM&gt; generate relic_density
-MadDM&gt; add indirect_detection
-MadDM&gt; output ID_example
-MadDM&gt; launch
+MadDM&gt; define darkmatter Xr
+MadDM&gt; generate direct
+MadDM&gt; output SCAN_example
+MadDM&gt; launch SCAN_example
 </pre></div>
 </div>
-<p>This setup computes the total annihilation cross sections for all available final states and stores the results in the output directory <code class="docutils literal notranslate"><span class="pre">ID_example</span></code>.</p>
-</section>
-<section id="adding-loop-induced-processes">
-<h2>Adding Loop-Induced Processes<a class="headerlink" href="#adding-loop-induced-processes" title="Link to this heading">#</a></h2>
-<p>To compute annihilation channels that are loop-induced (e.g., dark matter annihilation into gluons or photons), you can explicitly specify the final state:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; add indirect_detection g g
-MadDM&gt; add indirect_spectral_features
+<p>At the launch prompt, set the parameters you want to scan, using <code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">MXd</span> <span class="pre">scan:</span></code> followed by a python array or <code class="docutils literal notranslate"><span class="pre">range</span></code> function.
+For instance, if you want to scan the dark matter mass (MXd) from 50 GeV to &lt;700 GeV in steps of 25 GeV, you can do:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set MXd scan:range(50,700,25)
 </pre></div>
 </div>
-<p>These commands include:
-- Annihilation into gluons (via loops)
-- All relevant annihilations involving photons: gamma gamma, gamma Z, gamma h, etc.</p>
-</section>
-<section id="computing-spectra">
-<h2>Computing Spectra<a class="headerlink" href="#computing-spectra" title="Link to this heading">#</a></h2>
-<p>Once loop-induced and tree-level annihilation channels are generated, MadDM can compute the energy spectra of the final state particles:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; launch
-MadDM&gt; plot spectrum photon
+<p>If you want to scan only over some specific values, you can also use python arrays, as follows:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set MXd scan:[10,20,40,80,160,320,640]
 </pre></div>
 </div>
-<p>This will show the photon spectrum and save it as a PDF in the output folder.</p>
-<section id="available-final-states">
-<h3>Available Final States<a class="headerlink" href="#available-final-states" title="Link to this heading">#</a></h3>
-<p>You can request spectra for:</p>
-<ul class="simple">
-<li><p>photon</p></li>
-<li><p>electron</p></li>
-<li><p>positron</p></li>
-<li><p>neutrino</p></li>
-<li><p>antiproton</p></li>
-</ul>
-<p>Example:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; plot spectrum positron
+<p>or you can use list comprehension. For example, to scan over a logarithmic scale from 1 GeV to 10 GeV you can do:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set MXd scan:[10 ** (i * 0.01) for i in range(101)]
 </pre></div>
 </div>
-</section>
-</section>
-<section id="using-external-tools">
-<h2>Using External Tools<a class="headerlink" href="#using-external-tools" title="Link to this heading">#</a></h2>
-<p>MadDM supports integration with external tools for more realistic propagation models and astrophysical assumptions.</p>
-<p>To install them:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; install PPPC4DMID
-MadDM&gt; install dragon
-MadDM&gt; install dragon_data_from_galprop
+<p>Then press Enter to start the scan. For scans, you will find in the <code class="docutils literal notranslate"><span class="pre">output</span></code> directory a <code class="docutils literal notranslate"><span class="pre">run_XX_YY</span></code> folder containing the <code class="docutils literal notranslate"><span class="pre">maddm.out</span></code> file  for each <code class="docutils literal notranslate"><span class="pre">YY</span></code> iteration.
+You will also find a <code class="docutils literal notranslate"><span class="pre">scan_run_XX.txt</span></code> file that summarizes the scan parameters and results.
+You can also make a scan over multiple parameters at once. For example, if you want to scan over the dark matter mass <code class="docutils literal notranslate"><span class="pre">MXd</span></code> and the coupling ,``gsxd`` you can do:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set MXd scan:range(50,700,25)
+MadDM&gt; set gsxd scan:range(10,100,10)
 </pre></div>
 </div>
-<p>This will allow you to go beyond prompt spectra and compute propagated signals for cosmic rays.</p>
-</section>
-<section id="output-files">
-<h2>Output Files<a class="headerlink" href="#output-files" title="Link to this heading">#</a></h2>
-<p>MadDM will generate:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">indirect_detection_results.txt</span></code>: total and partial annihilation cross sections.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">spectrum_&lt;channel&gt;.dat</span></code>: differential spectra for the specified final state.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">spectrum_plot_&lt;channel&gt;.pdf</span></code>: plot of the spectrum.</p></li>
-</ul>
-</section>
-<section id="exiting-maddm">
-<h2>Exiting MadDM<a class="headerlink" href="#exiting-maddm" title="Link to this heading">#</a></h2>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; quit
-</pre></div>
-</div>
-<div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorial-and-examples-indirect-detection-py">
+<p>Then press Enter to start the scan. MadDM will generate one run for each combination of the parameters you specified, iterating first over the last parameter in the <cite>param_card.dat</cite>.
+Once all values of that parameter are exhausted, it steps the second-to-last parameter and repeats the process, and so on, like nested <code class="docutils literal notranslate"><span class="pre">for</span></code> loops, starting from the outermost (first)
+parameter to the innermost (last).</p>
+<div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorial-and-examples-scans-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
-<p><a class="reference download internal" download="" href="../_downloads/84f2d616540f465b87acbbe2e9eb4477/indirect_detection.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">indirect_detection.ipynb</span></code></a></p>
+<p><a class="reference download internal" download="" href="../_downloads/92f093e2006e83a86e592b13093b0259/scans.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">scans.ipynb</span></code></a></p>
 </div>
 <div class="sphx-glr-download sphx-glr-download-python docutils container">
-<p><a class="reference download internal" download="" href="../_downloads/116ec1fabfa4b9b8e5668ffaa6c68355/indirect_detection.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">indirect_detection.py</span></code></a></p>
+<p><a class="reference download internal" download="" href="../_downloads/3121d2a00e757e99e0175e48b2498a75/scans.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">scans.py</span></code></a></p>
 </div>
 <div class="sphx-glr-download sphx-glr-download-zip docutils container">
-<p><a class="reference download internal" download="" href="../_downloads/6774cb2940a1be05c5e1ec3087e574ed/indirect_detection.zip"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">zipped:</span> <span class="pre">indirect_detection.zip</span></code></a></p>
+<p><a class="reference download internal" download="" href="../_downloads/da3cb9b3b15fc6ac5d1916ccbc362f8d/scans.zip"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">zipped:</span> <span class="pre">scans.zip</span></code></a></p>
 </div>
 </div>
 <p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
@@ -518,20 +475,20 @@ MadDM&gt; install dragon_data_from_galprop
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="index.html"
+       href="indirect_detection.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Tutorial and examples</p>
+        <p class="prev-next-title">Indirect Detection Analysis</p>
       </div>
     </a>
     <a class="right-next"
-       href="scans.html"
+       href="direct_detection.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Scan over model parameters</p>
+        <p class="prev-next-title">Direct Detection Tutorial</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -554,16 +511,7 @@ MadDM&gt; install dragon_data_from_galprop
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#getting-started">Getting Started</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#basic-example">Basic Example</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#adding-loop-induced-processes">Adding Loop-Induced Processes</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#computing-spectra">Computing Spectra</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#available-final-states">Available Final States</a></li>
-</ul>
-</li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#using-external-tools">Using External Tools</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#output-files">Output Files</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#exiting-maddm">Exiting MadDM</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#running-a-scan">1. Running a Scan</a></li>
 </ul>
   </nav></div>
 
@@ -573,8 +521,8 @@ MadDM&gt; install dragon_data_from_galprop
   <div class="sphx-glr-sidebar-component">
     
       
-        <div class="sphx-glr-sidebar-item sphx-glr-download-python-sidebar" title="indirect_detection.py">
-          <a download href="../_downloads/116ec1fabfa4b9b8e5668ffaa6c68355/indirect_detection.py">
+        <div class="sphx-glr-sidebar-item sphx-glr-download-python-sidebar" title="scans.py">
+          <a download href="../_downloads/3121d2a00e757e99e0175e48b2498a75/scans.py">
             <i class="fa-solid fa-download"></i>
             Download source code
           </a>
@@ -582,8 +530,8 @@ MadDM&gt; install dragon_data_from_galprop
       
     
       
-        <div class="sphx-glr-sidebar-item sphx-glr-download-jupyter-sidebar" title="indirect_detection.ipynb">
-          <a download href="../_downloads/84f2d616540f465b87acbbe2e9eb4477/indirect_detection.ipynb">
+        <div class="sphx-glr-sidebar-item sphx-glr-download-jupyter-sidebar" title="scans.ipynb">
+          <a download href="../_downloads/92f093e2006e83a86e592b13093b0259/scans.ipynb">
             <i class="fa-solid fa-download"></i>
             Download Jupyter notebook
           </a>
@@ -591,8 +539,8 @@ MadDM&gt; install dragon_data_from_galprop
       
     
       
-        <div class="sphx-glr-sidebar-item sphx-glr-download-zip-sidebar" title="indirect_detection.zip">
-          <a download href="../_downloads/6774cb2940a1be05c5e1ec3087e574ed/indirect_detection.zip">
+        <div class="sphx-glr-sidebar-item sphx-glr-download-zip-sidebar" title="scans.zip">
+          <a download href="../_downloads/da3cb9b3b15fc6ac5d1916ccbc362f8d/scans.zip">
             <i class="fa-solid fa-download"></i>
             Download zipped
           </a>

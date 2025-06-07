@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**00:00.000** total execution time for 3 files **from tutorial_and_examples**:
+**00:00.000** total execution time for 5 files **from tutorial_and_examples**:
 
 .. container::
 
@@ -39,5 +39,11 @@ Computation times
      - 00:00.000
      - 0.0
    * - :ref:`sphx_glr_tutorial_and_examples_indirect_detection.py` (``indirect_detection.py``)
+     - 00:00.000
+     - 0.0
+   * - :ref:`sphx_glr_tutorial_and_examples_scans.py` (``scans.py``)
+     - 00:00.000
+     - 0.0
+   * - :ref:`sphx_glr_tutorial_and_examples_scripts.py` (``scripts.py``)
      - 00:00.000
      - 0.0
