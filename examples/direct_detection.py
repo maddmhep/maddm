@@ -156,5 +156,4 @@ You can find all the output produced by the Fortran module of MadDM, such as sig
 
 You can also find the differential recoil spectra vs energy or vs scintillation signal. The rates produced with this module are labeled with the suffix ``e_recoil`` at the end.
 
-
 """

@@ -9,22 +9,10 @@ Welcome to MadDM documentation
 
 MadDM is a numerical tool designed to compute dark matter relic abundance, dark matter nucleus scattering rates, and dark matter indirect detection predictions in a generic model. Based on the existing MadGraph 5 architecture, MadDM is easily integrable into any MadGraph collider study. The tool features a simple Python interface, maintaining the user-friendliness characteristic of MadGraph 5 without sacrificing functionality.
 
-Installation
-============
+Install MadDM
+=============
 
-**MadDM** is a plugin for ``MG5_aMC@NLO`` (**MadGraph**). To install it and run it, follow the steps below:
-
-1. Start MadGraph and type the following in the command line:
-
-   .. code-block:: text
-
-      MG5_aMC> install maddm
-
-2. Exit MadGraph and run MadDM with:
-
-   .. code-block:: bash
-
-      ./maddm.py
+**MadDM** is a plugin for ``MG5_aMC@NLO`` (**MadGraph**).
 
 Requirements
 ------------
@@ -41,6 +29,36 @@ Requirements
 .. _numpy: https://numpy.org/
 .. |scipy| replace:: ``scipy``
 .. _scipy: https://scipy.org/
+
+Installation
+------------
+Given **MadDM** depends on **MadGraph**, we first need to install the latter, for example, for MadGraph v3.6.2, we need to:
+
+1. Download the release from the `tag page on GitHub <https://github.com/mg5amcnlo/mg5amcnlo/tags>`_ and unpack it:
+
+   .. code-block:: bash
+
+       wget https://github.com/mg5amcnlo/mg5amcnlo/archive/refs/tags/v3.6.2.tar.gz
+       tar xzf v3.6.2.tar.gz
+       cd mg5amcnlo-3.6.2
+
+2. Start MadGraph by running:
+
+   .. code-block:: bash
+
+       ./bin/mg5_aMC
+
+3. Start MadGraph and type the following in the command line:
+
+   .. code-block:: text
+
+       MG5_aMC> install maddm
+
+4. Exit MadGraph and run MadDM with:
+
+   .. code-block:: bash
+
+       ./maddm.py
 
 Overview
 ========
