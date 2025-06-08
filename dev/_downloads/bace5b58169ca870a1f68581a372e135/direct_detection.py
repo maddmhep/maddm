@@ -52,7 +52,7 @@ and you will receive results for both types of interactions considered separatel
 
 You can set the model parameters in the ``param_card.dat`` by pressing 7, or by editing the file directly in the process folder (in this case ``DD_NR_spin0/Cards/param_card.dat``).
 
-You can set the MadDM parameters in the ``maddm_card.dat`` by pressing 8, or by editing the file directly in the process folder (in this case ``DD_NR_spin0/Cards/maddm_card.dat``).
+You can set the MadDM parameters (such as the halo parameters, recoil energy range and much more) in the ``maddm_card.dat`` by pressing 8, or by editing the file directly in the process folder (in this case ``DD_NR_spin0/Cards/maddm_card.dat``).
 
 Once you are all set, you can run the process by pressing Enter. This module will first evaluate the DM–nucleon cross section and compare it against the experimental limits
 🚧 **FIXME**: ADD EXPERIMENT LIST HERE.
@@ -123,7 +123,7 @@ and you will receive results for both types of interactions considered separatel
 
 You can set the model parameters in the ``param_card.dat`` by pressing 7, or by editing the file directly in the process folder (in this case ``DD_ER_spin0/Cards/param_card.dat``).
 
-You can set the MadDM parameters in the ``maddm_card.dat`` by pressing 8, or by editing the file directly in the process folder (in this case ``DD_ER_spin0/Cards/maddm_card.dat``).
+You can set the MadDM parameters (such as the halo parameters, recoil energy range and much more) in the ``maddm_card.dat`` by pressing 8, or by editing the file directly in the process folder (in this case ``DD_ER_spin0/Cards/maddm_card.dat``).
 
 Note that in the ``direct_electron`` module, if the DM particle has a mass above 1 GeV, it will be ignored by default.
 To change this behavior, set ``direct_electron_mode`` to ``always`` in the ``maddm_card.dat`` file, which you can do by pressing 8 after launching the process.

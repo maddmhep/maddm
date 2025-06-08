@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Getting Started &#8212; MadDM 3.2.13 documentation</title>
+    <title>Relic Density Computation in MadDM &#8212; MadDM 3.2.13 documentation</title>
   
   
   
@@ -45,7 +45,7 @@
     <script src="../_static/documentation_options.js?v=c0feab9b"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'tutorial_and_examples/getting_started';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'tutorial_and_examples/relic_density';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://maddmhep.github.io/maddm/dev/_static/switcher.json';
@@ -56,8 +56,8 @@
     <link rel="icon" href="../_static/favicon.ico"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Contributing to the documentation" href="../contribute.html" />
-    <link rel="prev" title="Relic Density Computation in MadDM" href="relic_density.html" />
+    <link rel="next" title="Getting Started" href="getting_started.html" />
+    <link rel="prev" title="Use MadDM as a Script" href="scripts.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="3.2.13" />
@@ -347,8 +347,8 @@
 <li class="toctree-l1"><a class="reference internal" href="scans.html">Scan over model parameters</a></li>
 <li class="toctree-l1"><a class="reference internal" href="direct_detection.html">Direct Detection Tutorial</a></li>
 <li class="toctree-l1"><a class="reference internal" href="scripts.html">Use MadDM as a Script</a></li>
-<li class="toctree-l1"><a class="reference internal" href="relic_density.html">Relic Density Computation in MadDM</a></li>
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Getting Started</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Relic Density Computation in MadDM</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
 </ul>
 </div>
 </nav></div>
@@ -392,7 +392,7 @@
     
     <li class="breadcrumb-item"><a href="index.html" class="nav-link">Tutorial and examples</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Getting Started</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Relic Density Computation in MadDM</span></li>
   </ul>
 </nav>
 </div>
@@ -411,53 +411,59 @@
                   
   <div class="sphx-glr-download-link-note admonition note">
 <p class="admonition-title">Note</p>
-<p><a class="reference internal" href="#sphx-glr-download-tutorial-and-examples-getting-started-py"><span class="std std-ref">Go to the end</span></a>
+<p><a class="reference internal" href="#sphx-glr-download-tutorial-and-examples-relic-density-py"><span class="std std-ref">Go to the end</span></a>
 to download the full example code.</p>
 </div>
-<section class="sphx-glr-example-title" id="getting-started">
-<span id="sphx-glr-tutorial-and-examples-getting-started-py"></span><h1>Getting Started<a class="headerlink" href="#getting-started" title="Link to this heading">#</a></h1>
-<p>MadDM features its own command line, designed to resemble the familiar MadGraph command line structure.
-To begin, you can access a basic tutorial directly in MadDM by typing <code class="docutils literal notranslate"><span class="pre">tutorial</span></code> in the prompt shell.
-We strongly recommend you to go through this tutorial, as it will guide you through the most important features of MadDM.</p>
-<section id="example">
-<h2>Example<a class="headerlink" href="#example" title="Link to this heading">#</a></h2>
-<p>To generate relic density, direct detection, and indirect detection (including loop-induced processes), follow these steps in the command line:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; import model DMsimp_s_spin0
-MadDM&gt; define darkmatter xd  # Necessary only if you want to &#39;force&#39; a DM candidate
-MadDM&gt; generate relic_density  # You can exclude particles with the &#39;/&#39; syntax
-MadDM&gt; add direct_detection
-MadDM&gt; add indirect_detection
-MadDM&gt; add indirect_detection g g  # Computes loop-induced annihilation into gluons
-MadDM&gt; add indirect_spectral_features  # Computes all loop-induced processes involving photons (aa, aZ, aH, etc.)
-MadDM&gt; output MY_MADDM_PROCESS
-MadDM&gt; launch
+<section class="sphx-glr-example-title" id="relic-density-computation-in-maddm">
+<span id="sphx-glr-tutorial-and-examples-relic-density-py"></span><h1>Relic Density Computation in MadDM<a class="headerlink" href="#relic-density-computation-in-maddm" title="Link to this heading">#</a></h1>
+<p>MadDM can compute the relic density of dark matter via numerical solution of the Boltzmann equation, including coannihilation effects and resonances when relevant.</p>
+<p>This allows you to constrain models based on the observed dark matter abundance from cosmological data, such as the one measured by Planck.</p>
+<p>Example with a simplified scalar mediator model</p>
+<p>First, import the model. If not already downloaded, it will be fetched automatically from here &lt;<a class="reference external" href="https://feynrules.irmp.ucl.ac.be/wiki/DMsimp">https://feynrules.irmp.ucl.ac.be/wiki/DMsimp</a>&gt;_:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>
 </pre></div>
 </div>
-<p>This will create a folder named <code class="docutils literal notranslate"><span class="pre">MY_MADDM_PROCESS</span></code> in your current working directory.
-The command <code class="docutils literal notranslate"><span class="pre">launch</span></code> will execute the process, compute the relevant quantities and generate events (if applicable).</p>
-</section>
-<section id="install-additional-tools">
-<h2>Install additional tools<a class="headerlink" href="#install-additional-tools" title="Link to this heading">#</a></h2>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; install pythia8
-MadDM&gt; install PPPC4DMID
-MadDM&gt; install dragon
-MadDM&gt; install dragon_data_from_galprop
-MadDM&gt; quit
+<p>MadDM&gt; import model DMsimp_s_spin0
+Then, define the dark matter particle. For scalar DM models, this could be Xr (real scalar), Xc (complex scalar), or Xd (Dirac fermion):</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>
 </pre></div>
 </div>
-<div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorial-and-examples-getting-started-py">
+<p>MadDM&gt; define darkmatter Xr
+MadDM&gt; generate relic_density
+You can now configure your model parameters (in param_card.dat) by pressing 7, or directly editing the file inside the process directory.</p>
+<p>Next, generate the process folder. For example:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+<p>MadDM&gt; output RD_example
+MadDM&gt; launch RD_example
+At launch, you can modify the MadDM options (in maddm_card.dat) by pressing 8, or editing the file at RD_example/Cards/maddm_card.dat.</p>
+<p>By default, MadDM uses precise thermal averaging and includes coannihilation processes if the relevant particles are close in mass.</p>
+<p>Once the setup is complete, press Enter to compute the relic density.</p>
+<p>The output will look like:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+<p>INFO: compilation done
+INFO: MadDM Results
+INFO: Omega h^2 (total) = 0.118        ALLOWED     PLANCK 2σ range = [0.114, 0.126]
+INFO:
+INFO: Results written in: /Users/yourname/yourprocessfolder/RD_example/output/run_01/MadDM_results.txt
+Here, Omega h^2 refers to the dark matter relic abundance predicted by your model.
+If it falls within the allowed experimental range (e.g., Planck 2σ), it will be marked as ALLOWED.</p>
+<p>You can also inspect additional details of the computation, such as the annihilation channels contributing to freeze-out, in the output folder.</p>
+<div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorial-and-examples-relic-density-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
-<p><a class="reference download internal" download="" href="../_downloads/5706b72a0852079666e0294c81475e74/getting_started.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">getting_started.ipynb</span></code></a></p>
+<p><a class="reference download internal" download="" href="../_downloads/762ff7c70c5b3ae705ba6e3ddc42005d/relic_density.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">relic_density.ipynb</span></code></a></p>
 </div>
 <div class="sphx-glr-download sphx-glr-download-python docutils container">
-<p><a class="reference download internal" download="" href="../_downloads/b9469cd7311d96fe43849f53e22e256b/getting_started.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">getting_started.py</span></code></a></p>
+<p><a class="reference download internal" download="" href="../_downloads/5187c4bac279b24417bef9f69d57472d/relic_density.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">relic_density.py</span></code></a></p>
 </div>
 <div class="sphx-glr-download sphx-glr-download-zip docutils container">
-<p><a class="reference download internal" download="" href="../_downloads/1d322faa20e68508599792f5c8be7035/getting_started.zip"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">zipped:</span> <span class="pre">getting_started.zip</span></code></a></p>
+<p><a class="reference download internal" download="" href="../_downloads/ceb1dad9e4237d17a2f748da031c0ca2/relic_density.zip"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">zipped:</span> <span class="pre">relic_density.zip</span></code></a></p>
 </div>
 </div>
 <p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
-</section>
 </section>
 
 
@@ -471,20 +477,20 @@ MadDM&gt; quit
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="relic_density.html"
+       href="scripts.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Relic Density Computation in MadDM</p>
+        <p class="prev-next-title">Use MadDM as a Script</p>
       </div>
     </a>
     <a class="right-next"
-       href="../contribute.html"
+       href="getting_started.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Contributing to the documentation</p>
+        <p class="prev-next-title">Getting Started</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -500,26 +506,13 @@ MadDM&gt; quit
 
 
   <div class="sidebar-secondary-item">
-<div
-    id="pst-page-navigation-heading-2"
-    class="page-toc tocsection onthispage">
-    <i class="fa-solid fa-list"></i> On this page
-  </div>
-  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
-    <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#example">Example</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#install-additional-tools">Install additional tools</a></li>
-</ul>
-  </nav></div>
-
-  <div class="sidebar-secondary-item">
 
 
   <div class="sphx-glr-sidebar-component">
     
       
-        <div class="sphx-glr-sidebar-item sphx-glr-download-python-sidebar" title="getting_started.py">
-          <a download href="../_downloads/b9469cd7311d96fe43849f53e22e256b/getting_started.py">
+        <div class="sphx-glr-sidebar-item sphx-glr-download-python-sidebar" title="relic_density.py">
+          <a download href="../_downloads/5187c4bac279b24417bef9f69d57472d/relic_density.py">
             <i class="fa-solid fa-download"></i>
             Download source code
           </a>
@@ -527,8 +520,8 @@ MadDM&gt; quit
       
     
       
-        <div class="sphx-glr-sidebar-item sphx-glr-download-jupyter-sidebar" title="getting_started.ipynb">
-          <a download href="../_downloads/5706b72a0852079666e0294c81475e74/getting_started.ipynb">
+        <div class="sphx-glr-sidebar-item sphx-glr-download-jupyter-sidebar" title="relic_density.ipynb">
+          <a download href="../_downloads/762ff7c70c5b3ae705ba6e3ddc42005d/relic_density.ipynb">
             <i class="fa-solid fa-download"></i>
             Download Jupyter notebook
           </a>
@@ -536,8 +529,8 @@ MadDM&gt; quit
       
     
       
-        <div class="sphx-glr-sidebar-item sphx-glr-download-zip-sidebar" title="getting_started.zip">
-          <a download href="../_downloads/1d322faa20e68508599792f5c8be7035/getting_started.zip">
+        <div class="sphx-glr-sidebar-item sphx-glr-download-zip-sidebar" title="relic_density.zip">
+          <a download href="../_downloads/ceb1dad9e4237d17a2f748da031c0ca2/relic_density.zip">
             <i class="fa-solid fa-download"></i>
             Download zipped
           </a>

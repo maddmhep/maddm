@@ -347,6 +347,7 @@
 <li class="toctree-l1"><a class="reference internal" href="scans.html">Scan over model parameters</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Direct Detection Tutorial</a></li>
 <li class="toctree-l1"><a class="reference internal" href="scripts.html">Use MadDM as a Script</a></li>
+<li class="toctree-l1"><a class="reference internal" href="relic_density.html">Relic Density Computation in MadDM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
 </ul>
 </div>
@@ -449,7 +450,7 @@ Once you launch the process, select to run the <code class="docutils literal not
 <p>If your model has both DM-nucleon and DM-electron interactions, you can set both <code class="docutils literal notranslate"><span class="pre">direct_nucleon</span></code> and <code class="docutils literal notranslate"><span class="pre">direct_electron</span></code> modules to ON,
 and you will receive results for both types of interactions considered separately.</p>
 <p>You can set the model parameters in the <code class="docutils literal notranslate"><span class="pre">param_card.dat</span></code> by pressing 7, or by editing the file directly in the process folder (in this case <code class="docutils literal notranslate"><span class="pre">DD_NR_spin0/Cards/param_card.dat</span></code>).</p>
-<p>You can set the MadDM parameters in the <code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code> by pressing 8, or by editing the file directly in the process folder (in this case <code class="docutils literal notranslate"><span class="pre">DD_NR_spin0/Cards/maddm_card.dat</span></code>).</p>
+<p>You can set the MadDM parameters (such as the halo parameters, recoil energy range and much more) in the <code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code> by pressing 8, or by editing the file directly in the process folder (in this case <code class="docutils literal notranslate"><span class="pre">DD_NR_spin0/Cards/maddm_card.dat</span></code>).</p>
 <p>Once you are all set, you can run the process by pressing Enter. This module will first evaluate the DM–nucleon cross section and compare it against the experimental limits
 🚧 <strong>FIXME</strong>: ADD EXPERIMENT LIST HERE.
 Next, it will use RAPIDD to compute the differential nuclear recoil rates, and from those, it will evaluate the p-values using the likelihoods derived from the most recent LZ data.
@@ -498,7 +499,7 @@ Once you launch the process, select to run the <code class="docutils literal not
 <p>If your model has both DM-nucleon and DM-electron interactions, you can set both <code class="docutils literal notranslate"><span class="pre">direct_nucleon</span></code> and <code class="docutils literal notranslate"><span class="pre">direct_electron</span></code> modules to ON,
 and you will receive results for both types of interactions considered separately.</p>
 <p>You can set the model parameters in the <code class="docutils literal notranslate"><span class="pre">param_card.dat</span></code> by pressing 7, or by editing the file directly in the process folder (in this case <code class="docutils literal notranslate"><span class="pre">DD_ER_spin0/Cards/param_card.dat</span></code>).</p>
-<p>You can set the MadDM parameters in the <code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code> by pressing 8, or by editing the file directly in the process folder (in this case <code class="docutils literal notranslate"><span class="pre">DD_ER_spin0/Cards/maddm_card.dat</span></code>).</p>
+<p>You can set the MadDM parameters (such as the halo parameters, recoil energy range and much more) in the <code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code> by pressing 8, or by editing the file directly in the process folder (in this case <code class="docutils literal notranslate"><span class="pre">DD_ER_spin0/Cards/maddm_card.dat</span></code>).</p>
 <p>Note that in the <code class="docutils literal notranslate"><span class="pre">direct_electron</span></code> module, if the DM particle has a mass above 1 GeV, it will be ignored by default.
 To change this behavior, set <code class="docutils literal notranslate"><span class="pre">direct_electron_mode</span></code> to <code class="docutils literal notranslate"><span class="pre">always</span></code> in the <code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code> file, which you can do by pressing 8 after launching the process.</p>
 <p>Once you are all set, you can run the process by pressing Enter. This module will evaluate the DM-electron recoil rates and constrain them using XENON10 + XENON1T data.</p>
