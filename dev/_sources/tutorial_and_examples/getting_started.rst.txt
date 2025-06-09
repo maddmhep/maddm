@@ -22,14 +22,13 @@
 Getting Started
 ===============
 
-Get started with the MadDM command line interface, which is designed to resemble the familiar MadGraph command line structure.
+Get started with the MadDM command line interface.
 
 MadDM tutorial
 ==============
 
 To begin, you can access a basic tutorial directly in MadDM by typing ``tutorial`` in the prompt shell.
 We strongly recommend you to go through this tutorial, as it will guide you through the most important features of MadDM.
-See also :doc:`getting_started` for a more detailed introduction on the MadDM command line interface.
 
 Relic Density, Direct Detection, and Indirect Detection
 =======================================================
@@ -91,6 +90,13 @@ You can set the MadDM parameters (such as the halo parameters, recoil energy ran
 or by editing the file directly in the process folder (in this case ``DD_NR_spin0/Cards/maddm_card.dat``).
 
 Once you are all set, press Enter to launch the process.
+
+Exiting MadDM
+=============
+
+.. code-block:: text
+
+    MadDM> quit
 
 Install additional tools
 ========================

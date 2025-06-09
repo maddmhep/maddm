@@ -422,75 +422,54 @@ to download the full example code.</p>
 <p>Indirect detection looks for products of dark matter annihilation in astrophysical environment where the dark
 matter is denser. For instance, typical benchmarks for gamma-ray searches are the dSphs or the Galactic Center.</p>
 </section>
-<section id="getting-started">
-<h2>Getting Started<a class="headerlink" href="#getting-started" title="Link to this heading">#</a></h2>
-<p>To include indirect detection in your MadDM workflow, simply add the appropriate module after generating your process.</p>
-</section>
-<section id="basic-example">
-<h2>Basic Example<a class="headerlink" href="#basic-example" title="Link to this heading">#</a></h2>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; import model MyDMmodel
-MadDM&gt; define darkmatter chi
-MadDM&gt; generate indirect_detection
-MadDM&gt; output MyDMmodel
-MadDM&gt; launch MyDMmodel
+<section id="indirect-detection-via-the-higgs-portal">
+<h2>Indirect Detection via the Higgs Portal<a class="headerlink" href="#indirect-detection-via-the-higgs-portal" title="Link to this heading">#</a></h2>
+<p>In this example, we study the process χ χ → b b~ using the Scalar Higgs Portal model and we
+compute the resulting gamma-ray spectra relevant for indirect detection using MadDM v3.0.</p>
+<p>First, import the model and define the dark matter candidate. We use the ScalarHiggsPortal_NLO_UFO model, where
+the dark matter particle is labeled ‘n1’ in this model.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; import model ScalarHiggsPortal_NLO_UFO
+MadDM&gt; define darkmatter n1
 </pre></div>
 </div>
-<p>This setup computes the total annihilation cross sections for all available final states and stores the results in the output directory <code class="docutils literal notranslate"><span class="pre">ID_example</span></code>.</p>
-</section>
-<section id="adding-loop-induced-processes">
-<h2>Adding Loop-Induced Processes<a class="headerlink" href="#adding-loop-induced-processes" title="Link to this heading">#</a></h2>
-<p>To compute annihilation channels that are loop-induced (e.g., dark matter annihilation into gluons or photons), you can explicitly specify the final state:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; add indirect_detection g g
-MadDM&gt; add indirect_spectral_features
+<p>Then, we generate the indirect detection process. This defines the channel for which the gamma-ray spectra will be computed.
+We then output the process to a folder named ‘HiggsPortal_bbbar’, and we launch the process.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; generate indirect_detection b b~
+MadDM&gt; output HiggsPortal_bbbar
+MadDM&gt; launch HiggsPortal_bbbar
 </pre></div>
 </div>
-<p>These commands include:
-- Annihilation into gluons (via loops)
-- All relevant annihilations involving photons: gamma gamma, gamma Z, gamma h, etc.</p>
-</section>
-<section id="computing-spectra">
-<h2>Computing Spectra<a class="headerlink" href="#computing-spectra" title="Link to this heading">#</a></h2>
-<p>Once loop-induced and tree-level annihilation channels are generated, MadDM can compute the energy spectra of the final state particles:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; launch
-MadDM&gt; plot spectrum photon
+<p>We enable the computation of the gamma-ray flux spectrum by setting:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set indirect = flux_source
 </pre></div>
 </div>
-<p>This will show the photon spectrum and save it as a PDF in the output folder.</p>
-<section id="available-final-states">
-<h3>Available Final States<a class="headerlink" href="#available-final-states" title="Link to this heading">#</a></h3>
-<p>You can request spectra for:</p>
-<ul class="simple">
-<li><p>photon</p></li>
-<li><p>electron</p></li>
-<li><p>positron</p></li>
-<li><p>neutrino</p></li>
-<li><p>antiproton</p></li>
-</ul>
-<p>Example:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; plot spectrum positron
+<p>You can set the minimum value of the gamma-ray flux (in cm^-2 s^-1 GeV^-1)
+to be stored in the output. Fluxes below this threshold will be discarded.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set save_indirect_cont 1e-3
 </pre></div>
 </div>
-</section>
-</section>
-<section id="using-external-tools">
-<h2>Using External Tools<a class="headerlink" href="#using-external-tools" title="Link to this heading">#</a></h2>
-<p>MadDM supports integration with external tools for more realistic propagation models and astrophysical assumptions.</p>
-<p>To install them:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; install PPPC4DMID
-MadDM&gt; install dragon
-MadDM&gt; install dragon_data_from_galprop
+<p>To save the full energy spectra generated by Pythia 8, you can set:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set save_output spectra
 </pre></div>
 </div>
-<p>This will allow you to go beyond prompt spectra and compute propagated signals for cosmic rays.</p>
-</section>
-<section id="output-files">
-<h2>Output Files<a class="headerlink" href="#output-files" title="Link to this heading">#</a></h2>
-<p>MadDM will generate:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">indirect_detection_results.txt</span></code>: total and partial annihilation cross sections.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">spectrum_&lt;channel&gt;.dat</span></code>: differential spectra for the specified final state.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">spectrum_plot_&lt;channel&gt;.pdf</span></code>: plot of the spectrum.</p></li>
-</ul>
+<p>You can enable more precise numerical integration for higher accuracy.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set precise
+</pre></div>
+</div>
+<p>Next, choose how to compute the thermally averaged annihilation cross section ⟨σv⟩.
+Here we use the ‘madevent’ method, which is general-purpose.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set sigmav_method madevent
+</pre></div>
+</div>
+<p>To specify how many events should be generated per phase-space point, do:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set nevents 100000
+</pre></div>
+</div>
+<p>Set the dark matter mass (in GeV) with:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set MXd 100
+</pre></div>
+</div>
+<p>and finally launch the process pressing Enter.</p>
 </section>
 <section id="exiting-maddm">
 <h2>Exiting MadDM<a class="headerlink" href="#exiting-maddm" title="Link to this heading">#</a></h2>
@@ -560,15 +539,7 @@ MadDM&gt; install dragon_data_from_galprop
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#overview">Overview</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#getting-started">Getting Started</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#basic-example">Basic Example</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#adding-loop-induced-processes">Adding Loop-Induced Processes</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#computing-spectra">Computing Spectra</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#available-final-states">Available Final States</a></li>
-</ul>
-</li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#using-external-tools">Using External Tools</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#output-files">Output Files</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#indirect-detection-via-the-higgs-portal">Indirect Detection via the Higgs Portal</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#exiting-maddm">Exiting MadDM</a></li>
 </ul>
   </nav></div>

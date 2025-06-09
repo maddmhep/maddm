@@ -83,7 +83,7 @@ Below is a gallery of various examples on the usage of MadDM and its features.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="JUST A CHATGPT EXAMPLE">
+    <div class="sphx-glr-thumbcontainer" tooltip="To Do">
 
 .. only:: html
 
@@ -100,7 +100,7 @@ Below is a gallery of various examples on the usage of MadDM and its features.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="Get started with the MadDM command line interface, which is designed to resemble the familiar MadGraph command line structure.">
+    <div class="sphx-glr-thumbcontainer" tooltip="Get started with the MadDM command line interface.">
 
 .. only:: html
 
