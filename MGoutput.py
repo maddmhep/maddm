@@ -182,7 +182,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
  
         # Add the makefile 
         filename = os.path.join(self.dir_path,'Source','makefile')
-        self.write_source_makefile(writers.FortranWriter(filename))            
+        self.write_source_makefile(writers.FortranWriter(filename), model)
 
     def get_dd_type(self, process):
         orders = process.get('orders')
@@ -1252,13 +1252,13 @@ class ProcessExporterIndirectD:
         # make sure that mass/width external parameter without assoicated particle
         # are removed. This should not be necessary since 2.6.5
         
-        def_part = [p['pdg_code'] for p in self.model['particles']]
-        for param in self.model['parameters'][('external',)][:]:            
+        def_part = [p['pdg_code'] for p in model['particles']]
+        for param in model['parameters'][('external',)][:]:
             if param.lhablock in ['MASS','DECAY']:
                 if param.lhacode[0] not in def_part:
-                    self.model['parameters'][('external',)].remove(param)
+                    model['parameters'][('external',)].remove(param)
                     param = base_objects.ModelVariable(param.name, str(param.value), 'real')
-                    self.model['parameters'][tuple()].append(param)
+                    model['parameters'][tuple()].append(param)
         
         
         super(ProcessExporterIndirectD, self).convert_model(model, 
