@@ -745,69 +745,70 @@ class RegionOfInterestList(object):
             setattr(newobj, k, deepcopy(v, memo))
         return newobj
 
-line_experiments_regions_of_interest = {
-    "Fermi-LAT_2015": RegionOfInterestList([
-        RegionOfInterest(
-            amplitude=3.,
-            default_profile=PROFILES.NFW(r_s = 20.0, gamma = 1.3, rho_sun = 0.4, r_sun = 8.5),
-            upper_limit_label="(22)(22)_fermi2015R3",
-            jfactor_strategy="normal",
-            mask_latitude=5.,
-            mask_longitude=6.,
-            mask_inner_amplitude=0.,
-            cached_jfactors={PROFILES.NFW(r_s = 20.0, gamma = 1.3, rho_sun = 0.4, r_sun = 8.5) : 1.497e+23},
-            likelihood=np.loadtxt(pjoin(MDMDIR, 'Fermi_line_likelihoods', 'R3_gamma_lines_ULflux_like.dat'), unpack = True),
-            r_max=np.inf
-        ),
-        RegionOfInterest(
-            amplitude=16.,
-            default_profile=PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = 0.4, r_sun = 8.5),
-            upper_limit_label="(22)(22)_fermi2015R16",
-            jfactor_strategy="normal",
-            mask_latitude=5.,
-            mask_longitude=6.,
-            mask_inner_amplitude=0.,
-            cached_jfactors={PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = 0.4, r_sun = 8.5) : 9.39e+22},
-            likelihood=np.loadtxt(pjoin(MDMDIR, 'Fermi_line_likelihoods', 'R16_gamma_lines_ULflux_like.dat'), unpack = True),
-            r_max=np.inf
-        ),
-        RegionOfInterest(
-            amplitude=41.,
-            default_profile=PROFILES.NFW(r_s = 20.0, gamma = 1.0, rho_sun = 0.4, r_sun = 8.5),
-            upper_limit_label="(22)(22)_fermi2015R41",
-            jfactor_strategy="normal",
-            mask_latitude=5.,
-            mask_longitude=6.,
-            mask_inner_amplitude=0.,
-            cached_jfactors={PROFILES.NFW(r_s = 20.0, gamma = 1.0, rho_sun = 0.4, r_sun = 8.5) : 9.16e+22},
-            r_max=np.inf
-        ),
-        RegionOfInterest(
-            amplitude=90.,
-            default_profile=PROFILES.Isothermal(r_s = 5.0, rho_sun = 0.4, r_sun = 8.5),
-            upper_limit_label="(22)(22)_fermi2015R90",
-            jfactor_strategy="normal",
-            mask_latitude=5.,
-            mask_longitude=6.,
-            mask_inner_amplitude=0.,
-            cached_jfactors={PROFILES.Isothermal(r_s = 5.0, rho_sun = 0.4, r_sun = 8.5) : 6.94e+22},
-            r_max=np.inf
-        )
-    ]),
-    "HESS_2018": RegionOfInterestList([
-        RegionOfInterest(
-            amplitude=1.,
-            default_profile=PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = 0.39, r_sun = 8.5),
-            upper_limit_label="(22)(22)_hess2018R1",
-            jfactor_strategy="normal",
-            mask_latitude=0.3,
-            mask_longitude=0.,
-            mask_inner_amplitude=0.,
-            cached_jfactors={PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = 0.39, r_sun = 8.5) : 4.66e21},
-            r_max=np.inf
-        ),
-    ]),
-}
+if HAS_NUMPY and HAS_SCIPY:
+    line_experiments_regions_of_interest = {
+        "Fermi-LAT_2015": RegionOfInterestList([
+            RegionOfInterest(
+                amplitude=3.,
+                default_profile=PROFILES.NFW(r_s = 20.0, gamma = 1.3, rho_sun = 0.4, r_sun = 8.5),
+                upper_limit_label="(22)(22)_fermi2015R3",
+                jfactor_strategy="normal",
+                mask_latitude=5.,
+                mask_longitude=6.,
+                mask_inner_amplitude=0.,
+                cached_jfactors={PROFILES.NFW(r_s = 20.0, gamma = 1.3, rho_sun = 0.4, r_sun = 8.5) : 1.497e+23},
+                likelihood=np.loadtxt(pjoin(MDMDIR, 'Fermi_line_likelihoods', 'R3_gamma_lines_ULflux_like.dat'), unpack = True),
+                r_max=np.inf
+            ),
+            RegionOfInterest(
+                amplitude=16.,
+                default_profile=PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = 0.4, r_sun = 8.5),
+                upper_limit_label="(22)(22)_fermi2015R16",
+                jfactor_strategy="normal",
+                mask_latitude=5.,
+                mask_longitude=6.,
+                mask_inner_amplitude=0.,
+                cached_jfactors={PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = 0.4, r_sun = 8.5) : 9.39e+22},
+                likelihood=np.loadtxt(pjoin(MDMDIR, 'Fermi_line_likelihoods', 'R16_gamma_lines_ULflux_like.dat'), unpack = True),
+                r_max=np.inf
+            ),
+            RegionOfInterest(
+                amplitude=41.,
+                default_profile=PROFILES.NFW(r_s = 20.0, gamma = 1.0, rho_sun = 0.4, r_sun = 8.5),
+                upper_limit_label="(22)(22)_fermi2015R41",
+                jfactor_strategy="normal",
+                mask_latitude=5.,
+                mask_longitude=6.,
+                mask_inner_amplitude=0.,
+                cached_jfactors={PROFILES.NFW(r_s = 20.0, gamma = 1.0, rho_sun = 0.4, r_sun = 8.5) : 9.16e+22},
+                r_max=np.inf
+            ),
+            RegionOfInterest(
+                amplitude=90.,
+                default_profile=PROFILES.Isothermal(r_s = 5.0, rho_sun = 0.4, r_sun = 8.5),
+                upper_limit_label="(22)(22)_fermi2015R90",
+                jfactor_strategy="normal",
+                mask_latitude=5.,
+                mask_longitude=6.,
+                mask_inner_amplitude=0.,
+                cached_jfactors={PROFILES.Isothermal(r_s = 5.0, rho_sun = 0.4, r_sun = 8.5) : 6.94e+22},
+                r_max=np.inf
+            )
+        ]),
+        "HESS_2018": RegionOfInterestList([
+            RegionOfInterest(
+                amplitude=1.,
+                default_profile=PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = 0.39, r_sun = 8.5),
+                upper_limit_label="(22)(22)_hess2018R1",
+                jfactor_strategy="normal",
+                mask_latitude=0.3,
+                mask_longitude=0.,
+                mask_inner_amplitude=0.,
+                cached_jfactors={PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = 0.39, r_sun = 8.5) : 4.66e21},
+                r_max=np.inf
+            ),
+        ]),
+    }
 
 class GammaLineExperiment(object):
     ''' this class holds all the generic functionalities regarding the upper limits on gamma ray line searches '''
