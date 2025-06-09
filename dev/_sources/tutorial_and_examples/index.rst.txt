@@ -83,7 +83,7 @@ Below is a gallery of various examples on the usage of MadDM and its features.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="MadDM can compute the relic density of dark matter via numerical solution of the Boltzmann equation, including coannihilation effects and resonances when relevant.">
+    <div class="sphx-glr-thumbcontainer" tooltip="JUST A CHATGPT EXAMPLE">
 
 .. only:: html
 
@@ -100,7 +100,7 @@ Below is a gallery of various examples on the usage of MadDM and its features.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="MadDM features its own command line, designed to resemble the familiar MadGraph command line structure.  To begin, you can access a basic tutorial directly in MadDM by typing tutorial in the prompt shell. We strongly recommend you to go through this tutorial, as it will guide you through the most important features of MadDM.">
+    <div class="sphx-glr-thumbcontainer" tooltip="Get started with the MadDM command line interface, which is designed to resemble the familiar MadGraph command line structure.">
 
 .. only:: html
 

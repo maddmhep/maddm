@@ -22,29 +22,75 @@
 Getting Started
 ===============
 
-MadDM features its own command line, designed to resemble the familiar MadGraph command line structure. 
+Get started with the MadDM command line interface, which is designed to resemble the familiar MadGraph command line structure.
+
+MadDM tutorial
+==============
+
 To begin, you can access a basic tutorial directly in MadDM by typing ``tutorial`` in the prompt shell.
 We strongly recommend you to go through this tutorial, as it will guide you through the most important features of MadDM.
+See also :doc:`getting_started` for a more detailed introduction on the MadDM command line interface.
 
-Example
-=======
+Relic Density, Direct Detection, and Indirect Detection
+=======================================================
 
 To generate relic density, direct detection, and indirect detection (including loop-induced processes), follow these steps in the command line:
+
+First, import the model, which will be downloaded automatically from `here <https://feynrules.irmp.ucl.ac.be/wiki/DMsimp>`_ if not already present: 
 
 .. code-block:: text
 
     MadDM> import model DMsimp_s_spin0
-    MadDM> define darkmatter xd  # Necessary only if you want to 'force' a DM candidate
-    MadDM> generate relic_density  # You can exclude particles with the '/' syntax
-    MadDM> add direct_detection
-    MadDM> add indirect_detection
-    MadDM> add indirect_detection g g  # Computes loop-induced annihilation into gluons
-    MadDM> add indirect_spectral_features  # Computes all loop-induced processes involving photons (aa, aZ, aH, etc.)
-    MadDM> output MY_MADDM_PROCESS
-    MadDM> launch
 
-This will create a folder named ``MY_MADDM_PROCESS`` in your current working directory.
-The command ``launch`` will execute the process, compute the relevant quantities and generate events (if applicable).
+Next, define the dark matter (DM) particle manually with:
+
+.. code-block:: text
+
+    MadDM> define darkmatter xd
+
+Generally, for DMsimp models, you can choose between Xr (real scalar DM), Xc (complex scalar DM)
+and Xd (Dirac spinor DM).
+If not specified, MadDM will automatically select the DM candidate using the following rules:
+
+- The DM particle must be a BSM particle (pdg_code > 25).
+- The particle must be neutral (no electric or color charge).
+- The particle must be stable (its width must be 0 or 'ZERO' in the param_card.dat).
+- Among the particles that satisfy the above, the lightest is chosen.
+- Finally, the candidate must:
+    - Have some non-zero couplings,
+    - Not decay into a pair of SM particles.
+
+Then, generate the direct detection processes with:
+
+.. code-block:: text
+
+    MadDM> generate direct
+
+At this point, you can set the parameter values of the model, stored in ``param_card_orig.dat``, by pressing 1. This will open a vim editor where you can modify the parameters.
+Next, create the process folder. In this case, we call it ``DD_NR_spin0``, but you can choose any name you like. Then launch the process:
+
+.. code-block:: text
+
+    MadDM> output DD_NR_spin0
+    MadDM> launch DD_NR_spin0
+
+Note that once the process folder has been created with the ``output`` command in a previous session, you can always
+relaunch the same process in a new session with ``launch myprocessname`` skipping the previous steps.
+Once you launch the process, you will be prompted a selection menu to choose which modules you want to run.
+
+.. code-block:: text
+
+    MadDM> direct_nucleon = ON
+
+If your model has both DM-nucleon and DM-electron interactions, you can set both ``direct_nucleon`` and ``direct_electron`` modules to ON,
+and you will receive results for both types of interactions considered separately.
+
+You can set the model parameters in the ``param_card.dat`` by pressing 7, or by editing the file directly in the process folder (in this case ``DD_NR_spin0/Cards/param_card.dat``).
+
+You can set the MadDM parameters (such as the halo parameters, recoil energy range and much more) in the ``maddm_card.dat`` by pressing 8,
+or by editing the file directly in the process folder (in this case ``DD_NR_spin0/Cards/maddm_card.dat``).
+
+Once you are all set, press Enter to launch the process.
 
 Install additional tools
 ========================

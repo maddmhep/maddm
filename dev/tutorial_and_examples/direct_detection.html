@@ -425,32 +425,28 @@ place constraints on DM-nucleus interactions, while also comparing the cross sec
 other experiments such as 🚧 <strong>FIXME</strong>.</p>
 <section id="example-with-a-simplified-scalar-mediated-dm-model">
 <h3>Example with a simplified scalar-mediated DM model<a class="headerlink" href="#example-with-a-simplified-scalar-mediated-dm-model" title="Link to this heading">#</a></h3>
-<p>First, import the model, which will be downloaded automatically from <a class="reference external" href="https://feynrules.irmp.ucl.ac.be/wiki/DMsimp">here</a> if not already present:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; import model DMsimp_s_spin0
-</pre></div>
-</div>
-<p>Next, define the dark matter particle. Generally, for DMsimp models, you can choose between Xr (real scalar DM), Xc (complex scalar DM)
+<p>First, import the model and define the dark matter particle. Generally, for DMsimp models, you can choose between Xr (real scalar DM), Xc (complex scalar DM)
 and Xd (Dirac spinor DM). Then, generate the direct detection processes with:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; define darkmatter xd
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; import model DMsimp_s_spin0
+MadDM&gt; define darkmatter xd
 MadDM&gt; generate direct
 </pre></div>
 </div>
-<p>At this point, you can set the parameter values of the model, stored in <code class="docutils literal notranslate"><span class="pre">param_card_orig.dat</span></code>, by pressing 1.
+<p>At this point, you can set the parameter values of the model, stored in <code class="docutils literal notranslate"><span class="pre">param_card_orig.dat</span></code>, by pressing 1, but this can also be done when launching the process.
 Next, create the process folder. In this case, we call it <code class="docutils literal notranslate"><span class="pre">DD_NR_spin0</span></code>, but you can choose any name you like. Then launch the process:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; output DD_NR_spin0
 MadDM&gt; launch DD_NR_spin0
 </pre></div>
 </div>
-<p>Note that once the process folder has been created with the <code class="docutils literal notranslate"><span class="pre">output</span></code> command in a previous session, you can always
-relaunch the same process in a new session with <code class="docutils literal notranslate"><span class="pre">launch</span> <span class="pre">myprocessname</span></code> skipping the previous steps.
-Once you launch the process, select to run the <code class="docutils literal notranslate"><span class="pre">direct_nucleon</span></code> module (but it should be already ON) by entering:</p>
+<p>Select to run the <code class="docutils literal notranslate"><span class="pre">direct_nucleon</span></code> module (but it should be already ON) by entering:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; direct_nucleon = ON
 </pre></div>
 </div>
 <p>If your model has both DM-nucleon and DM-electron interactions, you can set both <code class="docutils literal notranslate"><span class="pre">direct_nucleon</span></code> and <code class="docutils literal notranslate"><span class="pre">direct_electron</span></code> modules to ON,
 and you will receive results for both types of interactions considered separately.</p>
 <p>You can set the model parameters in the <code class="docutils literal notranslate"><span class="pre">param_card.dat</span></code> by pressing 7, or by editing the file directly in the process folder (in this case <code class="docutils literal notranslate"><span class="pre">DD_NR_spin0/Cards/param_card.dat</span></code>).</p>
-<p>You can set the MadDM parameters (such as the halo parameters, recoil energy range and much more) in the <code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code> by pressing 8, or by editing the file directly in the process folder (in this case <code class="docutils literal notranslate"><span class="pre">DD_NR_spin0/Cards/maddm_card.dat</span></code>).</p>
+<p>You can set the MadDM parameters (such as the halo parameters, recoil energy range and much more) in the <code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code> by pressing 8,
+or by editing the file directly in the process folder (in this case <code class="docutils literal notranslate"><span class="pre">DD_NR_spin0/Cards/maddm_card.dat</span></code>).</p>
 <p>Once you are all set, you can run the process by pressing Enter. This module will first evaluate the DM–nucleon cross section and compare it against the experimental limits
 🚧 <strong>FIXME</strong>: ADD EXPERIMENT LIST HERE.
 Next, it will use RAPIDD to compute the differential nuclear recoil rates, and from those, it will evaluate the p-values using the likelihoods derived from the most recent LZ data.
@@ -474,32 +470,28 @@ likelihoods. These are particularly relevant for models with sub-GeV DM that int
 With this module you can compute the DM-electron recoil rates and constrain the Lagrangian parameters, or the cross section, using experimental data from XENON10 and XENON1T.</p>
 <section id="id1">
 <h3>Example with a simplified scalar-mediated DM model<a class="headerlink" href="#id1" title="Link to this heading">#</a></h3>
-<p>First, import the model, which will be downloaded automatically from <a class="reference external" href="https://feynrules.irmp.ucl.ac.be/wiki/DMsimp">here</a> if not already present:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; import model eDMsimp_s_spin0
-</pre></div>
-</div>
-<p>Next, define the dark matter particle. Generally, for DMsimp models, you can choose between Xr (real scalar DM), Xc (complex scalar DM)
+<p>First, import the model and define the dark matter particle. Generally, for DMsimp models, you can choose between Xr (real scalar DM), Xc (complex scalar DM)
 and Xd (Dirac spinor DM). Then, generate the direct detection processes with:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; define darkmatter xd
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; import model eDMsimp_s_spin0
+MadDM&gt; define darkmatter xd
 MadDM&gt; generate direct
 </pre></div>
 </div>
-<p>At this point, you can set the parameter values of the model, stored in <code class="docutils literal notranslate"><span class="pre">param_card_orig.dat</span></code>, by pressing 1.
+<p>At this point, you can set the parameter values of the model, stored in <code class="docutils literal notranslate"><span class="pre">param_card_orig.dat</span></code>, by pressing 1, but this can also be done when launching the process.
 Next, create the process folder. In this case, we call it <code class="docutils literal notranslate"><span class="pre">DD_ER_spin0</span></code>, but you can choose any name you like. Then launch the process:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; output DD_ER_spin0
 MadDM&gt; launch DD_ER_spin0
 </pre></div>
 </div>
-<p>Note that once the process folder has been created with the <code class="docutils literal notranslate"><span class="pre">output</span></code> command in a previous session, you can always
-relaunch the same process in a new session with <code class="docutils literal notranslate"><span class="pre">launch</span> <span class="pre">myprocessname</span></code> skipping the previous steps.
-Once you launch the process, select to run the <code class="docutils literal notranslate"><span class="pre">direct_electron</span></code> module (but it should be already ON) by entering:</p>
+<p>Select to run the <code class="docutils literal notranslate"><span class="pre">direct_electron</span></code> module (but it should be already ON) by entering:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; direct_electron = ON
 </pre></div>
 </div>
 <p>If your model has both DM-nucleon and DM-electron interactions, you can set both <code class="docutils literal notranslate"><span class="pre">direct_nucleon</span></code> and <code class="docutils literal notranslate"><span class="pre">direct_electron</span></code> modules to ON,
 and you will receive results for both types of interactions considered separately.</p>
 <p>You can set the model parameters in the <code class="docutils literal notranslate"><span class="pre">param_card.dat</span></code> by pressing 7, or by editing the file directly in the process folder (in this case <code class="docutils literal notranslate"><span class="pre">DD_ER_spin0/Cards/param_card.dat</span></code>).</p>
-<p>You can set the MadDM parameters (such as the halo parameters, recoil energy range and much more) in the <code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code> by pressing 8, or by editing the file directly in the process folder (in this case <code class="docutils literal notranslate"><span class="pre">DD_ER_spin0/Cards/maddm_card.dat</span></code>).</p>
+<p>You can set the MadDM parameters (such as the halo parameters, recoil energy range and much more) in the <code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code> by pressing 8,
+or by editing the file directly in the process folder (in this case <code class="docutils literal notranslate"><span class="pre">DD_ER_spin0/Cards/maddm_card.dat</span></code>).</p>
 <p>Note that in the <code class="docutils literal notranslate"><span class="pre">direct_electron</span></code> module, if the DM particle has a mass above 1 GeV, it will be ignored by default.
 To change this behavior, set <code class="docutils literal notranslate"><span class="pre">direct_electron_mode</span></code> to <code class="docutils literal notranslate"><span class="pre">always</span></code> in the <code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code> file, which you can do by pressing 8 after launching the process.</p>
 <p>Once you are all set, you can run the process by pressing Enter. This module will evaluate the DM-electron recoil rates and constrain them using XENON10 + XENON1T data.</p>
@@ -515,8 +507,8 @@ INFO: Results written in: /Users/yourname/yourprocessfolder/DD_ER_spin0/output/r
 <p>where <code class="docutils literal notranslate"><span class="pre">All</span> <span class="pre">DM</span></code> refers to the reference DM-electron cross section in case the DM particle contributes to the entire dark matter density of the universe,
 <code class="docutils literal notranslate"><span class="pre">ALLOWED</span></code> indicates that the model is consistent with the experimental limits from XENON10 and XENON1T. You can also see the p-values for the likelihoods used in the analysis.</p>
 </section>
-<section id="id3">
-<h3>Results<a class="headerlink" href="#id3" title="Link to this heading">#</a></h3>
+<section id="id2">
+<h3>Results<a class="headerlink" href="#id2" title="Link to this heading">#</a></h3>
 <p>The results of each run will be stored inside the process folder you created, whose path is shown in the last line of the output.
 Each time you launch the same process, MadDM creates a new folder <code class="docutils literal notranslate"><span class="pre">output/run_XX</span></code> within the process folder.</p>
 <p>In this folder, you will find the results, such as the cross section and p-values, in a file named <code class="docutils literal notranslate"><span class="pre">MadDM_results.txt</span></code>.</p>
@@ -592,7 +584,7 @@ Each time you launch the same process, MadDM creates a new folder <code class="d
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#electronic-recoils-with-xenon10-xenon1t-likelihoods">2. Electronic Recoils with XENON10/XENON1T likelihoods</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">Example with a simplified scalar-mediated DM model</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id3">Results</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id2">Results</a></li>
 </ul>
 </li>
 </ul>

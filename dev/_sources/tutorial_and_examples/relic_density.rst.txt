@@ -22,6 +22,8 @@
 Relic Density Computation in MadDM
 =======================================
 
+JUST A CHATGPT EXAMPLE
+
 MadDM can compute the relic density of dark matter via numerical solution of the Boltzmann equation, including coannihilation effects and resonances when relevant.
 
 This allows you to constrain models based on the observed dark matter abundance from cosmological data, such as the one measured by Planck.
@@ -33,12 +35,14 @@ First, import the model. If not already downloaded, it will be fetched automatic
 .. code-block:: text
 
 MadDM> import model DMsimp_s_spin0
+
 Then, define the dark matter particle. For scalar DM models, this could be Xr (real scalar), Xc (complex scalar), or Xd (Dirac fermion):
 
 .. code-block:: text
 
 MadDM> define darkmatter Xr
 MadDM> generate relic_density
+
 You can now configure your model parameters (in param_card.dat) by pressing 7, or directly editing the file inside the process directory.
 
 Next, generate the process folder. For example:
@@ -62,6 +66,7 @@ INFO: MadDM Results
 INFO: Omega h^2 (total) = 0.118        ALLOWED     PLANCK 2σ range = [0.114, 0.126]
 INFO: 
 INFO: Results written in: /Users/yourname/yourprocessfolder/RD_example/output/run_01/MadDM_results.txt
+
 Here, Omega h^2 refers to the dark matter relic abundance predicted by your model.
 If it falls within the allowed experimental range (e.g., Planck 2σ), it will be marked as ALLOWED.
 

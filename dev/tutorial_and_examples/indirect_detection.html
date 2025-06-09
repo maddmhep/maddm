@@ -417,18 +417,22 @@ to download the full example code.</p>
 <section class="sphx-glr-example-title" id="indirect-detection-analysis">
 <span id="sphx-glr-tutorial-and-examples-indirect-detection-py"></span><h1>Indirect Detection Analysis<a class="headerlink" href="#indirect-detection-analysis" title="Link to this heading">#</a></h1>
 <p>Compute indirect detection signals and limits from dark matter annihilation.</p>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Link to this heading">#</a></h2>
+<p>Indirect detection looks for products of dark matter annihilation in astrophysical environment where the dark
+matter is denser. For instance, typical benchmarks for gamma-ray searches are the dSphs or the Galactic Center.</p>
+</section>
 <section id="getting-started">
 <h2>Getting Started<a class="headerlink" href="#getting-started" title="Link to this heading">#</a></h2>
 <p>To include indirect detection in your MadDM workflow, simply add the appropriate module after generating your process.</p>
 </section>
 <section id="basic-example">
 <h2>Basic Example<a class="headerlink" href="#basic-example" title="Link to this heading">#</a></h2>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; import model DMsimp_s_spin0
-MadDM&gt; define darkmatter xd
-MadDM&gt; generate relic_density
-MadDM&gt; add indirect_detection
-MadDM&gt; output ID_example
-MadDM&gt; launch
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; import model MyDMmodel
+MadDM&gt; define darkmatter chi
+MadDM&gt; generate indirect_detection
+MadDM&gt; output MyDMmodel
+MadDM&gt; launch MyDMmodel
 </pre></div>
 </div>
 <p>This setup computes the total annihilation cross sections for all available final states and stores the results in the output directory <code class="docutils literal notranslate"><span class="pre">ID_example</span></code>.</p>
@@ -555,6 +559,7 @@ MadDM&gt; install dragon_data_from_galprop
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#overview">Overview</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#getting-started">Getting Started</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#basic-example">Basic Example</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#adding-loop-induced-processes">Adding Loop-Induced Processes</a></li>

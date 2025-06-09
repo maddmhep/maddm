@@ -24,6 +24,12 @@ Indirect Detection Analysis
 
 Compute indirect detection signals and limits from dark matter annihilation.
 
+Overview
+========
+
+Indirect detection looks for products of dark matter annihilation in astrophysical environment where the dark
+matter is denser. For instance, typical benchmarks for gamma-ray searches are the dSphs or the Galactic Center.
+
 Getting Started
 ===============
 
@@ -34,12 +40,11 @@ Basic Example
 
 .. code-block:: text
 
-    MadDM> import model DMsimp_s_spin0
-    MadDM> define darkmatter xd
-    MadDM> generate relic_density
-    MadDM> add indirect_detection
-    MadDM> output ID_example
-    MadDM> launch
+    MadDM> import model MyDMmodel
+    MadDM> define darkmatter chi
+    MadDM> generate indirect_detection
+    MadDM> output MyDMmodel
+    MadDM> launch MyDMmodel
 
 This setup computes the total annihilation cross sections for all available final states and stores the results in the output directory ``ID_example``.
 
