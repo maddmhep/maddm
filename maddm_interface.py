@@ -1381,7 +1381,42 @@ class MadDM_interface(master_interface.MasterCmd):
             logger.warning("More than one DM candidate. Can not run Direct Detection.")
             return 
 
-        self._has_direct_nucleon = self.generate_direct_nucleon(excluded_particles)
+        ### Check that RAPIDD is installed 
+        # Determine the platform and set the library name accordingly
+        import platform
+
+        if platform.system() == 'Linux':
+            lib_name = 'libRAPIDD.so'
+        elif platform.system() == 'Darwin':  # Darwin is macOS
+            lib_name = 'libRAPIDD.dylib'
+        elif platform.system() == 'Windows':
+            lib_name = 'RAPIDD.dll'
+        else:
+            raise OSError("Unsupported operating system")
+        
+        rapidd_dir = os.path.join(self.plugin_path[0], "maddm/vendor/RAPIDD_for_DM")
+        so_rel_path = self.plugin_path[0] + "/maddm/vendor/RAPIDD_for_DM/lib/build/" + lib_name
+        instructions_script = self.plugin_path[0] + "/maddm/vendor/RAPIDD_for_DM/instructions_cmake.sh"
+
+
+        if not os.path.exists(so_rel_path):
+            logger.error("RAPIDD library not found at %s. Compiling it now..." % so_rel_path)
+            # Compile the RAPIDD library
+            import subprocess
+
+            try:
+                subprocess.run(["sh", instructions_script], check=True, cwd=rapidd_dir)
+                logger.info("RAPIDD compilation finished.")
+
+                self._has_direct_nucleon = self.generate_direct_nucleon(excluded_particles)
+                
+            except subprocess.CalledProcessError as e:
+                logger.error("RAPIDD compilation failed with error: %s", e)
+
+        else:
+            self._has_direct_nucleon = self.generate_direct_nucleon(excluded_particles)
+        
+        
         self._has_direct_electron = self.generate_direct_electron(excluded_particles)
 
     def generate_direct_electron(self, excluded_particles=[]):

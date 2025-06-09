@@ -76,7 +76,6 @@ logger_tuto = logging.getLogger('tutorial_plugin')
 
 MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
 
-
 #Is there a better definition of infinity?
 __infty__ = float('inf')
 __mnestlog0__ = -1.0E90
@@ -95,9 +94,9 @@ class ExpConstraints:
         # self._dd_sd_neutron_limit_file = pjoin(MDMDIR, 'ExpData', 'Lux_2017_sd_neutron.dat')
 
         self._dd_limit_file = {
-            'si'        : pjoin(MDMDIR, 'ExpData', 'Xenon1T_data_2018.dat'),
-            'sd_proton' : pjoin(MDMDIR, 'ExpData', 'Pico60_sd_proton.dat'),
-            'sd_neutron': pjoin(MDMDIR, 'ExpData', 'Lux_2017_sd_neutron.dat')
+            'si'        : pjoin(MDMDIR, 'ExpData', 'LZ2024_SI.dat'),  
+            'sd_proton' : pjoin(MDMDIR, 'ExpData', 'Pico60_sd_proton_2019.dat'),
+            'sd_neutron': pjoin(MDMDIR, 'ExpData', 'LZ2024_SDn.dat')
         }
 
         self._dd_limit_mdm = dict()
@@ -1765,6 +1764,7 @@ class MADDMRunCmd(cmd.CmdShell):
         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
 
         result['tot_SM_xsec'] = -1
+        alphaq_values = {"alpha_d": [], "alpha_u": [], "alpha_s": [], "alpha_c": [], "alpha_b": [], "alpha_t": [] }
 
         for line in open(pjoin(self.dir_path, output)):
       
@@ -1774,6 +1774,20 @@ class MADDMRunCmd(cmd.CmdShell):
                     oname = splitline[0].strip(':')+'_'+splitline[1]
                     val = splitline[2]
                     result[oname.split(':')[0] ] = val
+
+                ##### explicitly tell the code how to read alphas here 
+
+
+                parts = line.split(":")
+                #print(parts)
+                if parts[0].strip() in alphaq_values.keys():
+                    values = list(map(float, parts[1:5]))
+                    alphaq_values[parts[0].strip()] = np.array(values)  # Store as NumPy array
+
+    
+
+
+                #####
 
                 else:
                     if self._two2twoLO:
@@ -1794,6 +1808,8 @@ class MADDMRunCmd(cmd.CmdShell):
                         str_proc = StrProcess(oname, self.processes_names_map)
                         self.str_processes[oname] = str_proc
                         result["%%_relic_%s" % oname] = secure_float_f77(splitline[1])
+
+
                         
                     if 'Xenon10_bins' in line:
                         Xenon10_bins = []
@@ -1847,7 +1863,21 @@ class MADDMRunCmd(cmd.CmdShell):
 
         else: result['xsi'] = 1.0
 
+        # print("here making dictionary")
+        # print(result)
+        #self.maddm_card['SPu']#### THIS IS WHERE I AM 
+        # import code
+        # code.interact(local=locals())
+        # from rapidd import madDM_output as rp
+        # import out2Xsec as rp
+        RP_rel_path = self.plugin_path[0] + "/maddm/vendor/RAPIDD_for_DM/rapidd/"
+        RP_abs_path = os.path.abspath(RP_rel_path)
+        sys.path.insert(0, RP_abs_path)
+        from alpha_map import sigmaSI_nucleon_mdm, sigmaSD_nucleon_mdm
+
         if self.mode['direct']:
+            result['sigmaN_SI_p'], result['sigmaN_SI_n'] = sigmaSI_nucleon_mdm(self.maddm_card, alphaq_values, mdm)
+            result['sigmaN_SD_p'], result['sigmaN_SD_n'] = sigmaSD_nucleon_mdm(self.maddm_card, alphaq_values, mdm)
             result['sigmaN_SI_n']    *= GeV2pb*pb2cm2
             result['sigmaN_SI_p']    *= GeV2pb*pb2cm2
             result['sigmaN_SD_p']    *= GeV2pb*pb2cm2
@@ -1857,8 +1887,25 @@ class MADDMRunCmd(cmd.CmdShell):
             result['lim_sigmaN_SD_p'] = self.limits.SD_max(mdm, 'p')
             result['lim_sigmaN_SD_n'] = self.limits.SD_max(mdm, 'n')
 
+
+        from calc_dRdE import DDrate_save
+        rapidd_out_path = pjoin(self.dir_path,'output', self.run_name)
+
+        if (self.maddm_card['vescape'] == 544.0) and (self.maddm_card['vmp'] == 238.0):
+            DDrate_save(self.maddm_card, alphaq_values, mdm, rapidd_out_path)
+
+        else:
+            from halo import gen_shm_table 
+            halo_path = rapidd_out_path + '/SHM.dat'
+            gen_shm_table(halo_path, self.maddm_card)
+            DDrate_save(self.maddm_card, alphaq_values, mdm, rapidd_out_path, halo_path=halo_path)
+
+
         self.last_results = result
         self.last_results['run'] = self.run_name
+
+        # if self.mode['direct'] == 'p-value':
+            
 
         if self.mode['direct_electron'] and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
             self.launch_direct_electron()
@@ -1935,6 +1982,7 @@ class MADDMRunCmd(cmd.CmdShell):
             order.append('xsi')
 
             # *** Direct Detection
+            print("What happens here\n")
             if self.mode['direct'] :
                 order += ['sigmaN_SI_p', 'lim_sigmaN_SI_p', 
                           'sigmaN_SI_n', 'lim_sigmaN_SI_n',
@@ -1942,8 +1990,8 @@ class MADDMRunCmd(cmd.CmdShell):
                           'sigmaN_SD_n', 'lim_sigmaN_SD_n']
 
            
-            if self.mode['direct'] == 'directional':
-                order += ['Nevents', 'smearing']
+            # if self.mode['direct'] == 'directional':
+            #     order += ['Nevents', 'smearing']
 
             if self.mode['direct_electron'] and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
                 order += ['pvalue_Xenon10','pvalue_Xenon1T']
@@ -3109,10 +3157,10 @@ class MADDMRunCmd(cmd.CmdShell):
 
         if self.mode['direct']:
             # units = self.last_results['GeV2pb*pb2cm2']
-            direct_names = [ { 'n': 'SigmaN_SI_p', 'sig': self.last_results['sigmaN_SI_p'], 'lim': self.last_results['lim_sigmaN_SI_p'], 'exp': 'Xenon1ton' },
-                             { 'n': 'SigmaN_SI_n', 'sig': self.last_results['sigmaN_SI_n'], 'lim': self.last_results['lim_sigmaN_SI_n'], 'exp': 'Xenon1ton' },
-                             { 'n': 'SigmaN_SD_p', 'sig': self.last_results['sigmaN_SD_p'], 'lim': self.last_results['lim_sigmaN_SD_p'], 'exp': 'Pico60'    },
-                             { 'n': 'SigmaN_SD_n', 'sig': self.last_results['sigmaN_SD_n'], 'lim': self.last_results['lim_sigmaN_SD_n'], 'exp': 'Lux2017'   } ]
+            direct_names = [ { 'n': 'SigmaN_SI_p', 'sig': self.last_results['sigmaN_SI_p'], 'lim': self.last_results['lim_sigmaN_SI_p'], 'exp': 'LZ2024' },
+                             { 'n': 'SigmaN_SI_n', 'sig': self.last_results['sigmaN_SI_n'], 'lim': self.last_results['lim_sigmaN_SI_n'], 'exp': 'LZ2024' },
+                             { 'n': 'SigmaN_SD_p', 'sig': self.last_results['sigmaN_SD_p'], 'lim': self.last_results['lim_sigmaN_SD_p'], 'exp': 'Pico60 (2019)'    },
+                             { 'n': 'SigmaN_SD_n', 'sig': self.last_results['sigmaN_SD_n'], 'lim': self.last_results['lim_sigmaN_SD_n'], 'exp': 'LZ2024'   } ]
 
             self.last_results['direct_results'] = direct_names
 
@@ -3850,7 +3898,7 @@ class MADDMRunCmd(cmd.CmdShell):
             # create the inc file for maddm
             self.maddm_card.set('do_relic_density', self.mode['relic'], user=False)
             self.maddm_card.set('do_direct_detection', True if self.mode['direct'] else False, user=False)
-            self.maddm_card.set('do_directional_detection', self.mode['direct'] == 'directional', user=False)
+            #self.maddm_card.set('do_directional_detection', self.mode['direct'] == 'directional', user=False)
             self.maddm_card.set('do_direct_electron', True if self.mode['direct_electron'] else False, user=False)
             self.maddm_card.set('do_capture', self.mode['capture'], user=False)
             self.maddm_card.set('do_indirect_detection', True if self.mode['indirect'] else False, user=False)
@@ -4042,10 +4090,12 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
     def set_default_direct(self):
         """set the default value for direct="""
         
+        # if self.availmode['has_directional_detection']:
+        #     self.switch['direct'] = 'directional'
         if self.availmode['has_directional_detection']:
-            self.switch['direct'] = 'directional'
-        elif self.availmode['has_direct_detection']:
-            self.switch['direct'] = 'direct'        
+            self.switch['direct'] = 'direct'
+        # elif self.availmode['has_direct_detection']:
+        #     self.switch['direct'] = 'direct'        
         else:
             self.switch['direct'] = 'Not Avail.'
 
@@ -4057,7 +4107,8 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
             return getattr(self, 'allowed_direct')
 
         if self.availmode['has_directional_detection']:
-            self.allowed_direct =  ['directional', 'direct','OFF']
+            # self.allowed_direct =  ['directional', 'direct','OFF']
+            self.allowed_direct =  ['direct','OFF']
         elif self.availmode['has_direct_detection']:
             self.allowed_direct =  ['direct','OFF']
         else:
@@ -4077,11 +4128,11 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         """return the command to set the maddm_card consistent with the switch"""
         
         cmd =[]
-        if value == 'directional':
-            cmd.append('set do_directional_detection True')
-            value = 'direct'
-        else:
-            cmd.append('set do_directional_detection False')
+        # if value == 'directional':
+        #     cmd.append('set do_directional_detection True')
+        #     value = 'direct'
+        # else:
+        #     cmd.append('set do_directional_detection False')
         
         if value in ['ON', 'direct']:
             cmd.append('set do_direct_detection True')

@@ -315,7 +315,7 @@ c      write(*,*) '--------------------------------'
       if (even .eq. 1) then 
         ! symmetric so do not have to distinguish quark from anti-quark
         Minterf=0.5d0*Minterf_q
-c        write(*,*) "Even contribution : ", Minterf
+        !write(*,*) "Even contribution : ", Minterf
       else
         ! antisymmetric so we have to distinguish quark from anti-quark
          if (i.ge.0) then
@@ -323,11 +323,11 @@ c        write(*,*) "Even contribution : ", Minterf
          else
             Minterf=-0.5d0*Minterf_q
          endif
-c	write(*,*) "Odd contribution : ", Minterf
+	!write(*,*) "Odd contribution : ", Minterf
       endif
-c      write(*,*) 'M_interf: ', Minterf
+      !write(*,*) 'M_interf: ', Minterf
       NucleonFF=NucleonFF+(fNt(ABS(i))*Minterf)
-c      write(*,*) 'fN: ', NucleonFF
+      !write(*,*) 'fN: ', NucleonFF
       endif
       enddo
       
