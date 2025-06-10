@@ -46,4 +46,4 @@ jobs:
           # Using the GitHub context variable `github.ref` to get
           # the branch name
           destination_dir: |
-            ${{ github.ref == 'refs/heads/main' && 'stable' || 'dev' }}
+            ${{ github.ref == 'refs/heads/master' && 'stable' || 'dev' }}
