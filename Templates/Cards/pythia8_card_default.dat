@@ -16,7 +16,6 @@ Main:nbins               = 180
 ! WEAK SHOWER
 ! ============
 !
-! See: http://home.thep.lu.se/~torbjorn/pythia82html/WeakShowers.html 
 PartonShowers:model = 1
 TimeShower:weakShower = on
 TimeShower:weakShowerMode = 0

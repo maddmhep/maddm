@@ -746,7 +746,7 @@ class RegionOfInterest(object):
             `"normal"` or `"inverted"`.
         mask_latitude : float, default=0.
             The angle related to the mask over the latitude in deg, named
-            :math:`\\lambda`.
+            :math:`\lambda`.
         mask_longitude : float, default=180.
             The angle related to the mask over the longitude in deg, named
             :math:`\beta`.
@@ -855,70 +855,69 @@ class RegionOfInterestList(object):
             setattr(newobj, k, deepcopy(v, memo))
         return newobj
 
-if HAS_NUMPY and HAS_SCIPY:
-    line_experiments_regions_of_interest = {
-        "Fermi-LAT_2015": RegionOfInterestList([
-            RegionOfInterest(
-                amplitude=3.,
-                default_profile=PROFILES.NFW(r_s = 20.0, gamma = 1.3, rho_sun = 0.4, r_sun = 8.5),
-                upper_limit_label="(22)(22)_fermi2015R3",
-                jfactor_strategy="normal",
-                mask_latitude=5.,
-                mask_longitude=6.,
-                mask_inner_amplitude=0.,
-                cached_jfactors={PROFILES.NFW(r_s = 20.0, gamma = 1.3, rho_sun = 0.4, r_sun = 8.5) : 1.497e+23},
-                likelihood=np.loadtxt(pjoin(MDMDIR, 'Fermi_line_likelihoods', 'R3_gamma_lines_ULflux_like.dat'), unpack = True),
-                r_max=np.inf
-            ),
-            RegionOfInterest(
-                amplitude=16.,
-                default_profile=PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = 0.4, r_sun = 8.5),
-                upper_limit_label="(22)(22)_fermi2015R16",
-                jfactor_strategy="normal",
-                mask_latitude=5.,
-                mask_longitude=6.,
-                mask_inner_amplitude=0.,
-                cached_jfactors={PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = 0.4, r_sun = 8.5) : 9.39e+22},
-                likelihood=np.loadtxt(pjoin(MDMDIR, 'Fermi_line_likelihoods', 'R16_gamma_lines_ULflux_like.dat'), unpack = True),
-                r_max=np.inf
-            ),
-            RegionOfInterest(
-                amplitude=41.,
-                default_profile=PROFILES.NFW(r_s = 20.0, gamma = 1.0, rho_sun = 0.4, r_sun = 8.5),
-                upper_limit_label="(22)(22)_fermi2015R41",
-                jfactor_strategy="normal",
-                mask_latitude=5.,
-                mask_longitude=6.,
-                mask_inner_amplitude=0.,
-                cached_jfactors={PROFILES.NFW(r_s = 20.0, gamma = 1.0, rho_sun = 0.4, r_sun = 8.5) : 9.16e+22},
-                r_max=np.inf
-            ),
-            RegionOfInterest(
-                amplitude=90.,
-                default_profile=PROFILES.Isothermal(r_s = 5.0, rho_sun = 0.4, r_sun = 8.5),
-                upper_limit_label="(22)(22)_fermi2015R90",
-                jfactor_strategy="normal",
-                mask_latitude=5.,
-                mask_longitude=6.,
-                mask_inner_amplitude=0.,
-                cached_jfactors={PROFILES.Isothermal(r_s = 5.0, rho_sun = 0.4, r_sun = 8.5) : 6.94e+22},
-                r_max=np.inf
-            )
-        ]),
-        "HESS_2018": RegionOfInterestList([
-            RegionOfInterest(
-                amplitude=1.,
-                default_profile=PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = 0.39, r_sun = 8.5),
-                upper_limit_label="(22)(22)_hess2018R1",
-                jfactor_strategy="normal",
-                mask_latitude=0.3,
-                mask_longitude=0.,
-                mask_inner_amplitude=0.,
-                cached_jfactors={PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = 0.39, r_sun = 8.5) : 4.66e21},
-                r_max=np.inf
-            ),
-        ]),
-    }
+line_experiments_regions_of_interest = {
+    "Fermi-LAT_2015": RegionOfInterestList([
+        RegionOfInterest(
+            amplitude=3.,
+            default_profile=PROFILES.NFW(r_s = 20.0, gamma = 1.3, rho_sun = 0.4, r_sun = 8.5),
+            upper_limit_label="(22)(22)_fermi2015R3",
+            jfactor_strategy="normal",
+            mask_latitude=5.,
+            mask_longitude=6.,
+            mask_inner_amplitude=0.,
+            cached_jfactors={PROFILES.NFW(r_s = 20.0, gamma = 1.3, rho_sun = 0.4, r_sun = 8.5) : 1.497e+23},
+            likelihood=np.loadtxt(pjoin(MDMDIR, 'Fermi_line_likelihoods', 'R3_gamma_lines_ULflux_like.dat'), unpack = True),
+            r_max=np.inf
+        ),
+        RegionOfInterest(
+            amplitude=16.,
+            default_profile=PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = 0.4, r_sun = 8.5),
+            upper_limit_label="(22)(22)_fermi2015R16",
+            jfactor_strategy="normal",
+            mask_latitude=5.,
+            mask_longitude=6.,
+            mask_inner_amplitude=0.,
+            cached_jfactors={PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = 0.4, r_sun = 8.5) : 9.39e+22},
+            likelihood=np.loadtxt(pjoin(MDMDIR, 'Fermi_line_likelihoods', 'R16_gamma_lines_ULflux_like.dat'), unpack = True),
+            r_max=np.inf
+        ),
+        RegionOfInterest(
+            amplitude=41.,
+            default_profile=PROFILES.NFW(r_s = 20.0, gamma = 1.0, rho_sun = 0.4, r_sun = 8.5),
+            upper_limit_label="(22)(22)_fermi2015R41",
+            jfactor_strategy="normal",
+            mask_latitude=5.,
+            mask_longitude=6.,
+            mask_inner_amplitude=0.,
+            cached_jfactors={PROFILES.NFW(r_s = 20.0, gamma = 1.0, rho_sun = 0.4, r_sun = 8.5) : 9.16e+22},
+            r_max=np.inf
+        ),
+        RegionOfInterest(
+            amplitude=90.,
+            default_profile=PROFILES.Isothermal(r_s = 5.0, rho_sun = 0.4, r_sun = 8.5),
+            upper_limit_label="(22)(22)_fermi2015R90",
+            jfactor_strategy="normal",
+            mask_latitude=5.,
+            mask_longitude=6.,
+            mask_inner_amplitude=0.,
+            cached_jfactors={PROFILES.Isothermal(r_s = 5.0, rho_sun = 0.4, r_sun = 8.5) : 6.94e+22},
+            r_max=np.inf
+        )
+    ]),
+    "HESS_2018": RegionOfInterestList([
+        RegionOfInterest(
+            amplitude=1.,
+            default_profile=PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = 0.39, r_sun = 8.5),
+            upper_limit_label="(22)(22)_hess2018R1",
+            jfactor_strategy="normal",
+            mask_latitude=0.3,
+            mask_longitude=0.,
+            mask_inner_amplitude=0.,
+            cached_jfactors={PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = 0.39, r_sun = 8.5) : 4.66e21},
+            r_max=np.inf
+        ),
+    ]),
+}
 
 class GammaLineExperiment(object):
     ''' this class holds all the generic functionalities regarding the upper limits on gamma ray line searches '''
@@ -1572,10 +1571,10 @@ class MADDMRunCmd(cmd.CmdShell):
   "       ########//#####\\\\###########                   "+bcolors.FAIL+"arXiv:2107.04598        \n"+bcolors.ENDC+\
   "       ######################### ## ___________________________________________\n"+\
   "       ####################### 0  # "+bcolors.OKGREEN+" _     _               _  _____   _     _  \n"+bcolors.ENDC+\
-  "       #############   0  ###    ## "+bcolors.OKGREEN+"| \\   / |   ___    ___|| | ___ \\ | \\   / | \n"+bcolors.ENDC+\
+  "       #############   0  ###    ## "+bcolors.OKGREEN+"| \   / |   ___    ___|| | ___ \ | \   / | \n"+bcolors.ENDC+\
   "       ##############    #########  "+bcolors.OKGREEN+"||\\\\ //|| / __ |  / __ | ||   || ||\\\\ //|| \n"+bcolors.ENDC+\
   "        ##########################  "+bcolors.OKGREEN+"||  V  || ||__||  ||__|| ||___|| ||  V  || \n"+bcolors.ENDC+\
-  "         ###################   ##   "+bcolors.OKGREEN+"||     || \\_____\\ \\____| |_____/ ||     || \n"+bcolors.ENDC+\
+  "         ###################   ##   "+bcolors.OKGREEN+"||     || \_____\ \____| |_____/ ||     || \n"+bcolors.ENDC+\
   "          ############       ###    ___________________________________________\n"+\
   "           ##########    ######                                                 \n"+\
   "             ################                                                   \n"+\
@@ -3455,7 +3454,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 logger.warning(roi_warning)
             logger.info("J = %.6e GeV^2 cm^-5" % self.last_results[str_part + "Jfactor"])
             logger.info("detection range: %.4e -- %.4e GeV" % (line_exp.detection_range[0], line_exp.detection_range[1]))
-            if len(energy_peaks) is 0:
+            if len(energy_peaks) == 0:
                 logger.info(bcolors.BOLD + "No peaks found: out of detection range." + bcolors.ENDC)
             else:
                 # find first column maximum length for nice table format
@@ -3533,7 +3532,6 @@ class MADDMRunCmd(cmd.CmdShell):
             out.write("# % of the relic density channels\n")
             for proc in [k for k in self.last_results.keys() if k.startswith('%_relic_')]:
                 out.write( form_s("%_" + proc.replace('%_relic_','')) + '= %.2f %%\n' % self.last_results[proc] )
-
 
         if direct:
 
@@ -3642,7 +3640,7 @@ class MADDMRunCmd(cmd.CmdShell):
                     out.write(form_s("J-factor") + '= ' + form_n(self.last_results[str_part + "Jfactor"]) + '\n')
                     str_part_peak = str_part + 'peak'
                     energy_peaks = collections.OrderedDict(sorted([(k, v) for k, v in six.iteritems(self.last_results) if str_part_peak in k and '_states' not in k and '_error' not in k and v != -1], key = lambda item: item[1])) # key = "line_<exp_name>_peak_<num>", value = energy peak
-                    if len(energy_peaks) is 0:
+                    if len(energy_peaks) == 0:
                         # this happens when all the peaks are -1, so either if peaks are out of detection range or halo velocity is not compatible with galactic center
                         # if velocity is in the range, print out that peaks are not in the detection range, otherwise print out all -1
                         if (self.maddm_card['vave_indirect_line'] > self.vave_indirect_line_range[0] and self.maddm_card['vave_indirect_line'] < self.vave_indirect_line_range[1]):
@@ -3898,6 +3896,7 @@ class Indirect_PY8Card(banner_mod.PY8Card):
         self.add_param("PartonLevel:ISR", False, hidden=True, comment="initial-state radiation")
         self.add_param("PartonLevel:FSR", True, hidden=True, comment="final-state radiation")
         # Weakshower <- allow the user to switch this ON
+        self.add_param("PartonShowers:model", 1)
         self.add_param("TimeShower:weakShower", False, comment="Run weak-shower for FSR")
         self.add_param("TimeShower:weakShowerMode", 0, comment="Determine which branchings are allowed (0 -> W and Z)")
         self.add_param("TimeShower:pTminWeak", 0.1)
@@ -4332,7 +4331,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
  * Enter the name/number to open the editor
  * Enter a path to a file to replace the card
  * Enter %(start_bold)sset NAME value%(stop)s to change any parameter to the requested value
- /=============================================================================\\ 
+ /=============================================================================\ 
  |  6. Edit the model parameters    [%(start_underline)sparam%(stop)s]                                    |  
  |  7. Edit the MadDM options       [%(start_underline)smaddm%(stop)s]                                    |
 """
@@ -4344,7 +4343,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         if current_val['indirect'].startswith('flux') or self.switch["indirect"].startswith('flux'):
             question += """ |  9. Edit the Showering Card for flux  [%(start_underline)sflux%(stop)s]                                |\n"""
         
-        question+=""" \\=============================================================================/\n"""
+        question+=""" \=============================================================================/\n"""
         self.question =  question % {'start_green' : '\033[92m',
                          'stop':  '\033[0m',
                          'start_underline': '\033[4m',
@@ -4417,7 +4416,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
             self.setDM('sigmav_method', 'reshuffling',loglevel=30)
             
         #3. ensure pythia8 is on
-        if self.maddm['indirect_flux_source_method'] != 'pythia8':
+        if self.maddm['indirect_flux_source_method'] != 'pythia8' and self.maddm['indirect_flux_source_method'] != 'vincia':
             self.setDM('indirect_flux_source_method', 'pythia8',loglevel=30)
         
         return '9 %s' % line
@@ -5010,6 +5009,7 @@ class MadDMCard(banner_mod.RunCard):
         #self.add_param('num_of_elements', 60)
         
         self.fill_jfactors()
+
         self.add_param('indirect_flux_source_method', 'pythia8', comment='choose between pythia8, vincia, PPPC4DMID and PPPC4DMID_ew', include=False,
                        allowed=['pythia8','vincia','PPPC4DMID','PPPC4DMID_ew','CosmiXs'])
         self.add_param('indirect_flux_earth_method', 'dragon', comment='choose between dragon and PPPC4DMID_ep', include=False,
@@ -5120,7 +5120,7 @@ class MadDMCard(banner_mod.RunCard):
             raise InvalidMaddmCard('The sum of SM* parameter should be 1.0 get %s' % (self['SNu'] + self['SNs'] + self['SNd'] + self['SNg']))
         
         if self['sigmav_method'] == 'inclusive':
-            if self['indirect_flux_source_method'] == 'pythia8':
+            if self['indirect_flux_source_method'] == 'pythia8' or self['indirect_flux_source_method'] == 'vincia':
                 if self['do_indirect_detection']:
                     logger.warning("since sigmav_method is on inclusive, indirect_flux_source_method has been switched to 'CosmiXs'")
                 #if self['do_flux']:
@@ -5672,5 +5672,3 @@ class Multinest(object):
         self.counter += 1
 
         return chi
-
-

@@ -16,7 +16,6 @@ Main:nbins               = 180
 ! WEAK SHOWER
 ! ============
 !
-! See: http://home.thep.lu.se/~torbjorn/pythia82html/WeakShowers.html 
 PartonShowers:model = 1
 TimeShower:weakShower = on
 TimeShower:weakShowerMode = 0
@@ -24,7 +23,6 @@ WeakShower:enhancement = 1.
 TimeShower:pTminWeak = 0.1
 WeakShower:vetoWeakJets = off
 WeakShower:singleEmission = off
-
 
 ! Tuning for the following parameters taken from Tab 2 of https://arxiv.org/pdf/2303.11363.pdf for Pythia
 ! and https://arxiv.org/abs/2312.01153 for VINCIA
