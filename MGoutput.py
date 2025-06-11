@@ -1281,13 +1281,13 @@ class ProcessExporterIndirectD:
         # make sure that mass/width external parameter without assoicated particle
         # are removed. This should not be necessary since 2.6.5
         
-        def_part = [p['pdg_code'] for p in model['particles']]
-        for param in model['parameters'][('external',)][:]:
+        def_part = [p['pdg_code'] for p in self.model['particles']]
+        for param in self.model['parameters'][('external',)][:]:            
             if param.lhablock in ['MASS','DECAY']:
                 if param.lhacode[0] not in def_part:
-                    model['parameters'][('external',)].remove(param)
+                    self.model['parameters'][('external',)].remove(param)
                     param = base_objects.ModelVariable(param.name, str(param.value), 'real')
-                    model['parameters'][tuple()].append(param)
+                    self.model['parameters'][tuple()].append(param)
         
         
         super(ProcessExporterIndirectD, self).convert_model(model, 
