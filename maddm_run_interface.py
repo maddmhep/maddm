@@ -732,7 +732,7 @@ class Fermi_bounds:
              return result[2] , result[0]
 
 class RegionOfInterest(object):
-    ''' Definition of a region of interest (ROI) with default profile, masks and
+    r''' Definition of a region of interest (ROI) with default profile, masks and
         instructions on J-factor computation.
 
         Parameters
@@ -1572,11 +1572,11 @@ class MADDMRunCmd(cmd.CmdShell):
   "        #########//##\\\\############                   "+bcolors.FAIL+"arXiv:1804.00044        \n"+bcolors.ENDC+\
   "       ########//#####\\\\###########                   "+bcolors.FAIL+"arXiv:2107.04598        \n"+bcolors.ENDC+\
   "       ######################### ## ___________________________________________\n"+\
-  "       ####################### 0  # "+bcolors.OKGREEN+" _     _               _  _____   _     _  \n"+bcolors.ENDC+\
-  "       #############   0  ###    ## "+bcolors.OKGREEN+"| \\   / |   ___    ___|| | ___ \\ | \\   / | \n"+bcolors.ENDC+\
-  "       ##############    #########  "+bcolors.OKGREEN+"||\\\\ //|| / __ |  / __ | ||   || ||\\\\ //|| \n"+bcolors.ENDC+\
-  "        ##########################  "+bcolors.OKGREEN+"||  \\V  || ||__||  ||__|| ||___|| ||  \\V  || \n"+bcolors.ENDC+\
-  "         ###################   ##   "+bcolors.OKGREEN+"||     || \\_____\\ \\____| |_____/ ||     || \n"+bcolors.ENDC+\
+  "       ####################### 0  # "+bcolors.OKGREEN+r" _     _               _  _____   _     _  " + "\n"+bcolors.ENDC+\
+  "       #############   0  ###    ## "+bcolors.OKGREEN+r"| \   / |   ___    ___|| | ___ \ | \   / | " + "\n"+bcolors.ENDC+\
+  "       ##############    #########  "+bcolors.OKGREEN+r"||\\ //|| / __ |  / __ | ||   || ||\\ //|| " + "\n"+bcolors.ENDC+\
+  "        ##########################  "+bcolors.OKGREEN+r"||  V  || ||__||  ||__|| ||___|| ||  V  || " + "\n"+bcolors.ENDC+\
+  "         ###################   ##   "+bcolors.OKGREEN+r"||     || \_____\ \____| |_____/ ||     || " + "\n"+bcolors.ENDC+\
   "          ############       ###    ___________________________________________\n"+\
   "           ##########    ######                                                 \n"+\
   "             ################                                                   \n"+\
@@ -4559,13 +4559,22 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         #    trigger function accordingly.
         
         question = cmd.ControlSwitch.create_question(self, help_text=False)
-        question +="""\n%(start_green)s You can also edit the various input card%(stop)s:
+
+        #question += bcolors.OKGREEN+"\n You can also edit the various input cards" + bcolors.ENDC+ """:
+        question += bcolors.OKGREEN+"\n You can also edit the various input cards" + bcolors.ENDC+ r""":
  * Enter the name/number to open the editor
  * Enter a path to a file to replace the card
+<<<<<<< HEAD
  * Enter %(start_bold)sset NAME value%(stop)s to change any parameter to the requested value
  /=============================================================================\\ 
  |  7. Edit the model parameters    [%(start_underline)sparam%(stop)s]                                    |  
  |  8. Edit the MadDM options       [%(start_underline)smaddm%(stop)s]                                    |
+=======
+ * Enter """ + bcolors.BOLD + r"""set NAME value """ + bcolors.ENDC + r"""to change any parameter to the requested value
+ /=============================================================================\ 
+ |  6. Edit the model parameters    [""" + bcolors.UNDERLINE + "param" + bcolors.ENDC + r"""]                                    |  
+ |  7. Edit the MadDM options       [""" + bcolors.UNDERLINE + "maddm" + bcolors.ENDC + r"""]                                    |
+>>>>>>> 20ce264 (Fix some weird strings warnings)
 """
 
         current_val  = self.answer # use that to be secure with conflict -> always propose card
@@ -4575,7 +4584,11 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         if current_val['indirect'].startswith('flux') or self.switch["indirect"].startswith('flux'):
             question += """ | 10. Edit the Showering Card for flux  [%(start_underline)sflux%(stop)s]                                |\n"""
         
+<<<<<<< HEAD
         question+=""" \\=============================================================================/\n"""
+=======
+        question+=r" \=============================================================================/" + "\n"
+>>>>>>> 20ce264 (Fix some weird strings warnings)
         self.question =  question % {'start_green' : '\033[92m',
                          'stop':  '\033[0m',
                          'start_underline': '\033[4m',
