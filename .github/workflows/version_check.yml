@@ -1,0 +1,54 @@
+---
+name: Version Check
+
+on:  # yamllint disable-line rule:truthy
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+    branches:
+      - master
+
+jobs:
+  check_version_update:
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Checkout the PR code
+      - name: Checkout PR code
+        uses: actions/checkout@v3
+        with:
+          # We need the previous commit (from base branch) to compare
+          fetch-depth: 2
+
+      # Step 2: Get the first line of the version file from the PR branch
+      - name: Get version line from PR branch
+        id: pr_version
+        run: |
+          PR_VERSION=$(head -n 1 ./version)
+          echo "PR_VERSION=$PR_VERSION" >> $GITHUB_ENV
+
+      # Step 3: Fetch the master branch to compare with
+      - name: Checkout master branch
+        uses: actions/checkout@v3
+        with:
+          ref: master
+          fetch-depth: 1  # Shallow clone to get only the master branch
+
+      # Step 4: Get the first line of the version file from master branch
+      - name: Get version line from master branch
+        id: master_version
+        run: |
+          MASTER_VERSION=$(head -n 1 ./version)
+          echo "MASTER_VERSION=$MASTER_VERSION" >> $GITHUB_ENV
+
+      # Step 5: Compare versions
+      - name: Check if version was updated
+        run: |
+          if [ "${{ env.PR_VERSION }}" == "${{ env.MASTER_VERSION }}" ]; then
+            echo "ERROR: The version file must be updated in this PR. Please update the first line of the version file."
+            exit 1
+          else
+            echo "Version has been updated to ${{ env.PR_VERSION }}. Proceeding."
+          fi
+
