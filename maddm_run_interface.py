@@ -5166,6 +5166,21 @@ class MadDMCard(banner_mod.RunCard):
         self.add_param('template_line_experiment_constraints_file', 'None', comment='file containing 3 columns [ DM mass (GeV), <sigmav> (cm^3 s^-1), flux (cm^-2 s^-1) ] related to the constraints on gamma-line searches for the template experiment; comments must be prepended with \'#\'; this file must be placed in $MADDM_PATH/ExpData/', include = False, \
                            hidden = True)
 
+
+    def write_include_file(self, output_dir, output_file=None):
+        """Writes the maddm_card.inc file in output_dir."""
+
+        # ensure that all parameter are coherent and fix those if needed
+        self.check_validity()
+
+        #ensure that system only parameter are correctly set
+        self.update_system_parameter_for_include()
+
+        self.includepath['maddm_card.inc'] = self.includepath[True]
+        for incname in ['maddm_card.inc']:
+            self.write_one_include_file(output_dir, incname, output_file)
+
+
     def write(self, output_file, template=None, python_template=False,
               write_hidden=False):
         """Write the run_card in output_file according to template 
