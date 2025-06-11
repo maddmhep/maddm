@@ -1141,7 +1141,8 @@ class ProcessExporterIndirectD:
         all_lines = open(pjoin(self.dir_path,'bin','internal','banner.py')).readlines()
         
         for i, line in enumerate(all_lines):
-            if 'def get_idbmup(lpp):' in line:
+            if re.match(r"^\s+def get_idbmup", line):
+                # find the line with get_idbmup
                 break
 
         next_line = all_lines[i+1] 
