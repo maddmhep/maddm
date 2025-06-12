@@ -66,23 +66,6 @@ Below is a gallery of various examples on the usage of MadDM and its features.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="Run MadDM as a script, allowing for batch processing or automation.">
-
-.. only:: html
-
-  .. image:: /tutorial_and_examples/images/thumb/sphx_glr_scripts_thumb.png
-    :alt:
-
-  :ref:`sphx_glr_tutorial_and_examples_scripts.py`
-
-.. raw:: html
-
-      <div class="sphx-glr-thumbnail-title">Use MadDM as a Script</div>
-    </div>
-
-
-.. raw:: html
-
     <div class="sphx-glr-thumbcontainer" tooltip="To Do">
 
 .. only:: html
@@ -95,6 +78,23 @@ Below is a gallery of various examples on the usage of MadDM and its features.
 .. raw:: html
 
       <div class="sphx-glr-thumbnail-title">Relic Density Computation in MadDM</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Run MadDM as a script, allowing for batch processing or automation.">
+
+.. only:: html
+
+  .. image:: /tutorial_and_examples/images/thumb/sphx_glr_scripts_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_tutorial_and_examples_scripts.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Use MadDM as a Script</div>
     </div>
 
 
@@ -128,8 +128,8 @@ Below is a gallery of various examples on the usage of MadDM and its features.
    /tutorial_and_examples/indirect_detection
    /tutorial_and_examples/scans
    /tutorial_and_examples/direct_detection
-   /tutorial_and_examples/scripts
    /tutorial_and_examples/relic_density
+   /tutorial_and_examples/scripts
    /tutorial_and_examples/getting_started
 
 
