@@ -58,6 +58,7 @@ class MADDMProcCharacteristic(banner_mod.ProcCharacteristic):
         self.add_param('has_relic_density', False)
         self.add_param('relic_density_off', False)
         self.add_param('has_direct_detection', False)
+        self.add_param('has_direct_electron', False)
         self.add_param('has_directional_detection', False)
         self.add_param('has_indirect_detection', False)
         self.add_param('has_indirect_spectral', False)
@@ -182,7 +183,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
  
         # Add the makefile 
         filename = os.path.join(self.dir_path,'Source','makefile')
-        self.write_source_makefile(writers.FortranWriter(filename))
+        self.write_source_makefile(writers.FortranWriter(filename), model)
 
     def get_dd_type(self, process):
         orders = process.get('orders')
@@ -968,8 +969,36 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
             p = self.model.get_particle(pdg)
             to_replace['quark_masses'].append('M(%s) = %s' % (pdg, p.get('mass')))
         to_replace['quark_masses'] = '\n           '.join(to_replace['quark_masses'])
-        
+
         writer.write(open(pjoin(MDMDIR, 'python_templates', 'direct_detection.f')).read() % to_replace)
+
+        """Adding the electron mass definition in dm_response_direct_e.f"""
+        
+        writer = open(pjoin(self.dir_path, 'src', 'dm_response_direct_e.f'), 'w')
+        to_replace = {'electron_mass':[]}
+        pdg = 11
+        p = self.model.get_particle(pdg)
+        to_replace['electron_mass'] = 'M_e = %s' % (p.get('mass'))
+        writer.write(open(pjoin(MDMDIR, 'python_templates', 'dm_response_direct_e.f')).read() % to_replace)
+
+        """Adding the electron mass definition and the maddm path in electron_recoil_signal.f"""
+
+        writer = open(pjoin(self.dir_path , 'src', 'electron_recoil_signal.f'), 'w')
+        to_replace = {'electron_mass':[],'maddm_path':[]}
+        pdg = 11
+        p = self.model.get_particle(pdg)
+        to_replace['electron_mass'] = 'M_e = %s' % (p.get('mass'))
+        to_replace['maddm_path'] = 'maddm_path = "' + MDMDIR +'"'
+        writer.write(open(pjoin(MDMDIR, 'python_templates', 'electron_recoil_signal.f')).read() % to_replace)
+
+        writer = open(pjoin(self.dir_path, 'src', 'direct_detection_RAPIDD.f'), 'w')
+        to_replace = {'quark_masses':[]}
+        for pdg in range(1,7):
+            p = self.model.get_particle(pdg)
+            to_replace['quark_masses'].append('M(%s) = %s' % (pdg, p.get('mass')))
+        to_replace['quark_masses'] = '\n           '.join(to_replace['quark_masses'])
+        writer.write(open(pjoin(MDMDIR, 'python_templates', 'direct_detection_RAPIDD.f')).read() % to_replace)
+        
         
 
 class Indirect_Reweight(rwgt_interface.ReweightInterface):

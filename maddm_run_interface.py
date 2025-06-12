@@ -51,9 +51,12 @@ try:
     from scipy.integrate import quad
     from scipy.optimize import brute, fmin, minimize_scalar, bisect
     from scipy.special import gammainc
+    from scipy import stats
+    from scipy.stats import poisson
+
 except ImportError as error:
     print(error)
-    logger.warning('scipy module not found! Some Indirect detection features will be disabled.')
+    logger.warning('scipy module not found! Some Indirect/Direct detection features will be disabled.')
     HAS_SCIPY = False 
 else:
     HAS_SCIPY = True
@@ -61,7 +64,7 @@ else:
 try:
     import numpy as np 
 except ImportError:
-    logger.warning('numpy module not found! Indirect detection features will be disabled.')
+    logger.warning('numpy module not found! Indirect/Direct detection features will be disabled.')
     HAS_NUMPY = False
 else:
     HAS_NUMPY = True
@@ -77,7 +80,6 @@ logger_tuto = logging.getLogger('tutorial_plugin')
 #logger.setLevel(10) #level 20 = INFO
 
 MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
-
 
 #Is there a better definition of infinity?
 __infty__ = float('inf')
@@ -97,9 +99,9 @@ class ExpConstraints:
         # self._dd_sd_neutron_limit_file = pjoin(MDMDIR, 'ExpData', 'Lux_2017_sd_neutron.dat')
 
         self._dd_limit_file = {
-            'si'        : pjoin(MDMDIR, 'ExpData', 'Xenon1T_data_2018.dat'),
-            'sd_proton' : pjoin(MDMDIR, 'ExpData', 'Pico60_sd_proton.dat'),
-            'sd_neutron': pjoin(MDMDIR, 'ExpData', 'Lux_2017_sd_neutron.dat')
+            'si'        : pjoin(MDMDIR, 'ExpData', 'LZ2024_SI.dat'),  
+            'sd_proton' : pjoin(MDMDIR, 'ExpData', 'Pico60_sd_proton_2019.dat'),
+            'sd_neutron': pjoin(MDMDIR, 'ExpData', 'LZ2024_SDn.dat')
         }
 
         self._dd_limit_mdm = dict()
@@ -1571,10 +1573,10 @@ class MADDMRunCmd(cmd.CmdShell):
   "       ########//#####\\\\###########                   "+bcolors.FAIL+"arXiv:2107.04598        \n"+bcolors.ENDC+\
   "       ######################### ## ___________________________________________\n"+\
   "       ####################### 0  # "+bcolors.OKGREEN+" _     _               _  _____   _     _  \n"+bcolors.ENDC+\
-  "       #############   0  ###    ## "+bcolors.OKGREEN+"| \   / |   ___    ___|| | ___ \ | \   / | \n"+bcolors.ENDC+\
+  "       #############   0  ###    ## "+bcolors.OKGREEN+"| \\   / |   ___    ___|| | ___ \\ | \\   / | \n"+bcolors.ENDC+\
   "       ##############    #########  "+bcolors.OKGREEN+"||\\\\ //|| / __ |  / __ | ||   || ||\\\\ //|| \n"+bcolors.ENDC+\
-  "        ##########################  "+bcolors.OKGREEN+"||  V  || ||__||  ||__|| ||___|| ||  V  || \n"+bcolors.ENDC+\
-  "         ###################   ##   "+bcolors.OKGREEN+"||     || \_____\ \____| |_____/ ||     || \n"+bcolors.ENDC+\
+  "        ##########################  "+bcolors.OKGREEN+"||  \\V  || ||__||  ||__|| ||___|| ||  \\V  || \n"+bcolors.ENDC+\
+  "         ###################   ##   "+bcolors.OKGREEN+"||     || \\_____\\ \\____| |_____/ ||     || \n"+bcolors.ENDC+\
   "          ############       ###    ___________________________________________\n"+\
   "           ##########    ######                                                 \n"+\
   "             ################                                                   \n"+\
@@ -1794,6 +1796,7 @@ class MADDMRunCmd(cmd.CmdShell):
         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
 
         result['tot_SM_xsec'] = -1
+        alphaq_values = {"alpha_d": [], "alpha_u": [], "alpha_s": [], "alpha_c": [], "alpha_b": [], "alpha_t": [] }
 
         for line in open(pjoin(self.dir_path, output)):
       
@@ -1803,6 +1806,20 @@ class MADDMRunCmd(cmd.CmdShell):
                     oname = splitline[0].strip(':')+'_'+splitline[1]
                     val = splitline[2]
                     result[oname.split(':')[0] ] = val
+
+                ##### explicitly tell the code how to read alphas here 
+
+
+                parts = line.split(":")
+                #print(parts)
+                if parts[0].strip() in alphaq_values.keys():
+                    values = list(map(float, parts[1:5]))
+                    alphaq_values[parts[0].strip()] = np.array(values)  # Store as NumPy array
+
+    
+
+
+                #####
 
                 else:
                     if self._two2twoLO:
@@ -1823,11 +1840,46 @@ class MADDMRunCmd(cmd.CmdShell):
                         str_proc = StrProcess(oname, self.processes_names_map)
                         self.str_processes[oname] = str_proc
                         result["%%_relic_%s" % oname] = secure_float_f77(splitline[1])
+
+
+                        
+                    if 'Xenon10_bins' in line:
+                        Xenon10_bins = []
+                        for i in range(1,9):
+                            Xenon10_bins.append(secure_float_f77(splitline[i]))
+                        result['Xenon10_bins'] = Xenon10_bins
+
+                    elif 'Xenon10_signal' in line:
+                        Xenon10_signal = []
+                        for i in range(1,8):
+                            Xenon10_signal.append(secure_float_f77(splitline[i]))
+                        result['Xenon10_signal'] = Xenon10_signal
+
+                    elif 'Xenon10_obs' in line:
+                        Xenon10_obs = []
+                        for i in range(1,8):
+                            Xenon10_obs.append(secure_float_f77(splitline[i]))
+                        result['Xenon10_obs'] = Xenon10_obs
+
+                    elif 'Xenon1T_signal' in line:
+                        result['Xenon1T_signal'] = secure_float_f77(splitline[1])
+
+                    elif 'Xenon1T_bkg' in line:
+                        result['Xenon1T_bkg'] = secure_float_f77(splitline[1])
+
+                    elif 'Xenon1T_obs' in line:
+                        result['Xenon1T_obs'] = secure_float_f77(splitline[1])
+
+                    elif 'sigma_e' in line:
+                        result['sigma_e'] = secure_float_f77(splitline[1])
+
                     else:
                         result[splitline[0].split(':')[0]] = secure_float_f77(splitline[1])
                             
         np_names = ['g','nue','numu','nutau']
-        result['sigmav(xf)'] *= GeV2pb*pb2cm3
+        
+        if result['sigmav(xf)']!=-1:
+            result['sigmav(xf)'] *= GeV2pb*pb2cm3
 
         if str(self.mode['indirect']).startswith('flux'):
             for chan in np_names + ['gammas','neutrinos_e', 'neutrinos_mu' , 'neutrinos_tau']: # set -1 to the possible cases
@@ -1843,7 +1895,14 @@ class MADDMRunCmd(cmd.CmdShell):
 
         else: result['xsi'] = 1.0
 
+        RP_rel_path = self.plugin_path[0] + "/maddm/vendor/RAPIDD_for_DM/rapidd/"
+        RP_abs_path = os.path.abspath(RP_rel_path)
+        sys.path.insert(0, RP_abs_path)
+        from alpha_map import sigmaSI_nucleon_mdm, sigmaSD_nucleon_mdm
+
         if self.mode['direct']:
+            result['sigmaN_SI_p'], result['sigmaN_SI_n'] = sigmaSI_nucleon_mdm(self.maddm_card, alphaq_values, mdm)
+            result['sigmaN_SD_p'], result['sigmaN_SD_n'] = sigmaSD_nucleon_mdm(self.maddm_card, alphaq_values, mdm)
             result['sigmaN_SI_n']    *= GeV2pb*pb2cm2
             result['sigmaN_SI_p']    *= GeV2pb*pb2cm2
             result['sigmaN_SD_p']    *= GeV2pb*pb2cm2
@@ -1853,8 +1912,28 @@ class MADDMRunCmd(cmd.CmdShell):
             result['lim_sigmaN_SD_p'] = self.limits.SD_max(mdm, 'p')
             result['lim_sigmaN_SD_n'] = self.limits.SD_max(mdm, 'n')
 
+
+        from calc_dRdE import DDrate_save
+        rapidd_out_path = pjoin(self.dir_path,'output', self.run_name)
+
+        if (self.maddm_card['vescape'] == 544.0) and (self.maddm_card['vmp'] == 238.0):
+            DDrate_save(self.maddm_card, alphaq_values, mdm, rapidd_out_path)
+
+        else:
+            from halo import gen_shm_table 
+            halo_path = rapidd_out_path + '/SHM.dat'
+            gen_shm_table(halo_path, self.maddm_card)
+            DDrate_save(self.maddm_card, alphaq_values, mdm, rapidd_out_path, halo_path=halo_path)
+
+
         self.last_results = result
         self.last_results['run'] = self.run_name
+
+        # if self.mode['direct'] == 'p-value':
+            
+
+        if self.mode['direct_electron'] and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
+            self.launch_direct_electron()
                           
 #        if self.mode['indirect'] and not self._two2twoLO:
 #            with misc.MuteLogger(names=['madevent','madgraph'],levels=[50,50]):
@@ -1951,6 +2030,7 @@ class MADDMRunCmd(cmd.CmdShell):
             order.append('xsi')
 
             # *** Direct Detection
+            print("What happens here\n")
             if self.mode['direct'] :
                 order += ['sigmaN_SI_p', 'lim_sigmaN_SI_p', 
                           'sigmaN_SI_n', 'lim_sigmaN_SI_n',
@@ -1958,8 +2038,11 @@ class MADDMRunCmd(cmd.CmdShell):
                           'sigmaN_SD_n', 'lim_sigmaN_SD_n']
 
            
-            if self.mode['direct'] == 'directional':
-                order += ['Nevents', 'smearing']
+            # if self.mode['direct'] == 'directional':
+            #     order += ['Nevents', 'smearing']
+
+            if self.mode['direct_electron'] and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
+                order += ['pvalue_Xenon10','pvalue_Xenon1T']
 
             if self.mode['capture']:
                 detailled_keys = [k for k in self.last_results if k.startswith('ccap_') and '#' not in k]
@@ -2060,6 +2143,78 @@ class MADDMRunCmd(cmd.CmdShell):
                         #self.save_remove_output(scan = True)
 
             param_card_iterator.write(pjoin(self.dir_path,'Cards','param_card.dat'))
+
+    def launch_direct_electron(self):
+
+        def get_pvalue_min(n_obs,expected_val):
+            pvalues = []
+            for obs,exp in zip(n_obs,expected_val):
+                pvalues.append(poisson.cdf(obs,exp))
+            return min(pvalues)
+
+        def get_pvalue(obs,sig,bkg):
+            pvalue = poisson.cdf(obs,sig+bkg)
+            return pvalue
+        
+        self.last_results['pvalue_Xenon10'] = -1
+        self.last_results['pvalue_Xenon1T'] = -1
+        
+        if ("Xenon10_signal" not in self.last_results) and ("Xenon1T_signal" not in self.last_results):
+            logger.warning("XENON10 or XENON1T signal not found, exclusion limits computation for electronic recoil is disabled.")
+            return
+        else:
+            if HAS_NUMPY is False:
+                logger.warning("numpy module not available, exclusion limits computation is disabled.")
+                return
+            elif HAS_SCIPY is False:
+                logger.warning("scipy module not available, exclusion limits computation is disabled.")
+                return
+            elif self.last_results['DM_response']!=-1:
+                Xenon10_sig = self.last_results['Xenon10_signal']
+                Xenon10_obs = self.last_results['Xenon10_obs']
+                Xenon1T_sig = self.last_results['Xenon1T_signal']
+                Xenon1T_bkg = self.last_results['Xenon1T_bkg']
+                Xenon1T_obs = self.last_results['Xenon1T_obs']
+
+                self.last_results['pvalue_Xenon10'] = get_pvalue_min(Xenon10_obs,Xenon10_sig)
+                self.last_results['pvalue_Xenon1T'] = get_pvalue(Xenon1T_obs,Xenon1T_sig,Xenon1T_bkg)
+
+
+    def launch_direct_electron(self):
+
+        def get_pvalue_min(n_obs,expected_val):
+            pvalues = []
+            for obs,exp in zip(n_obs,expected_val):
+                pvalues.append(poisson.cdf(obs,exp))
+            return min(pvalues)
+
+        def get_pvalue(obs,sig,bkg):
+            pvalue = poisson.cdf(obs,sig+bkg)
+            return pvalue
+        
+        self.last_results['pvalue_Xenon10'] = -1
+        self.last_results['pvalue_Xenon1T'] = -1
+        
+        if ("Xenon10_signal" not in self.last_results) and ("Xenon1T_signal" not in self.last_results):
+            logger.warning("XENON10 or XENON1T signal not found, exclusion limits computation for electronic recoil is disabled.")
+            return
+        else:
+            if HAS_NUMPY is False:
+                logger.warning("numpy module not available, exclusion limits computation is disabled.")
+                return
+            elif HAS_SCIPY is False:
+                logger.warning("scipy module not available, exclusion limits computation is disabled.")
+                return
+            elif self.last_results['DM_response']!=-1:
+                Xenon10_sig = self.last_results['Xenon10_signal']
+                Xenon10_obs = self.last_results['Xenon10_obs']
+                Xenon1T_sig = self.last_results['Xenon1T_signal']
+                Xenon1T_bkg = self.last_results['Xenon1T_bkg']
+                Xenon1T_obs = self.last_results['Xenon1T_obs']
+
+                self.last_results['pvalue_Xenon10'] = get_pvalue_min(Xenon10_obs,Xenon10_sig)
+                self.last_results['pvalue_Xenon1T'] = get_pvalue(Xenon1T_obs,Xenon1T_sig,Xenon1T_bkg)
+
 
     def launch_multinest(self):
 
@@ -3074,10 +3229,10 @@ class MADDMRunCmd(cmd.CmdShell):
 
         if self.mode['direct']:
             # units = self.last_results['GeV2pb*pb2cm2']
-            direct_names = [ { 'n': 'SigmaN_SI_p', 'sig': self.last_results['sigmaN_SI_p'], 'lim': self.last_results['lim_sigmaN_SI_p'], 'exp': 'Xenon1ton' },
-                             { 'n': 'SigmaN_SI_n', 'sig': self.last_results['sigmaN_SI_n'], 'lim': self.last_results['lim_sigmaN_SI_n'], 'exp': 'Xenon1ton' },
-                             { 'n': 'SigmaN_SD_p', 'sig': self.last_results['sigmaN_SD_p'], 'lim': self.last_results['lim_sigmaN_SD_p'], 'exp': 'Pico60'    },
-                             { 'n': 'SigmaN_SD_n', 'sig': self.last_results['sigmaN_SD_n'], 'lim': self.last_results['lim_sigmaN_SD_n'], 'exp': 'Lux2017'   } ]
+            direct_names = [ { 'n': 'SigmaN_SI_p', 'sig': self.last_results['sigmaN_SI_p'], 'lim': self.last_results['lim_sigmaN_SI_p'], 'exp': 'LZ2024' },
+                             { 'n': 'SigmaN_SI_n', 'sig': self.last_results['sigmaN_SI_n'], 'lim': self.last_results['lim_sigmaN_SI_n'], 'exp': 'LZ2024' },
+                             { 'n': 'SigmaN_SD_p', 'sig': self.last_results['sigmaN_SD_p'], 'lim': self.last_results['lim_sigmaN_SD_p'], 'exp': 'Pico60 (2019)'    },
+                             { 'n': 'SigmaN_SD_n', 'sig': self.last_results['sigmaN_SD_n'], 'lim': self.last_results['lim_sigmaN_SD_n'], 'exp': 'LZ2024'   } ]
 
             self.last_results['direct_results'] = direct_names
 
@@ -3092,7 +3247,30 @@ class MADDMRunCmd(cmd.CmdShell):
 #        if self.mode['direct'] == 'directional':
 #            logger.info(' Nevents          : %i', self.last_results['Nevents'])
 #            logger.info(' smearing         : %.2e', self.last_results['smearing'])
-        
+
+        if self.mode['direct_electron'] and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
+
+            def det_message_screen(n1,n2):
+                if n2 < 0 :                 return '%s NO LIMIT %s' % (bcolors.GRAY, bcolors.ENDC)
+                elif   n1 > n2 and n2 >= 0 : return '%s EXCLUDED %s' % (bcolors.FAIL, bcolors.ENDC)
+                elif   n2 > n1            : return '%s ALLOWED  %s'  % (bcolors.OKGREEN, bcolors.ENDC) 
+                elif   n1 <= 0            : return 'No Theory Prediction'
+
+            pval_Xenon10 = self.last_results['pvalue_Xenon10']
+            pval_Xenon1T = self.last_results['pvalue_Xenon1T']
+            sigma_e = self.last_results['sigma_e']
+            if pval_Xenon10==-1 and pval_Xenon1T==-1:
+                logger.info( self.form_s('Sigma_e             All DM = ') + self.form_n(-1) + self.form_s('      ' + det_message_screen(0.05,pval_Xenon10)) + self.form_s('     Xenon10 p_val    = ') + self.form_n(pval_Xenon10))
+                logger.info( self.form_s('Sigma_e             All DM = ') + self.form_n(-1) + self.form_s('      ' + det_message_screen(0.05,pval_Xenon1T)) + self.form_s('     Xenon1ton p_val  = ') + self.form_n(pval_Xenon1T))
+            else:
+                tot_sig_Xenon10 = 0
+                for sig in self.last_results['Xenon10_signal']:
+                    tot_sig_Xenon10 += sig
+                tot_sig_Xenon1T = self.last_results['Xenon1T_signal']
+                    
+                logger.info( self.form_s('Sigma_e             All DM = ') + self.form_n(sigma_e) + self.form_s('      ' + det_message_screen(0.05,pval_Xenon10)) + self.form_s('     Xenon10 p_val    = ') + self.form_n(pval_Xenon10))
+                logger.info( self.form_s('Sigma_e             All DM = ') + self.form_n(sigma_e) + self.form_s('      ' + det_message_screen(0.05,pval_Xenon1T)) + self.form_s('     Xenon1ton p_val  = ') + self.form_n(pval_Xenon1T))
+
         if self.mode['capture']:
             logger.info('\n capture coefficients: ')
             detailled_keys = [k for k in self.last_results.keys() if k.startswith('ccap')]
@@ -3199,7 +3377,7 @@ class MADDMRunCmd(cmd.CmdShell):
         logger.info('')
 
         if not self.param_card_iterator:
-            self.save_summary_single(relic = self.mode['relic'], direct = self.mode['direct'], \
+            self.save_summary_single(relic = self.mode['relic'], direct = self.mode['direct'], direct_electron = self.mode['direct_electron'], \
                                 indirect = self.mode['indirect'], spectral = self.mode['spectral'],
                                 fluxes_source= self.mode['indirect'].startswith('flux') if isinstance(self.mode['indirect'],str) else self.mode['indirect'], 
                                 fluxes_earth = False )                  
@@ -3495,7 +3673,7 @@ class MADDMRunCmd(cmd.CmdShell):
                         continue
                 logger.info("-"*len_headers)
 
-    def save_summary_single(self, relic = False, direct = False , indirect = False , spectral = False , fluxes_source = False , fluxes_earth = False):
+    def save_summary_single(self, relic = False, direct = False , direct_electron = False, indirect = False , spectral = False , fluxes_source = False , fluxes_earth = False):
 
         point = self.last_results['run']
         # creting symlink to Events folder in Inidrect output directory
@@ -3509,6 +3687,8 @@ class MADDMRunCmd(cmd.CmdShell):
         def form_n(num):
             formatted = '{0:3.2e}'.format(num)
             return formatted
+        
+        mdm= self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
 
         out = open(pjoin(self.dir_path, 'output', point, 'MadDM_results.txt'),'w')
  
@@ -3548,6 +3728,25 @@ class MADDMRunCmd(cmd.CmdShell):
                 ul = D['lim']
                 exp = D['exp']
                 out.write(form_s(D['n']) + '= ' + form_s('['+ form_n(cross) + ',' + form_n(ul) + ']' ) + '# '+exp + '\n')
+
+        if direct_electron and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
+
+            for name in ['dRdlogE_e_recoil.dat','dRdS2_Xenon1T_e_recoil.dat','dRdS2_Xenon10_e_recoil.dat',
+                         'signal_e_recoil.dat','dRdE_e_recoil.dat','dRdS2_Xenon1T_e_recoil.dat']:
+                if os.path.isfile(pjoin(self.dir_path, 'output',name)):
+                   shutil.move(pjoin(self.dir_path, 'output',name) ,  pjoin(self.dir_path, 'output', point , name))
+            
+            out.write('\n################################################\n')
+            out.write('# Direct Detection - Electronic Recoil [cm^2]  #\n')
+            out.write('################################################\n\n')
+
+            cross_DMe = self.last_results['sigma_e']
+            pval10 = self.last_results['pvalue_Xenon10']
+            pval1T = self.last_results['pvalue_Xenon1T']
+            out.write(form_s('Sigma_e ref.') + '= ' + form_s(form_n(cross_DMe)) + '\n')
+            out.write(form_s('Xenon10_pvalue') + '= ' + form_s(form_n(pval10)) + '\n')
+            out.write(form_s('Xenon1T_pvalue') + '= ' + form_s(form_n(pval1T)) + '\n')
+        
 
         if indirect or spectral:      
 
@@ -3773,7 +3972,8 @@ class MADDMRunCmd(cmd.CmdShell):
             # create the inc file for maddm
             self.maddm_card.set('do_relic_density', self.mode['relic'], user=False)
             self.maddm_card.set('do_direct_detection', True if self.mode['direct'] else False, user=False)
-            self.maddm_card.set('do_directional_detection', self.mode['direct'] == 'directional', user=False)
+            #self.maddm_card.set('do_directional_detection', self.mode['direct'] == 'directional', user=False)
+            self.maddm_card.set('do_direct_electron', True if self.mode['direct_electron'] else False, user=False)
             self.maddm_card.set('do_capture', self.mode['capture'], user=False)
             self.maddm_card.set('do_indirect_detection', True if self.mode['indirect'] else False, user=False)
             self.maddm_card.set('do_indirect_spectral', self.mode['spectral'], user=False)
@@ -3938,10 +4138,13 @@ class Indirect_PY8Card(banner_mod.PY8Card):
         # self.add_param("StringZ:aExtraDiquark", 1.246986)
 
 class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
-    """ """
+    """ 
+       self.switch is a dict of type string values
+    """
 
     to_control= [('relic', 'Compute the Relic Density'),
                  ('direct', 'Compute direct(ional) detection'),
+                 ('direct_electron', 'Compute direct detection electronic recoil'),
                  ('indirect', 'Compute indirect detection/flux (cont spectrum)'),
                  ('spectral', 'Compute indirect detection in aX (line spectrum)'),
                  ('nestscan', 'Run Multinest scan'),
@@ -3957,7 +4160,8 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
     def set_default_relic(self):
         """set the default value for relic=
            if relic has been generated when calling indirect detection, then it is set as 'OFF' by default.
-           the 'Not Avail.' case happens when relic has not been generated neither explicitly nor through indirect detection"""
+           the 'Not Avail.' case happens when relic has not been generated neither explicitly nor through indirect detection
+        """
         
         if self.availmode['relic_density_off']: # this can be True only if self.availmode['has_relic_density'] is True as well, that would correspond to generate relic_density during ID
             self.switch['relic'] = 'OFF'
@@ -3987,10 +4191,12 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
     def set_default_direct(self):
         """set the default value for direct="""
         
+        # if self.availmode['has_directional_detection']:
+        #     self.switch['direct'] = 'directional'
         if self.availmode['has_directional_detection']:
-            self.switch['direct'] = 'directional'
-        elif self.availmode['has_direct_detection']:
-            self.switch['direct'] = 'direct'        
+            self.switch['direct'] = 'direct'
+        # elif self.availmode['has_direct_detection']:
+        #     self.switch['direct'] = 'direct'        
         else:
             self.switch['direct'] = 'Not Avail.'
 
@@ -4002,7 +4208,8 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
             return getattr(self, 'allowed_direct')
 
         if self.availmode['has_directional_detection']:
-            self.allowed_direct =  ['directional', 'direct','OFF']
+            # self.allowed_direct =  ['directional', 'direct','OFF']
+            self.allowed_direct =  ['direct','OFF']
         elif self.availmode['has_direct_detection']:
             self.allowed_direct =  ['direct','OFF']
         else:
@@ -4022,11 +4229,11 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         """return the command to set the maddm_card consistent with the switch"""
         
         cmd =[]
-        if value == 'directional':
-            cmd.append('set do_directional_detection True')
-            value = 'direct'
-        else:
-            cmd.append('set do_directional_detection False')
+        # if value == 'directional':
+        #     cmd.append('set do_directional_detection True')
+        #     value = 'direct'
+        # else:
+        #     cmd.append('set do_directional_detection False')
         
         if value in ['ON', 'direct']:
             cmd.append('set do_direct_detection True')
@@ -4035,6 +4242,31 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
 
         return cmd
 
+    ####################################################################
+    # everything related to direct_electron option
+    ####################################################################    
+    def set_default_direct_electron(self):
+        """set the default value for direct_electron="""
+        
+        if not HAS_NUMPY:
+            self.switch['spectral'] = 'Not Avail. (numpy missing)'
+        elif not HAS_SCIPY:
+            self.switch['spectral'] = 'Not Avail. (scipy missing)'
+        elif self.availmode['has_direct_electron']:
+            self.switch['direct_electron'] = 'ON'
+        else:
+            self.switch['direct_electron'] = 'Not Avail.'
+
+    def get_allowed_direct_electron(self):
+        """Specify which parameter are allowed for direct_electron="""
+        
+        if hasattr(self, 'allowed_direct_electron'):
+            return getattr(self, 'allowed_direct_electron')
+
+        if self.availmode['has_direct_electron']:
+            self.allowed_direct_electron = ['ON', 'OFF']
+        else:
+            return []
 
     ####################################################################
     # everything related to indirect option
@@ -4322,7 +4554,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         
         # Technical note: 
         # Note that some special trigger happens for 
-        #    8/9 trigger via self.trigger_8 and self.trigger_9
+        #    8/9 trigger via self.trigger_9 and self.trigger_10
         #    If you change the numbering, please change the name of the 
         #    trigger function accordingly.
         
@@ -4331,19 +4563,19 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
  * Enter the name/number to open the editor
  * Enter a path to a file to replace the card
  * Enter %(start_bold)sset NAME value%(stop)s to change any parameter to the requested value
- /=============================================================================\ 
- |  6. Edit the model parameters    [%(start_underline)sparam%(stop)s]                                    |  
- |  7. Edit the MadDM options       [%(start_underline)smaddm%(stop)s]                                    |
+ /=============================================================================\\ 
+ |  7. Edit the model parameters    [%(start_underline)sparam%(stop)s]                                    |  
+ |  8. Edit the MadDM options       [%(start_underline)smaddm%(stop)s]                                    |
 """
 
         current_val  = self.answer # use that to be secure with conflict -> always propose card
         if current_val['nestscan'] == "ON" or self.switch["nestscan"] ==  "ON":
-            question += """ |  8. Edit the Multinest options  [%(start_underline)smultinest%(stop)s]                                 |\n"""
+            question += """ |  9. Edit the Multinest options  [%(start_underline)smultinest%(stop)s]                                 |\n"""
     
         if current_val['indirect'].startswith('flux') or self.switch["indirect"].startswith('flux'):
-            question += """ |  9. Edit the Showering Card for flux  [%(start_underline)sflux%(stop)s]                                |\n"""
+            question += """ | 10. Edit the Showering Card for flux  [%(start_underline)sflux%(stop)s]                                |\n"""
         
-        question+=""" \=============================================================================/\n"""
+        question+=""" \\=============================================================================/\n"""
         self.question =  question % {'start_green' : '\033[92m',
                          'stop':  '\033[0m',
                          'start_underline': '\033[4m',
@@ -4370,7 +4602,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         except cmd.NotValidInput as error:
             return common_run.AskforEditCard.default(self, line)     
         
-    def trigger_8(self, line):
+    def trigger_9(self, line):
         """ trigger function for default function:
             allows to modify the line/ trigger action.
             
@@ -4384,12 +4616,12 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         #  2) go to the line edition
         self.set_switch('nestscan', "ON", user=True) 
         if self.switch['nestscan'] == "ON":
-            return '8 %s' % line
+            return '9 %s' % line
         # not valid nestscan - > reask question
         else:
             return 
 
-    def trigger_9(self, line):
+    def trigger_10(self, line):
         """ trigger function for default function:
             allows to modify the line/ trigger action.
             
@@ -4419,9 +4651,9 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         if self.maddm['indirect_flux_source_method'] != 'pythia8' and self.maddm['indirect_flux_source_method'] != 'vincia':
             self.setDM('indirect_flux_source_method', 'pythia8',loglevel=30)
         
-        return '9 %s' % line
+        return '10 %s' % line
     
-    trigger_flux = trigger_9
+    trigger_flux = trigger_10
     
     def do_compute_widths(self, line):
         """normal fct but ensure that self.maddm_card is up-to-date"""
@@ -4537,6 +4769,10 @@ When you are done with such edition, just press enter (or write 'done' or '0')
         logger.info('     ')
         logger.info("  directional", "$MG:BOLD")
         logger.info("     Directional event rate (double differential event rate)")
+        
+    def help_direct_electron(self):
+        logger.info("direct_electron flag can take two values: ON/OFF")
+        logger.info("  It controls if you are going to compute the electronic recoil for direct detection")
         
     def help_relic(self):
         logger.info("relic flag can take two values: ON/OFF")
@@ -4894,10 +5130,10 @@ class MadDMCard(banner_mod.RunCard):
         self.add_param('relic_canonical', True)
         self.add_param('do_relic_density', True, system=True)
         self.add_param('do_direct_detection', False, system=True)
+        self.add_param('do_direct_electron', False, system=True)
         self.add_param('do_directional_detection', False, system=True)
         self.add_param('do_capture', False, system=True)
         self.add_param('do_flux', False, system=True, include=False)
-        
 
         self.add_param('do_indirect_detection', False, system=True)
         self.add_param('do_indirect_spectral', False, system=True)
@@ -4970,9 +5206,13 @@ class MadDMCard(banner_mod.RunCard):
     - 12: CF4
     - 13: CS2""")
         
-        #Setting up the DM constants
-        self.add_param('vMP', 220.0)
-        self.add_param('vescape', 650.0)
+        #Setting up the DM constants following Eur. Phys. J. C (2021) 81: 907.
+        self.add_param('vMP', 238.0)
+        self.add_param('vescape', 544.0)
+        self.add_param('vEarth_mod', 29.8)
+        self.add_param('vSun_r', 11.1)
+        self.add_param('vSun_phi', 12.2)
+        self.add_param('vSun_theta', 7.3)
         self.add_param('rhoDM', 0.3)
         #detector 
         self.add_param('detector_size', 1000.0)
@@ -4991,6 +5231,10 @@ class MadDMCard(banner_mod.RunCard):
         self.add_param('day_bins', 10)
         self.add_param('smearing', False)
         
+        # For electronic recoil
+        self.add_param('direct_electron_mode', 'auto', allowed=['auto', 'always'], include=True)
+        self.add_param('direct_electron_dm_mass_max', 1., comment="Max value of DM mass allowed to make the electronic recoil computation in case direct_electron_mode is set to 'auto'", include=True, hidden=True)
+
         #For the solar/earth capture rate
 
         # velocities for indirect detection
@@ -5086,6 +5330,21 @@ class MadDMCard(banner_mod.RunCard):
                            hidden = True)
         self.add_param('template_line_experiment_constraints_file', 'None', comment='file containing 3 columns [ DM mass (GeV), <sigmav> (cm^3 s^-1), flux (cm^-2 s^-1) ] related to the constraints on gamma-line searches for the template experiment; comments must be prepended with \'#\'; this file must be placed in $MADDM_PATH/ExpData/', include = False, \
                            hidden = True)
+
+
+    def write_include_file(self, output_dir, output_file=None):
+        """Writes the maddm_card.inc file in output_dir."""
+
+        # ensure that all parameter are coherent and fix those if needed
+        self.check_validity()
+
+        #ensure that system only parameter are correctly set
+        self.update_system_parameter_for_include()
+
+        self.includepath['maddm_card.inc'] = self.includepath[True]
+        for incname in ['maddm_card.inc']:
+            self.write_one_include_file(output_dir, incname, output_file)
+
 
     def write(self, output_file, template=None, python_template=False,
               write_hidden=False):

@@ -34,3 +34,10 @@ GC_6 = Coupling(name = 'GC_6',
                 value = '2*complex(0,1)*vdmm*vSIe',
                 order = {'SIEFFV':2})
 
+GC_7 = Coupling(name = 'GC_7',
+                value = 'complex(0,1)*GDMA',
+                order = {'SDEFFF':2})
+
+GC_8 = Coupling(name = 'GC_8',
+                value = 'complex(0,1)*GDMS',
+                order = {'SIEFFF':2})
