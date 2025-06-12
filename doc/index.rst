@@ -19,8 +19,8 @@ Requirements
 
 - MadGraph v2.9 (LTS version) is required to run the latest version of MadDM, MadGraph v3.* may be supported but more testing is necessary.
 - Python 3.6+
-- `gfortran`
-- `make`
+- ``gfortran``
+- ``make``
 - python package:
     - `six <https://pypi.org/project/six/>`__: to support Python 2.7 as well
     - `numpy <https://numpy.org/>`__
@@ -33,43 +33,43 @@ Given **MadDM** depends on **MadGraph**, we first need to install the latter, fo
 
 1. Download a tarball for the latest version v2.9.* from the `MadGraph5_aMC@NLO download page <https://launchpad.net/mg5amcnlo/+download>`__ (e.g. for v2.9.24 - the link may change for newer/older versions):
 
-    .. code-block:: bash
+   .. code-block:: bash
 
      wget https://launchpad.net/mg5amcnlo/3.0/3.6.x/+download/MG5_aMC_v2.9.24.tar.gz
 
 2. Then unpack the tarball and change into the directory (we use as example the version v2.9.24, but you can use any other version, change the version number accordingly):
 
-    .. code-block:: bash
+   .. code-block:: bash
 
      tar xzf MG5_aMC_v2.9.24.tar.gz
      cd MG5_aMC_v2.9.24
 
 2. Start MadGraph by running:
 
-    .. code-block:: bash
+   .. code-block:: bash
 
      ./bin/mg5_aMC
 
 3. Type the following in the command line:
 
-    .. code-block:: text
+   .. code-block:: text
 
      MG5_aMC>install maddm
 
 4. Quit MadGraph and run MadDM with:
 
-    .. code-block:: bash
+   .. code-block:: bash
 
      ./bin/maddm.py
 
 5. Install some prerequisites: `Pythia <https://pythia.org/>`__ and the tabulated spectra `CosmiXs <https://github.com/ajueid/CosmiXs>`__ (and `PPPC4DMID <http://www.marcocirelli.net/PPPC4DMID.html>`__):
 
-    .. code-block:: text
+   .. code-block:: text
 
      MadDM>install pythia8
      MadDM>install PPPC4DMID
 
-   The installation of Pythia 8 will take care of automatically installing also `LHAPDF <https://www.lhapdf.org/index.html>`__, `zlib` and the interface in between MadGraph and Pythia (`mg5amc_py8_interface`), while the command `install PPPC4DMID` will also install CosmiXs.
+   The installation of Pythia 8 will take care of automatically installing also `LHAPDF <https://www.lhapdf.org/index.html>`__, ``zlib`` and the interface in between MadGraph and Pythia (``mg5amc_py8_interface``), while the command ``install PPPC4DMID`` will also install CosmiXs.
 
 6. You are now set, have fun!
 
