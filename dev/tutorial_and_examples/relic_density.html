@@ -416,7 +416,66 @@ to download the full example code.</p>
 </div>
 <section class="sphx-glr-example-title" id="relic-density-computation-in-maddm">
 <span id="sphx-glr-tutorial-and-examples-relic-density-py"></span><h1>Relic Density Computation in MadDM<a class="headerlink" href="#relic-density-computation-in-maddm" title="Link to this heading">#</a></h1>
-<p>To Do</p>
+<p>Compute the relic density and thermally averaged cross section of a dark matter candidate using MadDM.</p>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Link to this heading">#</a></h2>
+<p>The code is able to handle the full eﬀects of co-annihilations and resonant
+annihilation in a generic model. In models which contain more than one dark matter particle,
+MadDM can solve either the full set of coupled density evolution equations or a single equation
+involving eﬀective thermally averaged cross sections. The former gives MadDM the ability to
+calculate relic density in models which allow for dark matter conversions.</p>
+</section>
+<section id="relic-density-of-a-simplified-dm-model">
+<h2>Relic Density of a Simplified DM Model<a class="headerlink" href="#relic-density-of-a-simplified-dm-model" title="Link to this heading">#</a></h2>
+<p>In this example, we compute the relic density and the thermally averaged cross section at freeze-out of a vector mediated
+fermionic dark matter candidate.</p>
+<p>First, import the model and define the dark matter candidate. We use the <code class="docutils literal notranslate"><span class="pre">DMsimp_s_spin1</span></code> model.
+Generally, for DMsimp models, you can choose between Xr (real scalar DM), Xc (complex scalar DM)
+and Xd (Dirac spinor DM).</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; import model import model DMsimp_s_spin1
+MadDM&gt; define darkmatter xd
+</pre></div>
+</div>
+<p>Then, generate the relic density processes with:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; generate relic_density
+</pre></div>
+</div>
+<p>Next, create the process folder. In this case, we call it <code class="docutils literal notranslate"><span class="pre">RD_spin1</span></code>, but you can choose any name you like. Then launch the process:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; output RD_spin1
+MadDM&gt; launch RD_spin1
+</pre></div>
+</div>
+<p>Select to run the <code class="docutils literal notranslate"><span class="pre">relic</span></code> module (but it should be already ON) by entering:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; relic = ON
+</pre></div>
+</div>
+<p>You can set the model parameters in the <code class="docutils literal notranslate"><span class="pre">param_card.dat</span></code> by pressing 6, or by editing the file directly in the process folder (in this case <code class="docutils literal notranslate"><span class="pre">DD_NR_spin0/Cards/param_card.dat</span></code>).</p>
+<p>You can set the MadDM parameters (such as the halo parameters, recoil energy range and much more) in the <code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code> by pressing 7,
+or by editing the file directly in the process folder (in this case <code class="docutils literal notranslate"><span class="pre">DD_NR_spin0/Cards/maddm_card.dat</span></code>).</p>
+<p>Once you are all set, you can run the process by pressing Enter.</p>
+<p>This module will first evaluate the relic density, flagging it as either underabundant or overabundant.</p>
+<p>If also shows the freeze-out parameter and the thermally averaged cross section at freeze-out.</p>
+<p>The parameter <code class="docutils literal notranslate"><span class="pre">xsi</span></code> is the relic density rescaling factor.</p>
+<p>Finally, MadDM shows the contributions of each annihilation channel to the total relic density.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>****** Relic Density
+OMEGA IS 10.139932
+INFO: Relic Density       = 1.01e+01       OVERABUNDANT
+INFO: x_f                 = 1.40e+01
+INFO: sigmav(xf)          = 8.50e-29 cm^3 s^-1
+INFO: xsi                 = 1.00e+00
+INFO:
+INFO: Channels contributions:
+INFO: xdxdx_ddx           : 20.08 %
+INFO: xdxdx_uux           : 20.08 %
+INFO: xdxdx_ssx           : 20.08 %
+INFO: xdxdx_ccx           : 20.08 %
+INFO: xdxdx_bbx           : 19.69 %
+INFO: No contribution from processes: xdxdx_y1y1, xdxdx_emep, xdxdx_mummup, xdxdx_vevex, xdxdx_vmvmx, xdxdx_vtvtx, xdxdx_dbx, xdxdx_utx, xdxdx_bdx, xdxdx_tux, xdxdx_ttx, xdxdx_zh, xdxdx_tamtap
+INFO:
+INFO: Results written in:  /Users/yourname/yourprocessfolder/RD_spin1/output/run_01/MadDM_results.txt
+quit
+</pre></div>
+</div>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorial-and-examples-relic-density-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../_downloads/762ff7c70c5b3ae705ba6e3ddc42005d/relic_density.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">relic_density.ipynb</span></code></a></p>
@@ -429,6 +488,7 @@ to download the full example code.</p>
 </div>
 </div>
 <p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+</section>
 </section>
 
 
@@ -469,6 +529,19 @@ to download the full example code.</p>
                 <dialog id="pst-secondary-sidebar-modal"></dialog>
                 <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
 
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#overview">Overview</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#relic-density-of-a-simplified-dm-model">Relic Density of a Simplified DM Model</a></li>
+</ul>
+  </nav></div>
 
   <div class="sidebar-secondary-item">
 

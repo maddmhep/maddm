@@ -426,10 +426,13 @@ other experiments such as 🚧 <strong>FIXME</strong>.</p>
 <section id="example-with-a-simplified-scalar-mediated-dm-model">
 <h3>Example with a simplified scalar-mediated DM model<a class="headerlink" href="#example-with-a-simplified-scalar-mediated-dm-model" title="Link to this heading">#</a></h3>
 <p>First, import the model and define the dark matter particle. Generally, for DMsimp models, you can choose between Xr (real scalar DM), Xc (complex scalar DM)
-and Xd (Dirac spinor DM). Then, generate the direct detection processes with:</p>
+and Xd (Dirac spinor DM):</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; import model DMsimp_s_spin0
 MadDM&gt; define darkmatter xd
-MadDM&gt; generate direct
+</pre></div>
+</div>
+<p>Then, generate the direct detection processes with:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; generate direct
 </pre></div>
 </div>
 <p>At this point, you can set the parameter values of the model, stored in <code class="docutils literal notranslate"><span class="pre">param_card_orig.dat</span></code>, by pressing 1, but this can also be done when launching the process.
