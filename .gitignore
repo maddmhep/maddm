@@ -1,5 +1,8 @@
 # sphinx-gallery
-doc/tutorials_and_examples
+doc/tutorial_and_examples/*
+!doc/tutorial_and_examples/images/
+doc/tutorial_and_examples/images/*
+!doc/tutorial_and_examples/images/thumb/
 doc/sg_execution_times.rst
 
 # Byte-compiled / optimized / DLL files
