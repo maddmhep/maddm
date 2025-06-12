@@ -18,12 +18,17 @@ Example with a simplified scalar-mediated DM model
 --------------------------------------------------
 
 First, import the model and define the dark matter particle. Generally, for DMsimp models, you can choose between Xr (real scalar DM), Xc (complex scalar DM)
-and Xd (Dirac spinor DM). Then, generate the direct detection processes with:
+and Xd (Dirac spinor DM):
 
 .. code-block:: text
 
     MadDM> import model DMsimp_s_spin0
     MadDM> define darkmatter xd
+
+Then, generate the direct detection processes with:
+
+.. code-block:: text
+
     MadDM> generate direct
 
 At this point, you can set the parameter values of the model, stored in ``param_card_orig.dat``, by pressing 1, but this can also be done when launching the process.
