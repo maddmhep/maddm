@@ -4,7 +4,7 @@
 Relic Density Computation in MadDM
 =======================================
 
-Compute the relic density and thermally averaged cross section of a dark matter candidate using MadDM.
+Compute the relic density and thermally averaged cross section of a dark matter candidate.
 
 Overview
 ========
