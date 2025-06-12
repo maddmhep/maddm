@@ -1863,13 +1863,6 @@ class MADDMRunCmd(cmd.CmdShell):
 
         else: result['xsi'] = 1.0
 
-        # print("here making dictionary")
-        # print(result)
-        #self.maddm_card['SPu']#### THIS IS WHERE I AM 
-        # import code
-        # code.interact(local=locals())
-        # from rapidd import madDM_output as rp
-        # import out2Xsec as rp
         RP_rel_path = self.plugin_path[0] + "/maddm/vendor/RAPIDD_for_DM/rapidd/"
         RP_abs_path = os.path.abspath(RP_rel_path)
         sys.path.insert(0, RP_abs_path)
