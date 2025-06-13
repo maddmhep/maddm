@@ -55,9 +55,11 @@ If not specified, MadDM will automatically select the DM candidate using the fol
 - The particle must be neutral (no electric or color charge).
 - The particle must be stable (its width must be 0 or 'ZERO' in the param_card.dat).
 - Among the particles that satisfy the above, the lightest is chosen.
-- Finally, the candidate must:
-    - Have some non-zero couplings,
-    - Not decay into a pair of SM particles.
+
+Finally, the candidate must:
+
+- Have some non-zero couplings,
+- Not decay into a pair of SM particles.
 
 Then, generate the direct detection processes with:
 
