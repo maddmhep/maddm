@@ -463,11 +463,36 @@ MadDM&gt; launch DD_NR_spin0
 <p>Note that once the process folder has been created with the <code class="docutils literal notranslate"><span class="pre">output</span></code> command in a previous session, you can always
 relaunch the same process in a new session with <code class="docutils literal notranslate"><span class="pre">launch</span> <span class="pre">myprocessname</span></code> skipping the previous steps.
 Once you launch the process, you will be prompted a selection menu to choose which modules you want to run.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>The following switches determine which programs are run:
+/=======================================================================================    | 1. Compute the Relic Density                                  relic = OFF             |
+| 2. Compute direct detection - nuclear recoil          direct_nuclon = ON              |
+| 3. Compute direct detection - electronic recoil     direct_electron = OFF             |
+| 4. Compute indirect detection/flux (cont spectrum)         indirect = OFF             |
+| 5. Compute indirect detection in aX (line spectrum)        spectral = OFF             |
+| 6. Run Multinest scan                                      nestscan = OFF             |
+\=======================================================================================/
+You can also edit the various input cards:
+* Enter the name/number to open the editor
+* Enter a path to a file to replace the card
+* Enter set NAME value to change any parameter to the requested value
+/=============================================================================\
+|  7. Edit the model parameters    [param]                                    |
+|  8. Edit the MadDM options       [maddm]                                    |
+\=============================================================================/
+[60s to answer]
+</pre></div>
+</div>
+<p>You can select the modules you want to run by entering the corresponding number or name, or by setting the
+corresponding variable to ON:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; direct_nucleon = ON
 </pre></div>
 </div>
 <p>If your model has both DM-nucleon and DM-electron interactions, you can set both <code class="docutils literal notranslate"><span class="pre">direct_nucleon</span></code> and <code class="docutils literal notranslate"><span class="pre">direct_electron</span></code> modules to ON,
 and you will receive results for both types of interactions considered separately.</p>
+<p>Some modules can be set to specific values, such as:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set indirect = flux_source
+</pre></div>
+</div>
 <p>You can set the model parameters in the <code class="docutils literal notranslate"><span class="pre">param_card.dat</span></code> by pressing 7, or by editing the file directly in the process folder (in this case <code class="docutils literal notranslate"><span class="pre">DD_NR_spin0/Cards/param_card.dat</span></code>).</p>
 <p>You can set the MadDM parameters (such as the halo parameters, recoil energy range and much more) in the <code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code> by pressing 8,
 or by editing the file directly in the process folder (in this case <code class="docutils literal notranslate"><span class="pre">DD_NR_spin0/Cards/maddm_card.dat</span></code>).</p>

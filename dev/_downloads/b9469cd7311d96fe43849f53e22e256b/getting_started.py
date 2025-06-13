@@ -60,10 +60,40 @@ Once you launch the process, you will be prompted a selection menu to choose whi
 
 .. code-block:: text
 
+    The following switches determine which programs are run:
+    /=======================================================================================\
+    | 1. Compute the Relic Density                                  relic = OFF             |
+    | 2. Compute direct detection - nuclear recoil          direct_nuclon = ON              |
+    | 3. Compute direct detection - electronic recoil     direct_electron = OFF             |
+    | 4. Compute indirect detection/flux (cont spectrum)         indirect = OFF             |
+    | 5. Compute indirect detection in aX (line spectrum)        spectral = OFF             |
+    | 6. Run Multinest scan                                      nestscan = OFF             |
+    \=======================================================================================/
+    You can also edit the various input cards:
+    * Enter the name/number to open the editor
+    * Enter a path to a file to replace the card
+    * Enter set NAME value to change any parameter to the requested value
+    /=============================================================================\ 
+    |  7. Edit the model parameters    [param]                                    |  
+    |  8. Edit the MadDM options       [maddm]                                    |
+    \=============================================================================/
+    [60s to answer]
+
+You can select the modules you want to run by entering the corresponding number or name, or by setting the
+corresponding variable to ON:
+
+.. code-block:: text
+
     MadDM> direct_nucleon = ON
 
 If your model has both DM-nucleon and DM-electron interactions, you can set both ``direct_nucleon`` and ``direct_electron`` modules to ON,
 and you will receive results for both types of interactions considered separately.
+
+Some modules can be set to specific values, such as:
+
+.. code-block:: text
+
+    MadDM> set indirect = flux_source
 
 You can set the model parameters in the ``param_card.dat`` by pressing 7, or by editing the file directly in the process folder (in this case ``DD_NR_spin0/Cards/param_card.dat``).
 
