@@ -9,7 +9,7 @@ Compute direct detection signal and limits for both **nuclear** and **electronic
 1. Nuclear Recoils with RAPIDD and LZ likelihood
 --------------------------------------------------
 
-For nuclear recoil interactions, MadDM makes use of the `**RAPIDD** <https://github.com/cheekyparticle/RAPIDD_for_DM/tree/main>`_ module to efficiently evaluate 
+For nuclear recoil interactions, MadDM makes use of the `RAPIDD <https://github.com/cheekyparticle/RAPIDD_for_DM/tree/main>`_ module to efficiently evaluate 
 differential recoil spectra and likelihoods. It uses the **LZ experiment likelihood** to 
 place constraints on DM-nucleus interactions, while also comparing the cross section against experimental limits from Pico60.
 
