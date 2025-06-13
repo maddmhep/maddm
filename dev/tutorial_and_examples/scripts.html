@@ -419,7 +419,11 @@ to download the full example code.</p>
 <p>Run MadDM as a script, allowing for batch processing or automation.</p>
 <section id="running-maddm-as-a-script">
 <h2>1. Running MadDM as a Script<a class="headerlink" href="#running-maddm-as-a-script" title="Link to this heading">#</a></h2>
-<p>To run MadDM as a script, you can simply run <code class="docutils literal notranslate"><span class="pre">maddm.py</span></code> by providing a text file as an argument containing the commands you want to execute. For example:</p>
+<p>To run MadDM as a script, you can simply run <code class="docutils literal notranslate"><span class="pre">maddm.py</span></code> by providing a text file as an argument containing the
+commands you want to execute. For example:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>python bin/maddm.py run.txt
+</pre></div>
+</div>
 <p>where <code class="docutils literal notranslate"><span class="pre">run.txt</span></code> should contain the commands you want to execute, one per line, for example:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>import model DMsimp_s_spin0
 define darkmatter Xr
