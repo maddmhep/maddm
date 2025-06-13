@@ -4143,8 +4143,8 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
     """
 
     to_control= [('relic', 'Compute the Relic Density'),
-                 ('direct', 'Compute direct(ional) detection'),
-                 ('direct_electron', 'Compute direct detection electronic recoil'),
+                 ('direct', 'Compute direct detection - nucleon recoil'),
+                 ('direct_electron', 'Compute direct detection - electron recoil'),
                  ('indirect', 'Compute indirect detection/flux (cont spectrum)'),
                  ('spectral', 'Compute indirect detection in aX (line spectrum)'),
                  ('nestscan', 'Run Multinest scan'),
@@ -4191,12 +4191,9 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
     def set_default_direct(self):
         """set the default value for direct="""
         
-        # if self.availmode['has_directional_detection']:
-        #     self.switch['direct'] = 'directional'
-        if self.availmode['has_directional_detection']:
-            self.switch['direct'] = 'direct'
-        # elif self.availmode['has_direct_detection']:
-        #     self.switch['direct'] = 'direct'        
+        if self.availmode['has_direct_detection']:
+            self.switch['direct'] = 'ON'
+      
         else:
             self.switch['direct'] = 'Not Avail.'
 
@@ -4207,11 +4204,9 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         if hasattr(self, 'allowed_direct'):
             return getattr(self, 'allowed_direct')
 
-        if self.availmode['has_directional_detection']:
-            # self.allowed_direct =  ['directional', 'direct','OFF']
-            self.allowed_direct =  ['direct','OFF']
-        elif self.availmode['has_direct_detection']:
-            self.allowed_direct =  ['direct','OFF']
+        if self.availmode['has_direct_detection']:
+  
+            self.allowed_direct =  ['ON','OFF']
         else:
             return []
 
@@ -4762,13 +4757,12 @@ When you are done with such edition, just press enter (or write 'done' or '0')
                 
     def help_direct(self):
         
-        logger.info("direct flag can take three values: direct, directional")
+        logger.info("direct flag can take two values: ON/OFF")
         logger.info('     ')
-        logger.info("  direct: ", "$MG:BOLD")
         logger.info("     Theoretical elastic spin-independent and spin-dependent cross section dark matter off nucleons")
         logger.info('     ')
-        logger.info("  directional", "$MG:BOLD")
-        logger.info("     Directional event rate (double differential event rate)")
+        # logger.info("  directional", "$MG:BOLD")
+        # logger.info("     Directional event rate (double differential event rate)")
         
     def help_direct_electron(self):
         logger.info("direct_electron flag can take two values: ON/OFF")
