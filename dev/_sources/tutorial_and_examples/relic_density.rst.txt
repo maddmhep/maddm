@@ -103,6 +103,14 @@ Finally, MadDM shows the contributions of each annihilation channel to the total
     quit
 
 
+Exiting MadDM
+=============
+
+.. code-block:: text
+
+    MadDM> quit
+
+
 .. _sphx_glr_download_tutorial_and_examples_relic_density.py:
 
 .. only:: html

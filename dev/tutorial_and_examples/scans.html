@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Scan over model parameters &#8212; MadDM 3.2.13 documentation</title>
+    <title>SyntaxError &#8212; MadDM 3.2.13 documentation</title>
   
   
   
@@ -56,8 +56,8 @@
     <link rel="icon" href="../_static/favicon.ico"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Direct Detection Tutorial" href="direct_detection.html" />
-    <link rel="prev" title="Indirect Detection Analysis" href="indirect_detection.html" />
+    <link rel="next" title="Contributing to the documentation" href="../contribute.html" />
+    <link rel="prev" title="Getting Started" href="getting_started.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="3.2.13" />
@@ -344,11 +344,11 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="indirect_detection.html">Indirect Detection Analysis</a></li>
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Scan over model parameters</a></li>
 <li class="toctree-l1"><a class="reference internal" href="direct_detection.html">Direct Detection Tutorial</a></li>
 <li class="toctree-l1"><a class="reference internal" href="relic_density.html">Relic Density Computation in MadDM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="scripts.html">Use MadDM as a Script</a></li>
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">SyntaxError</a></li>
 </ul>
 </div>
 </nav></div>
@@ -392,7 +392,7 @@
     
     <li class="breadcrumb-item"><a href="index.html" class="nav-link">Tutorial and examples</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Scan over model parameters</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">SyntaxError</span></li>
   </ul>
 </nav>
 </div>
@@ -414,42 +414,75 @@
 <p><a class="reference internal" href="#sphx-glr-download-tutorial-and-examples-scans-py"><span class="std std-ref">Go to the end</span></a>
 to download the full example code.</p>
 </div>
-<section class="sphx-glr-example-title" id="scan-over-model-parameters">
-<span id="sphx-glr-tutorial-and-examples-scans-py"></span><h1>Scan over model parameters<a class="headerlink" href="#scan-over-model-parameters" title="Link to this heading">#</a></h1>
-<p>Scan over a specified range of model parameters.</p>
-<section id="running-a-scan">
-<h2>1. Running a Scan<a class="headerlink" href="#running-a-scan" title="Link to this heading">#</a></h2>
-<p>First, you need to set up your model and process as usual. For example, if you want to scan over a simplified scalar dark matter model, you can do the following:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; import model DMsimp_s_spin0
-MadDM&gt; define darkmatter Xr
-MadDM&gt; generate direct
-MadDM&gt; output SCAN_example
-MadDM&gt; launch SCAN_example
+<section class="sphx-glr-example-title" id="syntaxerror">
+<span id="sphx-glr-tutorial-and-examples-scans-py"></span><h1>SyntaxError<a class="headerlink" href="#syntaxerror" title="Link to this heading">#</a></h1>
+<p>Example script with invalid Python syntax</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">==========================</span>
+<span class="sd">Scan over model parameters</span>
+<span class="sd">==========================</span>
+
+<span class="sd">Scan over a specified range of model parameters.</span>
+
+<span class="sd">1. Running a Scan</span>
+<span class="sd">=================</span>
+
+<span class="sd">First, you need to set up your model and process as usual. For example, if you want to scan over a simplified scalar dark matter model, you can do the following:</span>
+
+<span class="sd">.. code-block:: text</span>
+
+<span class="sd">    MadDM&gt; import model DMsimp_s_spin0</span>
+<span class="sd">    MadDM&gt; define darkmatter Xr</span>
+<span class="sd">    MadDM&gt; generate direct</span>
+<span class="sd">    MadDM&gt; output SCAN_example</span>
+<span class="sd">    MadDM&gt; launch SCAN_example</span>
+
+<span class="sd">At the launch prompt, set the parameters you want to scan, using ``set MXd scan:`` followed by a python array or ``range`` function.</span>
+<span class="sd">For instance, if you want to scan the dark matter mass (MXd) from 50 GeV to &lt;700 GeV in steps of 25 GeV, you can do:</span>
+
+<span class="sd">.. code-block:: text</span>
+
+<span class="sd">    MadDM&gt; set MXd scan:range(50,700,25)</span>
+
+<span class="sd">If you want to scan only over some specific values, you can also use python arrays, as follows:</span>
+
+<span class="sd">.. code-block:: text</span>
+
+<span class="sd">    MadDM&gt; set MXd scan:[10,20,40,80,160,320,640]</span>
+
+<span class="sd">or you can use list comprehension. For example, to scan over a logarithmic scale from 1 GeV to 10 GeV you can do:</span>
+
+<span class="sd">.. code-block:: text</span>
+
+<span class="sd">    MadDM&gt; set MXd scan:[10 ** (i * 0.01) for i in range(101)]</span>
+
+
+<span class="sd">Then press Enter to start the scan. For scans, you will find in the ``output`` directory a ``run_XX_YY`` folder containing the ``maddm.out`` file  for each ``YY`` iteration.</span>
+<span class="sd">You will also find a ``scan_run_XX.txt`` file that summarizes the scan parameters and results.</span>
+<span class="sd">You can also make a scan over multiple parameters at once. For example, if you want to scan over the dark matter mass ``MXd`` and the coupling ,``gsxd`` you can do:</span>
+
+<span class="sd">.. code-block:: text</span>
+
+<span class="sd">    MadDM&gt; set MXd scan:range(50,700,25)</span>
+<span class="sd">    MadDM&gt; set gsxd scan:range(10,100,10)</span>
+
+<span class="sd">Then press Enter to start the scan. MadDM will generate one run for each combination of the parameters you specified, iterating first over the last parameter in the `param_card.dat`.</span>
+<span class="sd">Once all values of that parameter are exhausted, it steps the second-to-last parameter and repeats the process, and so on, like nested ``for`` loops, starting from the outermost (first)</span>
+<span class="sd">parameter to the innermost (last).</span>
+
+<span class="sd">Exiting MadDM</span>
+<span class="sd">=============</span>
+
+<span class="sd">.. code-block:: text</span>
+
+<span class="sd">    MadDM&gt; quit</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="s2">&quot;&quot;&quot;</span>
 </pre></div>
 </div>
-<p>At the launch prompt, set the parameters you want to scan, using <code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">MXd</span> <span class="pre">scan:</span></code> followed by a python array or <code class="docutils literal notranslate"><span class="pre">range</span></code> function.
-For instance, if you want to scan the dark matter mass (MXd) from 50 GeV to &lt;700 GeV in steps of 25 GeV, you can do:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set MXd scan:range(50,700,25)
-</pre></div>
-</div>
-<p>If you want to scan only over some specific values, you can also use python arrays, as follows:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set MXd scan:[10,20,40,80,160,320,640]
-</pre></div>
-</div>
-<p>or you can use list comprehension. For example, to scan over a logarithmic scale from 1 GeV to 10 GeV you can do:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set MXd scan:[10 ** (i * 0.01) for i in range(101)]
-</pre></div>
-</div>
-<p>Then press Enter to start the scan. For scans, you will find in the <code class="docutils literal notranslate"><span class="pre">output</span></code> directory a <code class="docutils literal notranslate"><span class="pre">run_XX_YY</span></code> folder containing the <code class="docutils literal notranslate"><span class="pre">maddm.out</span></code> file  for each <code class="docutils literal notranslate"><span class="pre">YY</span></code> iteration.
-You will also find a <code class="docutils literal notranslate"><span class="pre">scan_run_XX.txt</span></code> file that summarizes the scan parameters and results.
-You can also make a scan over multiple parameters at once. For example, if you want to scan over the dark matter mass <code class="docutils literal notranslate"><span class="pre">MXd</span></code> and the coupling ,``gsxd`` you can do:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set MXd scan:range(50,700,25)
-MadDM&gt; set gsxd scan:range(10,100,10)
-</pre></div>
-</div>
-<p>Then press Enter to start the scan. MadDM will generate one run for each combination of the parameters you specified, iterating first over the last parameter in the <cite>param_card.dat</cite>.
-Once all values of that parameter are exhausted, it steps the second-to-last parameter and repeats the process, and so on, like nested <code class="docutils literal notranslate"><span class="pre">for</span></code> loops, starting from the outermost (first)
-parameter to the innermost (last).</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorial-and-examples-scans-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../_downloads/92f093e2006e83a86e592b13093b0259/scans.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">scans.ipynb</span></code></a></p>
@@ -463,7 +496,6 @@ parameter to the innermost (last).</p>
 </div>
 <p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
 </section>
-</section>
 
 
                 </article>
@@ -476,20 +508,20 @@ parameter to the innermost (last).</p>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="indirect_detection.html"
+       href="getting_started.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Indirect Detection Analysis</p>
+        <p class="prev-next-title">Getting Started</p>
       </div>
     </a>
     <a class="right-next"
-       href="direct_detection.html"
+       href="../contribute.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Direct Detection Tutorial</p>
+        <p class="prev-next-title">Contributing to the documentation</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -503,18 +535,6 @@ parameter to the innermost (last).</p>
                 <dialog id="pst-secondary-sidebar-modal"></dialog>
                 <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
 
-
-  <div class="sidebar-secondary-item">
-<div
-    id="pst-page-navigation-heading-2"
-    class="page-toc tocsection onthispage">
-    <i class="fa-solid fa-list"></i> On this page
-  </div>
-  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
-    <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#running-a-scan">1. Running a Scan</a></li>
-</ul>
-  </nav></div>
 
   <div class="sidebar-secondary-item">
 

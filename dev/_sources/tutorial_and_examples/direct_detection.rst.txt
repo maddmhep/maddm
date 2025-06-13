@@ -30,8 +30,8 @@ Compute direct detection signal and limits for both **nuclear** and **electronic
 
 For nuclear recoil interactions, MadDM makes use of the `**RAPIDD** <https://github.com/cheekyparticle/RAPIDD_for_DM/tree/main>`_ module to efficiently evaluate 
 differential recoil spectra and likelihoods. It uses the **LZ experiment likelihood** to 
-place constraints on DM-nucleus interactions, while also comparing the cross section against experimental limits from 
-other experiments such as 🚧 **FIXME**.
+place constraints on DM-nucleus interactions, while also comparing the cross section against experimental limits from Pico60.
+
 
 Example with a simplified scalar-mediated DM model
 --------------------------------------------------
@@ -72,14 +72,27 @@ You can set the model parameters in the ``param_card.dat`` by pressing 7, or by 
 You can set the MadDM parameters (such as the halo parameters, recoil energy range and much more) in the ``maddm_card.dat`` by pressing 8,
 or by editing the file directly in the process folder (in this case ``DD_NR_spin0/Cards/maddm_card.dat``).
 
-Once you are all set, you can run the process by pressing Enter. This module will first evaluate the DM–nucleon cross section and compare it against the experimental limits
-🚧 **FIXME**: ADD EXPERIMENT LIST HERE.
+Once you are all set, you can run the process by pressing Enter. This module will first evaluate the DM-nucleon cross section and compare it against the experimental limits
+from LZ and Pico60.
 Next, it will use RAPIDD to compute the differential nuclear recoil rates, and from those, it will evaluate the p-values using the likelihoods derived from the most recent LZ data.
 After running the above commands, the output will look like:
 
-🚧 **FIXME**
+.. code-block:: text
 
-where ``All DM`` refers to ... 🚧 **FIXME**
+    INFO: MadDM Results
+    INFO: 
+    ****** Direct detection [cm^2]:  
+    INFO: SigmaN_SI_p         All DM = 2.46e-47       ALLOWED           LZ2024 ul        = 6.48e-47 
+    INFO: SigmaN_SI_n         All DM = 2.46e-47       ALLOWED           LZ2024 ul        = 6.48e-47 
+    INFO: SigmaN_SD_p         All DM = 0.00e+00       ALLOWED           Pico60 (2019) ul = 4.16e-41 
+    INFO: SigmaN_SD_n         All DM = 0.00e+00       ALLOWED           LZ2024 ul        = 7.59e-42 
+    INFO:  
+    INFO: Results written in: /Users/yourname/yourprocessfolder/DD_NR_spin0/output/run_01/MadDM_results.txt
+    quit
+
+where ``All DM`` refers to the reference DM-electron cross section in case the DM particle contributes to the entire dark matter density of the universe.
+In the second column, you can see the upper limits (ul) from the LZ2024 and Pico60 experiments, which are compared against the computed cross sections,
+returning the status of the model (ALLOWED or NOT ALLOWED).
 
 Results
 -------
@@ -87,11 +100,10 @@ Results
 The results of each run will be stored inside the process folder you created, whose path is shown in the last line of the output.
 Each time you launch the same process, MadDM creates a new folder ``output/run_XX`` within the process folder.
 
-In this folder, you will find the results, such as 🚧 **FIXME**, in a file named ``MadDM_results.txt``.
+In this folder, you will find the cross sections in a file named ``MadDM_results.txt``.
 
-You can find all the output produced by MadDM, such as 🚧 **FIXME**, in the ``maddm.out`` file.
-
-You can also find the differential recoil rate and ... 🚧 **FIXME**
+You can also find the differential recoil rates in the ``DDrates.txt`` file, which contains the differential recoil spectra vs energy 
+for DM-nucleon interactions in Xenon, Argon and Germanium targets.
 
 
 

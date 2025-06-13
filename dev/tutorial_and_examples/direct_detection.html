@@ -57,7 +57,7 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Relic Density Computation in MadDM" href="relic_density.html" />
-    <link rel="prev" title="Scan over model parameters" href="scans.html" />
+    <link rel="prev" title="Indirect Detection Analysis" href="indirect_detection.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="3.2.13" />
@@ -344,11 +344,11 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="indirect_detection.html">Indirect Detection Analysis</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scans.html">Scan over model parameters</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Direct Detection Tutorial</a></li>
 <li class="toctree-l1"><a class="reference internal" href="relic_density.html">Relic Density Computation in MadDM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="scripts.html">Use MadDM as a Script</a></li>
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scans.html">SyntaxError</a></li>
 </ul>
 </div>
 </nav></div>
@@ -421,8 +421,7 @@ to download the full example code.</p>
 <h2>1. Nuclear Recoils with RAPIDD and LZ likelihood<a class="headerlink" href="#nuclear-recoils-with-rapidd-and-lz-likelihood" title="Link to this heading">#</a></h2>
 <p>For nuclear recoil interactions, MadDM makes use of the <a class="reference external" href="https://github.com/cheekyparticle/RAPIDD_for_DM/tree/main">**RAPIDD**</a> module to efficiently evaluate
 differential recoil spectra and likelihoods. It uses the <strong>LZ experiment likelihood</strong> to
-place constraints on DM-nucleus interactions, while also comparing the cross section against experimental limits from
-other experiments such as 🚧 <strong>FIXME</strong>.</p>
+place constraints on DM-nucleus interactions, while also comparing the cross section against experimental limits from Pico60.</p>
 <section id="example-with-a-simplified-scalar-mediated-dm-model">
 <h3>Example with a simplified scalar-mediated DM model<a class="headerlink" href="#example-with-a-simplified-scalar-mediated-dm-model" title="Link to this heading">#</a></h3>
 <p>First, import the model and define the dark matter particle. Generally, for DMsimp models, you can choose between Xr (real scalar DM), Xc (complex scalar DM)
@@ -450,20 +449,33 @@ and you will receive results for both types of interactions considered separatel
 <p>You can set the model parameters in the <code class="docutils literal notranslate"><span class="pre">param_card.dat</span></code> by pressing 7, or by editing the file directly in the process folder (in this case <code class="docutils literal notranslate"><span class="pre">DD_NR_spin0/Cards/param_card.dat</span></code>).</p>
 <p>You can set the MadDM parameters (such as the halo parameters, recoil energy range and much more) in the <code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code> by pressing 8,
 or by editing the file directly in the process folder (in this case <code class="docutils literal notranslate"><span class="pre">DD_NR_spin0/Cards/maddm_card.dat</span></code>).</p>
-<p>Once you are all set, you can run the process by pressing Enter. This module will first evaluate the DM–nucleon cross section and compare it against the experimental limits
-🚧 <strong>FIXME</strong>: ADD EXPERIMENT LIST HERE.
+<p>Once you are all set, you can run the process by pressing Enter. This module will first evaluate the DM-nucleon cross section and compare it against the experimental limits
+from LZ and Pico60.
 Next, it will use RAPIDD to compute the differential nuclear recoil rates, and from those, it will evaluate the p-values using the likelihoods derived from the most recent LZ data.
 After running the above commands, the output will look like:</p>
-<p>🚧 <strong>FIXME</strong></p>
-<p>where <code class="docutils literal notranslate"><span class="pre">All</span> <span class="pre">DM</span></code> refers to … 🚧 <strong>FIXME</strong></p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>INFO: MadDM Results
+INFO:
+****** Direct detection [cm^2]:
+INFO: SigmaN_SI_p         All DM = 2.46e-47       ALLOWED           LZ2024 ul        = 6.48e-47
+INFO: SigmaN_SI_n         All DM = 2.46e-47       ALLOWED           LZ2024 ul        = 6.48e-47
+INFO: SigmaN_SD_p         All DM = 0.00e+00       ALLOWED           Pico60 (2019) ul = 4.16e-41
+INFO: SigmaN_SD_n         All DM = 0.00e+00       ALLOWED           LZ2024 ul        = 7.59e-42
+INFO:
+INFO: Results written in: /Users/yourname/yourprocessfolder/DD_NR_spin0/output/run_01/MadDM_results.txt
+quit
+</pre></div>
+</div>
+<p>where <code class="docutils literal notranslate"><span class="pre">All</span> <span class="pre">DM</span></code> refers to the reference DM-electron cross section in case the DM particle contributes to the entire dark matter density of the universe.
+In the second column, you can see the upper limits (ul) from the LZ2024 and Pico60 experiments, which are compared against the computed cross sections,
+returning the status of the model (ALLOWED or NOT ALLOWED).</p>
 </section>
 <section id="results">
 <h3>Results<a class="headerlink" href="#results" title="Link to this heading">#</a></h3>
 <p>The results of each run will be stored inside the process folder you created, whose path is shown in the last line of the output.
 Each time you launch the same process, MadDM creates a new folder <code class="docutils literal notranslate"><span class="pre">output/run_XX</span></code> within the process folder.</p>
-<p>In this folder, you will find the results, such as 🚧 <strong>FIXME</strong>, in a file named <code class="docutils literal notranslate"><span class="pre">MadDM_results.txt</span></code>.</p>
-<p>You can find all the output produced by MadDM, such as 🚧 <strong>FIXME</strong>, in the <code class="docutils literal notranslate"><span class="pre">maddm.out</span></code> file.</p>
-<p>You can also find the differential recoil rate and … 🚧 <strong>FIXME</strong></p>
+<p>In this folder, you will find the cross sections in a file named <code class="docutils literal notranslate"><span class="pre">MadDM_results.txt</span></code>.</p>
+<p>You can also find the differential recoil rates in the <code class="docutils literal notranslate"><span class="pre">DDrates.txt</span></code> file, which contains the differential recoil spectra vs energy
+for DM-nucleon interactions in Xenon, Argon and Germanium targets.</p>
 </section>
 </section>
 <section id="electronic-recoils-with-xenon10-xenon1t-likelihoods">
@@ -550,12 +562,12 @@ Each time you launch the same process, MadDM creates a new folder <code class="d
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="scans.html"
+       href="indirect_detection.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Scan over model parameters</p>
+        <p class="prev-next-title">Indirect Detection Analysis</p>
       </div>
     </a>
     <a class="right-next"
