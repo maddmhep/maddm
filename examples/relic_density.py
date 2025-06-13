@@ -84,4 +84,12 @@ Finally, MadDM shows the contributions of each annihilation channel to the total
     INFO: Results written in:  /Users/yourname/yourprocessfolder/RD_spin1/output/run_01/MadDM_results.txt 
     quit
 
+
+Exiting MadDM
+=============
+
+.. code-block:: text
+
+    MadDM> quit
+
 """

@@ -52,4 +52,13 @@ Then press Enter to start the scan. MadDM will generate one run for each combina
 Once all values of that parameter are exhausted, it steps the second-to-last parameter and repeats the process, and so on, like nested ``for`` loops, starting from the outermost (first)
 parameter to the innermost (last).
 
+Exiting MadDM
+=============
+
+.. code-block:: text
+
+    MadDM> quit
+
+"""
+
 """
