@@ -40,8 +40,7 @@ sphinx_gallery_conf = {
     "examples_dirs": os.path.join(package_root_path, "examples"),
     "gallery_dirs": "tutorial_and_examples",
     "download_all_examples": False,
-    "remove_config_comments": True,
-    "execute": "auto"
+    "remove_config_comments": True
 }
 
 pygments_style = "colorful"
