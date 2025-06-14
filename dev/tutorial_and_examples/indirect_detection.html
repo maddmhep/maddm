@@ -418,11 +418,11 @@ to download the full example code.</p>
 <span id="sphx-glr-tutorial-and-examples-indirect-detection-py"></span><h1>Indirect Detection Analysis<a class="headerlink" href="#indirect-detection-analysis" title="Link to this heading">#</a></h1>
 <p>Compute indirect detection signals and limits from dark matter annihilation.</p>
 <section id="dark-matter-annihilation-into-photons">
-<h2>1. Dark Matter Annihilation into Photons<a class="headerlink" href="#dark-matter-annihilation-into-photons" title="Link to this heading">#</a></h2>
+<h2>Dark Matter Annihilation into Photons<a class="headerlink" href="#dark-matter-annihilation-into-photons" title="Link to this heading">#</a></h2>
 <p>Indirect detection looks for products of dark matter annihilation in astrophysical environment where the dark
 matter is denser. For instance, typical benchmarks for gamma-ray searches are the dSphs or the Galactic Center.</p>
-<p>In this example, we study the process χ χ → SM SM using a DM simplified model which annihilates through a vector mediator.
-We will see how to compute the resulting gamma-ray spectra relevant for indirect detection using both Pythia 8 and CosmiXs.</p>
+<p>In this example, we study the process χ χ → SM SM using a DM simplified model which annihilates trough a vector mediator.
+We will see how compute the resulting gamma-ray spectra relevant for indirect detection using both Pythia 8 and CosmiXs.</p>
 <p>First, import the model and define the dark matter candidate. We use the DMsimp_s_spin1_MD model, where
 the dark matter particle is labeled ‘~xd’ in this model.</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; import model DMsimp_s_spin1_MD
@@ -463,9 +463,13 @@ you can use the <code class="docutils literal notranslate"><span class="pre">fas
 </pre></div>
 </div>
 <p>and finally launch the process pressing Enter.</p>
-<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Now we write the real Python code for plotting, which will actually be executed</span>
-
-<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+</section>
+<section id="plot-the-gamma-ray-spectra">
+<h2>Plot the Gamma-ray Spectra<a class="headerlink" href="#plot-the-gamma-ray-spectra" title="Link to this heading">#</a></h2>
+<p>After running the above commands, you will find the output in the <code class="docutils literal notranslate"><span class="pre">ID_spin1</span></code> folder.
+The output will contain the gamma-ray spectra in the <code class="docutils literal notranslate"><span class="pre">ID_spin1/Output/xxxx</span></code> folder.
+Here’s the gamma-ray spectra computed by MadDM using CosmiXs:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
 <span class="k">def</span><span class="w"> </span><span class="nf">plot_gamma_spectra</span><span class="p">(</span><span class="n">spectra_file</span><span class="p">):</span>
@@ -503,15 +507,18 @@ you can use the <code class="docutils literal notranslate"><span class="pre">fas
     <span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
     <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 
-<span class="n">plot_gamma_spectra</span><span class="p">(</span><span class="s2">&quot;./plot_data/gammas_spectrum_CosmiXs.dat&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="mi">1</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">plot_gamma_spectra</span><span class="p">(</span><span class="s1">&#39;./plot_data/spectra.txt&#39;</span><span class="p">)</span>
 
 <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">3. Exiting MadDM</span>
-<span class="sd">================</span>
+
+<span class="sd">Exiting MadDM</span>
+<span class="sd">=============</span>
 
 <span class="sd">.. code-block:: text</span>
 
 <span class="sd">    MadDM&gt; quit</span>
+
 <span class="sd">&quot;&quot;&quot;</span>
 </pre></div>
 </div>
@@ -577,7 +584,8 @@ you can use the <code class="docutils literal notranslate"><span class="pre">fas
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#dark-matter-annihilation-into-photons">1. Dark Matter Annihilation into Photons</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#dark-matter-annihilation-into-photons">Dark Matter Annihilation into Photons</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#plot-the-gamma-ray-spectra">Plot the Gamma-ray Spectra</a></li>
 </ul>
   </nav></div>
 

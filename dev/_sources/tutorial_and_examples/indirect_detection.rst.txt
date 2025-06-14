@@ -24,14 +24,14 @@ Indirect Detection Analysis
 
 Compute indirect detection signals and limits from dark matter annihilation.
 
-1. Dark Matter Annihilation into Photons
-========================================
+Dark Matter Annihilation into Photons
+=====================================
 
 Indirect detection looks for products of dark matter annihilation in astrophysical environment where the dark
 matter is denser. For instance, typical benchmarks for gamma-ray searches are the dSphs or the Galactic Center.
 
-In this example, we study the process χ χ → SM SM using a DM simplified model which annihilates through a vector mediator.
-We will see how to compute the resulting gamma-ray spectra relevant for indirect detection using both Pythia 8 and CosmiXs.
+In this example, we study the process χ χ → SM SM using a DM simplified model which annihilates trough a vector mediator.
+We will see how compute the resulting gamma-ray spectra relevant for indirect detection using both Pythia 8 and CosmiXs.
 
 First, import the model and define the dark matter candidate. We use the DMsimp_s_spin1_MD model, where
 the dark matter particle is labeled '~xd' in this model.
@@ -90,12 +90,19 @@ In fast mode, to specify how many events should be generated per phase-space poi
 
 and finally launch the process pressing Enter.
 
-.. GENERATED FROM PYTHON SOURCE LINES 74-127
+
+Plot the Gamma-ray Spectra
+==========================
+
+After running the above commands, you will find the output in the ``ID_spin1`` folder.
+The output will contain the gamma-ray spectra in the ``ID_spin1/Output/xxxx`` folder.
+Here's the gamma-ray spectra computed by MadDM using CosmiXs:
+
+.. GENERATED FROM PYTHON SOURCE LINES 83-137
 
 .. code-block:: Python
 
 
-    # Now we write the real Python code for plotting, which will actually be executed
 
     import matplotlib.pyplot as plt
     import numpy as np
@@ -135,17 +142,19 @@ and finally launch the process pressing Enter.
         plt.grid()
         plt.show()
 
-    plot_gamma_spectra("./plot_data/gammas_spectrum_CosmiXs.dat")
+    print(1+1)
+    plot_gamma_spectra('./plot_data/spectra.txt')
 
     """
-    3. Exiting MadDM
-    ================
+
+    Exiting MadDM
+    =============
 
     .. code-block:: text
 
         MadDM> quit
+    
     """
-
 
 
 
