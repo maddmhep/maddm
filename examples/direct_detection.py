@@ -88,6 +88,7 @@ for DM-nucleon interactions in Xenon, Argon and Germanium targets.
 
 """
 
+# %%
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -131,10 +132,11 @@ def plot_dd_rates(dd_file):
     plt.plot(Er_vals, Ge_vals, label='Ge', color='red')
     plt.xlabel('Recoil Energy $E_R$ [keV]')
     plt.ylabel('dR/dE [$\\mathrm{events / kg / day / keV}$]')
-    plt.title('Direct Detection Differential Rates')
+    plt.title('DD nucleon Differential Rates')
     plt.yscale('log')  # y-axis in log scale
+    plt.xlim(0, 20)
+    plt.ylim(1e-19, 1e-15)  # Adjust y-axis limits for better visibility
     plt.legend()
-    plt.grid(True, which="both", ls="--")
     plt.show()
 
 plot_dd_rates('./plot_data/DDrates.txt')
@@ -216,6 +218,121 @@ You can find all the output produced by the Fortran module of MadDM, such as sig
 
 You can also find the differential recoil spectra vs energy or vs scintillation signal. The rates produced with this module are labeled with the suffix ``e_recoil`` at the end.
 
+"""
+
+# %%
+import numpy as np
+import matplotlib.pyplot as plt
+
+def plot_dRdE_er(file_path):
+    """
+    Read and plot the dR/dE spectrum from the given file.
+
+    Parameters:
+    file_path (str): Path to the dRdE file.
+    """
+    energies = []
+    rates = []
+
+    # Read file
+    with open(file_path, 'r') as file:
+        for line in file:
+            if line.startswith('#'):
+                continue  # skip header lines
+            parts = line.strip().split()
+            if len(parts) != 3:
+                continue  # skip malformed lines
+            # Extract Energy and dR/dE
+            energy = float(parts[1])  # second column: Energy (keV)
+            rate = float(parts[2])    # third column: dR/dE
+            energies.append(energy)
+            rates.append(rate)
+
+    energies = np.array(energies)
+    rates = np.array(rates)
+
+    # Apply mask to exclude points with rate <= 0 (if any)
+    mask = rates > 0
+    energies = energies[mask]
+    rates = rates[mask]
+
+    # Plot
+    plt.figure(figsize=(8, 5))
+    plt.plot(energies, rates, linestyle='-', color='b', label='dR/dE')
+    plt.yscale('log')
+    plt.xlabel("Recoil Energy (keV)")
+    plt.ylabel("dR/dE [events/kg/day/keV]")
+    plt.title("Differential Recoil Rate")
+    plt.legend()
+    plt.show()
+
+plot_dRdE_er('./plot_data/dRdE_e_recoil.dat')
+
+# %%
+import numpy as np
+import matplotlib.pyplot as plt
+
+def plot_dRdS2_er(file_path):
+    """
+    Read and plot the dR/dS2 spectra from Xenon10 and Xenon1T files.
+    """
+    # Xenon10
+    s2_vals_10 = []
+    rates_10 = []
+    with open(file_path, 'r') as file:
+        for line in file:
+            if line.startswith('#'):
+                continue
+            parts = line.strip().split()
+            if len(parts) != 2:
+                continue
+            s2 = float(parts[0])
+            rate = float(parts[1])
+            s2_vals_10.append(s2)
+            rates_10.append(rate)
+
+    s2_vals_10 = np.array(s2_vals_10)
+    rates_10 = np.array(rates_10)
+    mask_10 = rates_10 > 0
+    s2_vals_10 = s2_vals_10[mask_10]
+    rates_10 = rates_10[mask_10]
+
+    # Xenon1T
+    s2_vals_1t = []
+    rates_1t = []
+    with open("./plot_data/dRdS2_Xenon1T_e_recoil.dat", 'r') as file:
+        for line in file:
+            if line.startswith('#'):
+                continue
+            parts = line.strip().split()
+            if len(parts) != 2:
+                continue
+            s2 = float(parts[0])
+            rate = float(parts[1])
+            s2_vals_1t.append(s2)
+            rates_1t.append(rate)
+
+    s2_vals_1t = np.array(s2_vals_1t)
+    rates_1t = np.array(rates_1t)
+    mask_1t = rates_1t > 0
+    s2_vals_1t = s2_vals_1t[mask_1t]
+    rates_1t = rates_1t[mask_1t]
+
+    # Plot
+    plt.figure(figsize=(8, 5))
+    plt.plot(s2_vals_10, rates_10, linestyle='-', color='red', label='Xenon10')
+    plt.plot(s2_vals_1t, rates_1t, linestyle='-', color='blue', label='Xenon1T')
+    plt.yscale('log')
+    plt.xlabel("S2")
+    plt.ylabel("dN/dS2 [events]")
+    plt.xlim(14, 271)  # Adjust x-axis limits for better visibility
+    plt.title("Differential Rate vs S2")
+    plt.legend()
+    plt.show()
+
+plot_dRdS2_er("./plot_data/dRdS2_Xenon10_e_recoil.dat")
+
+"""
 Exiting MadDM
 =============
 
@@ -224,3 +341,5 @@ Exiting MadDM
     MadDM> quit
 
 """
+
+# %%
