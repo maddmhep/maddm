@@ -1,0 +1,95 @@
+"""
+
+=======================================
+Relic Density Computation in MadDM
+=======================================
+
+Compute the relic density and thermally averaged cross section of a dark matter candidate.
+
+Overview
+========
+
+The code is able to handle the full eﬀects of co-annihilations and resonant
+annihilation in a generic model. In models which contain more than one dark matter particle,
+MadDM can solve either the full set of coupled density evolution equations or a single equation
+involving eﬀective thermally averaged cross sections. The former gives MadDM the ability to
+calculate relic density in models which allow for dark matter conversions.
+
+Relic Density of a Simplified DM Model
+======================================
+
+In this example, we compute the relic density and the thermally averaged cross section at freeze-out of a vector mediated
+fermionic dark matter candidate.
+
+First, import the model and define the dark matter candidate. We use the ``DMsimp_s_spin1`` model.
+Generally, for DMsimp models, you can choose between Xr (real scalar DM), Xc (complex scalar DM)
+and Xd (Dirac spinor DM).
+
+.. code-block:: text
+
+    MadDM> import model import model DMsimp_s_spin1
+    MadDM> define darkmatter xd
+
+Then, generate the relic density processes with:
+
+.. code-block:: text
+
+    MadDM> generate relic_density
+
+Next, create the process folder. In this case, we call it ``RD_spin1``, but you can choose any name you like. Then launch the process:
+
+.. code-block:: text
+
+    MadDM> output RD_spin1
+    MadDM> launch RD_spin1
+
+Select to run the ``relic`` module (but it should be already ON) by entering:
+
+.. code-block:: text
+
+    MadDM> relic = ON
+
+You can set the model parameters in the ``param_card.dat`` by pressing 6, or by editing the file directly in the process folder (in this case ``DD_NR_spin0/Cards/param_card.dat``).
+
+You can set the MadDM parameters (such as the halo parameters, recoil energy range and much more) in the ``maddm_card.dat`` by pressing 7,
+or by editing the file directly in the process folder (in this case ``DD_NR_spin0/Cards/maddm_card.dat``).
+
+Once you are all set, you can run the process by pressing Enter. 
+
+This module will first evaluate the relic density, flagging it as either underabundant or overabundant.
+
+If also shows the freeze-out parameter and the thermally averaged cross section at freeze-out.
+
+The parameter ``xsi`` is the relic density rescaling factor.
+
+Finally, MadDM shows the contributions of each annihilation channel to the total relic density.
+
+.. code-block:: text
+
+    ****** Relic Density
+    OMEGA IS 10.139932 
+    INFO: Relic Density       = 1.01e+01       OVERABUNDANT       
+    INFO: x_f                 = 1.40e+01             
+    INFO: sigmav(xf)          = 8.50e-29 cm^3 s^-1   
+    INFO: xsi                 = 1.00e+00             
+    INFO:  
+    INFO: Channels contributions: 
+    INFO: xdxdx_ddx           : 20.08 % 
+    INFO: xdxdx_uux           : 20.08 % 
+    INFO: xdxdx_ssx           : 20.08 % 
+    INFO: xdxdx_ccx           : 20.08 % 
+    INFO: xdxdx_bbx           : 19.69 % 
+    INFO: No contribution from processes: xdxdx_y1y1, xdxdx_emep, xdxdx_mummup, xdxdx_vevex, xdxdx_vmvmx, xdxdx_vtvtx, xdxdx_dbx, xdxdx_utx, xdxdx_bdx, xdxdx_tux, xdxdx_ttx, xdxdx_zh, xdxdx_tamtap 
+    INFO:  
+    INFO: Results written in:  /Users/yourname/yourprocessfolder/RD_spin1/output/run_01/MadDM_results.txt 
+    quit
+
+
+Exiting MadDM
+=============
+
+.. code-block:: text
+
+    MadDM> quit
+
+"""
