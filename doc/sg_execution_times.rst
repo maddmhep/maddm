@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**00:00.242** total execution time for 6 files **from all galleries**:
+**00:00.309** total execution time for 6 files **from all galleries**:
 
 .. container::
 
@@ -32,13 +32,13 @@ Computation times
    * - Example
      - Time
      - Mem (MB)
-   * - :ref:`sphx_glr_tutorial_and_examples_plot_indirect_detection.py` (``../examples/plot_indirect_detection.py``)
-     - 00:00.242
+   * - :ref:`sphx_glr_tutorial_and_examples_plot_direct_detection.py` (``../examples/plot_direct_detection.py``)
+     - 00:00.309
      - 0.0
    * - :ref:`sphx_glr_tutorial_and_examples_getting_started.py` (``../examples/getting_started.py``)
      - 00:00.000
      - 0.0
-   * - :ref:`sphx_glr_tutorial_and_examples_plot_direct_detection.py` (``../examples/plot_direct_detection.py``)
+   * - :ref:`sphx_glr_tutorial_and_examples_plot_indirect_detection.py` (``../examples/plot_indirect_detection.py``)
      - 00:00.000
      - 0.0
    * - :ref:`sphx_glr_tutorial_and_examples_relic_density.py` (``../examples/relic_density.py``)

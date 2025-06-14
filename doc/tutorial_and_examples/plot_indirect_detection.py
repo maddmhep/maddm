@@ -1,6 +1,8 @@
+# sphinx_gallery_thumbnail_path = '_static/sphx_glr_plot_direct_detection_thumb.png'
+
 """
 ===========================
-Indirect Detection Analysis
+Indirect Detection Tutorial
 ===========================
 
 Compute indirect detection signals and limits from dark matter annihilation.

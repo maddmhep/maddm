@@ -1,6 +1,6 @@
 """
 ===========================
-Indirect Detection Analysis
+Indirect Detection Tutorial
 ===========================
 
 Compute indirect detection signals and limits from dark matter annihilation.

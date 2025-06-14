@@ -19,7 +19,7 @@
 
 
 ===========================
-Indirect Detection Analysis
+Indirect Detection Tutorial
 ===========================
 
 Compute indirect detection signals and limits from dark matter annihilation.
@@ -98,11 +98,11 @@ After running the above commands, you will find the output in the ``ID_spin1`` f
 The output will contain the gamma-ray spectra in the ``ID_spin1/Output/xxxx`` folder.
 Here's the gamma-ray spectra computed by MadDM using CosmiXs:
 
-.. GENERATED FROM PYTHON SOURCE LINES 84-85
+.. GENERATED FROM PYTHON SOURCE LINES 86-87
 
 Plot the Gamma-ray Spectra using CosmiXs
 
-.. GENERATED FROM PYTHON SOURCE LINES 85-127
+.. GENERATED FROM PYTHON SOURCE LINES 87-129
 
 .. code-block:: Python
 
@@ -160,7 +160,7 @@ Plot the Gamma-ray Spectra using CosmiXs
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 128-133
+.. GENERATED FROM PYTHON SOURCE LINES 130-135
 
 Exiting MadDM
 =============
@@ -172,7 +172,7 @@ Exiting MadDM
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 0.242 seconds)
+   **Total running time of the script:** (0 minutes 0.165 seconds)
 
 
 .. _sphx_glr_download_tutorial_and_examples_plot_indirect_detection.py:
