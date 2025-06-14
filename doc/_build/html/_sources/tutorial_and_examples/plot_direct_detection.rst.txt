@@ -22,6 +22,8 @@
 Direct Detection Tutorial
 ===========================
 
+.. sphinx_gallery_thumbnail_path: /_static/direct_detection_thumb.png
+
 Compute direct detection signal and limits for both **nuclear** and **electronic** recoils.
 
 --------------------------------------------------
@@ -407,7 +409,7 @@ Exiting MadDM
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 0.309 seconds)
+   **Total running time of the script:** (0 minutes 0.348 seconds)
 
 
 .. _sphx_glr_download_tutorial_and_examples_plot_direct_detection.py:

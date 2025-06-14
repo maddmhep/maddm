@@ -1,5 +1,3 @@
-# sphinx_gallery_thumbnail_path = '_static/sphx_glr_plot_direct_detection_thumb.png'
-
 """
 ===========================
 Indirect Detection Tutorial
