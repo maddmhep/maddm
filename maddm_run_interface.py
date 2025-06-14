@@ -1944,8 +1944,8 @@ class MADDMRunCmd(cmd.CmdShell):
         ## Spectra object
         # Eliminate antideuterons spectra in case of fast
         if self.maddm_card['indirect_flux_source_method']!='pythia8':
-            #for key in ['He3x','He4x','Dx','DxS','DxAWF','Dxpcoals','pxP']:
-            for key in ['He3x','He4x','DxS','DxAWF','Dxpcoals','pxP']:
+            for key in ['He3x','He4x','Dx','DxS','DxAWF','Dxpcoals','pxP']:
+            #for key in ['He3x','He4x','DxS','DxAWF','Dxpcoals','pxP']:
                 self.Spectra.spectra_id.pop(key,None)
                             
             #for key in ['antideuterons_spherical','antideuterons_AWF','antideuterons_pcoalsigma','antideuterons','antihelions3_spherical','antihelions4_spherical','antiprotonsP']:
