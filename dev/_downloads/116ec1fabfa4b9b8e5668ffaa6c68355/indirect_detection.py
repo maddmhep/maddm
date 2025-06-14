@@ -57,7 +57,7 @@ you can use the ``fast`` mode, where the thermally averaged annihilation cross s
     MadDM> set fast
 
 In ``precise`` mode, you can choose between ``madevent`` and ``reshuffling`` methods of the event generator
-`MadEvent <https://iopscience.iop.org/article/10.1088/1126-6708/2003/02/027>`. This is not needed in ``fast`` mode.
+`MadEvent <https://iopscience.iop.org/article/10.1088/1126-6708/2003/02/027>`_. This is not needed in ``fast`` mode.
 
 .. code-block:: text
 
