@@ -98,12 +98,10 @@ After running the above commands, you will find the output in the ``ID_spin1`` f
 The output will contain the gamma-ray spectra in the ``ID_spin1/Output/xxxx`` folder.
 Here's the gamma-ray spectra computed by MadDM using CosmiXs:
 
-.. GENERATED FROM PYTHON SOURCE LINES 85-129
+.. GENERATED FROM PYTHON SOURCE LINES 83-134
 
 .. code-block:: Python
 
-    import matplotlib.pyplot as plt
-    import numpy as np
 
     import matplotlib.pyplot as plt
     import numpy as np
@@ -147,19 +145,13 @@ Here's the gamma-ray spectra computed by MadDM using CosmiXs:
 
     plot_gamma_spectra('./plot_data/gammas_spectrum_CosmiXs.dat')
 
-.. GENERATED FROM PYTHON SOURCE LINES 130-140
-
-.. code-block:: Python
-
     """
-
     Exiting MadDM
     =============
 
     .. code-block:: text
 
         MadDM> quit
-    
     """
 
 
