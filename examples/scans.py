@@ -38,7 +38,6 @@ or you can use list comprehension. For example, to scan over a logarithmic scale
 
     MadDM> set MXd scan:[10 ** (i * 0.01) for i in range(101)]
 
-
 Then press Enter to start the scan. For scans, you will find in the ``output`` directory a ``run_XX_YY`` folder containing the ``maddm.out`` file  for each ``YY`` iteration.
 You will also find a ``scan_run_XX.txt`` file that summarizes the scan parameters and results.
 You can also make a scan over multiple parameters at once. For example, if you want to scan over the dark matter mass ``MXd`` and the coupling ,``gsxd`` you can do:
@@ -58,7 +57,5 @@ Exiting MadDM
 .. code-block:: text
 
     MadDM> quit
-
-"""
 
 """
