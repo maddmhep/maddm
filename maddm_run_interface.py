@@ -394,7 +394,7 @@ class Spectra:
             key = channel+'_'+prof+'_'+prop+'_'+halo_func
 
         if dm_min == dm_min :
-            print(dm_min,dm_min,channel,sp_dic[spectrum])
+            #print(dm_min,dm_min,channel,sp_dic[spectrum])
             return sp_dic[spectrum][ str(dm_min) ][key]
         spec_1 = sp_dic[spectrum][ str(dm_min) ][key]
         spec_2 = sp_dic[spectrum][ str(dm_max) ][key]
