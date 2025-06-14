@@ -5,8 +5,8 @@ Indirect Detection Analysis
 
 Compute indirect detection signals and limits from dark matter annihilation.
 
-1. Dark Matter Annihilation into Photons
-========================================
+Dark Matter Annihilation into Photons
+=====================================
 
 Indirect detection looks for products of dark matter annihilation in astrophysical environment where the dark
 matter is denser. For instance, typical benchmarks for gamma-ray searches are the dSphs or the Galactic Center.
@@ -72,8 +72,8 @@ In fast mode, to specify how many events should be generated per phase-space poi
 and finally launch the process pressing Enter.
 
 
-2. Plot the Gamma-ray Spectra
-=============================
+Plot the Gamma-ray Spectra
+==========================
 
 After running the above commands, you will find the output in the ``ID_spin1`` folder.
 The output will contain the gamma-ray spectra in the ``ID_spin1/Output/xxxx`` folder.
@@ -81,7 +81,7 @@ Here's the gamma-ray spectra computed by MadDM using CosmiXs:
 
 """
 
-.. code-block:: default
+.. code-block:: python
 
     import matplotlib.pyplot as plt
     import numpy as np
