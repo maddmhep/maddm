@@ -78,7 +78,6 @@ Plot the Gamma-ray Spectra
 After running the above commands, you will find the output in the ``ID_spin1`` folder.
 The output will contain the gamma-ray spectra in the ``ID_spin1/Output/xxxx`` folder.
 Here's the gamma-ray spectra computed by MadDM using CosmiXs:
-
 """
 
 # %%
