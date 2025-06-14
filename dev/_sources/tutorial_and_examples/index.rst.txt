@@ -94,7 +94,7 @@ Below is a gallery of various examples on the usage of MadDM and its features.
 
 .. raw:: html
 
-      <div class="sphx-glr-thumbnail-title">Indirect Detection Analysis</div>
+      <div class="sphx-glr-thumbnail-title">Indirect Detection Tutorial</div>
     </div>
 
 
