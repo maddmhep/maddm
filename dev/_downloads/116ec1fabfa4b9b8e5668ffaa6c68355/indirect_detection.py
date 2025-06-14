@@ -81,6 +81,7 @@ Here's the gamma-ray spectra computed by MadDM using CosmiXs:
 
 """
 
+# %%
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -132,3 +133,5 @@ Exiting MadDM
     MadDM> quit
 
 """
+
+# %%
