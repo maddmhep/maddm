@@ -86,6 +86,61 @@ In this folder, you will find the cross sections in a file named ``MadDM_results
 You can also find the differential recoil rates in the ``DDrates.txt`` file, which contains the differential recoil spectra vs energy 
 for DM-nucleon interactions in Xenon, Argon and Germanium targets.
 
+"""
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+def plot_dd_rates(dd_file):
+    """
+    Plots direct detection rates for different materials from DDrates.txt.
+
+    Parameters:
+    dd_file (str): Path to the DDrates.txt file.
+    """
+    # Lists to store data
+    Er_vals = []
+    Xe_vals = []
+    Ar_vals = []
+    Ge_vals = []
+
+    # Read the data file
+    with open(dd_file, 'r') as file:
+        for line in file:
+            if line.startswith('#'):
+                continue  # skip header lines
+            parts = line.strip().split()
+            if len(parts) != 4:
+                continue  # skip malformed lines
+            Er, drde_Xe, drde_Ar, drde_Ge = map(float, parts)
+            Er_vals.append(Er)
+            Xe_vals.append(drde_Xe)
+            Ar_vals.append(drde_Ar)
+            Ge_vals.append(drde_Ge)
+
+    # Convert lists to numpy arrays
+    Er_vals = np.array(Er_vals)
+    Xe_vals = np.array(Xe_vals)
+    Ar_vals = np.array(Ar_vals)
+    Ge_vals = np.array(Ge_vals)
+
+    # Plotting
+    plt.figure(figsize=(10, 6))
+    plt.plot(Er_vals, Xe_vals, label='Xe', color='blue')
+    plt.plot(Er_vals, Ar_vals, label='Ar', color='green')
+    plt.plot(Er_vals, Ge_vals, label='Ge', color='red')
+    plt.xlabel('Recoil Energy $E_R$ [keV]')
+    plt.ylabel('dR/dE [$\\mathrm{events / kg / day / keV}$]')
+    plt.title('Direct Detection Differential Rates')
+    plt.yscale('log')  # y-axis in log scale
+    plt.legend()
+    plt.grid(True, which="both", ls="--")
+    plt.show()
+
+plot_dd_rates('./plot_data/DDrates.txt')
+
+"""
+
 
 
 ---------------------------------------------------------
