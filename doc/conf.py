@@ -41,6 +41,7 @@ sphinx_gallery_conf = {
     "gallery_dirs": "tutorial_and_examples",
     "download_all_examples": False,
     "remove_config_comments": True,
+    "execute": "auto"
 }
 
 pygments_style = "colorful"
