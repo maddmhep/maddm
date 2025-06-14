@@ -86,12 +86,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 def plot_gamma_spectra(spectra_file):
-    """
-    Plots dn/dlogx vs log10(x) from the spectra file.
 
-    Parameters:
-    spectra_file (str): Path to the spectra file.
-    """
     logx_vals = []
     dndlogx_vals = []
 
