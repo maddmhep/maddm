@@ -126,7 +126,7 @@ def plot_gamma_spectra(spectra_file):
     plt.show()
 
 plot_gamma_spectra('./plot_data/gammas_spectrum_CosmiXs.dat')
-
+# %%
 """
 
 Exiting MadDM
@@ -137,4 +137,3 @@ Exiting MadDM
     MadDM> quit
     
 """
-# %%
