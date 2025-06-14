@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Indirect Detection Analysis &#8212; MadDM 3.2.13 documentation</title>
+    <title>Introductory example - Plotting sin &#8212; MadDM 3.2.13 documentation</title>
   
   
   
@@ -45,6 +45,7 @@
     <script src="../_static/documentation_options.js?v=c0feab9b"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'tutorial_and_examples/indirect_detection';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
@@ -348,7 +349,7 @@
 <li class="toctree-l1"><a class="reference internal" href="relic_density.html">Relic Density Computation in MadDM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="scripts.html">Use MadDM as a Script</a></li>
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Indirect Detection Analysis</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Introductory example - Plotting sin</a></li>
 </ul>
 </div>
 </nav></div>
@@ -392,7 +393,7 @@
     
     <li class="breadcrumb-item"><a href="index.html" class="nav-link">Tutorial and examples</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Indirect Detection Analysis</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Introductory example - Plotting sin</span></li>
   </ul>
 </nav>
 </div>
@@ -414,106 +415,77 @@
 <p><a class="reference internal" href="#sphx-glr-download-tutorial-and-examples-indirect-detection-py"><span class="std std-ref">Go to the end</span></a>
 to download the full example code.</p>
 </div>
-<section class="sphx-glr-example-title" id="indirect-detection-analysis">
-<span id="sphx-glr-tutorial-and-examples-indirect-detection-py"></span><h1>Indirect Detection Analysis<a class="headerlink" href="#indirect-detection-analysis" title="Link to this heading">#</a></h1>
-<p>Compute indirect detection signals and limits from dark matter annihilation.</p>
-<section id="dark-matter-annihilation-into-photons">
-<h2>Dark Matter Annihilation into Photons<a class="headerlink" href="#dark-matter-annihilation-into-photons" title="Link to this heading">#</a></h2>
-<p>Indirect detection looks for products of dark matter annihilation in astrophysical environment where the dark
-matter is denser. For instance, typical benchmarks for gamma-ray searches are the dSphs or the Galactic Center.</p>
-<p>In this example, we study the process χ χ → SM SM using a DM simplified model which annihilates trough a vector mediator.
-We will see how compute the resulting gamma-ray spectra relevant for indirect detection using both Pythia 8 and CosmiXs.</p>
-<p>First, import the model and define the dark matter candidate. We use the DMsimp_s_spin1_MD model, where
-the dark matter particle is labeled ‘~xd’ in this model.</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; import model DMsimp_s_spin1_MD
-MadDM&gt; define darkmatter ~xd
-</pre></div>
-</div>
-<p>Then, we generate the indirect detection process. This defines the channel for which the gamma-ray spectra will be computed.
-We then output the process to a folder named ‘ID_spin1’, and we launch the process.</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; generate indirect_detection
-MadDM&gt; output ID_spin1
-MadDM&gt; launch ID_spin1
-</pre></div>
-</div>
-<p>We enable the computation of the gamma-ray flux spectrum by setting:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set indirect = flux_source
-</pre></div>
-</div>
-<p>We can choose to compute the gamma-ray spectra using either Pythia 8 or CosmiXs, entering <cite>pythia8</cite> or <cite>cosmix</cite> respectively:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set indirect_flux_source_method cosmix
-</pre></div>
-</div>
-<p>To save the full energy spectra you can set:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set save_output spectra
-</pre></div>
-</div>
-<p>You can enable the <code class="docutils literal notranslate"><span class="pre">precise</span></code> mode for a full integration over the DM velocity distribution. For a faster evaluation
-you can use the <code class="docutils literal notranslate"><span class="pre">fast</span></code> mode, where the thermally averaged annihilation cross section is computed at a fixed velocity.</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set fast
-</pre></div>
-</div>
-<p>In <code class="docutils literal notranslate"><span class="pre">precise</span></code> mode, you can choose between <code class="docutils literal notranslate"><span class="pre">madevent</span></code> and <code class="docutils literal notranslate"><span class="pre">reshuffling</span></code> methods of the event generator
-<a class="reference external" href="https://iopscience.iop.org/article/10.1088/1126-6708/2003/02/027">MadEvent</a>. This is not needed in <code class="docutils literal notranslate"><span class="pre">fast</span></code> mode.</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set sigmav_method madevent
-</pre></div>
-</div>
-<p>In fast mode, to specify how many events should be generated per phase-space point, do:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set nevents 100000
-</pre></div>
-</div>
-<p>and finally launch the process pressing Enter.</p>
-</section>
-<section id="plot-the-gamma-ray-spectra">
-<h2>Plot the Gamma-ray Spectra<a class="headerlink" href="#plot-the-gamma-ray-spectra" title="Link to this heading">#</a></h2>
-<p>After running the above commands, you will find the output in the <code class="docutils literal notranslate"><span class="pre">ID_spin1</span></code> folder.
-The output will contain the gamma-ray spectra in the <code class="docutils literal notranslate"><span class="pre">ID_spin1/Output/xxxx</span></code> folder.
-Here’s the gamma-ray spectra computed by MadDM using CosmiXs:</p>
-<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<section class="sphx-glr-example-title" id="introductory-example-plotting-sin">
+<span id="sphx-glr-tutorial-and-examples-indirect-detection-py"></span><h1>Introductory example - Plotting sin<a class="headerlink" href="#introductory-example-plotting-sin" title="Link to this heading">#</a></h1>
+<p>This is a general example demonstrating a Matplotlib plot output, embedded
+reST, the use of math notation and cross-linking to other examples. It would be
+useful to compare the <code class="xref download docutils literal notranslate"><span class="pre">source</span> <span class="pre">Python</span> <span class="pre">file</span></code> with the
+output below.</p>
+<p>Source files for gallery examples should start with a triple-quoted header
+docstring. Anything before the docstring is ignored by Sphinx-Gallery and will
+not appear in the rendered output, nor will it be executed. This docstring
+requires a reST header, which is used as the title of the example and
+to correctly build cross-referencing links.</p>
+<p>Code and embedded reST text blocks follow the docstring. The first block
+immediately after the docstring is deemed a code block, by default, unless you
+specify it to be a text block using a line of <code class="docutils literal notranslate"><span class="pre">#</span></code>’s or <code class="docutils literal notranslate"><span class="pre">#%%</span></code> (see below).
+All code blocks get executed by Sphinx-Gallery and any output, including plots
+will be captured. Typically, code and text blocks are interspersed to provide
+narrative explanations of what the code is doing or interpretations of code
+output.</p>
+<p>Mathematical expressions can be included as LaTeX, and will be rendered with
+MathJax. To include displayed math notation, use the directive <code class="docutils literal notranslate"><span class="pre">..</span> <span class="pre">math::</span></code>.
+To include inline math notation use the <code class="docutils literal notranslate"><span class="pre">:math:</span></code> role. For example, we are
+about to plot the following function:</p>
+<div class="math notranslate nohighlight">
+\[x \rightarrow \sin(x)\]</div>
+<p>Here the function <span class="math notranslate nohighlight">\(\sin\)</span> is evaluated at each point the variable
+<span class="math notranslate nohighlight">\(x\)</span> is defined. When including LaTeX in a Python string, ensure that you
+escape the backslashes or use a <span class="xref std std-ref">raw docstring</span>. You do
+not need to do this in text blocks (see below).</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Code source: Óscar Nájera</span>
+<span class="c1"># License: BSD 3 clause</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
-<span class="k">def</span><span class="w"> </span><span class="nf">plot_gamma_spectra</span><span class="p">(</span><span class="n">spectra_file</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Plots dn/dlogx vs log10(x) from the spectra file.</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
 
-<span class="sd">    Parameters:</span>
-<span class="sd">    spectra_file (str): Path to the spectra file.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">logx_vals</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="n">dndlogx_vals</span> <span class="o">=</span> <span class="p">[]</span>
-
-    <span class="c1"># Read the data file</span>
-    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">spectra_file</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
-        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">file</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;#&#39;</span><span class="p">):</span>
-                <span class="k">continue</span>  <span class="c1"># skip header lines</span>
-            <span class="n">parts</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
-            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
-                <span class="k">continue</span>  <span class="c1"># skip malformed lines</span>
-            <span class="n">logx</span><span class="p">,</span> <span class="n">dndlogx</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">parts</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">dndlogx</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="k">continue</span>  <span class="c1"># skip zero rates</span>
-            <span class="n">logx_vals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">logx</span><span class="p">)</span>
-            <span class="n">dndlogx_vals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dndlogx</span><span class="p">)</span>
-
-    <span class="n">logx_vals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">logx_vals</span><span class="p">)</span>
-    <span class="n">dndlogx_vals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dndlogx_vals</span><span class="p">)</span>
-
-    <span class="c1"># Plot the spectra</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">logx_vals</span><span class="p">,</span> <span class="n">dndlogx_vals</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Gamma-ray Spectrum&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">)</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;log10(x)&#39;</span><span class="p">)</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;dn/dlogx&#39;</span><span class="p">)</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Gamma-ray Spectrum (at source)&#39;</span><span class="p">)</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">yscale</span><span class="p">(</span><span class="s1">&#39;log&#39;</span><span class="p">)</span>  <span class="c1"># set y-axis to log scale</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-
-<span class="n">plot_gamma_spectra</span><span class="p">(</span><span class="s1">&#39;./plot_data/gammas_spectrum_CosmiXs.dat&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;$x$&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;$\sin(x)$&quot;</span><span class="p">)</span>
+<span class="c1"># To avoid matplotlib text output</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
-<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="mi">1</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+<p>To include embedded reST, use a line of &gt;= 20 <code class="docutils literal notranslate"><span class="pre">#</span></code>’s or <code class="docutils literal notranslate"><span class="pre">#%%</span></code> between your
+reST and your code (see <span class="xref std std-ref">embedding_rst</span>). This separates your example
+into distinct text and code blocks. You can continue writing code below the
+embedded reST text block:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;This example shows a sin plot!&quot;</span><span class="p">)</span>
 </pre></div>
+</div>
+<p>LaTeX syntax in the text blocks does not require backslashes to be escaped:</p>
+<div class="math notranslate nohighlight">
+\[\sin\]</div>
+<section id="cross-referencing">
+<span id="cross-ref-example"></span><h2>Cross referencing<a class="headerlink" href="#cross-referencing" title="Link to this heading">#</a></h2>
+<p>You can refer to an example from any part of the documentation,
+including from other examples. Sphinx-Gallery automatically creates reference
+labels for each example. The label consists of the <code class="docutils literal notranslate"><span class="pre">.py</span></code> file name,
+prefixed with <code class="docutils literal notranslate"><span class="pre">sphx_glr_</span></code> and the name of the
+folder(s) the example is in. Below, the example we want to
+cross-reference is in <code class="docutils literal notranslate"><span class="pre">auto_examples</span></code> (the <code class="docutils literal notranslate"><span class="pre">gallery_dirs</span></code>; see
+<span class="xref std std-ref">configure_and_use_sphinx_gallery</span>), then the subdirectory <code class="docutils literal notranslate"><span class="pre">no_output</span></code>
+(since the example is within a sub-gallery). The file name of the example is
+<code class="docutils literal notranslate"><span class="pre">plot_syntaxerror.py</span></code>. We can thus cross-link to the example ‘SyntaxError’
+using:
+<code class="docutils literal notranslate"><span class="pre">:ref:`sphx_glr_auto_examples_no_output_plot_syntaxerror.py`</span></code>.</p>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p>See <span class="xref std std-ref">sphx_glr_auto_examples_no_output_plot_syntaxerror.py</span> for
+an example with an error.</p>
 </div>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorial-and-examples-indirect-detection-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
@@ -577,8 +549,7 @@ Here’s the gamma-ray spectra computed by MadDM using CosmiXs:</p>
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#dark-matter-annihilation-into-photons">Dark Matter Annihilation into Photons</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#plot-the-gamma-ray-spectra">Plot the Gamma-ray Spectra</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cross-referencing">Cross referencing</a></li>
 </ul>
   </nav></div>
 
