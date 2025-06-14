@@ -100,7 +100,7 @@ Below is a gallery of various examples on the usage of MadDM and its features.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="Example script with invalid Python syntax ">
+    <div class="sphx-glr-thumbcontainer" tooltip="Compute indirect detection signals and limits from dark matter annihilation.">
 
 .. only:: html
 
@@ -111,7 +111,7 @@ Below is a gallery of various examples on the usage of MadDM and its features.
 
 .. raw:: html
 
-      <div class="sphx-glr-thumbnail-title">SyntaxError</div>
+      <div class="sphx-glr-thumbnail-title">Indirect Detection Analysis</div>
     </div>
 
 

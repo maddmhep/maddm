@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>SyntaxError &#8212; MadDM 3.2.13 documentation</title>
+    <title>Indirect Detection Analysis &#8212; MadDM 3.2.13 documentation</title>
   
   
   
@@ -348,7 +348,7 @@
 <li class="toctree-l1"><a class="reference internal" href="relic_density.html">Relic Density Computation in MadDM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="scripts.html">Use MadDM as a Script</a></li>
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">SyntaxError</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Indirect Detection Analysis</a></li>
 </ul>
 </div>
 </nav></div>
@@ -392,7 +392,7 @@
     
     <li class="breadcrumb-item"><a href="index.html" class="nav-link">Tutorial and examples</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">SyntaxError</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Indirect Detection Analysis</span></li>
   </ul>
 </nav>
 </div>
@@ -414,141 +414,104 @@
 <p><a class="reference internal" href="#sphx-glr-download-tutorial-and-examples-indirect-detection-py"><span class="std std-ref">Go to the end</span></a>
 to download the full example code.</p>
 </div>
-<section class="sphx-glr-example-title" id="syntaxerror">
-<span id="sphx-glr-tutorial-and-examples-indirect-detection-py"></span><h1>SyntaxError<a class="headerlink" href="#syntaxerror" title="Link to this heading">#</a></h1>
-<p>Example script with invalid Python syntax</p>
-<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">===========================</span>
-<span class="sd">Indirect Detection Analysis</span>
-<span class="sd">===========================</span>
+<section class="sphx-glr-example-title" id="indirect-detection-analysis">
+<span id="sphx-glr-tutorial-and-examples-indirect-detection-py"></span><h1>Indirect Detection Analysis<a class="headerlink" href="#indirect-detection-analysis" title="Link to this heading">#</a></h1>
+<p>Compute indirect detection signals and limits from dark matter annihilation.</p>
+<section id="dark-matter-annihilation-into-photons">
+<h2>1. Dark Matter Annihilation into Photons<a class="headerlink" href="#dark-matter-annihilation-into-photons" title="Link to this heading">#</a></h2>
+<p>Indirect detection looks for products of dark matter annihilation in astrophysical environment where the dark
+matter is denser. For instance, typical benchmarks for gamma-ray searches are the dSphs or the Galactic Center.</p>
+<p>In this example, we study the process χ χ → SM SM using a DM simplified model which annihilates through a vector mediator.
+We will see how to compute the resulting gamma-ray spectra relevant for indirect detection using both Pythia 8 and CosmiXs.</p>
+<p>First, import the model and define the dark matter candidate. We use the DMsimp_s_spin1_MD model, where
+the dark matter particle is labeled ‘~xd’ in this model.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; import model DMsimp_s_spin1_MD
+MadDM&gt; define darkmatter ~xd
+</pre></div>
+</div>
+<p>Then, we generate the indirect detection process. This defines the channel for which the gamma-ray spectra will be computed.
+We then output the process to a folder named ‘ID_spin1’, and we launch the process.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; generate indirect_detection
+MadDM&gt; output ID_spin1
+MadDM&gt; launch ID_spin1
+</pre></div>
+</div>
+<p>We enable the computation of the gamma-ray flux spectrum by setting:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set indirect = flux_source
+</pre></div>
+</div>
+<p>We can choose to compute the gamma-ray spectra using either Pythia 8 or CosmiXs, entering <cite>pythia8</cite> or <cite>cosmix</cite> respectively:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set indirect_flux_source_method cosmix
+</pre></div>
+</div>
+<p>To save the full energy spectra you can set:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set save_output spectra
+</pre></div>
+</div>
+<p>You can enable the <code class="docutils literal notranslate"><span class="pre">precise</span></code> mode for a full integration over the DM velocity distribution. For a faster evaluation
+you can use the <code class="docutils literal notranslate"><span class="pre">fast</span></code> mode, where the thermally averaged annihilation cross section is computed at a fixed velocity.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set fast
+</pre></div>
+</div>
+<p>In <code class="docutils literal notranslate"><span class="pre">precise</span></code> mode, you can choose between <code class="docutils literal notranslate"><span class="pre">madevent</span></code> and <code class="docutils literal notranslate"><span class="pre">reshuffling</span></code> methods of the event generator
+<cite>MadEvent &lt;https://iopscience.iop.org/article/10.1088/1126-6708/2003/02/027&gt;</cite>. This is not needed in <code class="docutils literal notranslate"><span class="pre">fast</span></code> mode.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set sigmav_method madevent
+</pre></div>
+</div>
+<p>In fast mode, to specify how many events should be generated per phase-space point, do:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set nevents 100000
+</pre></div>
+</div>
+<p>and finally launch the process pressing Enter.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Now we write the real Python code for plotting, which will actually be executed</span>
 
-<span class="sd">Compute indirect detection signals and limits from dark matter annihilation.</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
-<span class="sd">Dark Matter Annihilation into Photons</span>
-<span class="sd">=====================================</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">plot_gamma_spectra</span><span class="p">(</span><span class="n">spectra_file</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Plots dn/dlogx vs log10(x) from the spectra file.</span>
 
-<span class="sd">Indirect detection looks for products of dark matter annihilation in astrophysical environment where the dark</span>
-<span class="sd">matter is denser. For instance, typical benchmarks for gamma-ray searches are the dSphs or the Galactic Center.</span>
+<span class="sd">    Parameters:</span>
+<span class="sd">    spectra_file (str): Path to the spectra file.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logx_vals</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">dndlogx_vals</span> <span class="o">=</span> <span class="p">[]</span>
 
-<span class="sd">In this example, we study the process χ χ → SM SM using a DM simplified model which annihilates trough a vector mediator.</span>
-<span class="sd">We will see how compute the resulting gamma-ray spectra relevant for indirect detection using both Pythia 8 and CosmiXs.</span>
+    <span class="c1"># Read the data file</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">spectra_file</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">file</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;#&#39;</span><span class="p">):</span>
+                <span class="k">continue</span>  <span class="c1"># skip header lines</span>
+            <span class="n">parts</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="k">continue</span>  <span class="c1"># skip malformed lines</span>
+            <span class="n">logx</span><span class="p">,</span> <span class="n">dndlogx</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">parts</span><span class="p">)</span>
+            <span class="n">logx_vals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">logx</span><span class="p">)</span>
+            <span class="n">dndlogx_vals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dndlogx</span><span class="p">)</span>
 
-<span class="sd">First, import the model and define the dark matter candidate. We use the DMsimp_s_spin1_MD model, where</span>
-<span class="sd">the dark matter particle is labeled &#39;~xd&#39; in this model.</span>
+    <span class="n">logx_vals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">logx_vals</span><span class="p">)</span>
+    <span class="n">dndlogx_vals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dndlogx_vals</span><span class="p">)</span>
 
-<span class="sd">.. code-block:: text</span>
+    <span class="c1"># Plot the spectra</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">logx_vals</span><span class="p">,</span> <span class="n">dndlogx_vals</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Gamma-ray Spectrum&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;log10(x = Ekin/mDM)&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;dn/dlogx&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Gamma-ray Spectrum (at source)&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 
-<span class="sd">    MadDM&gt; import model DMsimp_s_spin1_MD</span>
-<span class="sd">    MadDM&gt; define darkmatter ~xd</span>
-
-<span class="sd">Then, we generate the indirect detection process. This defines the channel for which the gamma-ray spectra will be computed.</span>
-<span class="sd">We then output the process to a folder named &#39;ID_spin1&#39;, and we launch the process.</span>
-
-<span class="sd">.. code-block:: text</span>
-
-<span class="sd">    MadDM&gt; generate indirect_detection</span>
-<span class="sd">    MadDM&gt; output ID_spin1</span>
-<span class="sd">    MadDM&gt; launch ID_spin1</span>
-
-<span class="sd">We enable the computation of the gamma-ray flux spectrum by setting:</span>
-
-<span class="sd">.. code-block:: text</span>
-
-<span class="sd">    MadDM&gt; set indirect = flux_source</span>
-
-<span class="sd">We can choose to compute the gamma-ray spectra using either Pythia 8 or CosmiXs, entering `pythia8` or `cosmix` respectively:</span>
-
-<span class="sd">.. code-block:: text</span>
-
-<span class="sd">    MadDM&gt; set indirect_flux_source_method cosmix</span>
-
-<span class="sd">To save the full energy spectra you can set:</span>
-
-<span class="sd">.. code-block:: text</span>
-
-<span class="sd">    MadDM&gt; set save_output spectra</span>
-
-<span class="sd">You can enable the ``precise`` mode for a full integration over the DM velocity distribution. For a faster evaluation</span>
-<span class="sd">you can use the ``fast`` mode, where the thermally averaged annihilation cross section is computed at a fixed velocity.</span>
-
-<span class="sd">.. code-block:: text</span>
-
-<span class="sd">    MadDM&gt; set fast</span>
-
-<span class="sd">In ``precise`` mode, you can choose between ``madevent`` and ``reshuffling`` methods of the event generator</span>
-<span class="sd">`MadEvent &lt;https://iopscience.iop.org/article/10.1088/1126-6708/2003/02/027&gt;`. This is not needed in ``fast`` mode.</span>
-
-<span class="sd">.. code-block:: text</span>
-
-<span class="sd">    MadDM&gt; set sigmav_method madevent</span>
-
-<span class="sd">In fast mode, to specify how many events should be generated per phase-space point, do:</span>
-
-<span class="sd">.. code-block:: text</span>
-
-<span class="sd">    MadDM&gt; set nevents 100000</span>
-
-<span class="sd">and finally launch the process pressing Enter.</span>
-
-
-<span class="sd">Plot the Gamma-ray Spectra</span>
-<span class="sd">==========================</span>
-
-<span class="sd">After running the above commands, you will find the output in the ``ID_spin1`` folder.</span>
-<span class="sd">The output will contain the gamma-ray spectra in the ``ID_spin1/Output/xxxx`` folder.</span>
-<span class="sd">Here&#39;s the gamma-ray spectra computed by MadDM using CosmiXs:</span>
-
-<span class="sd">&quot;&quot;&quot;</span>
-
-<span class="o">..</span> <span class="n">code</span><span class="o">-</span><span class="n">block</span><span class="p">::</span> <span class="n">python</span>
-
-    <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
-    <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">plot_gamma_spectra</span><span class="p">(</span><span class="n">spectra_file</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Plots dn/dlogx vs log10(x) from the spectra file.</span>
-
-<span class="sd">        Parameters:</span>
-<span class="sd">        spectra_file (str): Path to the spectra file.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">logx_vals</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="n">dndlogx_vals</span> <span class="o">=</span> <span class="p">[]</span>
-
-        <span class="c1"># Read the data file</span>
-        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">spectra_file</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
-            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">file</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;#&#39;</span><span class="p">):</span>
-                    <span class="k">continue</span>  <span class="c1"># skip header lines</span>
-                <span class="n">parts</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
-                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
-                    <span class="k">continue</span>  <span class="c1"># skip malformed lines</span>
-                <span class="n">logx</span><span class="p">,</span> <span class="n">dndlogx</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">parts</span><span class="p">)</span>
-                <span class="n">logx_vals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">logx</span><span class="p">)</span>
-                <span class="n">dndlogx_vals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dndlogx</span><span class="p">)</span>
-
-        <span class="n">logx_vals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">logx_vals</span><span class="p">)</span>
-        <span class="n">dndlogx_vals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dndlogx_vals</span><span class="p">)</span>
-
-        <span class="c1"># Plot the spectra</span>
-        <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
-        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">logx_vals</span><span class="p">,</span> <span class="n">dndlogx_vals</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Gamma-ray Spectrum&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">)</span>
-        <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;log10(x = Ekin/mDM)&#39;</span><span class="p">)</span>
-        <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;dn/dlogx&#39;</span><span class="p">)</span>
-        <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Gamma-ray Spectrum (at source)&#39;</span><span class="p">)</span>
-        <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
-        <span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
-        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<span class="n">plot_gamma_spectra</span><span class="p">(</span><span class="s2">&quot;./plot_data/gammas_spectrum_CosmiXs.dat&quot;</span><span class="p">)</span>
 
 <span class="sd">&quot;&quot;&quot;</span>
-
-<span class="sd">Exiting MadDM</span>
-<span class="sd">=============</span>
+<span class="sd">3. Exiting MadDM</span>
+<span class="sd">================</span>
 
 <span class="sd">.. code-block:: text</span>
 
 <span class="sd">    MadDM&gt; quit</span>
-
 <span class="sd">&quot;&quot;&quot;</span>
 </pre></div>
 </div>
@@ -564,6 +527,7 @@ to download the full example code.</p>
 </div>
 </div>
 <p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+</section>
 </section>
 
 
@@ -604,6 +568,18 @@ to download the full example code.</p>
                 <dialog id="pst-secondary-sidebar-modal"></dialog>
                 <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
 
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#dark-matter-annihilation-into-photons">1. Dark Matter Annihilation into Photons</a></li>
+</ul>
+  </nav></div>
 
   <div class="sidebar-secondary-item">
 

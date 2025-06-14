@@ -5,14 +5,14 @@ Indirect Detection Analysis
 
 Compute indirect detection signals and limits from dark matter annihilation.
 
-Dark Matter Annihilation into Photons
-=====================================
+1. Dark Matter Annihilation into Photons
+========================================
 
 Indirect detection looks for products of dark matter annihilation in astrophysical environment where the dark
 matter is denser. For instance, typical benchmarks for gamma-ray searches are the dSphs or the Galactic Center.
 
-In this example, we study the process χ χ → SM SM using a DM simplified model which annihilates trough a vector mediator.
-We will see how compute the resulting gamma-ray spectra relevant for indirect detection using both Pythia 8 and CosmiXs.
+In this example, we study the process χ χ → SM SM using a DM simplified model which annihilates through a vector mediator.
+We will see how to compute the resulting gamma-ray spectra relevant for indirect detection using both Pythia 8 and CosmiXs.
 
 First, import the model and define the dark matter candidate. We use the DMsimp_s_spin1_MD model, where
 the dark matter particle is labeled '~xd' in this model.
@@ -70,65 +70,57 @@ In fast mode, to specify how many events should be generated per phase-space poi
     MadDM> set nevents 100000
 
 and finally launch the process pressing Enter.
-
-
-Plot the Gamma-ray Spectra
-==========================
-
-After running the above commands, you will find the output in the ``ID_spin1`` folder.
-The output will contain the gamma-ray spectra in the ``ID_spin1/Output/xxxx`` folder.
-Here's the gamma-ray spectra computed by MadDM using CosmiXs:
-
 """
 
-.. code-block:: python
+# Now we write the real Python code for plotting, which will actually be executed
 
-    import matplotlib.pyplot as plt
-    import numpy as np
+import matplotlib.pyplot as plt
+import numpy as np
 
-    def plot_gamma_spectra(spectra_file):
-        """
-        Plots dn/dlogx vs log10(x) from the spectra file.
+def plot_gamma_spectra(spectra_file):
+    """
+    Plots dn/dlogx vs log10(x) from the spectra file.
 
-        Parameters:
-        spectra_file (str): Path to the spectra file.
-        """
-        logx_vals = []
-        dndlogx_vals = []
+    Parameters:
+    spectra_file (str): Path to the spectra file.
+    """
+    logx_vals = []
+    dndlogx_vals = []
 
-        # Read the data file
-        with open(spectra_file, 'r') as file:
-            for line in file:
-                if line.startswith('#'):
-                    continue  # skip header lines
-                parts = line.strip().split()
-                if len(parts) != 2:
-                    continue  # skip malformed lines
-                logx, dndlogx = map(float, parts)
-                logx_vals.append(logx)
-                dndlogx_vals.append(dndlogx)
+    # Read the data file
+    with open(spectra_file, 'r') as file:
+        for line in file:
+            if line.startswith('#'):
+                continue  # skip header lines
+            parts = line.strip().split()
+            if len(parts) != 2:
+                continue  # skip malformed lines
+            logx, dndlogx = map(float, parts)
+            logx_vals.append(logx)
+            dndlogx_vals.append(dndlogx)
 
-        logx_vals = np.array(logx_vals)
-        dndlogx_vals = np.array(dndlogx_vals)
+    logx_vals = np.array(logx_vals)
+    dndlogx_vals = np.array(dndlogx_vals)
 
-        # Plot the spectra
-        plt.figure(figsize=(10, 6))
-        plt.plot(logx_vals, dndlogx_vals, label='Gamma-ray Spectrum', color='blue')
-        plt.xlabel('log10(x = Ekin/mDM)')
-        plt.ylabel('dn/dlogx')
-        plt.title('Gamma-ray Spectrum (at source)')
-        plt.legend()
-        plt.grid()
-        plt.show()
+    # Plot the spectra
+    plt.figure(figsize=(10, 6))
+    plt.plot(logx_vals, dndlogx_vals, label='Gamma-ray Spectrum', color='blue')
+    plt.xlabel('log10(x = Ekin/mDM)')
+    plt.ylabel('dn/dlogx')
+    plt.title('Gamma-ray Spectrum (at source)')
+    plt.legend()
+    plt.grid()
+    plt.show()
+
+plot_gamma_spectra("./plot_data/gammas_spectrum_CosmiXs.dat")
 
 """
-
-Exiting MadDM
-=============
+3. Exiting MadDM
+================
 
 .. code-block:: text
 
     MadDM> quit
-    
 """
+
 
