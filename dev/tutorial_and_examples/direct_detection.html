@@ -56,8 +56,8 @@
     <link rel="icon" href="../_static/favicon.ico"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Relic Density Computation in MadDM" href="relic_density.html" />
-    <link rel="prev" title="Scan over model parameters" href="scans.html" />
+    <link rel="next" title="Contributing to the documentation" href="../contribute.html" />
+    <link rel="prev" title="Indirect Detection Analysis" href="indirect_detection.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="3.2.13" />
@@ -344,11 +344,11 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="scans.html">Scan over model parameters</a></li>
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Direct Detection Tutorial</a></li>
 <li class="toctree-l1"><a class="reference internal" href="relic_density.html">Relic Density Computation in MadDM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="scripts.html">Use MadDM as a Script</a></li>
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
-<li class="toctree-l1"><a class="reference internal" href="indirect_detection.html">Introductory example - Plotting sin</a></li>
+<li class="toctree-l1"><a class="reference internal" href="indirect_detection.html">Indirect Detection Analysis</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Direct Detection Tutorial</a></li>
 </ul>
 </div>
 </nav></div>
@@ -476,62 +476,142 @@ Each time you launch the same process, MadDM creates a new folder <code class="d
 <p>In this folder, you will find the cross sections in a file named <code class="docutils literal notranslate"><span class="pre">MadDM_results.txt</span></code>.</p>
 <p>You can also find the differential recoil rates in the <code class="docutils literal notranslate"><span class="pre">DDrates.txt</span></code> file, which contains the differential recoil spectra vs energy
 for DM-nucleon interactions in Xenon, Argon and Germanium targets.</p>
-</section>
-</section>
-<section id="electronic-recoils-with-xenon10-xenon1t-likelihoods">
-<h2>2. Electronic Recoils with XENON10/XENON1T likelihoods<a class="headerlink" href="#electronic-recoils-with-xenon10-xenon1t-likelihoods" title="Link to this heading">#</a></h2>
-<p>MadDM also supports <strong>electronic recoil</strong> constraints, currently using the <strong>XENON10</strong> and <strong>XENON1T</strong>
-likelihoods. These are particularly relevant for models with sub-GeV DM that interact with electrons.
-With this module you can compute the DM-electron recoil rates and constrain the Lagrangian parameters, or the cross section, using experimental data from XENON10 and XENON1T.</p>
-<section id="id1">
-<h3>Example with a simplified scalar-mediated DM model<a class="headerlink" href="#id1" title="Link to this heading">#</a></h3>
-<p>First, import the model and define the dark matter particle. Generally, for DMsimp models, you can choose between Xr (real scalar DM), Xc (complex scalar DM)
-and Xd (Dirac spinor DM). Then, generate the direct detection processes with:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; import model eDMsimp_s_spin0
-MadDM&gt; define darkmatter xd
-MadDM&gt; generate direct
-</pre></div>
-</div>
-<p>At this point, you can set the parameter values of the model, stored in <code class="docutils literal notranslate"><span class="pre">param_card_orig.dat</span></code>, by pressing 1, but this can also be done when launching the process.
-Next, create the process folder. In this case, we call it <code class="docutils literal notranslate"><span class="pre">DD_ER_spin0</span></code>, but you can choose any name you like. Then launch the process:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; output DD_ER_spin0
-MadDM&gt; launch DD_ER_spin0
-</pre></div>
-</div>
-<p>Select to run the <code class="docutils literal notranslate"><span class="pre">direct_electron</span></code> module (but it should be already ON) by entering:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; direct_electron = ON
-</pre></div>
-</div>
-<p>If your model has both DM-nucleon and DM-electron interactions, you can set both <code class="docutils literal notranslate"><span class="pre">direct_nucleon</span></code> and <code class="docutils literal notranslate"><span class="pre">direct_electron</span></code> modules to ON,
-and you will receive results for both types of interactions considered separately.</p>
-<p>You can set the model parameters in the <code class="docutils literal notranslate"><span class="pre">param_card.dat</span></code> by pressing 7, or by editing the file directly in the process folder (in this case <code class="docutils literal notranslate"><span class="pre">DD_ER_spin0/Cards/param_card.dat</span></code>).</p>
-<p>You can set the MadDM parameters (such as the halo parameters, recoil energy range and much more) in the <code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code> by pressing 8,
-or by editing the file directly in the process folder (in this case <code class="docutils literal notranslate"><span class="pre">DD_ER_spin0/Cards/maddm_card.dat</span></code>).</p>
-<p>Note that in the <code class="docutils literal notranslate"><span class="pre">direct_electron</span></code> module, if the DM particle has a mass above 1 GeV, it will be ignored by default.
-To change this behavior, set <code class="docutils literal notranslate"><span class="pre">direct_electron_mode</span></code> to <code class="docutils literal notranslate"><span class="pre">always</span></code> in the <code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code> file, which you can do by pressing 8 after launching the process.</p>
-<p>Once you are all set, you can run the process by pressing Enter. This module will evaluate the DM-electron recoil rates and constrain them using XENON10 + XENON1T data.</p>
-<p>After running the above commands, the output will look like:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>INFO: compilation done
-INFO: MadDM Results
-INFO: Sigma_e             All DM = 3.23e-43       ALLOWED       Xenon10 p_val    = 1.00e+00
-INFO: Sigma_e             All DM = 3.23e-43       ALLOWED       Xenon1ton p_val  = 1.00e+00
-INFO:
-INFO: Results written in: /Users/yourname/yourprocessfolder/DD_ER_spin0/output/run_01/MadDM_results.txt
-</pre></div>
-</div>
-<p>where <code class="docutils literal notranslate"><span class="pre">All</span> <span class="pre">DM</span></code> refers to the reference DM-electron cross section in case the DM particle contributes to the entire dark matter density of the universe,
-<code class="docutils literal notranslate"><span class="pre">ALLOWED</span></code> indicates that the model is consistent with the experimental limits from XENON10 and XENON1T. You can also see the p-values for the likelihoods used in the analysis.</p>
-</section>
-<section id="id2">
-<h3>Results<a class="headerlink" href="#id2" title="Link to this heading">#</a></h3>
-<p>The results of each run will be stored inside the process folder you created, whose path is shown in the last line of the output.
-Each time you launch the same process, MadDM creates a new folder <code class="docutils literal notranslate"><span class="pre">output/run_XX</span></code> within the process folder.</p>
-<p>In this folder, you will find the results, such as the cross section and p-values, in a file named <code class="docutils literal notranslate"><span class="pre">MadDM_results.txt</span></code>.</p>
-<p>You can find all the output produced by the Fortran module of MadDM, such as signal, background and binning, in the <code class="docutils literal notranslate"><span class="pre">maddm.out</span></code> file.</p>
-<p>You can also find the differential recoil spectra vs energy or vs scintillation signal. The rates produced with this module are labeled with the suffix <code class="docutils literal notranslate"><span class="pre">e_recoil</span></code> at the end.</p>
-<section id="exiting-maddm">
-<h4>Exiting MadDM<a class="headerlink" href="#exiting-maddm" title="Link to this heading">#</a></h4>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; quit
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">plot_dd_rates</span><span class="p">(</span><span class="n">dd_file</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Plots direct detection rates for different materials from DDrates.txt.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    dd_file (str): Path to the DDrates.txt file.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Lists to store data</span>
+    <span class="n">Er_vals</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">Xe_vals</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">Ar_vals</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">Ge_vals</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c1"># Read the data file</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">dd_file</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">file</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;#&#39;</span><span class="p">):</span>
+                <span class="k">continue</span>  <span class="c1"># skip header lines</span>
+            <span class="n">parts</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">4</span><span class="p">:</span>
+                <span class="k">continue</span>  <span class="c1"># skip malformed lines</span>
+            <span class="n">Er</span><span class="p">,</span> <span class="n">drde_Xe</span><span class="p">,</span> <span class="n">drde_Ar</span><span class="p">,</span> <span class="n">drde_Ge</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">parts</span><span class="p">)</span>
+            <span class="n">Er_vals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Er</span><span class="p">)</span>
+            <span class="n">Xe_vals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">drde_Xe</span><span class="p">)</span>
+            <span class="n">Ar_vals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">drde_Ar</span><span class="p">)</span>
+            <span class="n">Ge_vals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">drde_Ge</span><span class="p">)</span>
+
+    <span class="c1"># Convert lists to numpy arrays</span>
+    <span class="n">Er_vals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">Er_vals</span><span class="p">)</span>
+    <span class="n">Xe_vals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">Xe_vals</span><span class="p">)</span>
+    <span class="n">Ar_vals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">Ar_vals</span><span class="p">)</span>
+    <span class="n">Ge_vals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">Ge_vals</span><span class="p">)</span>
+
+    <span class="c1"># Plotting</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">Er_vals</span><span class="p">,</span> <span class="n">Xe_vals</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Xe&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">Er_vals</span><span class="p">,</span> <span class="n">Ar_vals</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Ar&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;green&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">Er_vals</span><span class="p">,</span> <span class="n">Ge_vals</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Ge&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Recoil Energy $E_R$ [keV]&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;dR/dE [$</span><span class="se">\\</span><span class="s1">mathrm{events / kg / day / keV}$]&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Direct Detection Differential Rates&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">yscale</span><span class="p">(</span><span class="s1">&#39;log&#39;</span><span class="p">)</span>  <span class="c1"># y-axis in log scale</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">which</span><span class="o">=</span><span class="s2">&quot;both&quot;</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s2">&quot;--&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+<span class="n">plot_dd_rates</span><span class="p">(</span><span class="s1">&#39;./plot_data/DDrates.txt&#39;</span><span class="p">)</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+
+<span class="sd">---------------------------------------------------------</span>
+<span class="sd">2. Electronic Recoils with XENON10/XENON1T likelihoods</span>
+<span class="sd">---------------------------------------------------------</span>
+
+<span class="sd">MadDM also supports **electronic recoil** constraints, currently using the **XENON10** and **XENON1T**</span>
+<span class="sd">likelihoods. These are particularly relevant for models with sub-GeV DM that interact with electrons.</span>
+<span class="sd">With this module you can compute the DM-electron recoil rates and constrain the Lagrangian parameters, or the cross section, using experimental data from XENON10 and XENON1T.</span>
+
+<span class="sd">Example with a simplified scalar-mediated DM model</span>
+<span class="sd">--------------------------------------------------</span>
+
+<span class="sd">First, import the model and define the dark matter particle. Generally, for DMsimp models, you can choose between Xr (real scalar DM), Xc (complex scalar DM)</span>
+<span class="sd">and Xd (Dirac spinor DM). Then, generate the direct detection processes with:</span>
+
+<span class="sd">.. code-block:: text</span>
+
+<span class="sd">    MadDM&gt; import model eDMsimp_s_spin0</span>
+<span class="sd">    MadDM&gt; define darkmatter xd</span>
+<span class="sd">    MadDM&gt; generate direct</span>
+
+<span class="sd">At this point, you can set the parameter values of the model, stored in ``param_card_orig.dat``, by pressing 1, but this can also be done when launching the process.</span>
+<span class="sd">Next, create the process folder. In this case, we call it ``DD_ER_spin0``, but you can choose any name you like. Then launch the process:</span>
+
+<span class="sd">.. code-block:: text</span>
+
+<span class="sd">    MadDM&gt; output DD_ER_spin0</span>
+<span class="sd">    MadDM&gt; launch DD_ER_spin0</span>
+
+<span class="sd">Select to run the ``direct_electron`` module (but it should be already ON) by entering:</span>
+
+<span class="sd">.. code-block:: text</span>
+
+<span class="sd">    MadDM&gt; direct_electron = ON</span>
+
+<span class="sd">If your model has both DM-nucleon and DM-electron interactions, you can set both ``direct_nucleon`` and ``direct_electron`` modules to ON,</span>
+<span class="sd">and you will receive results for both types of interactions considered separately.</span>
+
+<span class="sd">You can set the model parameters in the ``param_card.dat`` by pressing 7, or by editing the file directly in the process folder (in this case ``DD_ER_spin0/Cards/param_card.dat``).</span>
+
+<span class="sd">You can set the MadDM parameters (such as the halo parameters, recoil energy range and much more) in the ``maddm_card.dat`` by pressing 8,</span>
+<span class="sd">or by editing the file directly in the process folder (in this case ``DD_ER_spin0/Cards/maddm_card.dat``).</span>
+
+<span class="sd">Note that in the ``direct_electron`` module, if the DM particle has a mass above 1 GeV, it will be ignored by default.</span>
+<span class="sd">To change this behavior, set ``direct_electron_mode`` to ``always`` in the ``maddm_card.dat`` file, which you can do by pressing 8 after launching the process.</span>
+
+<span class="sd">Once you are all set, you can run the process by pressing Enter. This module will evaluate the DM-electron recoil rates and constrain them using XENON10 + XENON1T data.</span>
+
+<span class="sd">After running the above commands, the output will look like:</span>
+
+<span class="sd">.. code-block:: text</span>
+
+<span class="sd">    INFO: compilation done</span>
+<span class="sd">    INFO: MadDM Results</span>
+<span class="sd">    INFO: Sigma_e             All DM = 3.23e-43       ALLOWED       Xenon10 p_val    = 1.00e+00</span>
+<span class="sd">    INFO: Sigma_e             All DM = 3.23e-43       ALLOWED       Xenon1ton p_val  = 1.00e+00</span>
+<span class="sd">    INFO:</span>
+<span class="sd">    INFO: Results written in: /Users/yourname/yourprocessfolder/DD_ER_spin0/output/run_01/MadDM_results.txt</span>
+
+<span class="sd">where ``All DM`` refers to the reference DM-electron cross section in case the DM particle contributes to the entire dark matter density of the universe,</span>
+<span class="sd">``ALLOWED`` indicates that the model is consistent with the experimental limits from XENON10 and XENON1T. You can also see the p-values for the likelihoods used in the analysis.</span>
+
+<span class="sd">Results</span>
+<span class="sd">-------</span>
+
+<span class="sd">The results of each run will be stored inside the process folder you created, whose path is shown in the last line of the output.</span>
+<span class="sd">Each time you launch the same process, MadDM creates a new folder ``output/run_XX`` within the process folder.</span>
+
+<span class="sd">In this folder, you will find the results, such as the cross section and p-values, in a file named ``MadDM_results.txt``.</span>
+
+<span class="sd">You can find all the output produced by the Fortran module of MadDM, such as signal, background and binning, in the ``maddm.out`` file.</span>
+
+<span class="sd">You can also find the differential recoil spectra vs energy or vs scintillation signal. The rates produced with this module are labeled with the suffix ``e_recoil`` at the end.</span>
+
+<span class="sd">Exiting MadDM</span>
+<span class="sd">=============</span>
+
+<span class="sd">.. code-block:: text</span>
+
+<span class="sd">    MadDM&gt; quit</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
 </pre></div>
 </div>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorial-and-examples-direct-detection-py">
@@ -549,7 +629,6 @@ Each time you launch the same process, MadDM creates a new folder <code class="d
 </section>
 </section>
 </section>
-</section>
 
 
                 </article>
@@ -562,20 +641,20 @@ Each time you launch the same process, MadDM creates a new folder <code class="d
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="scans.html"
+       href="indirect_detection.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Scan over model parameters</p>
+        <p class="prev-next-title">Indirect Detection Analysis</p>
       </div>
     </a>
     <a class="right-next"
-       href="relic_density.html"
+       href="../contribute.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Relic Density Computation in MadDM</p>
+        <p class="prev-next-title">Contributing to the documentation</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -601,14 +680,6 @@ Each time you launch the same process, MadDM creates a new folder <code class="d
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#nuclear-recoils-with-rapidd-and-lz-likelihood">1. Nuclear Recoils with RAPIDD and LZ likelihood</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#example-with-a-simplified-scalar-mediated-dm-model">Example with a simplified scalar-mediated DM model</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#results">Results</a></li>
-</ul>
-</li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#electronic-recoils-with-xenon10-xenon1t-likelihoods">2. Electronic Recoils with XENON10/XENON1T likelihoods</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">Example with a simplified scalar-mediated DM model</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id2">Results</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#exiting-maddm">Exiting MadDM</a></li>
-</ul>
-</li>
 </ul>
 </li>
 </ul>
