@@ -81,12 +81,20 @@ Here's the gamma-ray spectra computed by MadDM using CosmiXs:
 
 """
 
+# %%
+import matplotlib.pyplot as plt
+import numpy as np
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 def plot_gamma_spectra(spectra_file):
+    """
+    Plots dn/dlogx vs log10(x) from the spectra file.
 
+    Parameters:
+    spectra_file (str): Path to the spectra file.
+    """
     logx_vals = []
     dndlogx_vals = []
 
@@ -99,6 +107,8 @@ def plot_gamma_spectra(spectra_file):
             if len(parts) != 2:
                 continue  # skip malformed lines
             logx, dndlogx = map(float, parts)
+            if dndlogx == 0:
+                continue  # skip zero rates
             logx_vals.append(logx)
             dndlogx_vals.append(dndlogx)
 
@@ -108,15 +118,14 @@ def plot_gamma_spectra(spectra_file):
     # Plot the spectra
     plt.figure(figsize=(10, 6))
     plt.plot(logx_vals, dndlogx_vals, label='Gamma-ray Spectrum', color='blue')
-    plt.xlabel('log10(x = Ekin/mDM)')
+    plt.xlabel('log10(x)')
     plt.ylabel('dn/dlogx')
     plt.title('Gamma-ray Spectrum (at source)')
+    plt.yscale('log')  # set y-axis to log scale
     plt.legend()
-    plt.grid()
     plt.show()
 
-print(1+1)
-plot_gamma_spectra('./plot_data/spectra.txt')
+plot_gamma_spectra('./plot_data/gammas_spectrum_CosmiXs.dat')
 
 """
 
@@ -128,4 +137,4 @@ Exiting MadDM
     MadDM> quit
     
 """
-
+# %%
