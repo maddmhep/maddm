@@ -87,10 +87,10 @@ Below is a gallery of various examples on the usage of MadDM and its features.
 
 .. only:: html
 
-  .. image:: /tutorial_and_examples/images/thumb/sphx_glr_indirect_detection_thumb.png
+  .. image:: /tutorial_and_examples/images/thumb/sphx_glr_plot_indirect_detection_thumb.png
     :alt:
 
-  :ref:`sphx_glr_tutorial_and_examples_indirect_detection.py`
+  :ref:`sphx_glr_tutorial_and_examples_plot_indirect_detection.py`
 
 .. raw:: html
 
@@ -104,10 +104,10 @@ Below is a gallery of various examples on the usage of MadDM and its features.
 
 .. only:: html
 
-  .. image:: /tutorial_and_examples/images/thumb/sphx_glr_direct_detection_thumb.png
+  .. image:: /tutorial_and_examples/images/thumb/sphx_glr_plot_direct_detection_thumb.png
     :alt:
 
-  :ref:`sphx_glr_tutorial_and_examples_direct_detection.py`
+  :ref:`sphx_glr_tutorial_and_examples_plot_direct_detection.py`
 
 .. raw:: html
 
@@ -129,8 +129,8 @@ Below is a gallery of various examples on the usage of MadDM and its features.
    /tutorial_and_examples/relic_density
    /tutorial_and_examples/scripts
    /tutorial_and_examples/getting_started
-   /tutorial_and_examples/indirect_detection
-   /tutorial_and_examples/direct_detection
+   /tutorial_and_examples/plot_indirect_detection
+   /tutorial_and_examples/plot_direct_detection
 
 
 

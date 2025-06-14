@@ -45,7 +45,7 @@
     <script src="../_static/documentation_options.js?v=c0feab9b"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'tutorial_and_examples/indirect_detection';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'tutorial_and_examples/plot_indirect_detection';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://maddmhep.github.io/maddm/dev/_static/switcher.json';
@@ -56,7 +56,7 @@
     <link rel="icon" href="../_static/favicon.ico"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Direct Detection Tutorial" href="direct_detection.html" />
+    <link rel="next" title="Direct Detection Tutorial" href="plot_direct_detection.html" />
     <link rel="prev" title="Getting Started" href="getting_started.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
@@ -348,7 +348,7 @@
 <li class="toctree-l1"><a class="reference internal" href="scripts.html">Use MadDM as a Script</a></li>
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Indirect Detection Analysis</a></li>
-<li class="toctree-l1"><a class="reference internal" href="direct_detection.html">Direct Detection Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="plot_direct_detection.html">Direct Detection Tutorial</a></li>
 </ul>
 </div>
 </nav></div>
@@ -411,11 +411,11 @@
                   
   <div class="sphx-glr-download-link-note admonition note">
 <p class="admonition-title">Note</p>
-<p><a class="reference internal" href="#sphx-glr-download-tutorial-and-examples-indirect-detection-py"><span class="std std-ref">Go to the end</span></a>
+<p><a class="reference internal" href="#sphx-glr-download-tutorial-and-examples-plot-indirect-detection-py"><span class="std std-ref">Go to the end</span></a>
 to download the full example code.</p>
 </div>
 <section class="sphx-glr-example-title" id="indirect-detection-analysis">
-<span id="sphx-glr-tutorial-and-examples-indirect-detection-py"></span><h1>Indirect Detection Analysis<a class="headerlink" href="#indirect-detection-analysis" title="Link to this heading">#</a></h1>
+<span id="sphx-glr-tutorial-and-examples-plot-indirect-detection-py"></span><h1>Indirect Detection Analysis<a class="headerlink" href="#indirect-detection-analysis" title="Link to this heading">#</a></h1>
 <p>Compute indirect detection signals and limits from dark matter annihilation.</p>
 <section id="dark-matter-annihilation-into-photons">
 <h2>Dark Matter Annihilation into Photons<a class="headerlink" href="#dark-matter-annihilation-into-photons" title="Link to this heading">#</a></h2>
@@ -469,6 +469,7 @@ you can use the <code class="docutils literal notranslate"><span class="pre">fas
 <p>After running the above commands, you will find the output in the <code class="docutils literal notranslate"><span class="pre">ID_spin1</span></code> folder.
 The output will contain the gamma-ray spectra in the <code class="docutils literal notranslate"><span class="pre">ID_spin1/Output/xxxx</span></code> folder.
 Here’s the gamma-ray spectra computed by MadDM using CosmiXs:</p>
+<p>Plot the Gamma-ray Spectra using CosmiXs</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
@@ -510,27 +511,24 @@ Here’s the gamma-ray spectra computed by MadDM using CosmiXs:</p>
     <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 
 <span class="n">plot_gamma_spectra</span><span class="p">(</span><span class="s1">&#39;./plot_data/gammas_spectrum_CosmiXs.dat&#39;</span><span class="p">)</span>
-
-<span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">Exiting MadDM</span>
-<span class="sd">=============</span>
-
-<span class="sd">.. code-block:: text</span>
-
-<span class="sd">    MadDM&gt; quit</span>
-
-<span class="sd">&quot;&quot;&quot;</span>
 </pre></div>
 </div>
-<div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorial-and-examples-indirect-detection-py">
+<img src="../_images/sphx_glr_plot_indirect_detection_001.png" srcset="../_images/sphx_glr_plot_indirect_detection_001.png" alt="Gamma-ray Spectrum (at source)" class = "sphx-glr-single-img"/></section>
+<section id="exiting-maddm">
+<h2>Exiting MadDM<a class="headerlink" href="#exiting-maddm" title="Link to this heading">#</a></h2>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; quit
+</pre></div>
+</div>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 0.264 seconds)</p>
+<div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorial-and-examples-plot-indirect-detection-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
-<p><a class="reference download internal" download="" href="../_downloads/84f2d616540f465b87acbbe2e9eb4477/indirect_detection.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">indirect_detection.ipynb</span></code></a></p>
+<p><a class="reference download internal" download="" href="../_downloads/e9235bf4754b7e26127afbb81afabdab/plot_indirect_detection.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">plot_indirect_detection.ipynb</span></code></a></p>
 </div>
 <div class="sphx-glr-download sphx-glr-download-python docutils container">
-<p><a class="reference download internal" download="" href="../_downloads/116ec1fabfa4b9b8e5668ffaa6c68355/indirect_detection.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">indirect_detection.py</span></code></a></p>
+<p><a class="reference download internal" download="" href="../_downloads/b04de1b008e5d01eb1e2f2ffe6feb98f/plot_indirect_detection.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">plot_indirect_detection.py</span></code></a></p>
 </div>
 <div class="sphx-glr-download sphx-glr-download-zip docutils container">
-<p><a class="reference download internal" download="" href="../_downloads/6774cb2940a1be05c5e1ec3087e574ed/indirect_detection.zip"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">zipped:</span> <span class="pre">indirect_detection.zip</span></code></a></p>
+<p><a class="reference download internal" download="" href="../_downloads/05a3e7b1b57c23e6db975eafe163e248/plot_indirect_detection.zip"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">zipped:</span> <span class="pre">plot_indirect_detection.zip</span></code></a></p>
 </div>
 </div>
 <p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
@@ -557,7 +555,7 @@ Here’s the gamma-ray spectra computed by MadDM using CosmiXs:</p>
       </div>
     </a>
     <a class="right-next"
-       href="direct_detection.html"
+       href="plot_direct_detection.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
@@ -586,6 +584,7 @@ Here’s the gamma-ray spectra computed by MadDM using CosmiXs:</p>
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#dark-matter-annihilation-into-photons">Dark Matter Annihilation into Photons</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#plot-the-gamma-ray-spectra">Plot the Gamma-ray Spectra</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#exiting-maddm">Exiting MadDM</a></li>
 </ul>
   </nav></div>
 
@@ -595,8 +594,8 @@ Here’s the gamma-ray spectra computed by MadDM using CosmiXs:</p>
   <div class="sphx-glr-sidebar-component">
     
       
-        <div class="sphx-glr-sidebar-item sphx-glr-download-python-sidebar" title="indirect_detection.py">
-          <a download href="../_downloads/116ec1fabfa4b9b8e5668ffaa6c68355/indirect_detection.py">
+        <div class="sphx-glr-sidebar-item sphx-glr-download-python-sidebar" title="plot_indirect_detection.py">
+          <a download href="../_downloads/b04de1b008e5d01eb1e2f2ffe6feb98f/plot_indirect_detection.py">
             <i class="fa-solid fa-download"></i>
             Download source code
           </a>
@@ -604,8 +603,8 @@ Here’s the gamma-ray spectra computed by MadDM using CosmiXs:</p>
       
     
       
-        <div class="sphx-glr-sidebar-item sphx-glr-download-jupyter-sidebar" title="indirect_detection.ipynb">
-          <a download href="../_downloads/84f2d616540f465b87acbbe2e9eb4477/indirect_detection.ipynb">
+        <div class="sphx-glr-sidebar-item sphx-glr-download-jupyter-sidebar" title="plot_indirect_detection.ipynb">
+          <a download href="../_downloads/e9235bf4754b7e26127afbb81afabdab/plot_indirect_detection.ipynb">
             <i class="fa-solid fa-download"></i>
             Download Jupyter notebook
           </a>
@@ -613,8 +612,8 @@ Here’s the gamma-ray spectra computed by MadDM using CosmiXs:</p>
       
     
       
-        <div class="sphx-glr-sidebar-item sphx-glr-download-zip-sidebar" title="indirect_detection.zip">
-          <a download href="../_downloads/6774cb2940a1be05c5e1ec3087e574ed/indirect_detection.zip">
+        <div class="sphx-glr-sidebar-item sphx-glr-download-zip-sidebar" title="plot_indirect_detection.zip">
+          <a download href="../_downloads/05a3e7b1b57c23e6db975eafe163e248/plot_indirect_detection.zip">
             <i class="fa-solid fa-download"></i>
             Download zipped
           </a>
