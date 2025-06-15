@@ -27,7 +27,7 @@ and Xd (Dirac spinor DM).
 
 .. code-block:: text
 
-    MadDM> import model import model DMsimp_s_spin1
+    MadDM> import model DMsimp_s_spin1
     MadDM> define darkmatter xd
 
 Then, generate the relic density processes with:
