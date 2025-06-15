@@ -4558,17 +4558,10 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         question += bcolors.OKGREEN+"\n You can also edit the various input cards" + bcolors.ENDC+ r""":
  * Enter the name/number to open the editor
  * Enter a path to a file to replace the card
-<<<<<<< HEAD
- * Enter %(start_bold)sset NAME value%(stop)s to change any parameter to the requested value
- /=============================================================================\\ 
- |  7. Edit the model parameters    [%(start_underline)sparam%(stop)s]                                    |  
- |  8. Edit the MadDM options       [%(start_underline)smaddm%(stop)s]                                    |
-=======
  * Enter """ + bcolors.BOLD + r"""set NAME value """ + bcolors.ENDC + r"""to change any parameter to the requested value
  /=============================================================================\ 
  |  6. Edit the model parameters    [""" + bcolors.UNDERLINE + "param" + bcolors.ENDC + r"""]                                    |  
  |  7. Edit the MadDM options       [""" + bcolors.UNDERLINE + "maddm" + bcolors.ENDC + r"""]                                    |
->>>>>>> 20ce264 (Fix some weird strings warnings)
 """
 
         current_val  = self.answer # use that to be secure with conflict -> always propose card
@@ -4578,11 +4571,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         if current_val['indirect'].startswith('flux') or self.switch["indirect"].startswith('flux'):
             question += """ | 10. Edit the Showering Card for flux  [%(start_underline)sflux%(stop)s]                                |\n"""
         
-<<<<<<< HEAD
-        question+=""" \\=============================================================================/\n"""
-=======
         question+=r" \=============================================================================/" + "\n"
->>>>>>> 20ce264 (Fix some weird strings warnings)
         self.question =  question % {'start_green' : '\033[92m',
                          'stop':  '\033[0m',
                          'start_underline': '\033[4m',
