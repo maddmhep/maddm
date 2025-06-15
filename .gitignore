@@ -1,3 +1,13 @@
+# sphinx-gallery
+doc/tutorial_and_examples/*
+!doc/tutorial_and_examples/images/
+doc/tutorial_and_examples/images/*
+!doc/tutorial_and_examples/images/thumb/
+doc/sg_execution_times.rst
+
+# Sphinx documentation
+doc/_build/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -67,9 +77,6 @@ instance/
 
 # Scrapy stuff:
 .scrapy
-
-# Sphinx documentation
-docs/_build/
 
 # PyBuilder
 .pybuilder/
@@ -194,3 +201,6 @@ cython_debug/
 
 # Sessions
 Session.vim
+
+# MacOS
+.DS_Store
