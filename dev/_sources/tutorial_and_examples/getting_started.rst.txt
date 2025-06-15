@@ -82,9 +82,10 @@ Once you launch the process, you will be prompted a selection menu to choose whi
 .. code-block:: text
 
     The following switches determine which programs are run:
-    /=============================================================================    | 1. Compute the Relic Density                                  relic = OFF   |
-    | 2. Compute direct detection - nucleon recoil                 direct = OFF   |
-    | 3. Compute direct detection - electron recoil       direct_electron = ON    |
+    /=============================================================================\
+    | 1. Compute the Relic Density                                  relic = OFF   |
+    | 2. Compute direct detection - nucleon recoil                 direct = ON    |
+    | 3. Compute direct detection - electron recoil       direct_electron = OFF   |
     | 4. Compute indirect detection/flux (cont spectrum)         indirect = OFF   |
     | 5. Compute indirect detection in aX (line spectrum)        spectral = OFF   |
     | 6. Run Multinest scan                                      nestscan = OFF   |

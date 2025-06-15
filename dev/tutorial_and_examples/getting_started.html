@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Getting Started &#8212; MadDM 3.2.13 documentation</title>
+    <title>Getting Started &#8212; MadDM 3.3.0 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=c0feab9b"></script>
+    <script src="../_static/documentation_options.js?v=3eb8911e"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'tutorial_and_examples/getting_started';</script>
@@ -60,7 +60,7 @@
     <link rel="prev" title="Use MadDM as a Script" href="scripts.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="3.2.13" />
+  <meta name="docsearch:version" content="3.3.0" />
   </head>
   
   
@@ -461,9 +461,10 @@ MadDM&gt; launch DD_NR_spin0
 relaunch the same process in a new session with <code class="docutils literal notranslate"><span class="pre">launch</span> <span class="pre">myprocessname</span></code> skipping the previous steps.
 Once you launch the process, you will be prompted a selection menu to choose which modules you want to run.</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>The following switches determine which programs are run:
-/=============================================================================    | 1. Compute the Relic Density                                  relic = OFF   |
-| 2. Compute direct detection - nucleon recoil                 direct = OFF   |
-| 3. Compute direct detection - electron recoil       direct_electron = ON    |
+/=============================================================================\
+| 1. Compute the Relic Density                                  relic = OFF   |
+| 2. Compute direct detection - nucleon recoil                 direct = ON    |
+| 3. Compute direct detection - electron recoil       direct_electron = OFF   |
 | 4. Compute indirect detection/flux (cont spectrum)         indirect = OFF   |
 | 5. Compute indirect detection in aX (line spectrum)        spectral = OFF   |
 | 6. Run Multinest scan                                      nestscan = OFF   |
