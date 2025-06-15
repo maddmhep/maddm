@@ -183,7 +183,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
  
         # Add the makefile 
         filename = os.path.join(self.dir_path,'Source','makefile')
-        self.write_source_makefile(writers.FortranWriter(filename))
+        self.write_source_makefile(writers.FortranWriter(filename),model)
 
     def get_dd_type(self, process):
         orders = process.get('orders')
