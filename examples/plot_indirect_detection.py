@@ -37,11 +37,11 @@ We enable the computation of the gamma-ray flux spectrum by setting:
 
     MadDM> set indirect = flux_source
 
-We can choose to compute the gamma-ray spectra using either Pythia 8 or CosmiXs, entering `pythia8` or `cosmix` respectively:
+We can choose to compute the gamma-ray spectra using either Pythia 8 or CosmiXs, entering `pythia8` or `CosmiXs` respectively:
 
 .. code-block:: text
 
-    MadDM> set indirect_flux_source_method cosmix
+    MadDM> set indirect_flux_source_method CosmiXs
 
 To save the full energy spectra you can set:
 
