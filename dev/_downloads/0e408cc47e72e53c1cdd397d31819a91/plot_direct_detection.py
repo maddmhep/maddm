@@ -39,11 +39,11 @@ Next, create the process folder. In this case, we call it ``DD_NR_spin0``, but y
     MadDM> output DD_NR_spin0
     MadDM> launch DD_NR_spin0
 
-Select to run the ``direct_nucleon`` module (but it should be already ON) by entering:
+Select to run the ``direct`` module (but it should be already ON) by entering:
 
 .. code-block:: text
 
-    MadDM> direct_nucleon = ON
+    MadDM> direct = ON
 
 If your model has both DM-nucleon and DM-electron interactions, you can set both ``direct_nucleon`` and ``direct_electron`` modules to ON,
 and you will receive results for both types of interactions considered separately.
@@ -60,7 +60,7 @@ After running the above commands, the output will look like:
 
 .. code-block:: text
 
-    INFO: MadDM Results
+    INFO: MadDM Results 
     INFO: 
     ****** Direct detection [cm^2]:  
     INFO: SigmaN_SI_p         All DM = 2.46e-47       ALLOWED   	LZ2024 ul        = 6.48e-47 
@@ -68,7 +68,7 @@ After running the above commands, the output will look like:
     INFO: SigmaN_SD_p         All DM = 0.00e+00       ALLOWED   	Pico60 (2019) ul = 4.16e-41 
     INFO: SigmaN_SD_n         All DM = 0.00e+00       ALLOWED   	LZ2024 ul        = 7.59e-42 
     INFO:  
-    INFO: Results written in: /Users/yourname/yourprocessfolder/DD_NR_spin0/output/run_01/MadDM_results.txt
+    INFO: Results written in: /Users/gianmarcolucchetti/PhD/MadDM/processes/DD_NR_spin0/output/run_01/MadDM_results.txt 
     quit
 
 where ``All DM`` refers to the reference DM-electron cross section in case the DM particle contributes to the entire dark matter density of the universe.
