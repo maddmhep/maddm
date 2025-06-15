@@ -4,7 +4,8 @@ on:  # yamllint disable-line rule:truthy
   push:
     # Trigger on pushes only to certain branches
     branches:
-      - feat/docs
+      - dev
+      - master
     # Trigger only when changes happen in the doc or examples folders
     paths: [doc/**, examples/**]
 jobs:
