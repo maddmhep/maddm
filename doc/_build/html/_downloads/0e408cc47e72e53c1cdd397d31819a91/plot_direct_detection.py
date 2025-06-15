@@ -3,8 +3,6 @@
 Direct Detection Tutorial
 ===========================
 
-.. sphinx_gallery_thumbnail_path: /_static/direct_detection_thumb.png
-
 Compute direct detection signal and limits for both **nuclear** and **electronic** recoils.
 
 --------------------------------------------------

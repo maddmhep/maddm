@@ -22,8 +22,6 @@
 Direct Detection Tutorial
 ===========================
 
-.. sphinx_gallery_thumbnail_path: /_static/direct_detection_thumb.png
-
 Compute direct detection signal and limits for both **nuclear** and **electronic** recoils.
 
 --------------------------------------------------
@@ -107,7 +105,7 @@ In this folder, you will find the cross sections in a file named ``MadDM_results
 You can also find the differential recoil rates in the ``DDrates.txt`` file, which contains the differential recoil spectra vs energy 
 for DM-nucleon interactions in Xenon, Argon and Germanium targets. Below is an example of how to plot the differential rates:
 
-.. GENERATED FROM PYTHON SOURCE LINES 93-145
+.. GENERATED FROM PYTHON SOURCE LINES 91-143
 
 .. code-block:: Python
 
@@ -175,7 +173,7 @@ for DM-nucleon interactions in Xenon, Argon and Germanium targets. Below is an e
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 146-219
+.. GENERATED FROM PYTHON SOURCE LINES 144-217
 
 ---------------------------------------------------------
 2. Electronic Recoils with XENON10/XENON1T likelihoods
@@ -251,7 +249,7 @@ You can find all the output produced by the Fortran module of MadDM, such as sig
 You can also find the differential recoil spectra vs energy or vs scintillation signal. The rates produced with this module are labeled with the suffix ``e_recoil`` at the end.
 Below is an example of how to plot the differential rates and number of events vs scintillation signal for electronic recoils:
 
-.. GENERATED FROM PYTHON SOURCE LINES 221-268
+.. GENERATED FROM PYTHON SOURCE LINES 219-266
 
 .. code-block:: Python
 
@@ -314,11 +312,11 @@ Below is an example of how to plot the differential rates and number of events v
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 269-270
+.. GENERATED FROM PYTHON SOURCE LINES 267-268
 
 Plot the number of events vs scintillation signal for Electronic Recoils
 
-.. GENERATED FROM PYTHON SOURCE LINES 270-333
+.. GENERATED FROM PYTHON SOURCE LINES 268-331
 
 .. code-block:: Python
 
@@ -397,7 +395,7 @@ Plot the number of events vs scintillation signal for Electronic Recoils
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 334-339
+.. GENERATED FROM PYTHON SOURCE LINES 332-337
 
 Exiting MadDM
 =============
@@ -409,7 +407,7 @@ Exiting MadDM
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 0.348 seconds)
+   **Total running time of the script:** (0 minutes 0.387 seconds)
 
 
 .. _sphx_glr_download_tutorial_and_examples_plot_direct_detection.py:
