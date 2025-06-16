@@ -28,6 +28,7 @@ Based on the existing MadGraph 5 architecture, MadDM is easily integrable into a
    -   Fortran
    -   `numpy`
    -   `scipy` (required for some recent features)
+   -   cmake
 - It supports Python 2.7, but it requires the installation of the `six` package.
 
 ## Overview
@@ -36,7 +37,11 @@ MadDM can calculate the dark matter relic abundance in models that include a mul
 
 ### Direct Detection Module
 
-The direct detection module of MadDM calculates spin-independent and spin-dependent dark matter-nucleon cross-sections and differential recoil rates. These are provided as functions of recoil energy, angle, and time. The module also offers a simplified simulation of detector effects for various target materials and volumes.
+The Direct Detection module of MadDM computes spin-independent and spin-dependent cross-sections, as well as differential recoil rates, for both dark matter–nucleon and dark matter–electron scattering. It then evaluates the statistical significance of the selected model against the most recent experimental data.
+
+For dark matter–nucleon scattering, the RAPIDD code is used to calculate the differential recoil rates for xenon, argon, and germanium targets. Subsequently, it computes the expected signal in xenon and determines the p-value of the input model by employing the likelihood function derived from the 2024 LZ results.
+
+For dark matter–electron scattering, the module evaluates both the differential recoil spectrum and the event rate as a function of the scintillation signal in xenon. The p-value is then calculated using the likelihood functions obtained from the XENON10 and XENON1T S2-only analyses.
 
 ### Indirect Detection Module
 
