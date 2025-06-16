@@ -93,3 +93,5 @@ Exiting MadDM
     MadDM> quit
 
 """
+
+# sphinx_gallery_thumbnail_path = '_static/thumbnail/relic_density_thumb.png'

@@ -80,6 +80,8 @@ The output will contain the gamma-ray spectra in the ``ID_spin1/Output/xxxx`` fo
 Here's the gamma-ray spectra computed by MadDM using CosmiXs:
 """
 
+# sphinx_gallery_thumbnail_path = '_static/thumbnail/plot_indirect_detection_thumb.png'
+
 # %%
 # Plot the Gamma-ray Spectra using CosmiXs
 import matplotlib.pyplot as plt

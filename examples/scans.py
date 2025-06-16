@@ -59,3 +59,5 @@ Exiting MadDM
     MadDM> quit
 
 """
+
+# sphinx_gallery_thumbnail_path = '_static/thumbnail/scans_thumb.png'
