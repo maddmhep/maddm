@@ -87,6 +87,7 @@ You can also find the differential recoil rates in the ``DDrates.txt`` file, whi
 for DM-nucleon interactions in Xenon, Argon and Germanium targets. Below is an example of how to plot the differential rates:
 """
 
+# sphinx_gallery_thumbnail_path = '_static/thumbnail/plot_direct_detection_thumb.png'
 # %%
 import matplotlib.pyplot as plt
 import numpy as np

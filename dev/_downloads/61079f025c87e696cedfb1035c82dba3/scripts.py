@@ -27,3 +27,5 @@ where ``run.txt`` should contain the commands you want to execute, one per line,
     set MXd scan:range(50,700,25)
 
 """
+
+# sphinx_gallery_thumbnail_path = '_static/thumbnail/scripts_thumb.png'

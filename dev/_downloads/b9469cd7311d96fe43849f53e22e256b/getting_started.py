@@ -178,3 +178,5 @@ Install additional tools
     MadDM> quit
 
 """
+
+# sphinx_gallery_thumbnail_path = '_static/thumbnail/getting_started_thumb.png'
