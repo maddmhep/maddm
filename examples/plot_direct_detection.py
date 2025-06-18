@@ -68,7 +68,7 @@ After running the above commands, the output will look like:
     INFO: SigmaN_SD_p         All DM = 0.00e+00       ALLOWED   	Pico60 (2019) ul = 4.16e-41 
     INFO: SigmaN_SD_n         All DM = 0.00e+00       ALLOWED   	LZ2024 ul        = 7.59e-42 
     INFO:  
-    INFO: Results written in: /Users/gianmarcolucchetti/PhD/MadDM/processes/DD_NR_spin0/output/run_01/MadDM_results.txt 
+    INFO: Results written in: /Users/yourname/yourprocessfolder/DD_NR_spin0/output/run_01/MadDM_results.txt
     quit
 
 where ``All DM`` refers to the reference DM-electron cross section in case the DM particle contributes to the entire dark matter density of the universe.
@@ -86,7 +86,6 @@ In this folder, you will find the cross sections in a file named ``MadDM_results
 You can also find the differential recoil rates in the ``DDrates.txt`` file, which contains the differential recoil spectra vs energy 
 for DM-nucleon interactions in Xenon, Argon and Germanium targets. Below is an example of how to plot the differential rates:
 """
-
 # sphinx_gallery_thumbnail_path = '_static/thumbnail/plot_direct_detection_thumb.png'
 # %%
 import matplotlib.pyplot as plt

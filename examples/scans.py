@@ -13,8 +13,8 @@ First, you need to set up your model and process as usual. For example, if you w
 
 .. code-block:: text
 
-    MadDM> import model DMsimp_s_spin0
-    MadDM> define darkmatter Xr
+    MadDM> import model eDMsimp_s_spin0
+    MadDM> define darkmatter xd
     MadDM> generate direct
     MadDM> output SCAN_example
     MadDM> launch SCAN_example
@@ -30,13 +30,13 @@ If you want to scan only over some specific values, you can also use python arra
 
 .. code-block:: text
 
-    MadDM> set MXd scan:[10,20,40,80,160,320,640]
+    MadDM> set MXd scan:[0.01,0.02,0.04,0.10,0.20,0.4,0.8,1]
 
-or you can use list comprehension. For example, to scan over a logarithmic scale from 1 GeV to 10 GeV you can do:
+or you can use list comprehension. For example, to scan over a logarithmic scale from 10 MeV to 1 GeV you can do:
 
 .. code-block:: text
 
-    MadDM> set MXd scan:[10 ** (i * 0.01) for i in range(101)]
+    MadDM> set MXd scan:[10 ** (-2 + i * 0.2) for i in range(11)]
 
 Then press Enter to start the scan. For scans, you will find in the ``output`` directory a ``run_XX_YY`` folder containing the ``maddm.out`` file  for each ``YY`` iteration.
 You will also find a ``scan_run_XX.txt`` file that summarizes the scan parameters and results.
@@ -44,12 +44,15 @@ You can also make a scan over multiple parameters at once. For example, if you w
 
 .. code-block:: text
 
-    MadDM> set MXd scan:range(50,700,25)
-    MadDM> set gsxd scan:range(10,100,10)
+    MadDM> set MXd scan:[10 ** (-2 + i * 0.2) for i in range(11)]
+    MadDM> set gsxd scan:range(100,1000,100)
 
 Then press Enter to start the scan. MadDM will generate one run for each combination of the parameters you specified, iterating first over the last parameter in the `param_card.dat`.
 Once all values of that parameter are exhausted, it steps the second-to-last parameter and repeats the process, and so on, like nested ``for`` loops, starting from the outermost (first)
 parameter to the innermost (last).
+
+You will find the results of the scan in ``/SCAN_example/output/scan_run_01.txt``. In this example, this file will contain
+the pvalues for XENON10 and XENON1T for each value of the dark matter mass and coupling you scanned.
 
 Exiting MadDM
 =============
