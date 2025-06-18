@@ -2029,7 +2029,6 @@ class MADDMRunCmd(cmd.CmdShell):
             order.append('xsi')
 
             # *** Direct Detection
-            print("What happens here\n")
             if self.mode['direct'] :
                 order += ['sigmaN_SI_p', 'lim_sigmaN_SI_p', 
                           'sigmaN_SI_n', 'lim_sigmaN_SI_n',
