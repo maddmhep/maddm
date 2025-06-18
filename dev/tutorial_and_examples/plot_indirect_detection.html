@@ -423,14 +423,14 @@ to download the full example code.</p>
 matter is denser. For instance, typical benchmarks for gamma-ray searches are the dSphs or the Galactic Center.</p>
 <p>In this example, we study the process χ χ → SM SM using a DM simplified model which annihilates trough a vector mediator.
 We will see how compute the resulting gamma-ray spectra relevant for indirect detection using both Pythia 8 and CosmiXs.</p>
-<p>First, import the model and define the dark matter candidate. We use the DMsimp_s_spin1_MD model, where
-the dark matter particle is labeled ‘~xd’ in this model.</p>
+<p>First, import the model and define the dark matter candidate. We use the DMsimp_s_spin1_MD model,
+selecting a fermionic dark matter <code class="docutils literal notranslate"><span class="pre">~xd</span></code>:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; import model DMsimp_s_spin1_MD
 MadDM&gt; define darkmatter ~xd
 </pre></div>
 </div>
 <p>Then, we generate the indirect detection process. This defines the channel for which the gamma-ray spectra will be computed.
-We then output the process to a folder named ‘ID_spin1’, and we launch the process.</p>
+We then output the process to a folder named <code class="docutils literal notranslate"><span class="pre">ID_spin1</span></code>, and we launch the process.</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; generate indirect_detection
 MadDM&gt; output ID_spin1
 MadDM&gt; launch ID_spin1
@@ -440,7 +440,7 @@ MadDM&gt; launch ID_spin1
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set indirect = flux_source
 </pre></div>
 </div>
-<p>We can choose to compute the gamma-ray spectra using either Pythia 8 or CosmiXs, entering <cite>pythia8</cite> or <cite>CosmiXs</cite> respectively:</p>
+<p>We can choose to compute the gamma-ray spectra using either Pythia 8 or CosmiXs, entering <code class="docutils literal notranslate"><span class="pre">pythia8</span></code> or <code class="docutils literal notranslate"><span class="pre">CosmiXs</span></code> respectively:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set indirect_flux_source_method CosmiXs
 </pre></div>
 </div>
@@ -458,11 +458,38 @@ you can use the <code class="docutils literal notranslate"><span class="pre">fas
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set sigmav_method madevent
 </pre></div>
 </div>
-<p>In fast mode, to specify how many events should be generated per phase-space point, do:</p>
+<p>In <code class="docutils literal notranslate"><span class="pre">precise</span></code> mode, to specify how many events should be generated per phase-space point, do:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set nevents 100000
 </pre></div>
 </div>
-<p>and finally launch the process pressing Enter.</p>
+<p>and finally launch the process pressing Enter.
+You will see the following output:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>INFO: MadDM Results
+INFO:
+****** Indirect detection:
+INFO: &lt;sigma v&gt; method: inclusive
+INFO: ====== continuum spectrum final states
+INFO: DM particle halo velocity: 2e-05 c
+INFO: *** Print &lt;sigma v&gt; [cm^3 s^-1] with Fermi dSph limits
+INFO: xxdxxdb_ddx         All DM = 3.48e-29       ALLOWED           Fermi dSph ul    = 3.30e-27
+INFO: xxdxxdb_uux         All DM = 3.48e-29       ALLOWED           Fermi dSph ul    = 3.31e-27
+INFO: xxdxxdb_ssx         All DM = 3.48e-29       ALLOWED           Fermi dSph ul    = 3.30e-27
+INFO: xxdxxdb_ccx         All DM = 3.48e-29       ALLOWED           Fermi dSph ul    = 4.54e-27
+INFO: xxdxxdb_bbx         All DM = 3.41e-29       ALLOWED           Fermi dSph ul    = 5.98e-27
+INFO: Skipping zero cross section processes for: xxdxxdb_y1y1, xxdxxdb_ttx, xxdxxdb_emep
+INFO: Using generic Fermi dSph limits for light quarks (u,d,s)
+INFO: DM DM &gt; SM SM       All DM = 1.73e-28       ALLOWED           Fermi dSph ul    = 2.96e-27
+INFO:
+INFO: *** Fluxes at earth [particle cm^-2 sr^-1]:
+INFO: gammas Flux         = 5.67e-12
+INFO: neutrinos_e Flux    = 2.71e-12
+INFO: neutrinos_mu Flux   = 5.00e-12
+INFO: neutrinos_tau Flux  = 4.26e-15
+INFO:
+INFO:
+INFO: Results written in: /Users/yourname/yourprocessfolder/ID_spin1/output/run_01/MadDM_results.txt
+</pre></div>
+</div>
 </section>
 <section id="plot-the-gamma-ray-spectra">
 <h2>Plot the Gamma-ray Spectra<a class="headerlink" href="#plot-the-gamma-ray-spectra" title="Link to this heading">#</a></h2>
@@ -472,7 +499,6 @@ Here’s the gamma-ray spectra computed by MadDM using CosmiXs:</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span>
 </pre></div>
 </div>
-<p>Plot the Gamma-ray Spectra using CosmiXs</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
@@ -522,7 +548,7 @@ Here’s the gamma-ray spectra computed by MadDM using CosmiXs:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; quit
 </pre></div>
 </div>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 0.267 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 0.264 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorial-and-examples-plot-indirect-detection-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../_downloads/e9235bf4754b7e26127afbb81afabdab/plot_indirect_detection.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">plot_indirect_detection.ipynb</span></code></a></p>

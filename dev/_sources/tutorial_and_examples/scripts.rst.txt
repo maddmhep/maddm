@@ -39,7 +39,7 @@ where ``run.txt`` should contain the commands you want to execute, one per line,
 .. code-block:: text
 
     import model DMsimp_s_spin0
-    define darkmatter Xr
+    define darkmatter xd
     generate direct
     output SCAN_example
     launch SCAN_example

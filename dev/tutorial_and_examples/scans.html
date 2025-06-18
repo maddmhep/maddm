@@ -420,8 +420,8 @@ to download the full example code.</p>
 <section id="running-a-scan">
 <h2>1. Running a Scan<a class="headerlink" href="#running-a-scan" title="Link to this heading">#</a></h2>
 <p>First, you need to set up your model and process as usual. For example, if you want to scan over a simplified scalar dark matter model, you can do the following:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; import model DMsimp_s_spin0
-MadDM&gt; define darkmatter Xr
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; import model eDMsimp_s_spin0
+MadDM&gt; define darkmatter xd
 MadDM&gt; generate direct
 MadDM&gt; output SCAN_example
 MadDM&gt; launch SCAN_example
@@ -433,23 +433,25 @@ For instance, if you want to scan the dark matter mass (MXd) from 50 GeV to &lt;
 </pre></div>
 </div>
 <p>If you want to scan only over some specific values, you can also use python arrays, as follows:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set MXd scan:[10,20,40,80,160,320,640]
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set MXd scan:[0.01,0.02,0.04,0.10,0.20,0.4,0.8,1]
 </pre></div>
 </div>
-<p>or you can use list comprehension. For example, to scan over a logarithmic scale from 1 GeV to 10 GeV you can do:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set MXd scan:[10 ** (i * 0.01) for i in range(101)]
+<p>or you can use list comprehension. For example, to scan over a logarithmic scale from 10 MeV to 1 GeV you can do:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set MXd scan:[10 ** (-2 + i * 0.2) for i in range(11)]
 </pre></div>
 </div>
 <p>Then press Enter to start the scan. For scans, you will find in the <code class="docutils literal notranslate"><span class="pre">output</span></code> directory a <code class="docutils literal notranslate"><span class="pre">run_XX_YY</span></code> folder containing the <code class="docutils literal notranslate"><span class="pre">maddm.out</span></code> file  for each <code class="docutils literal notranslate"><span class="pre">YY</span></code> iteration.
 You will also find a <code class="docutils literal notranslate"><span class="pre">scan_run_XX.txt</span></code> file that summarizes the scan parameters and results.
 You can also make a scan over multiple parameters at once. For example, if you want to scan over the dark matter mass <code class="docutils literal notranslate"><span class="pre">MXd</span></code> and the coupling ,``gsxd`` you can do:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set MXd scan:range(50,700,25)
-MadDM&gt; set gsxd scan:range(10,100,10)
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set MXd scan:[10 ** (-2 + i * 0.2) for i in range(11)]
+MadDM&gt; set gsxd scan:range(100,1000,100)
 </pre></div>
 </div>
 <p>Then press Enter to start the scan. MadDM will generate one run for each combination of the parameters you specified, iterating first over the last parameter in the <cite>param_card.dat</cite>.
 Once all values of that parameter are exhausted, it steps the second-to-last parameter and repeats the process, and so on, like nested <code class="docutils literal notranslate"><span class="pre">for</span></code> loops, starting from the outermost (first)
 parameter to the innermost (last).</p>
+<p>You will find the results of the scan in <code class="docutils literal notranslate"><span class="pre">/SCAN_example/output/scan_run_01.txt</span></code>. In this example, this file will contain
+the pvalues for XENON10 and XENON1T for each value of the dark matter mass and coupling you scanned.</p>
 </section>
 <section id="exiting-maddm">
 <h2>Exiting MadDM<a class="headerlink" href="#exiting-maddm" title="Link to this heading">#</a></h2>
