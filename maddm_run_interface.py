@@ -25,6 +25,7 @@ from six.moves import range
 from six.moves import zip
 
 from scipy import stats
+from scipy.stats import chi2
 
 MG5MODE = True
 import madgraph
@@ -49,12 +50,12 @@ except ImportError:
 try:
     from scipy.interpolate import interp1d
     from scipy.integrate import quad
-    from scipy.optimize import brute, fmin, minimize_scalar, bisect
+    from scipy.optimize import brute, fmin, minimize_scalar, bisect, minimize
     from scipy.special import gammainc
 except ImportError as error:
     print(error)
     logger.warning('scipy module not found! Some Indirect detection features will be disabled.')
-    HAS_SCIPY = False 
+    HAS_SCIPY = False
 else:
     HAS_SCIPY = True
 
@@ -392,7 +393,7 @@ class Spectra:
             key = channel+'_'+prof+'_'+prop+'_'+halo_func
 
         if dm_min == dm_min :
-            print(dm_min,dm_min,channel,sp_dic[spectrum])
+            #print(dm_min,dm_min,channel,sp_dic[spectrum])
             return sp_dic[spectrum][ str(dm_min) ][key]
         spec_1 = sp_dic[spectrum][ str(dm_min) ][key]
         spec_2 = sp_dic[spectrum][ str(dm_max) ][key]
@@ -571,7 +572,7 @@ class Fermi_bounds:
             ll_ref = ll_null
         
         pval = self.compute_pvalue(ll_tot,ll_ref) #New version
-        return ll_tot, ll_ref, pval, j_factors, ll_tot-ll_ref
+        return ll_tot, ll_ref, pval, j_factors, -ll_tot+ll_ref
        
     def compute_pvalue(self,ll_tot,ll_null):
     
@@ -602,6 +603,7 @@ class Fermi_bounds:
             pval=0.5
         return pval,stats.norm.isf(pval)
 
+        
     # this function return the Fermi experimental UL on sigmav if the argument sigmav_th= False;
     # otherwise it calculates the likelihood and p-value for the given point 
     def Fermi_sigmav_lim(self, mDM, x = '' , dndlogx = '' , marginalize = True, sigmav_th = False , maj_dirac='', \
@@ -625,6 +627,31 @@ class Fermi_bounds:
         
         dw_in = self.dw_in
         sigmav0 = 1e-26
+        
+        def delta_logL_from_CL(CL, k=1, one_sided=True):
+            """
+            Compute the delta log-likelihood threshold corresponding to a confidence level.
+
+            Parameters:
+            - CL: Confidence level (e.g., 0.95 for a 95% CL upper limit)
+            - k: Number of parameters (degrees of freedom, usually 1)
+            - one_sided: If True, interprets CL as a one-sided upper limit
+
+            Returns:
+            - ΔlogL: Threshold value for log-likelihood
+            """
+            if one_sided:
+                # Convert two-sided CL to one-sided tail (e.g., 0.95 → 0.90)
+                tail_prob = 2 * (1 - CL)
+                quantile = 1 - tail_prob
+            else:
+                quantile = CL  # two-sided region
+
+            delta_chi2 = chi2.ppf(quantile, df=k)
+            return 0.5 * delta_chi2
+        
+        #print("ΔlogL for 95% CL upper limit:", delta_logL_from_CL(0.95))  # → 1.355
+        DeltaLogLikeCL = delta_logL_from_CL(cl_val)
         
         '''
         #OLD BINNING IN ENERGY
@@ -678,12 +705,13 @@ class Fermi_bounds:
                  atanhpval = np.arctanh(pvalue - 1e-9)
                  atanclval = np.arctanh(cl_val - 1e-9)
                  return (atanhpval-atanclval)**2
+                 
              
              def find_sigmav_UL(x,pred,dw_in,marginalize,like_max):
                  
                  pred_sigma = pred*10**(-x)/sigmav0
                  ll_tot, ll_ref, pval, j_factors, deltalogL = self.res_tot_dw(pred_sigma,marginalize,like_max)
-                 return abs(deltalogL-1.355)
+                 return abs(deltalogL-DeltaLogLikeCL)
             
              # brute methode:
              brute_range_min = -np.log10(sigmavmax)
@@ -705,20 +733,24 @@ class Fermi_bounds:
              sigmav_best = float(10**(-res_min[0]))
              pvalue,significance = self.compute_sign(like_max,ll_null)
              #compute_sign(self,ll_tot,ll_null)
-             print("")
-             print("Significance of the signal with FERMI-LAT Dwarf analysis is %.3f sigma"%(significance))
-             print("")
              
-             find_sig = lambda x: find_sigmav(x,pred,dw_in,marginalize,like_max)
+             find_sig = lambda x: find_sigmav_UL(x,pred,dw_in,marginalize,like_max)
              
-             res = brute(find_sig,[(brute_range_min,-np.log10(sigmav_best))], Ns=num_steps, full_output=True, finish=fmin)
-             sigmav_ul = float(10**(-res[0]))
-
+             #res = brute(find_sig,[(brute_range_min,-np.log10(sigmav_best))], Ns=num_steps, full_output=True, finish=fmin)
+             res = brute(find_sig,[(brute_range_min,-np.log10(sigmav_best))], Ns=num_steps, full_output=True, finish=None)
+             sigmav_ul_prel = float(10**(-res[0]))
+             
+             # Refine using bounded local optimizer
+             res_ref = minimize(find_sig, x0=-np.log10(sigmav_ul_prel), bounds=[(brute_range_min,-np.log10(sigmav_best))], method='L-BFGS-B', tol=1e-3)
+             sigmav_ul = float(10**(-np.float(res_ref.x[0])))
+             
              pred_sigma = pred*sigmav_ul/sigmav0
              result  = self.res_tot_dw(pred_sigma,marginalize,like_max)
-             p_value = result[2]     
+             #p_value = result[2]     
+             deltalogL = result[4]  
 
-             if p_value <= cl_val*0.98 or p_value >= cl_val*1.02:
+             #if p_value <= cl_val*0.98 or p_value >= cl_val*1.02:
+             if deltalogL < DeltaLogLikeCL*0.95 or deltalogL > DeltaLogLikeCL*1.05:
                  sigmav_ul= -1
                  print(" WARNING: increase range (sigmavmin,sigmavmax) and/or step_size_scaling!")
         
