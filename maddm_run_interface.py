@@ -742,7 +742,7 @@ class Fermi_bounds:
              
              # Refine using bounded local optimizer
              res_ref = minimize(find_sig, x0=-np.log10(sigmav_ul_prel), bounds=[(brute_range_min,-np.log10(sigmav_best))], method='L-BFGS-B', tol=1e-3)
-             sigmav_ul = float(10**(-np.float(res_ref.x[0])))
+             sigmav_ul = float(10**(-float(res_ref.x[0])))
              
              pred_sigma = pred*sigmav_ul/sigmav0
              result  = self.res_tot_dw(pred_sigma,marginalize,like_max)
