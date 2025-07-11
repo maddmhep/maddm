@@ -696,6 +696,7 @@ class Fermi_bounds:
                  pred_sigma = pred*10**(-x)/sigmav0
                  results = self.res_tot_dw(pred_sigma,marginalize)
                  l_tot,l_null,pvalue,_,_ = results
+                 #print(10**(-x),-l_tot,-l_null,pvalue)
                  return -l_tot
                  
              def find_sigmav(x,pred,dw_in,marginalize,like_max):
@@ -711,6 +712,7 @@ class Fermi_bounds:
                  
                  pred_sigma = pred*10**(-x)/sigmav0
                  ll_tot, ll_ref, pval, j_factors, deltalogL = self.res_tot_dw(pred_sigma,marginalize,like_max)
+                 #print(10**(-x),-ll_tot,-ll_ref,pval,deltalogL,abs(deltalogL-DeltaLogLikeCL))
                  return abs(deltalogL-DeltaLogLikeCL)
             
              # brute methode:
@@ -740,19 +742,40 @@ class Fermi_bounds:
              res = brute(find_sig,[(brute_range_min,-np.log10(sigmav_best))], Ns=num_steps, full_output=True, finish=None)
              sigmav_ul_prel = float(10**(-res[0]))
              
+             #print("Sigmav UL",sigmav_ul_prel)
+             
              # Refine using bounded local optimizer
-             res_ref = minimize(find_sig, x0=-np.log10(sigmav_ul_prel), bounds=[(brute_range_min,-np.log10(sigmav_best))], method='L-BFGS-B', tol=1e-3)
+             res_ref = minimize(find_sig, x0=-np.log10(sigmav_ul_prel), bounds=[(brute_range_min,-np.log10(sigmav_best))], method='L-BFGS-B', tol=1e-5)
              sigmav_ul = float(10**(-float(res_ref.x[0])))
+             
+             #print("Sigmav UL",sigmav_ul_prel,sigmav_ul)
              
              pred_sigma = pred*sigmav_ul/sigmav0
              result  = self.res_tot_dw(pred_sigma,marginalize,like_max)
              #p_value = result[2]     
              deltalogL = result[4]  
+             
+             #print("deltaL",deltalogL)
 
              #if p_value <= cl_val*0.98 or p_value >= cl_val*1.02:
-             if deltalogL < DeltaLogLikeCL*0.95 or deltalogL > DeltaLogLikeCL*1.05:
-                 sigmav_ul= -1
-                 print(" WARNING: increase range (sigmavmin,sigmavmax) and/or step_size_scaling!")
+             if deltalogL < DeltaLogLikeCL*0.90 or deltalogL > DeltaLogLikeCL*1.10:
+                 res_ref = minimize(find_sig, x0=-np.log10(sigmav_ul_prel), bounds=[(brute_range_min,-np.log10(sigmav_best))], method='Powell',  # or 'Nelder-Mead'
+                 options={'xtol': 1e-8,     # tolerance on x
+                          'ftol': 1e-8,     # tolerance on function value
+                          'maxiter': 1000,  # allow more iterations
+                          #'disp': True      # show convergence output
+                 })
+                 
+                 sigmav_ul = float(10**(-float(res_ref.x[0])))
+             
+                 pred_sigma = pred*sigmav_ul/sigmav0
+                 result  = self.res_tot_dw(pred_sigma,marginalize,like_max)
+                 #p_value = result[2]     
+                 deltalogL = result[4]  
+                 
+                 if deltalogL < DeltaLogLikeCL*0.90 or deltalogL > DeltaLogLikeCL*1.10:
+                     sigmav_ul= -1
+                     print(" WARNING: increase range (sigmavmin,sigmavmax) and/or step_size_scaling!")
         
              return sigmav_ul    
 
