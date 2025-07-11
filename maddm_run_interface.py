@@ -736,7 +736,7 @@ class Fermi_bounds:
              pvalue,significance = self.compute_sign(like_max,ll_null)
              #compute_sign(self,ll_tot,ll_null)
              
-             find_sig = lambda x: find_sigmav_UL(x,pred,dw_in,marginalize,like_max)
+             find_sig = lambda x: find_sigmav(x,pred,dw_in,marginalize,like_max)
              
              #res = brute(find_sig,[(brute_range_min,-np.log10(sigmav_best))], Ns=num_steps, full_output=True, finish=fmin)
              res = brute(find_sig,[(brute_range_min,-np.log10(sigmav_best))], Ns=num_steps, full_output=True, finish=None)
