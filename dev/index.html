@@ -43,8 +43,8 @@
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
     <script src="_static/documentation_options.js?v=3eb8911e"></script>
-    <script src="_static/doctools.js?v=9bcbadda"></script>
-    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'index';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
@@ -396,7 +396,7 @@
 <p>Given <strong>MadDM</strong> depends on <strong>MadGraph</strong>, we first need to install the latter, for example, for MadGraph v2.9.24, we need to:</p>
 <ol class="arabic">
 <li><p>Download a tarball for the latest version v2.9.* from the <a class="reference external" href="https://launchpad.net/mg5amcnlo/+download">MadGraph5_aMC&#64;NLO download page</a> (e.g. for v2.9.24 - the link may change for newer/older versions):</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>wget<span class="w"> </span>https://launchpad.net/mg5amcnlo/3.0/3.6.x/+download/MG5_aMC_v2.9.24.tar.gz
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>wget<span class="w"> </span>https://launchpad.net/mg5amcnlo/lts/2.9.x/+download/MG5_aMC_v2.9.24.tar.gz
 </pre></div>
 </div>
 </li>
@@ -413,12 +413,23 @@
 </pre></div>
 </div>
 </li>
-<li><p>Type the following in the command line:</p>
+<li><p>Install MadDM from the MadGraph command line and then quit MadGraph:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MG5_aMC&gt;install maddm
+MG5_aMC&gt;quit
 </pre></div>
 </div>
 </li>
-<li><p>Quit MadGraph and run MadDM with:</p>
+<li><p>Switch to the development branch of MadDM:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>PLUGIN
+rm<span class="w"> </span>-rf<span class="w"> </span>maddm
+git<span class="w"> </span>clone<span class="w"> </span>https://github.com/maddmhep/maddm.git
+<span class="nb">cd</span><span class="w"> </span>maddm
+git<span class="w"> </span>checkout<span class="w"> </span>dev
+<span class="nb">cd</span><span class="w"> </span>../..
+</pre></div>
+</div>
+</li>
+<li><p>Run MadDM with:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>./bin/maddm.py
 </pre></div>
 </div>
@@ -566,7 +577,7 @@ DOI: <a class="reference external" href="https://doi.org/10.1140/epjc/s10052-023
         <div class="footer-item">
 
   <p class="sphinx-version">
-    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 9.0.4.
     <br/>
   </p>
 </div>
