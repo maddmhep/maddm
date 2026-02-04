@@ -84,6 +84,12 @@ Given **MadDM** depends on **MadGraph**, we first need to install the latter, fo
 
    The installation of Pythia 8 will take care of automatically installing also `LHAPDF <https://www.lhapdf.org/index.html>`__, ``zlib`` and the interface in between MadGraph and Pythia (``mg5amc_py8_interface``), while the command ``install PPPC4DMID`` will also install CosmiXs.
 
+   Install `RAPIDD <https://github.com/cheekyparticle/RAPIDD_for_DM/tree/maddm>`__ for direct detection. Execute in the maddm repository:
+
+   .. code-block:: bash
+
+     git submodule update --init --recursive
+
 7. You are now set, have fun!
 
 Overview
