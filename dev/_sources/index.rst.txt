@@ -22,6 +22,7 @@ Requirements
 - ``gfortran``
 - ``make``
 - ``cmake``
+- ``gsl``
 - python package:
     - `six <https://pypi.org/project/six/>`__: to support Python 2.7 as well
     - `numpy <https://numpy.org/>`__
