@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import absolute_import
+from __future__ import print_function
 import collections
 import math
 import logging
@@ -9,14 +11,20 @@ import sys
 import subprocess
 
 from numpy.core.fromnumeric import var
-import auxiliary as aux
+from . import auxiliary as aux
 import stat
 import shutil
 from copy import copy, deepcopy
 
-import MGoutput
+from . import MGoutput
 from madgraph import MadGraph5Error
 from models import check_param_card
+import six
+from six.moves import map
+from six.moves import range
+from six.moves import zip
+
+from scipy import stats
 
 MG5MODE = True
 import madgraph
@@ -40,12 +48,15 @@ except ImportError:
 
 try:
     from scipy.interpolate import interp1d
-    from scipy.integrate import quad, dblquad, tplquad
+    from scipy.integrate import quad
     from scipy.optimize import brute, fmin, minimize_scalar, bisect
     from scipy.special import gammainc
-except ImportError, error:
-    print error
-    logger.warning('scipy module not found! Some Indirect detection features will be disabled.')
+    from scipy import stats
+    from scipy.stats import poisson
+
+except ImportError as error:
+    print(error)
+    logger.warning('scipy module not found! Some Indirect/Direct detection features will be disabled.')
     HAS_SCIPY = False 
 else:
     HAS_SCIPY = True
@@ -53,10 +64,13 @@ else:
 try:
     import numpy as np 
 except ImportError:
-    logger.warning('numpy module not found! Indirect detection features will be disabled.')
+    logger.warning('numpy module not found! Indirect/Direct detection features will be disabled.')
     HAS_NUMPY = False
 else:
     HAS_NUMPY = True
+
+if HAS_NUMPY and HAS_SCIPY:
+    from .jfactor_gc import PROFILES, jfactor_gc
         
 class ModuleMissing(Exception): pass
 
@@ -66,7 +80,6 @@ logger_tuto = logging.getLogger('tutorial_plugin')
 #logger.setLevel(10) #level 20 = INFO
 
 MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
-
 
 #Is there a better definition of infinity?
 __infty__ = float('inf')
@@ -86,9 +99,9 @@ class ExpConstraints:
         # self._dd_sd_neutron_limit_file = pjoin(MDMDIR, 'ExpData', 'Lux_2017_sd_neutron.dat')
 
         self._dd_limit_file = {
-            'si'        : pjoin(MDMDIR, 'ExpData', 'Xenon1T_data_2018.dat'),
-            'sd_proton' : pjoin(MDMDIR, 'ExpData', 'Pico60_sd_proton.dat'),
-            'sd_neutron': pjoin(MDMDIR, 'ExpData', 'Lux_2017_sd_neutron.dat')
+            'si'        : pjoin(MDMDIR, 'ExpData', 'LZ2024_SI.dat'),  
+            'sd_proton' : pjoin(MDMDIR, 'ExpData', 'Pico60_sd_proton_2019.dat'),
+            'sd_neutron': pjoin(MDMDIR, 'ExpData', 'LZ2024_SDn.dat')
         }
 
         self._dd_limit_mdm = dict()
@@ -96,15 +109,18 @@ class ExpConstraints:
 
         self._id_limit_file = {
             # cont final states
-            '1.-1'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_qq.dat'), # same qqx
-            '2.-2'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_qq.dat'), # same qqx
-            '3.-3'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_qq.dat'), # same qqx
+            '1.-1'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_dd.dat'), # same qqx
+            '2.-2'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_uu.dat'), # same qqx
+            '3.-3'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_ss.dat'), # same qqx
             '4.-4'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_cc.dat'),
             '5.-5'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_bb.dat'),
             '6.-6'  : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_tt.dat'),
             '11.-11': pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_ee.dat'),
             '13.-13': pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_mumu.dat'),
             '15.-15': pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_tautau.dat'),
+            '12.-12': pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_nuenue.dat'),
+            '14.-14': pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_numunumu.dat'),
+            '16.-16': pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_nutaunutau.dat'),
             '21.21' : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_gg.dat'),
             '23.23' : pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_ZZ.dat'),
             '24.-24': pjoin(MDMDIR, 'ExpData', 'MadDM_Fermi_Limit_WW.dat'),
@@ -139,6 +155,9 @@ class ExpConstraints:
             '11.-11':2.0E-5,
             '13.-13':2.0E-5,
             '15.-15':2.0E-5,
+            '12.-12':2.0E-5,
+            '14.-14':2.0E-5,
+            '16.-16':2.0E-5,
             '24.-24':2.0E-5,
             '23.23':2.0E-5,
             '25.25':2.0E-5,
@@ -197,13 +216,13 @@ class ExpConstraints:
 
     def load_constraints(self):
         #Load in direct detection constraints
-        for spin_type, limit_file in self._dd_limit_file.iteritems():
+        for spin_type, limit_file in six.iteritems(self._dd_limit_file):
             self.safe_load_file(filename = limit_file, variables = ['_dd_limit_mdm', '_dd_limit_sigma'], key = spin_type)
                                                                                                             
-        for channel, limit_file in self._id_limit_file.iteritems():
+        for channel, limit_file in six.iteritems(self._id_limit_file):
             self.safe_load_file(filename = limit_file, variables = ['_id_limit_mdm', '_id_limit_sigv'], key = channel, usecols = (0,1))
 
-        for channel, limit_file in self._id_limit_file_flux.iteritems():
+        for channel, limit_file in six.iteritems(self._id_limit_file_flux):
             self.safe_load_file(filename = limit_file, variables = ['_id_limit_mdm', '_id_limit_flux'], key = channel, usecols = (0,2))
 
     #Returns a value in cm^2
@@ -262,8 +281,8 @@ class ExpConstraints:
 ##    Spectra
 ################################################################################
 class Spectra:
-    """This class holds some functionalities to load spectra from the PPPC4DMID 
-    files or the output from pythia8, interpolates the PPPC4DMID spectra for 
+    """This class holds some functionalities to load spectra from the PPPC4DMID or COSMIXs
+    files or the output from pythia8, interpolates the PPPC4DMID and COSMIXs spectra for 
     arbitrary values of DM etc.
     """
     
@@ -273,13 +292,17 @@ class Spectra:
 
     def __init__(self):
         
-        self.spectra_id    = {'px':'antiprotons', 'gx':'gammas', 'nuex':'neutrinos_e', 'numux':'neutrinos_mu', 'nutaux':'neutrinos_tau', 'ex':'positrons'}
-
+        #'He3x': 'antihelions3','He4x': 'antihelions4',
+        self.spectra_id    = {'He3x':'antihelions3','He4x':'antihelions4','Dx':'antideuterons', 'DxS':'antideuterons_spherical', 'DxAWF':'antideuterons_AWF', 'Dxpcoals':'antideuterons_pcoalsigma', 'px':'antiprotons', 'pxP':'antiprotonsP', 'gx':'gammas', 'nuex':'neutrinos_e', 'numux':'neutrinos_mu', 'nutaux':'neutrinos_tau', 'ex':'positrons'}
+        
+        #'antihelions3_spherical':[],'antihelions4_spherical':[],
         # this contains the values in x and dndlogx as extracted from PPPC or generated by pythia8
-        self.spectra       = {'log10x': [], 'x':[] , 'antiprotons':[], 'gammas':[], 'neutrinos_e':[], 'neutrinos_mu':[], 'neutrinos_tau':[], 'positrons':[] }     
-
+        self.spectra       = {'log10x': [], 'x':[], 'antihelions3_spherical':[], 'antihelions4_spherical':[], 'antideuterons_spherical':[],'antideuterons_AWF':[], 'antideuterons_pcoalsigma':[], 'antideuterons':[], 'antiprotons':[], 'antiprotonsPrimordial':[], 'gammas':[], 'neutrinos_e':[], 'neutrinos_mu':[], 'neutrinos_tau':[], 'positrons':[] }
+        self.errors       = { 'antideuterons_spherical':[],'antihelions3_spherical':[],'antihelions4_spherical':[],'antideuterons_AWF':[], 'antideuterons_pcoalsigma':[], 'antideuterons':[], 'antiprotons':[], 'antiprotonsPrimordial':[], 'gammas':[], 'neutrinos_e':[], 'neutrinos_mu':[], 'neutrinos_tau':[], 'positrons':[] }
+        
+        #'antihelions3_spherical':{'dNdE':[]},'antihelions4_spherical':{'dNdE':[]},
         # this contains the spectrua converted to E and dN/dE (needed by DRAGON)
-        self.flux_source   = {'e':[] , 'positrons': {'dNdE':[]}, 'antiprotons': {'dNdE':[] } , 
+        self.flux_source   = {'e':[] , 'antihelions3_spherical':{'dNdE':[]}, 'antihelions4_spherical':{'dNdE':[]}, 'antideuterons_spherical':{'dNdE':[]},'antideuterons_AWF':{'dNdE':[]}, 'antideuterons_pcoalsigma':{'dNdE':[]}, 'antideuterons': {'dNdE':[]}, 'positrons': {'dNdE':[]}, 'antiprotons': {'dNdE':[] }, 'antiprotonsPrimordial': {'dNdE':[] } , 
                               'neutrinos_tau':{'dNdE':[]},'neutrinos_mu':{'dNdE':[] }, 
                               'neutrinos_e':{'dNdE':[]} , 'gammas':{'dNdE':[]} }
 
@@ -290,12 +313,14 @@ class Spectra:
         self.flux_earth              = {'e':self.flux_source['e'] , 'neutrinos_tau': {'dPhidE':[],'dndlogx':[] }, 'neutrinos_mu': {'dPhidE':[],'dndlogx':[] },
                                                  'neutrinos_e'  : {'dPhidE':[],'dndlogx':[] }, 'gammas'      : {'dPhidE':[],'dndlogx':[] } }
 
-        self.channels      = ['ee', 'mumu', 'tautau', 'qq', 'cc', 'bb', 'tt', 'ZZ', 'WW', 'hh', 'gammagamma', 'gg']
+        #self.channels      = ['ee', 'mumu', 'tautau', 'nuenue', 'numunumu', 'nutaunutau', 'uu', 'dd', 'ss', 'cc', 'bb', 'tt', 'ZZ', 'WW', 'hh', 'gammagamma', 'gg']
+        self.channels      = ['ee', 'mumu', 'tautau', 'nuenue', 'numunumu', 'nutaunutau', 'qq', 'cc', 'bb', 'tt', 'ZZ', 'WW', 'hh', 'gammagamma', 'gg']
 
         # self.map_allowed_final_state_PPPC = {'qqx':'qq', 'ccx':'cc', 'gg':'gg', 'bbx':'bb', 'ttx':'tt',
                                              # 'emep':'ee', 'mummup':'mumu', 'tamtap':'tautau', 'wpwm':'WW', 'zz':'ZZ', 'hh':'hh' }
         self.map_allowed_final_state_PPPC = {'1.-1':'qq', '2.-2':'qq', '3.-3':'qq', '4.-4':'cc', '21.21':'gg', '5.-5':'bb', '6.-6':'tt',
-                                             '11.-11':'ee', '13.-13':'mumu', '15.-15':'tautau', '24.-24':'WW', '23.23':'ZZ', '25.25':'hh' }
+                                             '11.-11':'ee', '13.-13':'mumu', '15.-15':'tautau', '12.-12':'nuenue', '14.-14':'numunumu', '16.-16':'nutaunutau',
+                                             '24.-24':'WW', '23.23':'ZZ', '25.25':'hh' }
 
     def check_mass(self,mdm):
         if (mdm < 5.0 or mdm > 100000):
@@ -303,31 +328,37 @@ class Spectra:
             return 
         else: return True 
 
-    def load_PPPC_source(self, PPPCDIR, corr = '',load = True):
-        """routine to load the PPPC table if installed already"""
+    def load_tabulated_sourcespectra(self, PPPCDIR, kind = '',load = True):
+        """routine to load the PPPC or COSMIXs table if installed already"""
         
         if not load:
             return
         
-        if Spectra.PPPC_type == ('source', corr):
+        if Spectra.PPPC_type == ('source', kind):
             return Spectra.PPPCdata
         
         if (not os.path.isfile(PPPCDIR+'/PPPC_Tables_EW.npy') and not os.path.isfile(PPPCDIR+'/PPPC_Tables_noEW.npy')):
             logger.error('PPPC4DMID Spectra at source not found! Please install by typing install PPPC4DMID') # Break and ask the user to download the Tables       
             return
 
-        if not corr:
-            dic =  np.load(PPPCDIR+'/PPPC_Tables_noEW.npy', allow_pickle = True).item()
-            logger.info('PPPC4DMID Spectra at source loaded')
-            Spectra.PPPCdata = dic
-            Spectra.PPPC_type = ('source', corr)
-            return dic
-        elif corr == 'ew':
-            dic =  np.load(PPPCDIR+'/PPPC_Tables_EW.npy', allow_pickle= True).item()
+        if (os.path.isfile(PPPCDIR+'/PPPC_Tables_EW.npy') and os.path.isfile(PPPCDIR+'/PPPC_Tables_noEW.npy') and not os.path.isfile(PPPCDIR+'/CosmiXs.npy')):
+            logger.error("PPPC4DMID is not updated, please update it with 'install PPPC4DMID'")
+            return
+
+        if kind == 'ew':
+            dic =  np.load(PPPCDIR+'/CosmiXs.npy', allow_pickle= True, encoding="latin1").item()
+            logger.info('CosmiXs spectra at source (updated version of PPPC) loaded')
+        elif kind == 'pppc_ew':
+            dic =  np.load(PPPCDIR+'/PPPC_Tables_EW.npy', allow_pickle= True, encoding="latin1").item()
             logger.info('PPPC4DMID Spectra at source (with EW corrections) loaded')
-            Spectra.PPPCdata = dic
-            Spectra.PPPC_type = ('source', corr)
-            return dic
+        else:
+            dic =  np.load(PPPCDIR+'/PPPC_Tables_noEW.npy', allow_pickle = True, encoding="latin1").item()
+            kind = "pppc"
+            logger.info('PPPC4DMID Spectra at source loaded')
+
+        Spectra.PPPCdata = dic
+        Spectra.PPPC_type = ('source', kind)
+        return dic
 
     def load_PPPC_earth(self, PPPCDIR, prof = 'Ein'):
         
@@ -339,7 +370,7 @@ class Spectra:
             return
         
         else:
-            dic = np.load(PPPCDIR+'/PPPC_Tables_epEarth_'+prof+'.npy' , allow_pickle= True).item()
+            dic = np.load(PPPCDIR+'/PPPC_Tables_epEarth_'+prof+'.npy' , allow_pickle= True, encoding="latin1").item()
             Spectra.PPPCdata = dic
             Spectra.PPPC_type = ('earth', prof)
             
@@ -362,7 +393,8 @@ class Spectra:
         elif earth:
             key = channel+'_'+prof+'_'+prop+'_'+halo_func
 
-        if dm_min == dm_max :
+        if dm_min == dm_min :
+            #print(dm_min,dm_min,channel,sp_dic[spectrum])
             return sp_dic[spectrum][ str(dm_min) ][key]
         spec_1 = sp_dic[spectrum][ str(dm_min) ][key]
         spec_2 = sp_dic[spectrum][ str(dm_max) ][key]
@@ -372,7 +404,10 @@ class Spectra:
             value =  interp_function(mdm)
             interpolated.append(value)
 
-        return interpolated
+        if len(interpolated)==99:
+            return np.concatenate(([0.0],interpolated))
+        else:
+            return interpolated
 
     def initialize_spectra(self):
         for k in self.spectra.keys():
@@ -388,12 +423,28 @@ class Fermi_bounds:
     
     def __init__(self):
 
-        self.nBin = 24
+        self.nBin = 26 #This represents the energy bins #old 24 #new 26
         self.j0 = 3.086e21 # convention spectra    
         self.dSph_jfac_file     =  pjoin(MDMDIR, 'Fermi_Data', 'Jfactors.dat')
         self.dSph_ll_files_path =  pjoin(MDMDIR, 'Fermi_Data', 'likelihoods')
-        self.dwarves_list = ['coma_berenices', 'draco', 'segue_1', 'ursa_major_II', 'ursa_minor', 'reticulum_II' ] # dSphs with the 6 highest Jfactors
-        self.dwarveslist_all = self.extract_dwarveslist() 
+        
+        #OLD LIST OF DWARF
+        #self.dwarves_list = ['coma_berenices', 'draco', 'segue_1', 'ursa_major_II', 'ursa_minor', 'reticulum_II' ] # dSphs with the 6 highest Jfactors --OLD LIST--
+        
+        #NEW LIST OF DWARF
+        self.dwarves_list = ['Bootes_2', 'Carina_3', 'Willman_1', 'Ursa_Major_2',
+       'Triangulum_2', 'Tucana_3', 'Segue_1', 'Cetus_2', 'Segue_2',
+       'Berenices', 'Horologium_1', 'Tucana_2', 'Draco_2', 'Reticulum_2',
+       'Tucana_5', 'Draco', 'Pictor_2', 'Sagittarius_2', 'Ursa_Minor',
+       'Sagittarius', 'Tucana_4', 'Bootes_3', 'Sculptor', 'Horologium_2',
+       'Grus_2', 'Phoenix_2', 'Pegasus_3', 'Aquarius_2', 'Ursa_Major_1',
+       'Carina_2', 'Reticulum_3', 'Hydrus_1', 'Bootes_1', 'Centaurus_1',
+       'Virgo_1', 'Fornax', 'Pictor_1', 'Hydra_2', 'Carina', 'Canes_V2',
+       'Leo_2', 'Sextans', 'Leo_5', 'Leo_1', 'Columba_1', 'Canes_V1',
+       'Hercules', 'Pisces_2', 'Cetus_3', 'Eridanus_2', 'Bootes_4',
+       'Grus_1', 'Antlia_2', 'Leo_4', 'Crater_2'] #NEW LIST
+        
+        self.dwarveslist_all = self.extract_dwarveslist()
         if HAS_NUMPY and HAS_SCIPY:
             self.dw_in = self.dw_dic()
         self.ll_tot = ''
@@ -412,7 +463,8 @@ class Fermi_bounds:
         dwarves_all = self.dwarveslist_all  
 
         dSph_ll_files = [ 'like_' + dwarf + '.txt' for dwarf in dwarves_all ]
-
+        
+        #print(dSph_ll_files)
         jbar_dSph       = np.loadtxt(self.dSph_jfac_file, unpack=True)[3]
         jbar_dSph_error = np.loadtxt(self.dSph_jfac_file, unpack=True)[4]
 
@@ -422,11 +474,13 @@ class Fermi_bounds:
             for D in dwarves:
                if D == dwarf:
                   elem = 'like_'+str(dwarf)+'.txt'
-
+                  
                   if elem in dSph_ll_files:
                      dwindex = dSph_ll_files.index(elem)
                      likefile = dSph_ll_files[dwindex]
                      data = np.loadtxt(self.dSph_ll_files_path+'/' + likefile, unpack=True)
+                     #print(data,np.shape(data))
+                     #print(data[2],np.shape(data[2]))
                      efluxes = (1e-3*data[2]).reshape(self.nBin,-1) # convert flux list to 2D list of fluxes for all ebins, convert to GeV                    
                      logLikes = data[3].reshape(self.nBin,-1)
 
@@ -438,6 +492,7 @@ class Fermi_bounds:
 
                      jfact = jbar_dSph[dwindex]
                      jfacterr = jbar_dSph_error[dwindex]
+                     #print('Dwarf',dwarf,jfact)
 
                      dict = { 'Jfac': jfact,
                               'Jfac_err': jfacterr,
@@ -460,7 +515,7 @@ class Fermi_bounds:
         tol = min(espectrum(emin),espectrum(emax))*1e-10
         try:
             return quad(espectrum,emin,emax,epsabs=tol,full_output=True)[0]
-        except Exception, msg:
+        except Exception as msg:
             logger.info('Numerical error "%s" when calculating integral flux.' % msg)
         return np.nan
 
@@ -497,7 +552,7 @@ class Fermi_bounds:
 
         return ll_max, jsigma
 
-    def res_tot_dw(self,pred,marginalize):
+    def res_tot_dw(self,pred,marginalize,ll_start=None):
 
         if not HAS_SCIPY:
             raise ModuleMissing('scipy module is required for this functionality.')
@@ -506,19 +561,25 @@ class Fermi_bounds:
         ll_tot = 0.0
         ll_null = 0.0
         j_factors = {}
-        for k,v in dw_in.iteritems():
+        for k,v in six.iteritems(dw_in):
             marg_like = self.marg_like_dw(v,pred,marginalize)
             ll_tot += marg_like[0]
             ll_null += v['ll_null']
             j_factors[k] = marg_like[1]
-
-        pval = self.compute_pvalue(ll_tot,ll_null)
-        return ll_tot, ll_null, pval, j_factors
+        
+        if ll_start:
+            ll_ref = ll_start
+        else:
+            ll_ref = ll_null
+        
+        pval = self.compute_pvalue(ll_tot,ll_ref) #New version
+        return ll_tot, ll_ref, pval, j_factors, ll_tot-ll_ref
        
     def compute_pvalue(self,ll_tot,ll_null):
     
         pvalue1 = lambda x: 1-gammainc(1/2.0,x/2.0)
         ts = -2*ll_tot+2*ll_null
+        #ts = -(2*ll_null-2*ll_tot)
         oneortwosidedfactor = 1
     
         if ts>=0.0:
@@ -528,8 +589,20 @@ class Fermi_bounds:
                 pval=1
             else:
                 pval = 1-pvalue1(-ts)/oneortwosidedfactor
-
-        return 1-pval
+        return 1.-pval
+    
+    def compute_sign(self,ll_tot,ll_null):
+    
+        pvalue1 = lambda x: 1-gammainc(1/2.0,x/2.0)
+        ts = -2.*(ll_null-ll_tot)
+        #ts = -(2*ll_null-2*ll_tot)
+        oneortwosidedfactor = 2
+    
+        if ts>=0.0:
+            pval = pvalue1(ts)/oneortwosidedfactor
+        else:
+            pval=0.5
+        return pval,stats.norm.isf(pval)
 
     # this function return the Fermi experimental UL on sigmav if the argument sigmav_th= False;
     # otherwise it calculates the likelihood and p-value for the given point 
@@ -554,14 +627,33 @@ class Fermi_bounds:
         
         dw_in = self.dw_in
         sigmav0 = 1e-26
-
+        
+        '''
+        #OLD BINNING IN ENERGY
         emins = [0.5, 0.666760716, 0.8891397050000001, 1.1856868500000002, 1.5811388300000002, 2.10848252, 2.81170663, 3.7494710500000004, 5.0, 6.667607159999999, 
                  8.89139705 , 11.856868500000001, 15.8113883, 21.0848252, 28.117066299999998, 37.494710500000004, 50.0, 66.6760716, 88.91397049999999, 
                  118.568685, 158.11388300000002, 210.848252, 281.170663, 374.94710499999997]
         emaxs = [0.666760716, 0.8891397050000001, 1.1856868500000002, 1.5811388300000002, 2.10848252, 2.81170663, 3.7494710500000004, 5.0, 6.667607159999999, 
                  8.89139705, 11.856868500000001, 15.8113883, 21.0848252, 28.117066299999998, 37.494710500000004, 50.0, 66.6760716, 88.91397049999999, 
                  118.568685, 158.11388300000002, 210.848252, 281.170663, 374.94710499999997, 500.0]
-
+        '''
+        
+        #NEW BINNING IN ENERGY
+        emins = [4.99999995e-01, 6.69776645e-01, 8.97222178e-01, 1.20187693e+00,
+                 1.60997822e+00, 2.15665164e+00, 2.88901635e+00, 3.86999140e+00,
+                 5.18405977e+00, 6.94432439e+00, 9.30250688e+00, 1.24612038e+01,
+                 1.66924468e+01, 2.23609371e+01, 2.99536672e+01, 4.01245339e+01,
+                 5.37489519e+01, 7.20012440e+01, 9.64495043e+01, 1.29199252e+02,
+                 1.73069285e+02, 2.31840871e+02, 3.10563205e+02, 4.16015967e+02,
+                 5.57275564e+02, 7.46517512e+02]
+        emaxs = [6.69776645e-01, 8.97222178e-01, 1.20187693e+00, 1.60997822e+00,
+                 2.15665164e+00, 2.88901635e+00, 3.86999140e+00, 5.18405977e+00,
+                 6.94432439e+00, 9.30250688e+00, 1.24612038e+01, 1.66924468e+01,
+                 2.23609371e+01, 2.99536672e+01, 4.01245339e+01, 5.37489519e+01,
+                 7.20012440e+01, 9.64495043e+01, 1.29199252e+02, 1.73069285e+02,
+                 2.31840871e+02, 3.10563205e+02, 4.16015967e+02, 5.57275564e+02,
+                 7.46517512e+02, 1.00000000e+03]
+        
         logx = np.log10(x) 
         energy = mDM*10**logx
         dnde = (dndlogx/(mDM*10**logx*2.30259))
@@ -573,17 +665,28 @@ class Fermi_bounds:
         pred = np.array([self.eflux(spectrum,e1,e2)/mDM**2*sigmav0*j0/(2.*maj_dirac*math.pi) for e1,e2 in zip(emins,emaxs)])
 
         if not sigmav_th:
-             def find_sigmav(x,pred,dw_in,marginalize):
-
+            
+             def return_pvalue(x,pred,dw_in,marginalize):
+                 
                  pred_sigma = pred*10**(-x)/sigmav0
-                 pvalue = self.res_tot_dw(pred_sigma,marginalize)[2]
-
+                 results = self.res_tot_dw(pred_sigma,marginalize)
+                 l_tot,l_null,pvalue,_,_ = results
+                 return -l_tot
+                 
+             def find_sigmav(x,pred,dw_in,marginalize,like_max):
+                 
+                 pred_sigma = pred*10**(-x)/sigmav0
+                 pvalue = self.res_tot_dw(pred_sigma,marginalize,like_max)[2]
                  atanhpval = np.arctanh(pvalue - 1e-9)
                  atanclval = np.arctanh(cl_val - 1e-9)
                  return (atanhpval-atanclval)**2
-
-             find_sig = lambda x: find_sigmav(x,pred,dw_in,marginalize)
-       
+             
+             def find_sigmav_UL(x,pred,dw_in,marginalize,like_max):
+                 
+                 pred_sigma = pred*10**(-x)/sigmav0
+                 ll_tot, ll_ref, pval, j_factors, deltalogL = self.res_tot_dw(pred_sigma,marginalize,like_max)
+                 return abs(deltalogL-1.355)
+            
              # brute methode:
              brute_range_min = -np.log10(sigmavmax)
              brute_range_max = -np.log10(sigmavmin)
@@ -591,162 +694,245 @@ class Fermi_bounds:
                  num_steps = int(step_size_scaling*2.0*(brute_range_max-brute_range_min))
              else:
                  num_steps = int(step_size_scaling*5.0*(brute_range_max-brute_range_min))
+             
+                 
+             find_min = lambda x: return_pvalue(x,pred,dw_in,marginalize)
 
-             res = brute(find_sig,[(brute_range_min,brute_range_max)], Ns=num_steps, full_output=False, finish=fmin)
-             sigmav_ul = 10**(-res[0])
+             res_min = brute(find_min,[(brute_range_min,brute_range_max)], Ns=num_steps, full_output=True, finish=fmin)
+             like_max = -res_min[1] #because brute minimizes the likehood which at the best fit is maximum.
+             
+             res_null = self.res_tot_dw(pred,marginalize)
+             ll_null = res_null[1]
+             
+             sigmav_best = float(10**(-res_min[0]))
+             pvalue,significance = self.compute_sign(like_max,ll_null)
+             #compute_sign(self,ll_tot,ll_null)
+             print("")
+             print("Significance of the signal with FERMI-LAT Dwarf analysis is %.3f sigma"%(significance))
+             print("")
+             
+             find_sig = lambda x: find_sigmav(x,pred,dw_in,marginalize,like_max)
+             
+             res = brute(find_sig,[(brute_range_min,-np.log10(sigmav_best))], Ns=num_steps, full_output=True, finish=fmin)
+             sigmav_ul = float(10**(-res[0]))
 
              pred_sigma = pred*sigmav_ul/sigmav0
-             result  = self.res_tot_dw(pred_sigma,marginalize)
+             result  = self.res_tot_dw(pred_sigma,marginalize,like_max)
              p_value = result[2]     
 
              if p_value <= cl_val*0.98 or p_value >= cl_val*1.02:
                  sigmav_ul= -1
-                 print " WARNING: increase range (sigmavmin,sigmavmax) and/or step_size_scaling!"
+                 print(" WARNING: increase range (sigmavmin,sigmavmax) and/or step_size_scaling!")
         
              return sigmav_ul    
 
         elif sigmav_th:
              pred_sigma = pred*sigmav_th/sigmav0
-             result = self.res_tot_dw(pred_sigma,marginalize)
+             result = self.res_tot_dw(pred_sigma,marginalize,sigmav_th)
              return result[2] , result[0]
 
-class DensityProfile(object):
-    ''' this class allows to define and correctly normalise the density profiles '''
-    
-    def __init__(self, name, functional_form, r_s, rho_sun, r_sun):
-        ''' The normalisation is computed by rho_sun, r_sun.
-            functional_form is the functional_form of the profile:
-                - it does not contain the normalisation density rho_s
-                - it does not contain r_s, but y := r/r_s
-                - it depends solely on y.
+class RegionOfInterest(object):
+    ''' Definition of a region of interest (ROI) with default profile, masks and
+        instructions on J-factor computation.
+
+        Parameters
+        ----------
+        amplitude : float
+            The angle of the ROI amplitude in deg, named :math:`\alpha_1`.
+        default_profile : jfactor_gc.DensityProfile subclass
+            The default density profile of the ROI, the one it is optimized to.
+        upper_limit_label : str
+            The label associated to the upper limit file to be used for this ROI.
+        jfactor_strategy : str, default="normal"
+            The strategy computation for the J-factor, choose between
+            `"normal"` or `"inverted"`.
+        mask_latitude : float, default=0.
+            The angle related to the mask over the latitude in deg, named
+            :math:`\lambda`.
+        mask_longitude : float, default=180.
+            The angle related to the mask over the longitude in deg, named
+            :math:`\beta`.
+        mask_inner_amplitude : float, default=0.
+            The angle related to the circle-shaped mask over the galactic center,
+            named :math:`\alpha_1`.
+        cached_jfactors : dict[jfactor_gc.DensityProfile subclass, float], optional
+            The J-factor already knows for certain profiles related to this ROI.
+        r_max : float, optional
+            The maximum line of sight value to integrate over.
+        likelihood : np.ndarray
+            The likelihood data: a multidimensional array containing the following
+            values: "Energy(GeV), UL_flux(cm^{-2} s^{-1}), x0 || A, sigma || 0" as
+            columns.
+    '''
+    def __init__(self, amplitude, default_profile, upper_limit_label, jfactor_strategy="normal", mask_latitude=0., mask_longitude=180., mask_inner_amplitude=0., cached_jfactors={}, r_max=np.inf, likelihood=None):
+        self._amplitude = amplitude
+        self._mask_latitude = mask_latitude
+        self._mask_longitude = mask_longitude
+        self._mask_inner_amplitude = mask_inner_amplitude
+        self.default_profile = default_profile
+        self.cached_jfactors = cached_jfactors
+        self.jfactor_strategy = jfactor_strategy
+        self._r_max = r_max
+        self.upper_limit_label = upper_limit_label
+        self.likelihood = likelihood
+
+    def to_rad(self, ang):
+        return ang * np.pi/180.
+
+    def jfactor(self, profile):
+        ''' Get the J-factor for the roi specified.
+            First, it checks whether the profile has already a J-factor computed, in case, it directly returns that one.
+            Second, it checks if the new profile and the default profile are equal excepts for the normalization (it also keep into account r_sun).
+            in case it is True and the default J-factor is cached, it rescales the latter according to the new normalization,
+            in case it is False, it computes the new J-factor and caches it for the profile specified.
+            In case the new profile is equal but normalisation to the default profile, but the default J-factor is not cached, it first
+            computes and cache the default J-factor.
         '''
-        self.name = name
-        self.r_s = r_s
-        self._functional_form = functional_form
-        self.set_normalization(rho_sun = rho_sun, r_sun = r_sun)
+        if profile in self.cached_jfactors: # search in the cached_j dict
+            return self.cached_jfactors[profile]
+        if profile.eq_but_norm(self.default_profile):
+            if self.default_profile not in self.cached_jfactors:
+                # compute the default J-factor
+                self.cached_jfactors[self.default_profile] = jfactor_gc(
+                                        ang_2    = self.to_rad(self._amplitude),
+                                        ang_lat  = self.to_rad(self._mask_latitude),
+                                        ang_long = self.to_rad(self._mask_longitude),
+                                        ang_1    = self.to_rad(self._mask_inner_amplitude),
+                                        profile  = self.default_profile,
+                                        strategy = self.jfactor_strategy,
+                                        r_max    = self._r_max,
+                                        mask     = True
+                                    )
+            return np.power(profile.rho_s/self.default_profile.rho_s, 2) * self.cached_jfactors[self.default_profile]
+        # otherwise compute and add to cache
+        self.cached_jfactors[profile] = jfactor_gc(
+                                ang_2    = self.to_rad(self._amplitude),
+                                ang_lat  = self.to_rad(self._mask_latitude),
+                                ang_long = self.to_rad(self._mask_longitude),
+                                ang_1    = self.to_rad(self._mask_inner_amplitude),
+                                profile  = self.default_profile,
+                                strategy = self.jfactor_strategy,
+                                r_max    = self._r_max,
+                                mask     = True
+                            )
+        return self.cached_jfactors[profile]
 
-    def functional_form(self):
-        return self._functional_form
+class RegionOfInterestList(object):
+    ''' Handle the RegionOfInterest lists
+    '''
+    def __init__(self, start_list):
+        self._rois = []
+        self._rois_amplitudes = {}
+        for element in start_list:
+            self.append(element)
 
-    def full_form(self):
-        return lambda r: self.rho_s * self._functional_form(r / self.r_s)
+    def append(self, roi):
+        if not isinstance(roi, RegionOfInterest):
+            raise ValueError("Only objects of type RegionOfInterest can be appended to RegionOfInterestList.")
+        self._rois.append(roi)
+        self._rois_amplitudes[roi._amplitude] = len(self._rois) - 1
 
-    def set_normalization(self, rho_sun, r_sun):
-        self.r_sun = r_sun
-        self.rho_s = rho_sun / self._functional_form(r_sun / self.r_s)
+    def __iter__(self):
+        return iter(self._rois)
 
-    def get_name(self):
-        return self.name
+    def __getitem__(self, index):
+        if isinstance(index, (float, int)):
+            return self._rois[self._rois_amplitudes[index]]
+        raise NotImplementedError("Can not accept index of " + str(type(index)).replace("<","").replace(">",""))
 
-    def __call__(self, r):
-        return self.full_form().__call__(r)
+    def __len__(self):
+        return len(self._rois)
 
-    def is_optimized(self, other):
-        ''' check if the profile is optimised for a certain ROI: same name and same parameters (related to the profile) '''
-        if not isinstance(other, DensityProfile):
-            raise TypeError("'is_optimized' not supported between instances of 'DensityProfile' and '%s'" % other.__class__.__name__)
-        return self.name == other.name
+    def __copy__(self):
+        cls_ = self.__class__
+        newobj = cls_.__new__(cls_)
+        newobj.__dict__.update(self.__dict__)
+        return newobj
 
-    def __eq__(self, other):
-        ''' check full equality between profile parameters '''
-        if not isinstance(other, DensityProfile):
-            raise TypeError("'==' not supported between instances of 'DensityProfile' and '%s'" % other.__class__.__name__)
-        return self.eq_but_norm(other) and np.isclose(self.rho_s, other.rho_s, atol = 0., rtol = 1e-4)
+    def __deepcopy__(self, memo):
+        cls_ = self.__class__
+        newobj = cls_.__new__(cls_)
+        memo[id(self)] = newobj
+        for k, v in self.__dict__.items():
+            setattr(newobj, k, deepcopy(v, memo))
+        return newobj
 
-    def eq_but_norm(self, other):
-        ''' check if the profiles parameters, but rho_s (the normalization) are equal.
-            If rho_s is equal it returns True as well.
-            In case of True, we can simply rescale the J-factor on the basis of the new normalization (even if they are full equal)
-        '''
-        if not isinstance(other, DensityProfile):
-            raise TypeError("'eq_but_norm' not supported between instances of 'DensityProfile' and '%s'" % other.__class__.__name__)
-        return self.name == other.name and np.logical_and.reduce(np.isclose([self.r_s, self.r_sun], [other.r_s, other.r_sun], atol = 0., rtol = 1e-4))
-
-    def __hash__(self):
-        return hash((self.name, self.r_s, self.rho_s, self.r_sun))
-
-    def __str__(self):
-        return "%s(rho_s = %.4e GeV cm^-3, r_s = %.2e kpc)" % (self.name, self.rho_s, self.r_s)
-
-    def get_parameters_items(self):
-        return [("profile_rho_s", self.rho_s), ("profile_r_s", self.r_s)]
-
-class PROFILES:
-    class NFW(DensityProfile):
-        def __init__(self, r_s, rho_sun = 0.4, r_sun = 8.5, **kwargs):
-            self.gamma = kwargs.get("gamma", 1.0)
-            functional_form = lambda y: np.power(y, -self.gamma) * np.power(1 + y, self.gamma-3.)
-            super(PROFILES.NFW, self).__init__(name = "NFW", functional_form = functional_form, r_s = r_s, rho_sun = rho_sun, r_sun = r_sun)
-
-        def is_optimized(self, other):
-            test = super(PROFILES.NFW, self).is_optimized(other = other)
-            return self.gamma == other.gamma if test else False
-
-        def eq_but_norm(self, other):
-            test = super(PROFILES.NFW, self).eq_but_norm(other = other)
-            return self.gamma == other.gamma if test else False
-
-        def __str__(self):
-            return super(PROFILES.NFW, self).__str__() + "\b, gamma = %.2e)" % self.gamma
-
-        def __hash__(self):
-            return hash((self.name, self.r_s, self.r_sun, self.rho_s, self.gamma))
-
-        def get_parameters_items(self):
-            return super(PROFILES.NFW, self).get_parameters_items() + [("profile_gamma", self.gamma)]
-
-    class Einasto(DensityProfile):
-        def __init__(self, r_s, rho_sun = 0.4, r_sun = 8.5, **kwargs):
-            self.alpha = kwargs.get("alpha", 0.17)
-            functional_form = lambda y: np.exp(-2/self.alpha * (np.power(y, self.alpha) - 1))
-            super(PROFILES.Einasto, self).__init__(name = "Einasto", functional_form = functional_form, r_s = r_s, rho_sun = rho_sun, r_sun = r_sun)
-
-        def is_optimized(self, other):
-            test = super(PROFILES.Einasto, self).is_optimized(other = other)
-            return self.alpha == other.alpha if test else False
-
-        def eq_but_norm(self, other):
-            test = super(PROFILES.Einasto, self).eq_but_norm(other = other)
-            return self.alpha == other.alpha if test else False
-
-        def __str__(self):
-            return super(PROFILES.Einasto, self).__str__() + "\b, alpha = %.2e)" % self.alpha
-
-        def __hash__(self):
-            return hash((self.name, self.r_s, self.r_sun, self.rho_s, self.alpha))
-
-        def get_parameters_items(self):
-            return super(PROFILES.Einasto, self).get_parameters_items() + [("profile_alpha", self.alpha)]
-
-    class Burkert(DensityProfile):
-        def __init__(self, r_s, rho_sun = 0.4, r_sun = 8.5, **kwargs):
-            functional_form = lambda y: np.power( (1 + y) * (1 + np.power(y, 2)), -1)
-            super(PROFILES.Burkert, self).__init__(name = "Burkert", functional_form = functional_form, r_s = r_s, rho_sun = rho_sun, r_sun = r_sun)
-
-    class Isothermal(DensityProfile):
-        def __init__(self, r_s, rho_sun = 0.4, r_sun = 8.5, **kwargs):
-            functional_form = lambda y: np.power( 1 + np.power(y, 2), -1)
-            super(PROFILES.Isothermal, self).__init__(name = "Isothermal", functional_form = functional_form, r_s = r_s, rho_sun = rho_sun, r_sun = r_sun)
+line_experiments_regions_of_interest = {
+    "Fermi-LAT_2015": RegionOfInterestList([
+        RegionOfInterest(
+            amplitude=3.,
+            default_profile=PROFILES.NFW(r_s = 20.0, gamma = 1.3, rho_sun = 0.4, r_sun = 8.5),
+            upper_limit_label="(22)(22)_fermi2015R3",
+            jfactor_strategy="normal",
+            mask_latitude=5.,
+            mask_longitude=6.,
+            mask_inner_amplitude=0.,
+            cached_jfactors={PROFILES.NFW(r_s = 20.0, gamma = 1.3, rho_sun = 0.4, r_sun = 8.5) : 1.497e+23},
+            likelihood=np.loadtxt(pjoin(MDMDIR, 'Fermi_line_likelihoods', 'R3_gamma_lines_ULflux_like.dat'), unpack = True),
+            r_max=np.inf
+        ),
+        RegionOfInterest(
+            amplitude=16.,
+            default_profile=PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = 0.4, r_sun = 8.5),
+            upper_limit_label="(22)(22)_fermi2015R16",
+            jfactor_strategy="normal",
+            mask_latitude=5.,
+            mask_longitude=6.,
+            mask_inner_amplitude=0.,
+            cached_jfactors={PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = 0.4, r_sun = 8.5) : 9.39e+22},
+            likelihood=np.loadtxt(pjoin(MDMDIR, 'Fermi_line_likelihoods', 'R16_gamma_lines_ULflux_like.dat'), unpack = True),
+            r_max=np.inf
+        ),
+        RegionOfInterest(
+            amplitude=41.,
+            default_profile=PROFILES.NFW(r_s = 20.0, gamma = 1.0, rho_sun = 0.4, r_sun = 8.5),
+            upper_limit_label="(22)(22)_fermi2015R41",
+            jfactor_strategy="normal",
+            mask_latitude=5.,
+            mask_longitude=6.,
+            mask_inner_amplitude=0.,
+            cached_jfactors={PROFILES.NFW(r_s = 20.0, gamma = 1.0, rho_sun = 0.4, r_sun = 8.5) : 9.16e+22},
+            r_max=np.inf
+        ),
+        RegionOfInterest(
+            amplitude=90.,
+            default_profile=PROFILES.Isothermal(r_s = 5.0, rho_sun = 0.4, r_sun = 8.5),
+            upper_limit_label="(22)(22)_fermi2015R90",
+            jfactor_strategy="normal",
+            mask_latitude=5.,
+            mask_longitude=6.,
+            mask_inner_amplitude=0.,
+            cached_jfactors={PROFILES.Isothermal(r_s = 5.0, rho_sun = 0.4, r_sun = 8.5) : 6.94e+22},
+            r_max=np.inf
+        )
+    ]),
+    "HESS_2018": RegionOfInterestList([
+        RegionOfInterest(
+            amplitude=1.,
+            default_profile=PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = 0.39, r_sun = 8.5),
+            upper_limit_label="(22)(22)_hess2018R1",
+            jfactor_strategy="normal",
+            mask_latitude=0.3,
+            mask_longitude=0.,
+            mask_inner_amplitude=0.,
+            cached_jfactors={PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = 0.39, r_sun = 8.5) : 4.66e21},
+            r_max=np.inf
+        ),
+    ]),
+}
 
 class GammaLineExperiment(object):
     ''' this class holds all the generic functionalities regarding the upper limits on gamma ray line searches '''
-    KPC_TO_CM = 3.086e21
 
-    def __init__(self, name, energy_resolution, detection_range, info_dict, majorana_dirac_factor, mask_lat = 0., mask_long = 0., mask_ang = 0., check_profile_message = lambda is_optimized, roi: {True: "", False: ""}.get(is_optimized), arxiv_number = None, hidden = False):
+    def __init__(self, name, energy_resolution, detection_range, roi_list, majorana_dirac_factor, check_profile_message = lambda is_optimized, roi: {True: "", False: ""}.get(is_optimized), arxiv_number = None, hidden = False):
         # experiment name
         self.name = name
-        # latitude and longitude of the mask: those are intended so as mask_latitude == +- self.mask_lat, so they are not the full amplitude, but only on one side! The other side is taken symmetrically.
-        self.mask_lat = mask_lat * np.pi/180. # radians
-        self.mask_long = mask_long * np.pi/180. # radians
-        # circular mask
-        self.mask_ang = mask_ang * np.pi/180. # radians
         # energy resolution function
         self.energy_resolution = energy_resolution
         # detection range
         self.detection_range = detection_range
-        # info_dict: {roi: [profile_default, {profile_default: J-factor_default}, ul_label, ...]} # '...' means other arguments (if present), e.g. likelihood file
-        # notice the second member of the list is a J-factor cache: a dict with profiles as keys and related J-factors as values
-        self.info_dict = info_dict
+        # roi_list: a list of RegionOfInterest objects
+        self.roi_list = roi_list
         # Majorana-Dirac factor: if the particle is auto-conjugate then this factor -> 1 (Majorana or neutral scalar), else -> 2 (Dirac or charged scalar)
         self.majorana_dirac_factor = majorana_dirac_factor
         # check profile output: function which gives the message to display when the profile not optimized for the ROI
@@ -759,158 +945,13 @@ class GammaLineExperiment(object):
     def __str__(self):
         return self.name + " [arXiv:%s]" % self.arxiv_number
 
-    def J_cone(self, ang_1, ang_2, profile_func, x_sun):
-        ''' it computes the conic part of the J-factor:
-                - ang_1: is the angle between the main axis of the cone and the slant height of the masked conic region (in radians)
-                - ang_2: is the angle between the main axis of the cone and its slant height (in radians)
-                - x_sun := r_sun/r_s
-        '''
-        if ang_1 >= ang_2:
-            return 0.
-        def coefft(t):
-            ''' useful redefinition, t := cos(theta), where theta is the integration variable '''
-            return np.power(x_sun, 2)*(1 - np.power(t,2))
-        def func(y, t):
-            ''' integrand function for the integral without singularity '''
-            return np.power(profile_func(y),2) * y * np.power(np.power(y,2) - coefft(t), -0.5)
-        def func_sing(t):
-            ''' integrand function for the singular integral over y '''
-            return lambda y: np.power(profile_func(y),2) * y * np.power(y + np.sqrt(coefft(t)), -0.5)
-        def inte_func(t):
-            ''' integration over r for the singular region. It will then be integrated over t '''
-            return quad(func_sing(t), np.sqrt(coefft(t)), x_sun, weight = 'alg', wvar = (-0.5,0), epsrel = 1e-6, epsabs = 0)[0]
-        return 2*np.pi*dblquad(func, np.cos(ang_2), np.cos(ang_1), lambda t: x_sun, lambda t: np.inf, epsrel = 1e-6, epsabs = 0)[0] + 2*2*np.pi*quad(inte_func, np.cos(ang_2), np.cos(ang_1), epsrel = 1e-6, epsabs = 0)[0]
-
-    def J_mask(self, ang_1, ang_2, ang_lat, ang_long, profile_func, x_sun):
-        ''' it computes the mask over the J-factor:
-                - ang_1: is the angle between the main axis of the cone and the slant height of the masked conic region (in radians)
-                - ang_2: is the angle between the main axis of the cone and its slant height (in radians)
-                - ang_lat: latitude angle covered by the mask: the mask covers: |latitude| < ang_lat (in radians)
-                - ang_long: minimum longitude covered by the mask: the mask covers: ang_long < |longitude| < pi/2 (in radians)
-                - x_sun := r_sun/r_s
-        '''
-        if ang_long >= ang_2 or ang_lat == 0: # the mask is zero both if it is outside the cone integration region or if the latitude has zero amplitude
-            return 0.
-        # useful definitions
-        def coeffbl(b, l):
-            ''' useful redefinition '''
-            return np.power(x_sun, 2)*(1 - np.power(np.cos(b) * np.cos(l),2))
-        def func_normal(b, l):
-            ''' integrand function for the integral without singularity '''
-            return lambda y: np.power(profile_func(y),2) * y * np.power(np.power(y,2) - coeffbl(b, l), -0.5)
-        def func_sing(b, l):
-            ''' integrand function for the singular integral over y '''
-            return lambda y: np.power(profile_func(y),2) * y * np.power(y + np.sqrt(coeffbl(b, l)), -0.5)
-        def func(l, b):
-            ''' integrand function already integrated over r, b is the longitude and l is the latitude '''
-            return np.cos(b) * (2.*quad(func_sing(b, l), np.sqrt(coeffbl(b, l)), x_sun, weight = 'alg', wvar = (-0.5,0), epsrel = 1e-6, epsabs = 0)[0] + quad(func_normal(b, l), x_sun, np.inf, epsrel = 1e-6, epsabs = 0)[0])
-        def b_prime(ang):
-            if np.isclose(ang, np.pi/2., atol = 0., rtol = 1e-4):
-                return np.pi/2.
-            return np.arctan(np.sqrt(np.power(np.sin(ang),2) - np.power(np.sin(ang_long),2)/np.cos(ang)))
-        def l_prime(ang, b):
-            if np.isclose(ang, np.pi/2., atol = 0., rtol = 1e-4):
-                return np.pi/2.
-            return np.arcsin(np.cos(ang)*np.sqrt(np.power(np.tan(ang),2) - np.power(np.tan(b),2)))
-        B_2 = np.amin([ang_lat, b_prime(ang_2)])
-        B_3 = np.amin([ang_lat, ang_1, b_prime(ang_2)])
-        if ang_long > ang_1: # condition 1
-            if ang_lat > ang_1 and b_prime(ang_2) > ang_1: # condition 1 + 4
-                return 4*dblquad(func, 0., B_2, lambda b: ang_long, lambda b: l_prime(ang_2, b), epsrel = 1e-6, epsabs = 0)[0]
-            else: # condition 1 only
-                return 4*dblquad(func, 0., B_3, lambda b: ang_long, lambda b: l_prime(ang_2, b), epsrel = 1e-6, epsabs = 0)[0]
-        else: # condition 2
-            B_1 = np.amin([ang_lat, b_prime(ang_1)])
-            if ang_lat > ang_1 and b_prime(ang_2) > ang_1: # condition 2 + 4 (includes condition 3 as well)
-                return 4*(dblquad(func, 0, B_1, lambda b: l_prime(ang_1, b), lambda b: l_prime(ang_2, b), epsrel = 1e-6, epsabs = 0)[0] + dblquad(func, b_prime(ang_1), B_2, lambda b: ang_long, lambda b: l_prime(ang_2, b), epsrel = 1e-6, epsabs = 0)[0])
-            elif ang_lat > b_prime(ang_1) and not np.isclose(b_prime(ang_1), ang_lat, atol = 0., rtol = 1e-4): # condition 2 + 3, also use isclose, because in the case equality we prevent the computation of one integral (with a little approximation).
-                return 4*(dblquad(func, 0, B_1, lambda b: l_prime(ang_1, b), lambda b: l_prime(ang_2, b), epsrel = 1e-6, epsabs = 0)[0] + dblquad(func, b_prime(ang_1), B_3, lambda b: ang_long, lambda b: l_prime(ang_2, b), epsrel = 1e-6, epsabs = 0)[0])
-            else: # condition 2 only
-                return 4*dblquad(func, 0, B_1, lambda b: l_prime(ang_1, b), lambda b: l_prime(ang_2, b), epsrel = 1e-6, epsabs = 0)[0]
-
-    def J_simpler(self, ang_2, ang_lat, profile_func, x_sun, ang_1 = 0.):
-        ''' it computes the J-factor for some particular values of the parameters, which make the computation more stable and faster:
-                - ang_1: is the angle between the main axis of the cone and the slant height of the masked conic region (in radians)
-                - ang_2: is the angle between the main axis of the cone and its slant height (in radians)
-                - ang_lat: latitude angle covered by the mask: the mask covers: |latitude| < ang_lat (in radians)
-                - x_sun := r_sun/r_s
-        '''
-        if ang_1 >= ang_2 or ang_lat >= ang_2:
-            return 0.
-        def coefft(t):
-            ''' useful redefinition, t := cos(theta), where theta is the integration variable '''
-            return np.power(x_sun, 2)*(1 - np.power(t,2))
-        def phi_prime(t):
-            ''' useful redefinition for integration over phi. '''
-            return np.arctan(np.sqrt( 1/np.power(np.tan(ang_lat), 2) - (1 + 1/np.power(np.tan(ang_lat), 2)) * np.power(t, 2) ))
-        def func(y, t):
-            ''' integrand function for the integral without singularity '''
-            return phi_prime(t) * np.power(profile_func(y),2) * y * np.power(np.power(y,2) - coefft(t), -0.5)
-        def func_sing(t):
-            ''' integrand function for the singular integral over y '''
-            return lambda y: np.power(profile_func(y),2) * y * np.power(y + np.sqrt(coefft(t)), -0.5)
-        def inte_func(t):
-            ''' integration over r for the singular region. It will then be integrated over t '''
-            return phi_prime(t) * quad(func_sing(t), np.sqrt(coefft(t)), x_sun, weight = 'alg', wvar = (-0.5,0), epsrel = 1e-6, epsabs = 0)[0]
-        theta_prime = np.amax([ang_1, ang_lat])
-        return 4 * (dblquad(func, np.cos(ang_2), np.cos(theta_prime), lambda t: x_sun, lambda t: np.inf, epsrel = 1e-6, epsabs = 0)[0] + 2*quad(inte_func, np.cos(ang_2), np.cos(theta_prime), epsrel = 1e-6, epsabs = 0)[0])
-
-    def J(self, ang_2, ang_lat, ang_long, profile, mask = True, ang_1 = 0.):
-        ''' if mask = False, then the mask is set to zero; while the circular mask can be included by setting ang_1 != 0 '''
-        if ang_1 >= ang_2:
-            return 0.
-        if mask and ang_lat != 0. and ang_long < ang_2:
-            def b_prime(ang):
-                if np.isclose(ang, np.pi/2., atol = 0., rtol = 1e-4):
-                    return np.pi/2.
-                return np.arctan(np.sqrt(np.power(np.sin(ang),2) - np.power(np.sin(ang_long),2)/np.cos(ang)))
-            if (ang_long == 0.) or (ang_long <= ang_1 and ang_lat <= b_prime(ang_1)):
-                return self.KPC_TO_CM * np.power(profile.rho_s, 2)*profile.r_s * self.J_simpler(ang_1 = ang_1, ang_2 = ang_2, ang_lat = ang_lat, profile_func = profile.functional_form(), x_sun = profile.r_sun/profile.r_s)
-            else:
-                if ang_lat >= b_prime(ang_2): # compute the mask with the simpler formula, by inverting latitude and longitude, exploiting spherical symmetry of the density profiles
-                    J_mask_value = self.J_simpler(ang_1 = ang_1, ang_2 = ang_2, ang_lat = ang_long, profile_func = profile.functional_form(), x_sun = profile.r_sun/profile.r_s)
-                else:
-                    J_mask_value = self.J_mask(ang_1 = ang_1, ang_2 = ang_2, ang_lat = ang_lat, ang_long = ang_long, profile_func = profile.functional_form(), x_sun = profile.r_sun/profile.r_s)
-                return self.KPC_TO_CM * np.power(profile.rho_s, 2)*profile.r_s * (self.J_cone(ang_1 = ang_1, ang_2 = ang_2, profile_func = profile.functional_form(), x_sun = profile.r_sun/profile.r_s) - J_mask_value)
-        else: # no mask = only cone integral
-            return self.KPC_TO_CM * np.power(profile.rho_s, 2)*profile.r_s * self.J_cone(ang_1 = ang_1, ang_2 = ang_2, profile_func = profile.functional_form(), x_sun = profile.r_sun/profile.r_s)
-            
     def check_profile(self, roi, profile):
         ''' Check the profile with the default one for the ROI, returning True or False, which is then passed to the function check_profile_message. The result of is_optimized is returned as well. '''
-        is_optimized = profile.is_optimized(self.info_dict[roi][0])
+        is_optimized = profile.is_optimized(self.roi_list[roi].default_profile)
         return is_optimized, self.check_profile_message(is_optimized, roi)
 
-    def get_J(self, roi, profile = None):
-        ''' Get the J-factor for the roi specified.
-            First, it checks whether the profile has already a J-factor computed, in case, it directly returns that one.
-            Second, it checks if the new profile and the default profile are equal excepts for the normalization (it also keep into account r_sun).
-            in case it is True and the default J-factor is cached, it rescales the latter according to the new normalization,
-            in case it is False, it computes the new J-factor and caches it for the profile specified.
-            In case the new profile is equal but normalisation to the default profile, but the default J-factor is not cached, it first
-            computes and cache the default J-factor.
-        '''
-        default_profile, cached_j = self.info_dict[roi][:2]
-        if profile in cached_j: # search in the cached_j dict
-            return cached_j[profile]
-        if profile.eq_but_norm(default_profile):
-            if default_profile not in cached_j:
-                # compute the default J-factor
-                self.info_dict[roi][1][default_profile] = self.J(
-                                        ang_1    = self.mask_ang,
-                                        ang_2    = roi * np.pi/180., # radians
-                                        ang_lat  = self.mask_lat,
-                                        ang_long = self.mask_long,
-                                        profile  = default_profile)
-                cached_j = self.info_dict[roi][1]
-            return np.power(profile.rho_s/default_profile.rho_s, 2) * cached_j[default_profile]
-        # otherwise compute and add to cache
-        self.info_dict[roi][1][profile] = self.J(
-                                        ang_1    = self.mask_ang,
-                                        ang_2    = roi * np.pi/180., # radians
-                                        ang_lat  = self.mask_lat,
-                                        ang_long = self.mask_long,
-                                        profile  = profile)
-        return self.info_dict[roi][1][profile]
+    def get_J(self, roi, profile):
+        return self.roi_list[roi].jfactor(profile)
 
     def flux(self, mdm, sigmav, jfact, is_aa):
         ''' returns the integrated flux for the process dm dm > a X. If X != a, then takes half of the flux. '''
@@ -918,7 +959,7 @@ class GammaLineExperiment(object):
         return coeff * sigmav * jfact / (8 * np.pi * mdm * mdm * self.majorana_dirac_factor)
 
     def get_roi(self):
-        return self.info_dict.keys()
+        return self.roi_list._rois_amplitude.keys()
 
     def get_name(self):
         return self.name
@@ -927,7 +968,7 @@ class GammaLineExperiment(object):
         ''' Returns the upper limit on flux for a given ROI (expressed in degrees).
             The limits are taken from the ExpConstraint class, the interpolation function is evaluated at the energy of the peak.
         '''
-        ul_label = self.info_dict[roi][2]
+        ul_label = self.roi_list[roi].upper_limit_label
         flux_ul = id_constraints.ID_max(mdm = e_peak, channel = ul_label, sigmav = False)
         return flux_ul
 
@@ -938,7 +979,8 @@ class GammaLineExperiment(object):
             because that would be used for comparison between the other experiments. Eventually it would become -1 if also other
             constraints are invalid.
         '''
-        default_profile, _, ul_label = self.info_dict[roi][:3]
+        default_profile = self.roi_list[roi].default_profile
+        ul_label = self.roi_list[roi].upper_limit_label
         if profile.eq_but_norm(default_profile):
             coeff = 1. if is_aa else 2.
             sigmav_ul = id_constraints.ID_max(mdm = e_peak, channel = ul_label, sigmav = True) * np.power(default_profile.rho_s / profile.rho_s, 2) * coeff
@@ -1025,7 +1067,7 @@ class Fermi2015GammaLineLikelihood(object):
     def loglike(self, peak, roi, profile):
         ''' returns the -2*log(like) evaluated at the flux, for a certain ROI (in degrees) '''
         try:
-            like_file = self.experiment.info_dict[roi][3]
+            like_file = self.experiment.roi_list[roi].likelihood
         except KeyError:
             raise ValueError("ROI of amplitude %f is not allowed, ignore likelihood computation" % roi)
         if like_file is None:
@@ -1050,9 +1092,7 @@ class Fermi2015GammaLineLikelihood(object):
         except (ValueError, IOError):
             logger.warning("Error during likelihood computation, will not compute p-value.")
             return -1
-        test = loglike_h1 - loglike_h0 # they have already -2 factor
-        pvalue = lambda x: 1 - gammainc(0.5, x/2.)
-        return pvalue(test)
+        return 1 - gammainc(0.5, (loglike_h1 - loglike_h0)/2.) # loglike already have -2 factor
 
 
 class GammaLineSpectrum(object):
@@ -1266,7 +1306,7 @@ class GammaLineSpectrum(object):
         lines_to_merge = {} # dict containing a label of the peaks to be merged 'label_1--label_2' a tuple with the actual peaks
         # order the dictionary according to the differences between the signals peaks and each FWHM:
         # in this way we start our analysis from the very minimum and we can drop the other final states which may be merged because this value is certainly higher.
-        comparisons = collections.OrderedDict(sorted(comparisons.items(), key = lambda item: item[1][2]))
+        comparisons = collections.OrderedDict(sorted(list(comparisons.items()), key = lambda item: item[1][2]))
         for comp_lines, (peaks_to_sum, merging_condition, discriminant) in comparisons.items():
             if not merging_condition or any(l in lm for l in comp_lines.split('--') for lm in lines_to_merge.keys()):
                 continue
@@ -1307,7 +1347,7 @@ class GammaLineSpectrum(object):
         test_spectrum  = np.array([p for p in self if p != peak])
         # find neighbourhood of the peak
         get_e_peak     = lambda a_peak: a_peak.e_peak
-        energy_peaks   = np.array(map(get_e_peak, test_spectrum))
+        energy_peaks   = np.array(list(map(get_e_peak, test_spectrum)))
         condition      = np.logical_and(energy_peaks < peak.e_peak + min_separation, energy_peaks > peak.e_peak - min_separation)
         neighbourhood  = test_spectrum[condition]
         # check: if it is alone, then return False
@@ -1315,7 +1355,7 @@ class GammaLineSpectrum(object):
             return False # no peaks too close
         # check the ratio flux/flux_UL of the peak with respect each other peak in the neighbourhood
         get_height = lambda a_peak: a_peak.flux/a_peak.flux_UL
-        height_peaks = np.array(map(get_height, neighbourhood))
+        height_peaks = np.array(list(map(get_height, neighbourhood)))
         # height_peaks elements are of the order of 1e-10 -- 1e-30, so they can be considered zero if less than 1e-200 let's say
         if any(height_peaks < 1e-200): # happens if one peak has flux_UL == __infty__ (it is out of range), in this case can't do comparison, so assume they are too close
             logger.warning("One peak has upper limit equal to __infty__, I can't compare its height with others, I assume they can't be neglected.")
@@ -1337,16 +1377,16 @@ class PDGParticleMap(dict):
             self.set_model_map(model)
 
     def set_model_map(self, model):
-        for pdg_code, particle in model.get('particle_dict').iteritems():
+        for pdg_code, particle in six.iteritems(model.get('particle_dict')):
             self[str(pdg_code)] = particle.get_name() 
 
     def get_pdg(self, particle):
         ''' if 'particle' is a pdg_code itself inside the self dictionary, then return it,
             otherwise obtain the pdg_code from the particle label.
         '''
-        if particle in self.keys():
+        if particle in list(self.keys()):
             return int(particle)
-        this_pdg = [pdg for pdg, name in self.iteritems() if name == particle]
+        this_pdg = [pdg for pdg, name in six.iteritems(self) if name == particle]
         if len(this_pdg) == 0:
             # check if it is a multiparticle
             raise ValueError("No particle '%s' in the model." % particle)
@@ -1521,7 +1561,7 @@ class MADDMRunCmd(cmd.CmdShell):
     
     intro_banner=\
   "            ====================================================\n"+\
-  "            |                  "+bcolors.OKBLUE+"  MadDM v3.2                     "+bcolors.ENDC+"|\n"\
+  "            |                  "+bcolors.OKBLUE+"  MadDM v3.3                     "+bcolors.ENDC+"|\n"\
   "            ====================================================\n"+\
   "                                                                               \n"+\
   "                #########                                                        \n"+\
@@ -1533,10 +1573,10 @@ class MADDMRunCmd(cmd.CmdShell):
   "       ########//#####\\\\###########                   "+bcolors.FAIL+"arXiv:2107.04598        \n"+bcolors.ENDC+\
   "       ######################### ## ___________________________________________\n"+\
   "       ####################### 0  # "+bcolors.OKGREEN+" _     _               _  _____   _     _  \n"+bcolors.ENDC+\
-  "       #############   0  ###    ## "+bcolors.OKGREEN+"| \   / |   ___    ___|| | ___ \ | \   / | \n"+bcolors.ENDC+\
+  "       #############   0  ###    ## "+bcolors.OKGREEN+"| \\   / |   ___    ___|| | ___ \\ | \\   / | \n"+bcolors.ENDC+\
   "       ##############    #########  "+bcolors.OKGREEN+"||\\\\ //|| / __ |  / __ | ||   || ||\\\\ //|| \n"+bcolors.ENDC+\
-  "        ##########################  "+bcolors.OKGREEN+"||  V  || ||__||  ||__|| ||___|| ||  V  || \n"+bcolors.ENDC+\
-  "         ###################   ##   "+bcolors.OKGREEN+"||     || \_____\ \____| |_____/ ||     || \n"+bcolors.ENDC+\
+  "        ##########################  "+bcolors.OKGREEN+"||  \\V  || ||__||  ||__|| ||___|| ||  \\V  || \n"+bcolors.ENDC+\
+  "         ###################   ##   "+bcolors.OKGREEN+"||     || \\_____\\ \\____| |_____/ ||     || \n"+bcolors.ENDC+\
   "          ############       ###    ___________________________________________\n"+\
   "           ##########    ######                                                 \n"+\
   "             ################                                                   \n"+\
@@ -1560,8 +1600,8 @@ class MADDMRunCmd(cmd.CmdShell):
             dir_path = root_path
 
         self.dir_path = dir_path
-        self.indirect_directories = dict(zip(['Indirect_tree_cont', 'Indirect_tree_line', 'Indirect_LI_cont', 'Indirect_LI_line'], map(os.path.isdir, [pjoin(dir_path, 'Indirect_tree_cont'), pjoin(dir_path, 'Indirect_tree_line'), pjoin(dir_path, 'Indirect_LI_cont'), pjoin(dir_path, 'Indirect_LI_line')])))
-        self.indirect_directories_cross_section_contribution = dict(zip(['Indirect_tree_cont', 'Indirect_tree_line', 'Indirect_LI_cont', 'Indirect_LI_line'], [0., 0., 0., 0.]))
+        self.indirect_directories = dict(list(zip(['Indirect_tree_cont', 'Indirect_tree_line', 'Indirect_LI_cont', 'Indirect_LI_line'], list(map(os.path.isdir, [pjoin(dir_path, 'Indirect_tree_cont'), pjoin(dir_path, 'Indirect_tree_line'), pjoin(dir_path, 'Indirect_LI_cont'), pjoin(dir_path, 'Indirect_LI_line')])))))
+        self.indirect_directories_cross_section_contribution = dict(list(zip(['Indirect_tree_cont', 'Indirect_tree_line', 'Indirect_LI_cont', 'Indirect_LI_line'], [0., 0., 0., 0.])))
         self.param_card_iterator = [] #a placeholder containing a generator of paramcard for scanning
         
         # Define self.proc_characteristics (set of information related to the
@@ -1589,11 +1629,11 @@ class MADDMRunCmd(cmd.CmdShell):
         self.vave_indirect_cont_range = (3e-6, 1.4e-4)
         self.vave_indirect_line_range = (5e-4, 1e-3) # about 180--300 km/s
         self.options = options
+        self.line_experiments = GammaLineExperimentsList()
 
         self.Spectra = Spectra()
         self.Fermi   = Fermi_bounds()
-        self.line_experiments = GammaLineExperimentsList()
-        self.MadDM_version = '3.2'
+        self.MadDM_version = '3.3'
 
         self.processes_names_map = self.proc_characteristics['processes_names_map']
 
@@ -1627,7 +1667,7 @@ class MADDMRunCmd(cmd.CmdShell):
         if pattern_scan.search(text):
             if not isinstance(self, cmd.CmdShell):
                 # we are in web mode => forbid scan due to security risk
-                raise Exception, "Scans are not allowed in web mode"
+                raise Exception("Scans are not allowed in web mode")
             # at least one scan parameter found. create an iterator to go trough the cards
             main_card = param_card_mod.ParamCardIterator(text)
             self.param_card_iterator = main_card
@@ -1756,6 +1796,7 @@ class MADDMRunCmd(cmd.CmdShell):
         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
 
         result['tot_SM_xsec'] = -1
+        alphaq_values = {"alpha_d": [], "alpha_u": [], "alpha_s": [], "alpha_c": [], "alpha_b": [], "alpha_t": [] }
 
         for line in open(pjoin(self.dir_path, output)):
       
@@ -1765,6 +1806,20 @@ class MADDMRunCmd(cmd.CmdShell):
                     oname = splitline[0].strip(':')+'_'+splitline[1]
                     val = splitline[2]
                     result[oname.split(':')[0] ] = val
+
+                ##### explicitly tell the code how to read alphas here 
+
+
+                parts = line.split(":")
+                #print(parts)
+                if parts[0].strip() in alphaq_values.keys():
+                    values = list(map(float, parts[1:5]))
+                    alphaq_values[parts[0].strip()] = np.array(values)  # Store as NumPy array
+
+    
+
+
+                #####
 
                 else:
                     if self._two2twoLO:
@@ -1785,11 +1840,46 @@ class MADDMRunCmd(cmd.CmdShell):
                         str_proc = StrProcess(oname, self.processes_names_map)
                         self.str_processes[oname] = str_proc
                         result["%%_relic_%s" % oname] = secure_float_f77(splitline[1])
+
+
+                        
+                    if 'Xenon10_bins' in line:
+                        Xenon10_bins = []
+                        for i in range(1,9):
+                            Xenon10_bins.append(secure_float_f77(splitline[i]))
+                        result['Xenon10_bins'] = Xenon10_bins
+
+                    elif 'Xenon10_signal' in line:
+                        Xenon10_signal = []
+                        for i in range(1,8):
+                            Xenon10_signal.append(secure_float_f77(splitline[i]))
+                        result['Xenon10_signal'] = Xenon10_signal
+
+                    elif 'Xenon10_obs' in line:
+                        Xenon10_obs = []
+                        for i in range(1,8):
+                            Xenon10_obs.append(secure_float_f77(splitline[i]))
+                        result['Xenon10_obs'] = Xenon10_obs
+
+                    elif 'Xenon1T_signal' in line:
+                        result['Xenon1T_signal'] = secure_float_f77(splitline[1])
+
+                    elif 'Xenon1T_bkg' in line:
+                        result['Xenon1T_bkg'] = secure_float_f77(splitline[1])
+
+                    elif 'Xenon1T_obs' in line:
+                        result['Xenon1T_obs'] = secure_float_f77(splitline[1])
+
+                    elif 'sigma_e' in line:
+                        result['sigma_e'] = secure_float_f77(splitline[1])
+
                     else:
                         result[splitline[0].split(':')[0]] = secure_float_f77(splitline[1])
                             
         np_names = ['g','nue','numu','nutau']
-        result['sigmav(xf)'] *= GeV2pb*pb2cm3
+        
+        if result['sigmav(xf)']!=-1:
+            result['sigmav(xf)'] *= GeV2pb*pb2cm3
 
         if str(self.mode['indirect']).startswith('flux'):
             for chan in np_names + ['gammas','neutrinos_e', 'neutrinos_mu' , 'neutrinos_tau']: # set -1 to the possible cases
@@ -1806,6 +1896,12 @@ class MADDMRunCmd(cmd.CmdShell):
         else: result['xsi'] = 1.0
 
         if self.mode['direct']:
+            RP_rel_path = self.plugin_path[0] + "/maddm/vendor/RAPIDD_for_DM/rapidd/"
+            RP_abs_path = os.path.abspath(RP_rel_path)
+            sys.path.insert(0, RP_abs_path)
+            from alpha_map import sigmaSI_nucleon_mdm, sigmaSD_nucleon_mdm
+            result['sigmaN_SI_p'], result['sigmaN_SI_n'] = sigmaSI_nucleon_mdm(self.maddm_card, alphaq_values, mdm)
+            result['sigmaN_SD_p'], result['sigmaN_SD_n'] = sigmaSD_nucleon_mdm(self.maddm_card, alphaq_values, mdm)
             result['sigmaN_SI_n']    *= GeV2pb*pb2cm2
             result['sigmaN_SI_p']    *= GeV2pb*pb2cm2
             result['sigmaN_SD_p']    *= GeV2pb*pb2cm2
@@ -1815,9 +1911,28 @@ class MADDMRunCmd(cmd.CmdShell):
             result['lim_sigmaN_SD_p'] = self.limits.SD_max(mdm, 'p')
             result['lim_sigmaN_SD_n'] = self.limits.SD_max(mdm, 'n')
 
+
+            from calc_dRdE import DDrate_save
+            rapidd_out_path = pjoin(self.dir_path,'output', self.run_name)
+
+            if (self.maddm_card['vescape'] == 544.0) and (self.maddm_card['vmp'] == 238.0):
+                DDrate_save(self.maddm_card, alphaq_values, mdm, rapidd_out_path)
+
+            else:
+                from halo import gen_shm_table 
+                halo_path = rapidd_out_path + '/SHM.dat'
+                gen_shm_table(halo_path, self.maddm_card)
+                DDrate_save(self.maddm_card, alphaq_values, mdm, rapidd_out_path, halo_path=halo_path)
+
+
         self.last_results = result
         self.last_results['run'] = self.run_name
 
+        # if self.mode['direct'] == 'p-value':
+            
+
+        if self.mode['direct_electron'] and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
+            self.launch_direct_electron()
                           
 #        if self.mode['indirect'] and not self._two2twoLO:
 #            with misc.MuteLogger(names=['madevent','madgraph'],levels=[50,50]):
@@ -1827,6 +1942,29 @@ class MADDMRunCmd(cmd.CmdShell):
         ## cross section contributions from different directories
         self.indirect_directories_cross_section_contribution = dict(zip(['Indirect_tree_cont', 'Indirect_tree_line', 'Indirect_LI_cont', 'Indirect_LI_line'], [0., 0., 0., 0.]))
         ## Spectra object
+        # Eliminate antideuterons spectra in case of fast
+        if self.maddm_card['indirect_flux_source_method']!='pythia8':
+            #for key in ['He3x','He4x','Dx','DxS','DxAWF','Dxpcoals','pxP']:
+            for key in ['He3x','He4x','DxS','DxAWF','Dxpcoals','pxP']:
+                self.Spectra.spectra_id.pop(key,None)
+                            
+            #for key in ['antideuterons_spherical','antideuterons_AWF','antideuterons_pcoalsigma','antideuterons','antihelions3_spherical','antihelions4_spherical','antiprotonsP']:
+            for key in ['antideuterons_spherical','antideuterons_AWF','antideuterons_pcoalsigma','antihelions3_spherical','antihelions4_spherical','antiprotonsP']:
+                self.Spectra.errors.pop(key,None)
+                self.Spectra.spectra.pop(key,None)
+                self.Spectra.flux_source.pop(key,None)
+        #lo scan funziona con le lineee
+        else:
+            py8card = Indirect_PY8Card(pjoin(self.dir_path, 'Cards', 'pythia8_card.dat'))
+            if py8card['Main:methodDbar'] != 10:
+                for key in ['He3x','He4x','DxS','DxAWF','Dxpcoals','pxP']:
+                    self.Spectra.spectra_id.pop(key,None)
+                            
+                for key in ['antideuterons_spherical','antideuterons_AWF','antideuterons_pcoalsigma','antihelions3_spherical','antihelions4_spherical','antiprotonsP']:
+                    self.Spectra.errors.pop(key,None)
+                    self.Spectra.spectra.pop(key,None)
+                    self.Spectra.flux_source.pop(key,None)
+        
         self.Spectra.initialize_spectra()
 
         if self.mode['indirect']:
@@ -1834,7 +1972,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 self.launch_indirect(force, directory, self.maddm_card['vave_indirect_cont'])
             # compute total cross section only for continuum final states
             self.last_results['taacsID'] = 0.
-            for process, sigmav in {k.replace('taacsID#', ''): v for k, v in self.last_results.iteritems() if k.startswith('taacsID#')}.iteritems():
+            for process, sigmav in six.iteritems({k.replace('taacsID#', ''): v for k, v in six.iteritems(self.last_results) if k.startswith('taacsID#')}):
                 if self.is_spectral_finalstate(self.str_processes[process]):
                     continue
                 self.last_results['taacsID'] += sigmav
@@ -1898,8 +2036,11 @@ class MADDMRunCmd(cmd.CmdShell):
                           'sigmaN_SD_n', 'lim_sigmaN_SD_n']
 
            
-            if self.mode['direct'] == 'directional':
-                order += ['Nevents', 'smearing']
+            # if self.mode['direct'] == 'directional':
+            #     order += ['Nevents', 'smearing']
+
+            if self.mode['direct_electron'] and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
+                order += ['pvalue_Xenon10','pvalue_Xenon1T']
 
             if self.mode['capture']:
                 detailled_keys = [k for k in self.last_results if k.startswith('ccap_') and '#' not in k]
@@ -1963,13 +2104,13 @@ class MADDMRunCmd(cmd.CmdShell):
                         order.append(str_part + "peak_%d"        % (i+1))
                         order.append(str_part + "flux_%d"        % (i+1))
                         order.append(str_part + "flux_UL_%d"     % (i+1))
-                        if str_part + "like_%d" % (i+1) in self.last_results.keys():
+                        if str_part + "like_%d" % (i+1) in list(self.last_results.keys()):
                             order.append(str_part + "like_%d"        % (i+1))
                             order.append(str_part + "pvalue_%d"      % (i+1))
                         order.append(str_part + "peak_%d_error"  % (i+1))
 
             # remove elements which have not been computed
-            order[:] = [elem for elem in order if elem in self.last_results.keys()]
+            order[:] = [elem for elem in order if elem in list(self.last_results.keys())]
 
             run_name = str(self.run_name).rsplit('_',1)[0]
             summary_file = pjoin(self.dir_path, 'output','scan_%s.txt' % run_name)
@@ -1999,10 +2140,79 @@ class MADDMRunCmd(cmd.CmdShell):
                         
                         #self.save_remove_output(scan = True)
 
-
-
-
             param_card_iterator.write(pjoin(self.dir_path,'Cards','param_card.dat'))
+
+    def launch_direct_electron(self):
+
+        def get_pvalue_min(n_obs,expected_val):
+            pvalues = []
+            for obs,exp in zip(n_obs,expected_val):
+                pvalues.append(poisson.cdf(obs,exp))
+            return min(pvalues)
+
+        def get_pvalue(obs,sig,bkg):
+            pvalue = poisson.cdf(obs,sig+bkg)
+            return pvalue
+        
+        self.last_results['pvalue_Xenon10'] = -1
+        self.last_results['pvalue_Xenon1T'] = -1
+        
+        if ("Xenon10_signal" not in self.last_results) and ("Xenon1T_signal" not in self.last_results):
+            logger.warning("XENON10 or XENON1T signal not found, exclusion limits computation for electronic recoil is disabled.")
+            return
+        else:
+            if HAS_NUMPY is False:
+                logger.warning("numpy module not available, exclusion limits computation is disabled.")
+                return
+            elif HAS_SCIPY is False:
+                logger.warning("scipy module not available, exclusion limits computation is disabled.")
+                return
+            elif self.last_results['DM_response']!=-1:
+                Xenon10_sig = self.last_results['Xenon10_signal']
+                Xenon10_obs = self.last_results['Xenon10_obs']
+                Xenon1T_sig = self.last_results['Xenon1T_signal']
+                Xenon1T_bkg = self.last_results['Xenon1T_bkg']
+                Xenon1T_obs = self.last_results['Xenon1T_obs']
+
+                self.last_results['pvalue_Xenon10'] = get_pvalue_min(Xenon10_obs,Xenon10_sig)
+                self.last_results['pvalue_Xenon1T'] = get_pvalue(Xenon1T_obs,Xenon1T_sig,Xenon1T_bkg)
+
+
+    def launch_direct_electron(self):
+
+        def get_pvalue_min(n_obs,expected_val):
+            pvalues = []
+            for obs,exp in zip(n_obs,expected_val):
+                pvalues.append(poisson.cdf(obs,exp))
+            return min(pvalues)
+
+        def get_pvalue(obs,sig,bkg):
+            pvalue = poisson.cdf(obs,sig+bkg)
+            return pvalue
+        
+        self.last_results['pvalue_Xenon10'] = -1
+        self.last_results['pvalue_Xenon1T'] = -1
+        
+        if ("Xenon10_signal" not in self.last_results) and ("Xenon1T_signal" not in self.last_results):
+            logger.warning("XENON10 or XENON1T signal not found, exclusion limits computation for electronic recoil is disabled.")
+            return
+        else:
+            if HAS_NUMPY is False:
+                logger.warning("numpy module not available, exclusion limits computation is disabled.")
+                return
+            elif HAS_SCIPY is False:
+                logger.warning("scipy module not available, exclusion limits computation is disabled.")
+                return
+            elif self.last_results['DM_response']!=-1:
+                Xenon10_sig = self.last_results['Xenon10_signal']
+                Xenon10_obs = self.last_results['Xenon10_obs']
+                Xenon1T_sig = self.last_results['Xenon1T_signal']
+                Xenon1T_bkg = self.last_results['Xenon1T_bkg']
+                Xenon1T_obs = self.last_results['Xenon1T_obs']
+
+                self.last_results['pvalue_Xenon10'] = get_pvalue_min(Xenon10_obs,Xenon10_sig)
+                self.last_results['pvalue_Xenon1T'] = get_pvalue(Xenon1T_obs,Xenon1T_sig,Xenon1T_bkg)
+
 
     def launch_multinest(self):
 
@@ -2081,7 +2291,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 py8card = Indirect_PY8Card(pjoin(self.dir_path, 'Cards', 'pythia8_card.dat'))
                 if py8card['Main:NumberOfEvents'] != -1:
                     run_card['nevents'] = py8card['Main:NumberOfEvents']
-        
+                    run_card['iseed'] = int(np.random.uniform(0, 10000))
                 run_card.write(runcardpath)
         
             if __debug__:
@@ -2099,7 +2309,6 @@ class MADDMRunCmd(cmd.CmdShell):
                             if os.path.exists(pjoin(self.dir_path,indirect_directory,'Cards','reweight_card.dat')):
                                 os.remove(pjoin(self.dir_path,indirect_directory,'Cards','reweight_card.dat'))
                             self.me_cmd.do_launch('%s -f' % self.run_name)
-
                         elif self.maddm_card['sigmav_method'] == 'reshuffling':
                             cmd = ['launch %s' % self.run_name,
                                'reweight=indirect',
@@ -2110,7 +2319,7 @@ class MADDMRunCmd(cmd.CmdShell):
             line_gc_vel = self.maddm_card['vave_indirect_line'] > self.vave_indirect_line_range[0] and self.maddm_card['vave_indirect_line'] < self.vave_indirect_line_range[1] # range of validity of line limits
             velocity_in_range = {'cont': fermi_dsph_vel, 'line': line_gc_vel}.get(indirect_directory.split('_')[-1], True)
             
-            for key, value in self.me_cmd.Presults.iteritems():
+            for key, value in six.iteritems(self.me_cmd.Presults):
                 clean_key_list = key.split("/")
                 # clean_key = clean_key_list[-1].split('_')[1] +'_'+  clean_key_list[-1].split('_')[2]
                 clean_key = clean_key_list[-1].split("_", 1)[-1]
@@ -2140,17 +2349,17 @@ class MADDMRunCmd(cmd.CmdShell):
         # compute spectra with Pythia or PPPC only in the continuum case
         if not fast_mode:
             if self.mode['indirect'] != 'sigmav':
-                if self.maddm_card['indirect_flux_source_method'].startswith('PPPC'):
-                    if self.read_PPPCspectra():
-                        logger.info('Calculating Fermi dSph limit using PPPC4DMID spectra')
+                if self.maddm_card['indirect_flux_source_method'].startswith('PPPC') or self.maddm_card['indirect_flux_source_method'].lower().startswith('cosmixs'):
+                    if self.read_tabulatedspectra():
+                        logger.info(f"Calculating Fermi dSph limit using {self.maddm_card['indirect_flux_source_method']} spectra")
                     else:
                         logger.info('no PPPC4DMID')
                 else:
                     for id_dir in cont_spectra_directories:
                         self.run_pythia8_for_flux(id_dir)
-                    if self.maddm_card['indirect_flux_source_method'] == 'pythia8':
-                        logger.info('Calculating Fermi dSph limit using pythia8 gamma rays spectrum')
-                    elif 'pythia' not in self.maddm_card['indirect_flux_source_method']:
+                    if self.maddm_card['indirect_flux_source_method'] == 'pythia8' or self.maddm_card['indirect_flux_source_method'] == 'vincia':
+                        logger.info('Calculating Fermi dSph limit using pythia8 ' + '(vincia) '*(self.maddm_card['indirect_flux_source_method'] == 'vincia') + 'gamma rays spectrum')
+                    elif 'pythia' not in self.maddm_card['indirect_flux_source_method'] and 'vincia' not in self.maddm_card['indirect_flux_source_method']:
                         logger.warning('Since pythia8 is run, using pythia8 gamma rays spectrum (not PPPC4DMID Tables)')
                     self.read_py8spectra(cont_spectra_directories)
             elif self.mode['indirect'] == 'sigmav':
@@ -2158,8 +2367,8 @@ class MADDMRunCmd(cmd.CmdShell):
 
         elif self.mode['indirect'] == 'sigmav':
             logger.warning('no gamma spectrum since in sigmav mode')
-        elif self.read_PPPCspectra():   # if in fast mode, use PPPC. return False if PPPC4DMID not installed!
-            logger.info('Calculating Fermi dSph limit using PPPC4DMID spectra')
+        elif self.read_tabulatedspectra():   # if in fast mode, use PPPC. return False if PPPC4DMID not installed!
+            logger.info(f"Calculating Fermi dSph limit using {self.maddm_card['indirect_flux_source_method']} spectra")
 
         # ****** Calculating Fermi dSph Limits
         self.calculate_fermi_limits(mdm)
@@ -2197,9 +2406,11 @@ class MADDMRunCmd(cmd.CmdShell):
            return 0
     
         x, gammas = self.Spectra.spectra['x'] , self.Spectra.spectra['gammas']
-
+        
         if not gammas:
-            if not self.options['pppc4dmid_path'] and self.maddm_card['indirect_flux_source_method'].startswith('PPP'):
+            if (not self.options['pppc4dmid_path'] and 
+                (self.maddm_card['indirect_flux_source_method'].startswith('PPP') or 
+                 self.maddm_card['indirect_flux_source_method'].lower().startswith('cosmixs'))):
                 pass
             else:
                 logger.error('The gamma spectrum is empty! Will not calculate Fermi limit')
@@ -2209,9 +2420,10 @@ class MADDMRunCmd(cmd.CmdShell):
             sigmav = self.Fermi.Fermi_sigmav_lim(mdm, x , gammas ,maj_dirac= self.norm_Majorana_Dirac() )
             self.last_results['Fermi_sigmav'] = sigmav # returns Fermi exp UL
                     
-            if 'PPPC' in self.maddm_card['indirect_flux_source_method']:
+            if ('PPPC' in self.maddm_card['indirect_flux_source_method'] or 
+                'cosmixs' in self.maddm_card['indirect_flux_source_method'].lower()):
                 sigmav_th = self.last_results['tot_SM_xsec']
-            else :
+            else:
                 sigmav_th = self.last_results['taacsID']
 
             pvalue_nonth , like_nonth = self.Fermi.Fermi_sigmav_lim(mdm, x , gammas ,maj_dirac= self.norm_Majorana_Dirac() , sigmav_th = sigmav_th )
@@ -2253,6 +2465,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
         ### Fill list with GammaLineExperiment
         if not self.in_scan_mode:
+            #self.line_experiments = GammaLineExperimentsList()
             r_sun = self.maddm_card['r_sun']
             rho_sun = self.maddm_card['rho_sun']
             ### Fermi-LAT 2015
@@ -2274,29 +2487,9 @@ class MADDMRunCmd(cmd.CmdShell):
             self.line_experiments.append(
                 experiment = GammaLineExperiment(
                     name                  = "Fermi-LAT_2015",
-                    mask_lat              = 5., # deg
-                    mask_long             = 6., # deg
-                    mask_ang              = 0., # deg
                     energy_resolution     = energy_resolution_fermi_line_2015,
                     detection_range       = [0.214, 462.],
-                    info_dict             = { # the key is the angle of the ROI (in degrees)
-                        3.  : [PROFILES.NFW(r_s = 20.0, gamma = 1.3, rho_sun = rho_sun, r_sun = r_sun),
-                            {PROFILES.NFW(r_s = 20.0, gamma = 1.3, rho_sun = rho_sun, r_sun = r_sun) : 1.497e+23}, # GeV^2 cm^-5
-                            "22.22_fermi2015R3",
-                            np.loadtxt(pjoin(MDMDIR, 'Fermi_line_likelihoods', 'R3_gamma_lines_ULflux_like.dat'), unpack = True)],
-                        16. : [PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = rho_sun, r_sun = r_sun),
-                            {PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = rho_sun, r_sun = r_sun) : 9.39e+22}, # GeV^2 cm^-5
-                            "22.22_fermi2015R16",
-                            np.loadtxt(pjoin(MDMDIR, 'Fermi_line_likelihoods', 'R16_gamma_lines_ULflux_like.dat'), unpack = True)],
-                        41. : [PROFILES.NFW(r_s = 20.0, gamma = 1.0, rho_sun = rho_sun, r_sun = r_sun),
-                            {PROFILES.NFW(r_s = 20.0, gamma = 1.0, rho_sun = rho_sun, r_sun = r_sun) : 9.16e+22}, # GeV^2 cm^-5
-                            "22.22_fermi2015R41",
-                            None],
-                        90. : [PROFILES.Isothermal(r_s = 5.0, rho_sun = rho_sun, r_sun = r_sun),
-                            {PROFILES.Isothermal(r_s = 5.0, rho_sun = rho_sun, r_sun = r_sun) : 6.94e+22}, # GeV^2 cm^-5
-                            "22.22_fermi2015R90",
-                            None]
-                    },
+                    roi_list              = line_experiments_regions_of_interest["Fermi-LAT_2015"],
                     majorana_dirac_factor = self.norm_Majorana_Dirac() / 4., # divide by 4, because that methods return 4 if Majorana, 8 if Dirac
                     check_profile_message = lambda is_optimized, roi: {True: "", False: "ROI %d is not optimized for this profile!" % roi}.get(is_optimized),
                     arxiv_number          = "1506.00013",
@@ -2308,16 +2501,9 @@ class MADDMRunCmd(cmd.CmdShell):
             self.line_experiments.append(
                 experiment = GammaLineExperiment(
                     name                  = "HESS_2018",
-                    mask_lat              = 0.3, # deg
-                    mask_long             = 0., # deg
-                    mask_ang              = 0., # deg
                     energy_resolution     = lambda m: 0.1,
                     detection_range       = [306.9, 63850.],
-                    info_dict             = { # the key is the angle of the ROI (in degrees)
-                        1. : [PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = rho_sun, r_sun = r_sun),
-                            {PROFILES.Einasto(r_s = 20.0, alpha = 0.17, rho_sun = rho_sun, r_sun = r_sun) : 4.66e21}, # GeV^2 cm^-5
-                            "22.22_hess2018R1"]
-                    },
+                    roi_list              = line_experiments_regions_of_interest["HESS_2018"],
                     majorana_dirac_factor = self.norm_Majorana_Dirac() / 4., # divide by 4, because that methods return 4 if Majorana, 8 if Dirac
                     check_profile_message = lambda is_optimized, roi: {True: "", False: "The chosen profile is not the default for this ROI"}.get(is_optimized),
                     arxiv_number          = "1805.05741",
@@ -2337,16 +2523,21 @@ class MADDMRunCmd(cmd.CmdShell):
             self.line_experiments.append(
                 experiment = GammaLineExperiment(
                     name                  = self.maddm_card["template_line_experiment_name"],
-                    mask_lat              = self.maddm_card["template_line_experiment_mask_latitude"], # deg
-                    mask_long             = self.maddm_card["template_line_experiment_mask_longitude"], # deg
-                    mask_ang              = self.maddm_card["template_line_experiment_mask_inner_angle"], # deg
                     energy_resolution     = lambda m: self.maddm_card["template_line_experiment_energy_resolution"],
                     detection_range       = [self.maddm_card["template_line_experiment_detection_range_min"], self.maddm_card["template_line_experiment_detection_range_max"]],
-                    info_dict             = { # the key is the angle of the ROI (in degrees)
-                        template_roi : [template_profile,
-                            {}, # GeV^2 cm^-5
-                            "22.22_template"]
-                    },
+                    roi_list              = RegionOfInterestList([
+                        RegionOfInterest(
+                            amplitude=template_roi,
+                            default_profile=template_profile,
+                            upper_limit_label="(22)(22)_template",
+                            jfactor_strategy=self.maddm_card["template_line_experiment_jfactor_strategy"],
+                            mask_latitude = self.maddm_card["template_line_experiment_mask_latitude"], # deg
+                            mask_longitude = self.maddm_card["template_line_experiment_mask_longitude"], # deg
+                            mask_inner_amplitude = self.maddm_card["template_line_experiment_mask_inner_angle"], # deg
+                            cached_jfactors={},
+                            r_max=np.inf if self.maddm_card['template_line_experiment_r_max'] == "inf" else self.maddm_card['template_line_experiment_r_max'],
+                        ),
+                    ]),
                     majorana_dirac_factor = self.norm_Majorana_Dirac() / 4., # divide by 4, because that methods return 4 if Majorana, 8 if Dirac
                     check_profile_message = lambda is_optimized, roi: {True: "", False: "The chosen profile is not the default for this ROI"}.get(is_optimized),
                     arxiv_number          = self.maddm_card["template_line_experiment_arxiv"],
@@ -2385,9 +2576,9 @@ class MADDMRunCmd(cmd.CmdShell):
         #     return 0   
         logger.info("Calculating line limits from " + ', '.join([name.replace('_', ' ') for name in self.line_experiments.iternames()]))
         # <sigma v> of the various final states
-        sigmavs = {".".join(self.str_processes[k.replace("taacsID#","")].final_states): v for k, v in self.last_results.iteritems() if k.startswith('taacsID#') and self.is_spectral_finalstate(self.str_processes[k.replace("taacsID#","")])}
+        sigmavs = {".".join(self.str_processes[k.replace("taacsID#","")].final_states): v for k, v in six.iteritems(self.last_results) if k.startswith('taacsID#') and self.is_spectral_finalstate(self.str_processes[k.replace("taacsID#","")])}
         # dict for <sigma v> ul
-        sigmav_ul = {k: collections.OrderedDict([(name, np.inf) for name in self.line_experiments.iternames()]) for k in self.last_results.iterkeys() if "lim_taacsID#" in k and self.is_spectral_finalstate(self.str_processes[k.replace("lim_taacsID#","")])} # if there is at least one '22' then we treat it as a spectral final state
+        sigmav_ul = {k: collections.OrderedDict([(name, np.inf) for name in self.line_experiments.iternames()]) for k in self.last_results.keys() if "lim_taacsID#" in k and self.is_spectral_finalstate(self.str_processes[k.replace("lim_taacsID#","")])} # if there is at least one '22' then we treat it as a spectral final state
         # compute the main results
         for line_exp, line_exp_roi in zip(self.line_experiments, self.line_experiments.iterrois()):
             gamma_line_spectrum = GammaLineSpectrum(
@@ -2455,11 +2646,11 @@ class MADDMRunCmd(cmd.CmdShell):
         # get the <sigma v> ul: drop the -1 and get the minimum, in case everything is -1 then the list is empty, so return -1
         logger.debug(sigmav_ul)
         for k, v in sigmav_ul.items():
-            limits = np.array(v.values())
+            limits = np.array(list(v.values()))
             index_of_min = np.argmin(limits)
             strongest_limit = limits[index_of_min]
             self.last_results[k] = strongest_limit if not np.isinf(strongest_limit) else -1
-            self.last_results[k + '_experiment'] = v.keys()[index_of_min] if not np.isinf(strongest_limit) else ''
+            self.last_results[k + '_experiment'] = list(v.keys())[index_of_min] if not np.isinf(strongest_limit) else ''
         # in case all of the line peaks are out of range of detection for a certain experiment:
         # gamma_line_spectrum would be an empty list
         # self.last_results["line_%s_peak_%d" % (exp_name, i+1)], self.last_results["line_%s_flux_%d" % (exp_name, i+1)], self.last_results["line_%s_flux_UL_%d" % (exp_name, i+1)] will be all -1
@@ -2488,7 +2679,7 @@ class MADDMRunCmd(cmd.CmdShell):
                pjoin(self.dir_path,'bin','internal'))
             try:
                 misc.compile(['main101'], cwd=pjoin(self.dir_path,'bin','internal'))
-            except MadGraph5Error,e:
+            except MadGraph5Error as e:
                 logger.debug(str(e))
                 logger.critical('Indirect detection, py8 script can not be compiled. Skip flux calculation')
                 return
@@ -2498,15 +2689,13 @@ class MADDMRunCmd(cmd.CmdShell):
         pythia_cmd_card = pjoin(self.dir_path, indirect_directory ,'Source', "spectrum.cmnd")
         # Start by reading, starting from the default one so that the 'user_set'
         # tag are correctly set.
-        PY8_Card = Indirect_PY8Card(pjoin(self.dir_path, 'Cards', 
-                                                'pythia8_card_default.dat'))
-        PY8_Card['Main:spareParm1'] = mdm
-        PY8_Card.read(pjoin(self.dir_path, 'Cards', 'pythia8_card.dat'),
-                                                              setter='user')
+        PY8_Card = Indirect_PY8Card(pjoin(self.dir_path, 'Cards', 'pythia8_card_default.dat'), mode_vincia=(self.maddm_card['indirect_flux_source_method'] == "vincia"))
+        PY8_Card['Main:mDM'] = mdm
+        PY8_Card.read(pjoin(self.dir_path, 'Cards', 'pythia8_card.dat'), setter='user')
+
         PY8_Card.write(pythia_cmd_card, 
                        pjoin(self.dir_path, 'Cards', 'pythia8_card_default.dat'),
                         direct_pythia_input=True)
-
             
         run_name = self.me_cmd.run_name
         # launch pythia8
@@ -2559,6 +2748,7 @@ class MADDMRunCmd(cmd.CmdShell):
     def read_py8spectra(self, directories):
         run_name = self.me_cmd.run_name
         temp_spectra = {}
+        temp_errors = {}
         for sp in self.Spectra.spectra.keys(): 
             if sp in ['x', 'log10x']: continue
             sp_name = sp + '_spectrum_pythia8.dat'
@@ -2568,9 +2758,18 @@ class MADDMRunCmd(cmd.CmdShell):
                 self.Spectra.spectra['log10x'] = np.loadtxt( out_dir(directories[0]) , unpack = True )[0]
                 self.Spectra.spectra['x'] = np.power(10,self.Spectra.spectra['log10x'])     # from log[10,x] to x
             temp_spectra[sp] = []
+            temp_errors[sp] = []
             for id_dir in directories: # loop over the indirect directories which have run pythia
-                temp_spectra[sp].append(np.loadtxt( out_dir(id_dir) , unpack = True )[1] * (self.indirect_directories_cross_section_contribution[id_dir]/self.last_results['taacsID']))
+                if 'antideuterons' in sp and not os.path.exists(out_dir(id_dir)):
+                    logger.warning('antideuterons spectrum not found: %s' % sp)
+                    continue
+                file_rows = np.loadtxt( out_dir(id_dir) , unpack = True )
+                br_factor = self.indirect_directories_cross_section_contribution[id_dir]/self.last_results['taacsID']
+                if len(file_rows) > 2: # errors are present
+                    temp_errors[sp].append( np.power(file_rows[2] * br_factor, 2) )
+                temp_spectra[sp].append( file_rows[1] * br_factor )
             self.Spectra.spectra[sp] = np.sum(temp_spectra[sp], axis = 0).tolist() # conversion to list is needed, because in the program we use bool(a_list) to see if a_list is not empty (this doesn't work for numpy.array objects)
+            self.Spectra.errors[sp] = np.sqrt(np.sum(temp_errors[sp], axis = 0)).tolist()
 
     def cont_spectra_available_channels(self):
         available_channels = {}
@@ -2582,9 +2781,9 @@ class MADDMRunCmd(cmd.CmdShell):
         return available_channels
 
     # This function reads the spectra from the PPPC tables from each annihilation channel, and adds them up according to the BR 
-    def read_PPPCspectra(self):
+    def read_tabulatedspectra(self):
         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
-
+        
         if not self.options['pppc4dmid_path']:
             logger.error('PPPC4DMID not installed. Please install by typing "install PPPC4DMID".')
             return
@@ -2593,12 +2792,15 @@ class MADDMRunCmd(cmd.CmdShell):
             logger.error('using PPPC4DMID requires scipy module. Please install it (for example with "pip install scipy")')
             return
 
-        if 'PPPC4DMID' in self.maddm_card['indirect_flux_source_method'] or 'inclusive' in self.maddm_card['sigmav_method']:
+        if self.maddm_card['indirect_flux_source_method'].lower() in ['pppc4dmid', 'pppc4dmid_ew', 'cosmixs'] or 'inclusive' in self.maddm_card['sigmav_method']:
             if self.Spectra.check_mass(mdm):
-               if '_ew' in self.maddm_card['indirect_flux_source_method']:
-                    PPPC_source = self.Spectra.load_PPPC_source(self.options['pppc4dmid_path'],corr = 'ew')
-               else:
-                    PPPC_source = self.Spectra.load_PPPC_source(self.options['pppc4dmid_path'], corr = '')
+                if self.maddm_card['indirect_flux_source_method'].lower() == 'cosmixs':
+                    kind = 'ew'
+                elif self.maddm_card['indirect_flux_source_method'].lower() == 'pppc4dmid_ew':
+                    kind = 'pppc_ew'
+                else:
+                    kind = 'pppc'
+                PPPC_source = self.Spectra.load_tabulated_sourcespectra(self.options['pppc4dmid_path'], kind = kind)
 
         # Combine the spectra: multiply each channel by the BR                                                                                                  
         # I create a temporary list that at each loop in the channel, retains the partial sum of each x value multiplied by the channel BR                                      
@@ -2616,10 +2818,10 @@ class MADDMRunCmd(cmd.CmdShell):
 
         # Check that at lest one SM channel is available
         if not any(i in self.Spectra.map_allowed_final_state_PPPC.keys() for i in available_final_states_strings):
-            logger.error('No SM annihilation channel available, cannot use PPPC4DMID Tables!')
+            logger.error('No SM annihilation channel available, cannot use source spectrum Tables!')
             return
-                  
-        for sp, sp_t in self.Spectra.spectra_id.iteritems():
+        
+        for sp, sp_t in six.iteritems(self.Spectra.spectra_id):
             self.last_results['tot_SM_xsec'] = 0
             # self.Spectra.map_allowed_final_state_PPPC = {'qqx':'qq', 'ccx':'cc', 'gg':'gg', 'bbx':'bb', 'ttx':'tt',
             #                                             'e+e-':'ee', 'mu+mu-':'mumu', 'ta+ta-':'tautau', 'w+w-':'WW', 'zz':'ZZ', 'hh':'hh' }              
@@ -2646,7 +2848,7 @@ class MADDMRunCmd(cmd.CmdShell):
             if not bool(temp_dic): 
                 logger.error('There is no annihilation process into SM with cross section > 0!')
                 return 
-            for num in range(0,len(temp_dic[temp_dic.keys()[0]]['spec']) ):
+            for num in range(0,len(temp_dic[list(temp_dic.keys())[0]]['spec']) ):
                 val = 0
                 for k in temp_dic.keys():
                     val = val + temp_dic[k]['spec'][num] * ( temp_dic[k]['xsec'] / self.last_results['tot_SM_xsec'] )
@@ -2707,7 +2909,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 temp_dic[C]['xsec'] = ch_BR
 
         sum_spec = []
-        for num in range(0,len(temp_dic[temp_dic.keys()[0]]['spec']) ):
+        for num in range(0,len(temp_dic[list(temp_dic.keys())[0]]['spec']) ):
             val = 0
             for k in temp_dic.keys():
                 val = val + temp_dic[k]['spec'][num] * ( temp_dic[k]['xsec'] / self.last_results['tot_SM_xsec'] )
@@ -2741,18 +2943,18 @@ class MADDMRunCmd(cmd.CmdShell):
 
     def calculate_fluxes(self):
         # declaring what to do
-        if 'PPPC' in self.maddm_card['indirect_flux_source_method']:
-            logger.info('Calculating cosmic rays fluxes using gammas and neutrinos spectra from the PPPC4DMID tables.')
+        if 'PPPC' in self.maddm_card['indirect_flux_source_method']  or 'cosmixs' in self.maddm_card['indirect_flux_source_method'].lower():
+            logger.info(f"Calculating cosmic rays fluxes using gammas and neutrinos spectra from the {self.maddm_card['indirect_flux_source_method']} tables.")
             if not self.options['pppc4dmid_path']:
-                logger.error("PPPC4DMID not installed, will not calculate fluxes.")
+                logger.error("PPPC4DMID/CosmiXs not installed, will not calculate fluxes.")
                 return
-        elif 'pythia' in self.maddm_card['indirect_flux_source_method']:
-            logger.info('Calculating cosmic rays fluxes using pythia8 gammas and neutrinos spectra.')
+        elif 'pythia' in self.maddm_card['indirect_flux_source_method'] or 'vincia' in self.maddm_card['indirect_flux_source_method']:
+            logger.info('Calculating cosmic rays fluxes using pythia8 ' + '(vincia) '*(self.maddm_card['indirect_flux_source_method'] == 'vincia') + 'gammas and neutrinos spectra.')
         else:
             return
              
         # self.Spectra.spectra = = {'x':[] , 'antiprotons':[], 'gammas':[], 'neutrinos_e':[], 'neutrinos_mu':[], 'neutrinos_tau':[], 'positrons':[] }
-        cr_spectra = self.Spectra.spectra.keys()
+        cr_spectra = list(self.Spectra.spectra.keys())
         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
         if str(self.mode['indirect']).startswith('flux'):
 
@@ -2761,10 +2963,9 @@ class MADDMRunCmd(cmd.CmdShell):
              self.Spectra.flux_source['e'] = E
              for spec in cr_spectra:
                    if spec in ['x', 'log10x']: continue
-                   if 'positrons' in spec or 'antiprotons' in spec: continue
+                   if ('positrons' in spec) or ('antiprotons' in spec) or ('antideuterons' in spec) or ('antihelions' in spec): continue
                    self.dNdE_dPhidE(channel = spec)           
                    Phi = self.Phi(chan= spec) # Phi takes care of the J factor so it is calculate at earth!
-
                    
                    #Only needed for dPhidE
                    #for energy in energies:
@@ -2804,7 +3005,7 @@ class MADDMRunCmd(cmd.CmdShell):
            dNdE = dndlogx / (E*2.30259)
            self.Spectra.flux_source[channel]['dNdE'] = dNdE  # simply convertion from dNdlogx to dN/dE                                                                             
            dPhidE = 1.0/(self.norm_Majorana_Dirac() *2* math.pi*mdm*mdm)*sigv*jfact * dNdE  # diff.flux for the energy == interp.  
-            
+        
         self.Spectra.flux_earth[channel]['dPhidE'] = dPhidE
 
     
@@ -3026,10 +3227,10 @@ class MADDMRunCmd(cmd.CmdShell):
 
         if self.mode['direct']:
             # units = self.last_results['GeV2pb*pb2cm2']
-            direct_names = [ { 'n': 'SigmaN_SI_p', 'sig': self.last_results['sigmaN_SI_p'], 'lim': self.last_results['lim_sigmaN_SI_p'], 'exp': 'Xenon1ton' },
-                             { 'n': 'SigmaN_SI_n', 'sig': self.last_results['sigmaN_SI_n'], 'lim': self.last_results['lim_sigmaN_SI_n'], 'exp': 'Xenon1ton' },
-                             { 'n': 'SigmaN_SD_p', 'sig': self.last_results['sigmaN_SD_p'], 'lim': self.last_results['lim_sigmaN_SD_p'], 'exp': 'Pico60'    },
-                             { 'n': 'SigmaN_SD_n', 'sig': self.last_results['sigmaN_SD_n'], 'lim': self.last_results['lim_sigmaN_SD_n'], 'exp': 'Lux2017'   } ]
+            direct_names = [ { 'n': 'SigmaN_SI_p', 'sig': self.last_results['sigmaN_SI_p'], 'lim': self.last_results['lim_sigmaN_SI_p'], 'exp': 'LZ2024' },
+                             { 'n': 'SigmaN_SI_n', 'sig': self.last_results['sigmaN_SI_n'], 'lim': self.last_results['lim_sigmaN_SI_n'], 'exp': 'LZ2024' },
+                             { 'n': 'SigmaN_SD_p', 'sig': self.last_results['sigmaN_SD_p'], 'lim': self.last_results['lim_sigmaN_SD_p'], 'exp': 'Pico60 (2019)'    },
+                             { 'n': 'SigmaN_SD_n', 'sig': self.last_results['sigmaN_SD_n'], 'lim': self.last_results['lim_sigmaN_SD_n'], 'exp': 'LZ2024'   } ]
 
             self.last_results['direct_results'] = direct_names
 
@@ -3044,7 +3245,30 @@ class MADDMRunCmd(cmd.CmdShell):
 #        if self.mode['direct'] == 'directional':
 #            logger.info(' Nevents          : %i', self.last_results['Nevents'])
 #            logger.info(' smearing         : %.2e', self.last_results['smearing'])
-        
+
+        if self.mode['direct_electron'] and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
+
+            def det_message_screen(n1,n2):
+                if n2 < 0 :                 return '%s NO LIMIT %s' % (bcolors.GRAY, bcolors.ENDC)
+                elif   n1 > n2 and n2 >= 0 : return '%s EXCLUDED %s' % (bcolors.FAIL, bcolors.ENDC)
+                elif   n2 > n1            : return '%s ALLOWED  %s'  % (bcolors.OKGREEN, bcolors.ENDC) 
+                elif   n1 <= 0            : return 'No Theory Prediction'
+
+            pval_Xenon10 = self.last_results['pvalue_Xenon10']
+            pval_Xenon1T = self.last_results['pvalue_Xenon1T']
+            sigma_e = self.last_results['sigma_e']
+            if pval_Xenon10==-1 and pval_Xenon1T==-1:
+                logger.info( self.form_s('Sigma_e             All DM = ') + self.form_n(-1) + self.form_s('      ' + det_message_screen(0.05,pval_Xenon10)) + self.form_s('     Xenon10 p_val    = ') + self.form_n(pval_Xenon10))
+                logger.info( self.form_s('Sigma_e             All DM = ') + self.form_n(-1) + self.form_s('      ' + det_message_screen(0.05,pval_Xenon1T)) + self.form_s('     Xenon1ton p_val  = ') + self.form_n(pval_Xenon1T))
+            else:
+                tot_sig_Xenon10 = 0
+                for sig in self.last_results['Xenon10_signal']:
+                    tot_sig_Xenon10 += sig
+                tot_sig_Xenon1T = self.last_results['Xenon1T_signal']
+                    
+                logger.info( self.form_s('Sigma_e             All DM = ') + self.form_n(sigma_e) + self.form_s('      ' + det_message_screen(0.05,pval_Xenon10)) + self.form_s('     Xenon10 p_val    = ') + self.form_n(pval_Xenon10))
+                logger.info( self.form_s('Sigma_e             All DM = ') + self.form_n(sigma_e) + self.form_s('      ' + det_message_screen(0.05,pval_Xenon1T)) + self.form_s('     Xenon1ton p_val  = ') + self.form_n(pval_Xenon1T))
+
         if self.mode['capture']:
             logger.info('\n capture coefficients: ')
             detailled_keys = [k for k in self.last_results.keys() if k.startswith('ccap')]
@@ -3151,7 +3375,7 @@ class MADDMRunCmd(cmd.CmdShell):
         logger.info('')
 
         if not self.param_card_iterator:
-            self.save_summary_single(relic = self.mode['relic'], direct = self.mode['direct'], \
+            self.save_summary_single(relic = self.mode['relic'], direct = self.mode['direct'], direct_electron = self.mode['direct_electron'], \
                                 indirect = self.mode['indirect'], spectral = self.mode['spectral'],
                                 fluxes_source= self.mode['indirect'].startswith('flux') if isinstance(self.mode['indirect'],str) else self.mode['indirect'], 
                                 fluxes_earth = False )                  
@@ -3328,25 +3552,28 @@ class MADDMRunCmd(cmd.CmdShell):
         if spec_source:
             x = self.Spectra.spectra['log10x']
             for spec in self.Spectra.spectra.keys():
-                header = '# Log10(x=Ekin/mDM)   dn/dlogx   ' + spec + '\t' + self.maddm_card['indirect_flux_source_method'] + ' spectra at source'
+                header = '# ' + spec + '\t' + self.maddm_card['indirect_flux_source_method'] + ' spectra at source\n' + '# Log10(x=Ekin/mDM)    dn/dlogx'
                 if 'x' not in spec:
                     dndlogx = self.Spectra.spectra[spec]
-                    aux.write_data_to_file(x, dndlogx, filename = pjoin(out_run, spec + '_spectrum_' + spec_method +'.dat'), header = header)
+                    if isinstance(var, (int, float, complex)):
+                        continue
+                    errors = self.Spectra.errors[spec]
+                    aux.write_data_to_file(x, dndlogx, errors = errors, filename = pjoin(out_run, spec + '_spectrum_' + spec_method +'.dat'), header = header)
 
         if flux_earth:
             e = self.Spectra.flux_source['e']
             for flux in self.Spectra.flux_earth.keys():
-                header = '# E[GeV]   dPhi/dE [particles/(cm2 s sr)] ' + flux + '\t' + self.maddm_card['indirect_flux_earth_method'] +' flux at earth'
+                header = '# ' + flux + '\t' + self.maddm_card['indirect_flux_earth_method'] +' flux at earth\n' + '# E[GeV]    dPhi/dE [particles/(cm2 s sr)]'
                 if flux != 'e':
                     dPhidE = self.Spectra.flux_earth[flux]['dPhidE']
-                    aux.write_data_to_file(e, dPhidE, filename = pjoin(out_run, flux + '_dphide_' + spec_method + '.dat'), header = header)
+                    aux.write_data_to_file(e, dPhidE, errors = False, filename = pjoin(out_run, flux + '_dphide_' + spec_method + '.dat'), header = header)
 
 
             if 'PPPC' in self.maddm_card['indirect_flux_earth_method']: # for PPPC4DMID, I save also the positron at earth
                 e = self.Spectra.flux_earth_positrons['e']
-                header = '# E[GeV]   dPhi/dlogE [particles/(cm2 s sr)]  positrons \t PPPC4DMID flux at earth'
+                header = '# positrons \t PPPC4DMID flux at earth\n' + '# E[GeV]    dPhi/dlogE [particles/(cm2 s sr)]'
                 dPhidlogE = self.Spectra.flux_earth_positrons['positrons']['dPhidlogE']
-                aux.write_data_to_file(e, dPhidlogE, filename = pjoin(out_run, 'positrons_dphide_' + spec_method + '.dat'), header = header)
+                aux.write_data_to_file(e, dPhidlogE, errors = False, filename = pjoin(out_run, 'positrons_dphide_' + spec_method + '.dat'), header = header)
 
     
     def print_ind(self,what, sig_th, sig_alldm, ul,  thermal=False ,direc = False , exp='Fermi dSph', no_lim = False):
@@ -3403,7 +3630,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 logger.warning(roi_warning)
             logger.info("J = %.6e GeV^2 cm^-5" % self.last_results[str_part + "Jfactor"])
             logger.info("detection range: %.4e -- %.4e GeV" % (line_exp.detection_range[0], line_exp.detection_range[1]))
-            if len(energy_peaks) is 0:
+            if len(energy_peaks) == 0:
                 logger.info(bcolors.BOLD + "No peaks found: out of detection range." + bcolors.ENDC)
             else:
                 # find first column maximum length for nice table format
@@ -3444,7 +3671,7 @@ class MADDMRunCmd(cmd.CmdShell):
                         continue
                 logger.info("-"*len_headers)
 
-    def save_summary_single(self, relic = False, direct = False , indirect = False , spectral = False , fluxes_source = False , fluxes_earth = False):
+    def save_summary_single(self, relic = False, direct = False , direct_electron = False, indirect = False , spectral = False , fluxes_source = False , fluxes_earth = False):
 
         point = self.last_results['run']
         # creting symlink to Events folder in Inidrect output directory
@@ -3458,6 +3685,8 @@ class MADDMRunCmd(cmd.CmdShell):
         def form_n(num):
             formatted = '{0:3.2e}'.format(num)
             return formatted
+        
+        mdm= self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
 
         out = open(pjoin(self.dir_path, 'output', point, 'MadDM_results.txt'),'w')
  
@@ -3482,7 +3711,6 @@ class MADDMRunCmd(cmd.CmdShell):
             for proc in [k for k in self.last_results.keys() if k.startswith('%_relic_')]:
                 out.write( form_s("%_" + proc.replace('%_relic_','')) + '= %.2f %%\n' % self.last_results[proc] )
 
-
         if direct:
 
             for name in ['d2NdEdcos.dat','dNdE.dat','dNdcos.dat','rate.dat']:
@@ -3498,6 +3726,25 @@ class MADDMRunCmd(cmd.CmdShell):
                 ul = D['lim']
                 exp = D['exp']
                 out.write(form_s(D['n']) + '= ' + form_s('['+ form_n(cross) + ',' + form_n(ul) + ']' ) + '# '+exp + '\n')
+
+        if direct_electron and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
+
+            for name in ['dRdlogE_e_recoil.dat','dRdS2_Xenon1T_e_recoil.dat','dRdS2_Xenon10_e_recoil.dat',
+                         'signal_e_recoil.dat','dRdE_e_recoil.dat','dRdS2_Xenon1T_e_recoil.dat']:
+                if os.path.isfile(pjoin(self.dir_path, 'output',name)):
+                   shutil.move(pjoin(self.dir_path, 'output',name) ,  pjoin(self.dir_path, 'output', point , name))
+            
+            out.write('\n################################################\n')
+            out.write('# Direct Detection - Electronic Recoil [cm^2]  #\n')
+            out.write('################################################\n\n')
+
+            cross_DMe = self.last_results['sigma_e']
+            pval10 = self.last_results['pvalue_Xenon10']
+            pval1T = self.last_results['pvalue_Xenon1T']
+            out.write(form_s('Sigma_e ref.') + '= ' + form_s(form_n(cross_DMe)) + '\n')
+            out.write(form_s('Xenon10_pvalue') + '= ' + form_s(form_n(pval10)) + '\n')
+            out.write(form_s('Xenon1T_pvalue') + '= ' + form_s(form_n(pval1T)) + '\n')
+        
 
         if indirect or spectral:      
 
@@ -3589,19 +3836,19 @@ class MADDMRunCmd(cmd.CmdShell):
                     out.write(form_s("ROI") + '= %1.1f\n' % self.last_results[str_part + "roi"])
                     out.write(form_s("J-factor") + '= ' + form_n(self.last_results[str_part + "Jfactor"]) + '\n')
                     str_part_peak = str_part + 'peak'
-                    energy_peaks = collections.OrderedDict(sorted([(k, v) for k, v in self.last_results.iteritems() if str_part_peak in k and '_states' not in k and '_error' not in k and v != -1], key = lambda item: item[1])) # key = "line_<exp_name>_peak_<num>", value = energy peak
-                    if len(energy_peaks) is 0:
+                    energy_peaks = collections.OrderedDict(sorted([(k, v) for k, v in six.iteritems(self.last_results) if str_part_peak in k and '_states' not in k and '_error' not in k and v != -1], key = lambda item: item[1])) # key = "line_<exp_name>_peak_<num>", value = energy peak
+                    if len(energy_peaks) == 0:
                         # this happens when all the peaks are -1, so either if peaks are out of detection range or halo velocity is not compatible with galactic center
                         # if velocity is in the range, print out that peaks are not in the detection range, otherwise print out all -1
                         if (self.maddm_card['vave_indirect_line'] > self.vave_indirect_line_range[0] and self.maddm_card['vave_indirect_line'] < self.vave_indirect_line_range[1]):
                             out.write('# No peaks found: out of detection range.\n')
                             continue
                         else: # recompute energy_peaks without assuming values != -1
-                            energy_peaks = collections.OrderedDict(sorted([(k, v) for k, v in self.last_results.iteritems() if str_part_peak in k and '_states' not in k and '_error' not in k], key = lambda item: item[1])) # key = "line_<exp_name>_peak_<num>", value = energy peak
+                            energy_peaks = collections.OrderedDict(sorted([(k, v) for k, v in six.iteritems(self.last_results) if str_part_peak in k and '_states' not in k and '_error' not in k], key = lambda item: item[1])) # key = "line_<exp_name>_peak_<num>", value = energy peak
                     peaks_string  = ''
                     fluxes_string = ''
                     like_string = ''
-                    for k, peak in energy_peaks.iteritems():
+                    for k, peak in six.iteritems(energy_peaks):
                         num        = int(k.split('_')[-1])
                         error_code = self.last_results[str_part + "peak_%d_error"  % num]
                         error_str  = "# error: %s" % error_code if error_code != 0 else ''
@@ -3714,7 +3961,7 @@ class MADDMRunCmd(cmd.CmdShell):
              self._two2twoLO = False
         else:
             misc.sprint(os.listdir(self.dir_path))
-            raise Exception, 'Madevent output for indirect detection not available'
+            raise Exception('Madevent output for indirect detection not available')
         
         logger.debug('2to2: %s' % self._two2twoLO)
 
@@ -3723,7 +3970,8 @@ class MADDMRunCmd(cmd.CmdShell):
             # create the inc file for maddm
             self.maddm_card.set('do_relic_density', self.mode['relic'], user=False)
             self.maddm_card.set('do_direct_detection', True if self.mode['direct'] else False, user=False)
-            self.maddm_card.set('do_directional_detection', self.mode['direct'] == 'directional', user=False)
+            #self.maddm_card.set('do_directional_detection', self.mode['direct'] == 'directional', user=False)
+            self.maddm_card.set('do_direct_electron', True if self.mode['direct_electron'] else False, user=False)
             self.maddm_card.set('do_capture', self.mode['capture'], user=False)
             self.maddm_card.set('do_indirect_detection', True if self.mode['indirect'] else False, user=False)
             self.maddm_card.set('do_indirect_spectral', self.mode['spectral'], user=False)
@@ -3762,7 +4010,7 @@ class MADDMRunCmd(cmd.CmdShell):
         if os.path.exists(pjoin(self.dir_path, 'src', 'maddm.x')) or os.path.exists(pjoin(self.dir_path, 'maddm.x')):
             logger.info("compilation done")
         else:
-            raise Exception, 'Compilation of maddm failed'
+            raise Exception('Compilation of maddm failed')
         
     ############################################################################
     def do_open(self, line):
@@ -3817,14 +4065,18 @@ class MADDMRunCmd(cmd.CmdShell):
             raise self.InvalidCmd('No default path for this file')
 
 class Indirect_PY8Card(banner_mod.PY8Card):
+    def __init__(self, *args, **kwargs):
+        self.mode_vincia = kwargs.pop("mode_vincia", False)
+        super(Indirect_PY8Card, self).__init__(*args, **kwargs)
     
     def default_setup(self):
         """ Sets up the list of available PY8 parameters."""
         
         self.add_param("Main:timesAllowErrors", 10, hidden=True, comment="allow a few failures before quitting")
         self.add_param("Main:NumberOfEvents", -1,  comment="number of events to go trough")
-        self.add_param("Main:spareParm1", 1000.0, hidden=True, comment=" mass of the Dark matter")
-        self.add_param("Main:spareWord1" , './', hidden=True, comment="specify output dir") 
+        self.add_param("Main:mDM", 1000.0, hidden=True, comment=" mass of the Dark matter")
+        self.add_param("Main:outdir" , './', hidden=True, comment="specify output dir") 
+        self.add_param("Main:nbins" , 180, comment="number of bins unsed for the spetra") 
         # Init
         self.add_param("Init:showChangedSettings", True, hidden=True, comment="list changed settingspython")
         self.add_param("Init:showChangedParticleData", True, hidden=True, comment="print changed particle and decay data")
@@ -3842,11 +4094,12 @@ class Indirect_PY8Card(banner_mod.PY8Card):
         self.add_param("PartonLevel:ISR", False, hidden=True, comment="initial-state radiation")
         self.add_param("PartonLevel:FSR", True, hidden=True, comment="final-state radiation")
         # Weakshower <- allow the user to switch this ON
+        self.add_param("PartonShowers:model", 1)
         self.add_param("TimeShower:weakShower", False, comment="Run weak-shower for FSR")
         self.add_param("TimeShower:weakShowerMode", 0, comment="Determine which branchings are allowed (0 -> W and Z)")
         self.add_param("TimeShower:pTminWeak", 0.1)
         self.add_param("WeakShower:vetoWeakJets", True)
-        self.add_param("WeakShower:singleEmission", True)
+        self.add_param("WeakShower:singleEmission", False)
         self.add_param("WeakShower:enhancement",1.0,comment="enhanced weak shower rate")
         # decay all particles
         self.add_param("13:mayDecay", True, hidden=True, comment="decays muons")
@@ -3858,13 +4111,38 @@ class Indirect_PY8Card(banner_mod.PY8Card):
         # disabling some events checks for bug below 100 GeV
         self.add_param("Check:event", False, hidden=True, comment="avoid pythia crushing")
         self.add_param("Check:beams", False, hidden=True, comment="avoid pythia crushing")
-
+        # Tuning for the following parameters taken from Tab 2 of https://arxiv.org/pdf/2303.11363.pdf
+        self.add_param("StringZ:deriveBLund", True)
+        self.add_param("StringZ:aLund", 0.601)
+        self.add_param("StringZ:bLund", 0.897)
+        self.add_param("StringZ:avgZLund", 0.540)
+        self.add_param("StringPT:Sigma", 0.307)
+        self.add_param("StringZ:aExtraDiquark", 1.671)
+        # Coalescence parameters
+        self.add_param("Main:methodDbar", 1.0)
+        self.add_param("Main:p_coalescence", 0.196)
+        self.add_param("Main:d_coalescence", 1.750)
+        self.add_param("Main:sigma_coalescence", 3.0)
+        # Vincia?
+        if self.mode_vincia:
+            self.add_param("Vincia:ewMode", 3, comment="Vincia EW mode")
+        # self.add_param("PartonShowers:model", 2)
+        # self.add_param("Vincia:ewMode", 3, comment="Vincia EW mode")
+        # self.add_param("StringZ:deriveBLund", False)
+        # self.add_param("StringZ:aLund", 0.337409)
+        # self.add_param("StringZ:bLund", 0.784682)
+        # self.add_param("StringZ:avgZLund", 0.55)
+        # self.add_param("StringPT:Sigma", 0.296569)
+        # self.add_param("StringZ:aExtraDiquark", 1.246986)
 
 class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
-    """ """
+    """ 
+       self.switch is a dict of type string values
+    """
 
     to_control= [('relic', 'Compute the Relic Density'),
-                 ('direct', 'Compute direct(ional) detection'),
+                 ('direct', 'Compute direct detection - nucleon recoil'),
+                 ('direct_electron', 'Compute direct detection - electron recoil'),
                  ('indirect', 'Compute indirect detection/flux (cont spectrum)'),
                  ('spectral', 'Compute indirect detection in aX (line spectrum)'),
                  ('nestscan', 'Run Multinest scan'),
@@ -3880,7 +4158,8 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
     def set_default_relic(self):
         """set the default value for relic=
            if relic has been generated when calling indirect detection, then it is set as 'OFF' by default.
-           the 'Not Avail.' case happens when relic has not been generated neither explicitly nor through indirect detection"""
+           the 'Not Avail.' case happens when relic has not been generated neither explicitly nor through indirect detection
+        """
         
         if self.availmode['relic_density_off']: # this can be True only if self.availmode['has_relic_density'] is True as well, that would correspond to generate relic_density during ID
             self.switch['relic'] = 'OFF'
@@ -3910,10 +4189,9 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
     def set_default_direct(self):
         """set the default value for direct="""
         
-        if self.availmode['has_directional_detection']:
-            self.switch['direct'] = 'directional'
-        elif self.availmode['has_direct_detection']:
-            self.switch['direct'] = 'direct'        
+        if self.availmode['has_direct_detection']:
+            self.switch['direct'] = 'ON'
+      
         else:
             self.switch['direct'] = 'Not Avail.'
 
@@ -3924,10 +4202,9 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         if hasattr(self, 'allowed_direct'):
             return getattr(self, 'allowed_direct')
 
-        if self.availmode['has_directional_detection']:
-            self.allowed_direct =  ['directional', 'direct','OFF']
-        elif self.availmode['has_direct_detection']:
-            self.allowed_direct =  ['direct','OFF']
+        if self.availmode['has_direct_detection']:
+  
+            self.allowed_direct =  ['ON','OFF']
         else:
             return []
 
@@ -3945,11 +4222,11 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         """return the command to set the maddm_card consistent with the switch"""
         
         cmd =[]
-        if value == 'directional':
-            cmd.append('set do_directional_detection True')
-            value = 'direct'
-        else:
-            cmd.append('set do_directional_detection False')
+        # if value == 'directional':
+        #     cmd.append('set do_directional_detection True')
+        #     value = 'direct'
+        # else:
+        #     cmd.append('set do_directional_detection False')
         
         if value in ['ON', 'direct']:
             cmd.append('set do_direct_detection True')
@@ -3958,6 +4235,31 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
 
         return cmd
 
+    ####################################################################
+    # everything related to direct_electron option
+    ####################################################################    
+    def set_default_direct_electron(self):
+        """set the default value for direct_electron="""
+        
+        if not HAS_NUMPY:
+            self.switch['spectral'] = 'Not Avail. (numpy missing)'
+        elif not HAS_SCIPY:
+            self.switch['spectral'] = 'Not Avail. (scipy missing)'
+        elif self.availmode['has_direct_electron']:
+            self.switch['direct_electron'] = 'ON'
+        else:
+            self.switch['direct_electron'] = 'Not Avail.'
+
+    def get_allowed_direct_electron(self):
+        """Specify which parameter are allowed for direct_electron="""
+        
+        if hasattr(self, 'allowed_direct_electron'):
+            return getattr(self, 'allowed_direct_electron')
+
+        if self.availmode['has_direct_electron']:
+            self.allowed_direct_electron = ['ON', 'OFF']
+        else:
+            return []
 
     ####################################################################
     # everything related to indirect option
@@ -4162,6 +4464,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
             logger.error('problem detected: %s' % e) 
             files.cp(self.paths['maddm_default'], self.paths['maddm'])
             self.maddm = MadDMCard(self.paths['maddm'])
+
         self.already_warned = set([])
         self.old_vave_indirect = self.maddm['vave_indirect']
         
@@ -4175,8 +4478,8 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
                                           }
                                           )
     
-        self.maddm_set = list(set(self.maddm_def.keys() + self.maddm_def.hidden_param))
-        return self.maddm.keys() 
+        self.maddm_set = list(set(list(self.maddm_def.keys()) + self.maddm_def.hidden_param))
+        return list(self.maddm.keys()) 
 
     
     def pass_to_fast_mode(self):
@@ -4190,7 +4493,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
             logger.error("setting fast mode is only valid when indirect mode is getting called.")
             return 
         self.do_set("sigmav_method inclusive")
-        self.do_set("indirect_flux_source_method PPPC4DMID_ew")
+        self.do_set("indirect_flux_source_method CosmiXs")
         self.do_set("indirect_flux_earth_method PPPC4DMID_ep")
         
     def pass_to_precise_mode(self):
@@ -4207,6 +4510,28 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         self.do_set("Main:numberOfEvents 1000000")
         self.do_set("TimeShower:weakShower = on")
 
+    # def toggle_vincia(self):
+    #     """Toggle Vincia"""
+    #     
+    #     indirect = self.answer['indirect']
+    #     if 'flux' not in indirect:
+    #         logger.error("setting Vincia is only valid when computation of the spectra is activated")
+    #         return
+    #
+    #     old_value = self.maddm['indirect_flux_source_method']
+    #     if old_value == "pythia8":
+    #         self.do_set("indirect_flux_source_method vincia")
+    #         self.PY8Card_class = Indirect_VinciaCard
+    #     else:
+    #         self.do_set("indirect_flux_source_method pythia8")
+    #         self.PY8Card_class = Indirect_PY8Card
+    #     self.do_set("TimeShower:weakShower = on")
+    #
+    #     pythia8_card_path = pjoin(self.me_dir, 'Cards', 'pythia8_card.dat')
+    #     default_card_path = pjoin(self.me_dir, 'Cards', self.maddm['indirect_flux_source_method'] + '_card_default.dat')
+    #     shutil.copy(default_card_path, pythia8_card_path)
+    #     logger.info("Set new pythia8_card.dat on " + self.maddm['indirect_flux_source_method'] + " template", "$MG:BOLD")
+
     def get_cardcmd(self):
         """ return the list of command that need to be run to have a consistent 
             set of cards with the switch value choosen """
@@ -4222,7 +4547,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         
         # Technical note: 
         # Note that some special trigger happens for 
-        #    8/9 trigger via self.trigger_8 and self.trigger_9
+        #    8/9 trigger via self.trigger_9 and self.trigger_10
         #    If you change the numbering, please change the name of the 
         #    trigger function accordingly.
         
@@ -4231,19 +4556,19 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
  * Enter the name/number to open the editor
  * Enter a path to a file to replace the card
  * Enter %(start_bold)sset NAME value%(stop)s to change any parameter to the requested value
- /=============================================================================\ 
- |  6. Edit the model parameters    [%(start_underline)sparam%(stop)s]                                    |  
- |  7. Edit the MadDM options       [%(start_underline)smaddm%(stop)s]                                    |
+ /=============================================================================\\ 
+ |  7. Edit the model parameters    [%(start_underline)sparam%(stop)s]                                    |  
+ |  8. Edit the MadDM options       [%(start_underline)smaddm%(stop)s]                                    |
 """
 
         current_val  = self.answer # use that to be secure with conflict -> always propose card
         if current_val['nestscan'] == "ON" or self.switch["nestscan"] ==  "ON":
-            question += """ |  8. Edit the Multinest options  [%(start_underline)smultinest%(stop)s]                                 |\n"""
+            question += """ |  9. Edit the Multinest options  [%(start_underline)smultinest%(stop)s]                                 |\n"""
     
         if current_val['indirect'].startswith('flux') or self.switch["indirect"].startswith('flux'):
-            question += """ |  9. Edit the Showering Card for flux  [%(start_underline)sflux%(stop)s]                                |\n"""
+            question += """ | 10. Edit the Showering Card for flux  [%(start_underline)sflux%(stop)s]                                |\n"""
         
-        question+=""" \=============================================================================/\n"""
+        question+=""" \\=============================================================================/\n"""
         self.question =  question % {'start_green' : '\033[92m',
                          'stop':  '\033[0m',
                          'start_underline': '\033[4m',
@@ -4267,10 +4592,10 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         
         try:
             return cmd.ControlSwitch.default(self, line, raise_error=True)
-        except cmd.NotValidInput, error:
+        except cmd.NotValidInput as error:
             return common_run.AskforEditCard.default(self, line)     
         
-    def trigger_8(self, line):
+    def trigger_9(self, line):
         """ trigger function for default function:
             allows to modify the line/ trigger action.
             
@@ -4284,12 +4609,12 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         #  2) go to the line edition
         self.set_switch('nestscan', "ON", user=True) 
         if self.switch['nestscan'] == "ON":
-            return '8 %s' % line
+            return '9 %s' % line
         # not valid nestscan - > reask question
         else:
             return 
 
-    def trigger_9(self, line):
+    def trigger_10(self, line):
         """ trigger function for default function:
             allows to modify the line/ trigger action.
             
@@ -4316,19 +4641,19 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
             self.setDM('sigmav_method', 'reshuffling',loglevel=30)
             
         #3. ensure pythia8 is on
-        if self.maddm['indirect_flux_source_method'] != 'pythia8':
+        if self.maddm['indirect_flux_source_method'] != 'pythia8' and self.maddm['indirect_flux_source_method'] != 'vincia':
             self.setDM('indirect_flux_source_method', 'pythia8',loglevel=30)
         
-        return '9 %s' % line
+        return '10 %s' % line
     
-    trigger_flux = trigger_9
+    trigger_flux = trigger_10
     
     def do_compute_widths(self, line):
         """normal fct but ensure that self.maddm_card is up-to-date"""
         
         try:
             self.mother_interface.maddm_card = self.maddm
-        except Exception,error:
+        except Exception as error:
             logger.error("Invalid command: %s " % error)
             return
         return super(MadDMSelector, self).do_compute_widths(line)
@@ -4430,13 +4755,16 @@ When you are done with such edition, just press enter (or write 'done' or '0')
                 
     def help_direct(self):
         
-        logger.info("direct flag can take three values: direct, directional")
+        logger.info("direct flag can take two values: ON/OFF")
         logger.info('     ')
-        logger.info("  direct: ", "$MG:BOLD")
         logger.info("     Theoretical elastic spin-independent and spin-dependent cross section dark matter off nucleons")
         logger.info('     ')
-        logger.info("  directional", "$MG:BOLD")
-        logger.info("     Directional event rate (double differential event rate)")
+        # logger.info("  directional", "$MG:BOLD")
+        # logger.info("     Directional event rate (double differential event rate)")
+        
+    def help_direct_electron(self):
+        logger.info("direct_electron flag can take two values: ON/OFF")
+        logger.info("  It controls if you are going to compute the electronic recoil for direct detection")
         
     def help_relic(self):
         logger.info("relic flag can take two values: ON/OFF")
@@ -4475,7 +4803,6 @@ When you are done with such edition, just press enter (or write 'done' or '0')
         return stop
     
     def check_card_consistency(self):
-
         
         super(MadDMSelector, self).check_card_consistency()
 
@@ -4519,6 +4846,44 @@ When you are done with such edition, just press enter (or write 'done' or '0')
             logger.warning("setting 'sigmav_method' to 'inclusive' is only valid when loop-induced processes are not considered. Switched to 'reshuffling'.")
             self.setDM('sigmav_method','reshuffling',loglevel=30)
 
+        # check whether the user selects PPPC4DMID
+        if self.maddm['indirect_flux_source_method'].startswith("PPPC"):
+            answer = ''
+            while(answer.lower() not in ['y', 'n']):
+                answer = input(bcolors.WARNING + "You selected " + self.maddm['indirect_flux_source_method'] + " as the method to compute indirect detection spectra.\nHowever, MadDM ships an improved version of the spectra, that can be selected with 'CosmiXs', do you want to use these? (Y/n) " + bcolors.ENDC).lower()
+                if answer == "" or answer == "y":
+                    logger.warning("Switching to 'CosmiXs'")
+                    self.setDM('indirect_flux_source_method','CosmiXs',loglevel=30)
+                    break
+                if answer == "n":
+                    logger.warning("Keep 'indirect_flux_source_method' to " + self.maddm['indirect_flux_source_method'])
+                    break
+        # check pythia card consistency
+        card_parameters = {}
+        if self.maddm['indirect_flux_source_method'] == 'pythia8':
+            card_parameters = {
+                "PartonShowers:model": 1,
+                "StringZ:deriveBLund": True,
+                "StringZ:aLund": 0.601,
+                "StringZ:bLund": 0.897,
+                "StringZ:avgZLund": 0.540,
+                "StringPT:Sigma": 0.307,
+                "StringZ:aExtraDiquark": 1.671
+            }
+        elif self.maddm['indirect_flux_source_method'] == 'vincia':
+            #self.add_param("Vincia:ewMode", 3, comment="Vincia EW mode")
+            card_parameters = {
+                "PartonShowers:model": 2,
+                "Vincia:ewMode": 3,
+                "StringZ:deriveBLund": False,
+                "StringZ:aLund": 0.337409,
+                "StringZ:bLund": 0.784682,
+                "StringZ:avgZLund": 0.55,
+                "StringPT:Sigma": 0.296569,
+                "StringZ:aExtraDiquark": 1.246986
+            }
+        for par, value in card_parameters.items():
+            self.do_set('pythia8_card %s %s' % (par, value))
         
     def reload_card(self, path):
         """ensure that maddm object are kept in sync"""
@@ -4757,10 +5122,10 @@ class MadDMCard(banner_mod.RunCard):
         self.add_param('relic_canonical', True)
         self.add_param('do_relic_density', True, system=True)
         self.add_param('do_direct_detection', False, system=True)
+        self.add_param('do_direct_electron', False, system=True)
         self.add_param('do_directional_detection', False, system=True)
         self.add_param('do_capture', False, system=True)
         self.add_param('do_flux', False, system=True, include=False)
-        
 
         self.add_param('do_indirect_detection', False, system=True)
         self.add_param('do_indirect_spectral', False, system=True)
@@ -4816,7 +5181,7 @@ class MadDMCard(banner_mod.RunCard):
         #
         # For Directional detection and direct detection rates
         #
-        self.add_param('material', 1, allowed = range(1,14),
+        self.add_param('material', 1, allowed = list(range(1,14)),
                         comment="""Choose the target material
     - 1: Xenon
     - 2: Germanium 
@@ -4833,9 +5198,13 @@ class MadDMCard(banner_mod.RunCard):
     - 12: CF4
     - 13: CS2""")
         
-        #Setting up the DM constants
-        self.add_param('vMP', 220.0)
-        self.add_param('vescape', 650.0)
+        #Setting up the DM constants following Eur. Phys. J. C (2021) 81: 907.
+        self.add_param('vMP', 238.0)
+        self.add_param('vescape', 544.0)
+        self.add_param('vEarth_mod', 29.8)
+        self.add_param('vSun_r', 11.1)
+        self.add_param('vSun_phi', 12.2)
+        self.add_param('vSun_theta', 7.3)
         self.add_param('rhoDM', 0.3)
         #detector 
         self.add_param('detector_size', 1000.0)
@@ -4854,6 +5223,10 @@ class MadDMCard(banner_mod.RunCard):
         self.add_param('day_bins', 10)
         self.add_param('smearing', False)
         
+        # For electronic recoil
+        self.add_param('direct_electron_mode', 'auto', allowed=['auto', 'always'], include=True)
+        self.add_param('direct_electron_dm_mass_max', 1., comment="Max value of DM mass allowed to make the electronic recoil computation in case direct_electron_mode is set to 'auto'", include=True, hidden=True)
+
         #For the solar/earth capture rate
 
         # velocities for indirect detection
@@ -4873,8 +5246,8 @@ class MadDMCard(banner_mod.RunCard):
         
         self.fill_jfactors()
 
-        self.add_param('indirect_flux_source_method', 'pythia8', comment='choose between pythia8,PPPC4DMID and PPPC4DMID_ew', include=False,
-                       allowed=['pythia8','PPPC4DMID','PPPC4DMID_ew'])
+        self.add_param('indirect_flux_source_method', 'pythia8', comment='choose between pythia8, vincia, PPPC4DMID and PPPC4DMID_ew', include=False,
+                       allowed=['pythia8','vincia','PPPC4DMID','PPPC4DMID_ew','CosmiXs'])
         self.add_param('indirect_flux_earth_method', 'dragon', comment='choose between dragon and PPPC4DMID_ep', include=False,
                        allowed=['dragon', 'PPPC4DMID_ep'])
         self.add_param('sigmav_method', 'reshuffling', comment='choose between inclusive, madevent, reshuffling', include=False,
@@ -4923,19 +5296,23 @@ class MadDMCard(banner_mod.RunCard):
                            hidden = True)
         self.add_param('template_line_experiment_roi', 1., comment="default ROI of the template experiment gamma-line searches", include = False, \
                            hidden = True)
+        self.add_param('template_line_experiment_jfactor_strategy', 'normal', comment='strategy for J-factor computation', include = False, \
+                           hidden = True, allowed = ['normal', 'inverted'])
         self.add_param('template_line_experiment_profile', 'einasto', comment='default halo density profile for the template experiment gamma-line searches, choose between gnfw, einasto, nfw, isothermal, burkert', include = False, \
                            hidden = True, allowed = ['gnfw', 'einasto', 'nfw', 'isothermal', 'burkert'])
+        self.add_param('template_line_experiment_r_max', 'inf', comment='maximum value of line of sight (in kpc) to integrate over', include = False, \
+                           hidden = True)
         self.add_param('template_line_experiment_r_s', 20.0, comment='scale radius (in kpc) of the default profile related to the template line experiment gamma-line searches', include = False, \
                            hidden = True)
         self.add_param('template_line_experiment_gamma', 1.3, comment='gamma parameter, relevant for gnfw profile related to the template line experiment gamma-line searches', include = False, \
                            hidden = True)
         self.add_param('template_line_experiment_alpha', 0.17, comment='alpha parameter, relevant for einasto profile related to the template line experiment gamma-line searches', include = False, \
                            hidden = True)
-        self.add_param('template_line_experiment_mask_latitude', 0., comment='angle beta of the mask (in deg): observing the galactic centre from the position of the Sun, mask P, if abs(latitude(P)) < beta (refer to MadDM 3.2 documentation)', include = False, \
+        self.add_param('template_line_experiment_mask_latitude', 0., comment='angle beta of the mask (in deg): observing the galactic centre from the position of the Sun, mask P, if abs(latitude(P)) < beta (refer to MadDM 3.3 documentation)', include = False, \
                            hidden = True)
-        self.add_param('template_line_experiment_mask_longitude', 180., comment='angle lambda of the mask (in deg): observing the galactic centre from the position of the Sun, mask P, if abs(longitude(P)) > lambda (refer to MadDM 3.2 documentation)', include = False, \
+        self.add_param('template_line_experiment_mask_longitude', 180., comment='angle lambda of the mask (in deg): observing the galactic centre from the position of the Sun, mask P, if abs(longitude(P)) > lambda (refer to MadDM 3.3 documentation)', include = False, \
                            hidden = True)
-        self.add_param('template_line_experiment_mask_inner_angle', 0., comment='angle alpha_1 of the mask (in deg): observing the galactic centre from the position of the Sun, mask P, if abs(arctan(P.y/P.x)) < alpha_1/2 (refer to MadDM 3.2 documentation)', include = False, \
+        self.add_param('template_line_experiment_mask_inner_angle', 0., comment='angle alpha_1 of the mask (in deg): observing the galactic centre from the position of the Sun, mask P, if abs(arctan(P.y/P.x)) < alpha_1/2 (refer to MadDM 3.3 documentation)', include = False, \
                            hidden = True)
         self.add_param('template_line_experiment_energy_resolution', 10., comment='percent value to be multiplied by the energy of the peak to find the resolution at that energy', include = False, \
                            hidden = True)
@@ -4973,18 +5350,18 @@ class MadDMCard(banner_mod.RunCard):
         super(MadDMCard, self).check_validity()
         
         if self['SPu'] + self['SPs'] + self['SPd'] + self['SPg'] -1 > 1e-3:
-            raise InvalidMaddmCard , 'The sum of SP* parameter should be 1.0 get %s' % (self['SPu'] + self['SPs'] + self['SPd'] + self['SPg'])
+            raise InvalidMaddmCard('The sum of SP* parameter should be 1.0 get %s' % (self['SPu'] + self['SPs'] + self['SPd'] + self['SPg']))
         
         if self['SNu'] + self['SNs'] + self['SNd'] - self['SNg'] -1 > 1e-3:
-            raise InvalidMaddmCard, 'The sum of SM* parameter should be 1.0 get %s' % (self['SNu'] + self['SNs'] + self['SNd'] + self['SNg'])
+            raise InvalidMaddmCard('The sum of SM* parameter should be 1.0 get %s' % (self['SNu'] + self['SNs'] + self['SNd'] + self['SNg']))
         
         if self['sigmav_method'] == 'inclusive':
-            if self['indirect_flux_source_method'] == 'pythia8':
+            if self['indirect_flux_source_method'] == 'pythia8' or self['indirect_flux_source_method'] == 'vincia':
                 if self['do_indirect_detection']:
-                    logger.warning('since sigmav_method is on inclusive, indirect_flux_source_method has been switched to PPPC4DMID')
+                    logger.warning("since sigmav_method is on inclusive, indirect_flux_source_method has been switched to 'CosmiXs'")
                 #if self['do_flux']:
                     #logger.warning('since sigmav_method is on inclusive, indirect_flux_source_method has been switch to PPPC4DMID')
-                self['indirect_flux_source_method'] = 'PPPC4DMID'
+                self['indirect_flux_source_method'] = 'CosmiXs'
             #if self['indirect_flux_earth_method'] != 'PPPC4DMID':
             #    if self['do_flux']:
             #        logger.warning('since sigmav_method is on inclusive, indirect_flux_earth_method has been switch to PPPC4DMID_ep')
@@ -5037,6 +5414,20 @@ class Indirect_Cmd(me5_interface.MadEventCmdShell):
 
         return Presults.xsec, Presults.xerru
 
+    def check_nb_events(self):
+        """Redefine maximum number of events for MadDM"""
+        
+        nb_event = int(self.run_card['nevents'])
+        max_nb_events_allowed = int(1e8)
+        if nb_event > max_nb_events_allowed:
+            logger.warning("Attempting to generate more than 100M events")
+            logger.warning("Limiting number to 100M. Use multi_run for larger statistics.")
+            path = pjoin(self.me_dir, 'Cards', 'run_card.dat')
+            os.system(r"""perl -p -i.bak -e "s/\d+\s*=\s*nevents/%d = nevents/" %s""" \
+                                                                         % (max_nb_events_allowed, path))
+            self.run_card['nevents'] = max_nb_events_allowed
+
+        return
         
 
 
@@ -5158,7 +5549,7 @@ class Multinest(object):
 
 
         logger.info("Multinest will run with the following parameters: " )
-        for key, item in self.options.iteritems():
+        for key, item in six.iteritems(self.options):
             logger.info("%20s :  %s" %(key, item))
 
         pymultinest.run(self.myloglike, self.myprior,
@@ -5286,7 +5677,7 @@ class Multinest(object):
                 param_max = self.options['parameters'][i][2]
                 cube[i] = cube[i]
         else:
-            logger.error('Not a valid prior choice! Only allowed priors are %s '% str(Priors.priors.keys()))
+            logger.error('Not a valid prior choice! Only allowed priors are %s '% str(list(Priors.priors.keys())))
 
 
     def myloglike(self,cube, ndim, nparams):
@@ -5354,7 +5745,7 @@ class Multinest(object):
 
         ndim_obs = ndim + len(self.output_observables)
 
-        for obs, likelihood in self.options.get('loglikelihood').iteritems():
+        for obs, likelihood in six.iteritems(self.options.get('loglikelihood')):
 
             #relic density
             if obs == 'relic' and self.maddm_run.mode['relic']:
@@ -5502,7 +5893,7 @@ class Multinest(object):
                 if likelihood != '':
                     logger.warning("Likelihood for indirect detection (line spectrum) can't be specified, because it is taken from the Fermi-LAT 2015 searches in the Galactic Centre.")
                 # find the most constraining peak: -2log(L) higher, but exclude -1 (not computed or out of range peaks)
-                like_peaks = [v for k, v in results.iteritems() if k.startswith(self.line_experiment + 'like') and v != -1.]
+                like_peaks = [v for k, v in six.iteritems(results) if k.startswith(self.line_experiment + 'like') and v != -1.]
                 spectral_contrib = max(like_peaks) if len(like_peaks) != 0 else 0.
                 # add to cube
                 cube[ndim_obs+self.likelihood_parts.index('spectral')] = spectral_contrib
@@ -5517,5 +5908,3 @@ class Multinest(object):
         self.counter += 1
 
         return chi
-
-

@@ -1,19 +1,21 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import logging
 import sys
 logging.basicConfig(filename='plotting.log',level=logging.DEBUG, filemode='w')
 
 try:
     import matplotlib.pyplot as pl
-except Exception, error:
+except Exception as error:
     logging.debug(error)
-    print "ERROR: MadDM plotting routines require matplotlib, which is not installed"
+    print("ERROR: MadDM plotting routines require matplotlib, which is not installed")
     sys.exit(1)
 
 try:
     import numpy as np
-except Exception, error:
+except Exception as error:
     logging.debug(error)
-    print "ERROR: MadDM plotting routines require numpy, which is not installed"
+    print("ERROR: MadDM plotting routines require numpy, which is not installed")
     sys.exit(1)
 
 from matplotlib.mlab import griddata
@@ -44,7 +46,7 @@ def LinePlot(inputfiles, columns=[0,1],  colors=['darkblue'], styles =['solid'],
 						logplot=False):
 
 	if len(colors)!=len(labels)!=len(styles)!=len(inputfiles):
-		print "ERROR: You have to specify colors, styles and labels for your histograms"
+		print("ERROR: You have to specify colors, styles and labels for your histograms")
 		exit
 
 	i =0
@@ -53,13 +55,13 @@ def LinePlot(inputfiles, columns=[0,1],  colors=['darkblue'], styles =['solid'],
 			try:
 				xdata, ydata= np.loadtxt(input_file, unpack=True, usecols=columns)
 			except:
-				print "Could not open input files!"
+				print("Could not open input files!")
 				exit
 		elif type(input_file)==np.ndarray:
 			xdata = input_file[0]
 			ydata = input_file[1]
 		else:
-			print "ERROR: You tried to pass data to the LinePlot() function in a format it cannot read"
+			print("ERROR: You tried to pass data to the LinePlot() function in a format it cannot read")
 			exit
 
     		pl.plot(xdata, ydata,label=labels[i], alpha=1, linewidth=line_width,\
@@ -96,17 +98,17 @@ def ContourPlot(datafile,columns=[0,1,2], nXvals=100, nYvals=100, title='', xlab
 		try:
 			x, y, z = np.loadtxt(datafile, dtype='float', unpack=True, usecols=columns)
 		except:
-			print "Can't open the input file!"
+			print("Can't open the input file!")
 			exit
 	elif type(datafile)==np.ndarray:
 			x = datafile[0]
 			y = datafile[1]
 			z = datafile[2]
 	else:
-			print "ERROR: You tried to pass data to the ContourPlot() function in a format it cannot read"
+			print("ERROR: You tried to pass data to the ContourPlot() function in a format it cannot read")
 			exit
 
-	print type(x)
+	print(type(x))
 
 	xi = np.linspace(np.amin(x), np.amax(x), nXvals)
 	yi = np.linspace(np.amin(y), np.amax(y), nYvals)
@@ -148,7 +150,7 @@ def Histogram(inputfiles, nbins = 30, colors=['darkblue'], styles =['solid'],\
 						logplot=False, norm=1):
 
 	if len(colors)!=len(labels)!=len(styles)!=leb(inputfiles):
-		print "ERROR: You have to specify colors, styles and labels for your histograms"
+		print("ERROR: You have to specify colors, styles and labels for your histograms")
 		exit
 
 	i =0
@@ -158,13 +160,13 @@ def Histogram(inputfiles, nbins = 30, colors=['darkblue'], styles =['solid'],\
 			try:
 				observable= np.loadtxt(input_file, unpack=True, usecols=[0])
 			except:
-				print "Could not open input files!"
+				print("Could not open input files!")
 				exit
 		#Else treat the input as a numpy array
 		elif type(input_file)==np.ndarray:
 			observable = input_file
 		else:
-			print "ERROR: You tried to pass data to the Histogram() function in a format it cannot read"
+			print("ERROR: You tried to pass data to the Histogram() function in a format it cannot read")
 			exit
 
 

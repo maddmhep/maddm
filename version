@@ -1,9 +1,10 @@
-MadDM v3.2.13
+MadDM v3.3.0
 
 A joint program of University of Kansas (KU), 
 Center for Cosmology, Particle Physics and Phenomenology (CP3), 
 Universite catholique de Louvain (UCL) and
 Durham University (IPPP)
+National Institute for Nuclear Physics (INFN)
 
 Please cite: arXiv:1308.4955 for relic density
              arXiv:1505.04190 for direct/directional detection
@@ -20,15 +21,18 @@ If you performed a Multinest scan in MadDM please cite:
 MadDM collaboration
 -------------------
 Chiara Arina (CP3-UCL)
+Andrew Cheek (SJTU)
+Mattia Di Mauro (INFN)
 Jan Heisig (RWTH-Aachen)
-Kyoungchul Kong (KU)
+Gian Marco Lucchetti (UniBo)
 Fabio Maltoni (CP3-UCL)
-Luca Mantani (CP3-UCL)
 Olivier Mattelaer (CP3/CISM-UCL)
-Daniele Massaro (CP3-UCL, UniBO)
-Gopolang Mohlabeng (KU)
+Daniele Massaro (CERN)
 ---------------------
 Former Member
 ---------------------
 Mihailo Backovic (CP3-UCL)
+Kyoungchul Kong (KU)
+Luca Mantani (CP3-UCL)
 Antony Martini (CP3-UCL)
+Gopolang Mohlabeng (KU)

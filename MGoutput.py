@@ -1,3 +1,5 @@
+#from __future__ import absolute_import
+from __future__ import print_function
 import logging
 import math
 import os
@@ -5,11 +7,15 @@ import shutil
 import sys
 import collections
 import random
-from StringIO import StringIO
+import six
+StringIO = six
 import re
 
-import maddm_run_interface
-
+try:
+    from . import maddm_run_interface
+except ImportError:
+    import maddm_run_interface
+    
 # python routines from MadGraph
 import madgraph.iolibs.export_v4 as export_v4
 import madgraph.iolibs.file_writers as writers
@@ -26,15 +32,17 @@ from madgraph.core.base_objects import Process
 import madgraph.interface.reweight_interface as rwgt_interface
 import madgraph.various.banner as bannermod
 from madgraph.core import base_objects
+from six.moves import range
+from six.moves import zip
 
 
-class MYStringIO(StringIO):
+class MYStringIO(six.StringIO):
     """one stringIO behaving like our dedicated writer for writelines"""
     def writelines(self, lines):
         if isinstance(lines, list):
-            return StringIO.writelines(self, '\n'.join(lines))
+            return six.StringIO.writelines(self, '\n'.join(lines))
         else:
-            return StringIO.writelines(self, lines)
+            return six.StringIO.writelines(self, lines)
         
 # Root path
 MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
@@ -47,10 +55,10 @@ class MADDMProcCharacteristic(banner_mod.ProcCharacteristic):
     
     def default_setup(self):
         """initialize the directory to the default value""" 
-
         self.add_param('has_relic_density', False)
         self.add_param('relic_density_off', False)
         self.add_param('has_direct_detection', False)
+        self.add_param('has_direct_electron', False)
         self.add_param('has_directional_detection', False)
         self.add_param('has_indirect_detection', False)
         self.add_param('has_indirect_spectral', False)
@@ -169,13 +177,13 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
 
         temp_dir = os.path.join(self.mgme_dir, 'Template')        
         # Add make_opts file in Source
-        print os.path.join(temp_dir, 'LO/Source', 'make_opts') #modified by antony
+        print(os.path.join(temp_dir, 'LO/Source', 'make_opts')) #modified by antony
         shutil.copy(os.path.join(temp_dir, 'LO/Source', 'make_opts'), #modified by antony
                     os.path.join(self.dir_path, 'Source'))        
  
         # Add the makefile 
         filename = os.path.join(self.dir_path,'Source','makefile')
-        self.write_source_makefile(writers.FortranWriter(filename))            
+        self.write_source_makefile(writers.FortranWriter(filename))
 
     def get_dd_type(self, process):
         orders = process.get('orders')
@@ -961,8 +969,36 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
             p = self.model.get_particle(pdg)
             to_replace['quark_masses'].append('M(%s) = %s' % (pdg, p.get('mass')))
         to_replace['quark_masses'] = '\n           '.join(to_replace['quark_masses'])
-        
+
         writer.write(open(pjoin(MDMDIR, 'python_templates', 'direct_detection.f')).read() % to_replace)
+
+        """Adding the electron mass definition in dm_response_direct_e.f"""
+        
+        writer = open(pjoin(self.dir_path, 'src', 'dm_response_direct_e.f'), 'w')
+        to_replace = {'electron_mass':[]}
+        pdg = 11
+        p = self.model.get_particle(pdg)
+        to_replace['electron_mass'] = 'M_e = %s' % (p.get('mass'))
+        writer.write(open(pjoin(MDMDIR, 'python_templates', 'dm_response_direct_e.f')).read() % to_replace)
+
+        """Adding the electron mass definition and the maddm path in electron_recoil_signal.f"""
+
+        writer = open(pjoin(self.dir_path , 'src', 'electron_recoil_signal.f'), 'w')
+        to_replace = {'electron_mass':[],'maddm_path':[]}
+        pdg = 11
+        p = self.model.get_particle(pdg)
+        to_replace['electron_mass'] = 'M_e = %s' % (p.get('mass'))
+        to_replace['maddm_path'] = 'maddm_path = "' + MDMDIR +'"'
+        writer.write(open(pjoin(MDMDIR, 'python_templates', 'electron_recoil_signal.f')).read() % to_replace)
+
+        writer = open(pjoin(self.dir_path, 'src', 'direct_detection_RAPIDD.f'), 'w')
+        to_replace = {'quark_masses':[]}
+        for pdg in range(1,7):
+            p = self.model.get_particle(pdg)
+            to_replace['quark_masses'].append('M(%s) = %s' % (pdg, p.get('mass')))
+        to_replace['quark_masses'] = '\n           '.join(to_replace['quark_masses'])
+        writer.write(open(pjoin(MDMDIR, 'python_templates', 'direct_detection_RAPIDD.f')).read() % to_replace)
+        
         
 
 class Indirect_Reweight(rwgt_interface.ReweightInterface):
@@ -1033,7 +1069,7 @@ class Indirect_Reweight(rwgt_interface.ReweightInterface):
         return super(Indirect_Reweight, self).do_change(line)
 
 
-class ProcessExporterIndirectD(object):
+class ProcessExporterIndirectD:
     """_________________________________________________________________________#
     #                                                                         #
     #  This class is used to export the matrix elements generated from        #
@@ -1080,7 +1116,7 @@ class ProcessExporterIndirectD(object):
                      cwd=os.path.dirname(path))   
         
         filename = os.path.join(self.dir_path, 'Cards', 'me5_configuration.txt')
-        self.cmd.do_save('options %s' % filename.replace(' ', '\ '), check=False,
+        self.cmd.do_save('options %s' % filename.replace(' ', r'\ '), check=False,
                          to_keep={'mg5_path':MG5DIR})
         
         self.write_procdef_mg5( pjoin(self.dir_path, 'SubProcesses', \
@@ -1123,7 +1159,7 @@ class ProcessExporterIndirectD(object):
         indirect_done = False
 
         for line in history:
-            line = re.sub('\s+', ' ', line)
+            line = re.sub(r'\s+', ' ', line)
         
             if line.startswith(('define darkmatter', 'define benchmark','define coannihilator')):
                 continue

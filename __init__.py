@@ -1,7 +1,8 @@
 ## import the required files
 
-import maddm_interface as maddm_interface
-import MGoutput as MGoutput
+from __future__ import absolute_import
+from . import maddm_interface as maddm_interface
+from . import MGoutput as MGoutput
 ## Define a typical error for the plugin
 class MadDMError(Exception): pass
 
@@ -16,6 +17,6 @@ new_output = {'maddm': MGoutput.ProcessExporterMadDM,
 new_reweight = {'indirect': MGoutput.Indirect_Reweight}
 
 ## The test/code have been validated up to this version
-latest_validated_version = (2,9,9)
-minimal_mg5amcnlo_version = (2,9,3)
-maximal_mg5amcnlo_version = (1000,1000,1000)
+latest_validated_version = (2,9,24)
+minimal_mg5amcnlo_version = (2,9,18)
+maximal_mg5amcnlo_version = (2,1000,1000)

@@ -1,0 +1,4 @@
+[submodule "vendor/RAPIDD_for_DM"]
+	path = vendor/RAPIDD_for_DM
+	url = https://github.com/cheekyparticle/RAPIDD_for_DM.git
+	branch = maddm
