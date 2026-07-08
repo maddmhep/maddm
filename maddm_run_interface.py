@@ -2410,7 +2410,7 @@ class MADDMRunCmd(cmd.CmdShell):
         if not gammas:
             if (not self.options['pppc4dmid_path'] and 
                 (self.maddm_card['indirect_flux_source_method'].startswith('PPP') or 
-                 self.maddm_card['indirect_flux_source_method'].startswith('CosmiXs'))):
+                 self.maddm_card['indirect_flux_source_method'].lower().startswith('cosmixs'))):
                 pass
             else:
                 logger.error('The gamma spectrum is empty! Will not calculate Fermi limit')
@@ -2421,7 +2421,7 @@ class MADDMRunCmd(cmd.CmdShell):
             self.last_results['Fermi_sigmav'] = sigmav # returns Fermi exp UL
                     
             if ('PPPC' in self.maddm_card['indirect_flux_source_method'] or 
-                'CosmiXs' in self.maddm_card['indirect_flux_source_method']):
+                'cosmixs' in self.maddm_card['indirect_flux_source_method'].lower()):
                 sigmav_th = self.last_results['tot_SM_xsec']
             else:
                 sigmav_th = self.last_results['taacsID']
@@ -2946,7 +2946,7 @@ class MADDMRunCmd(cmd.CmdShell):
         if 'PPPC' in self.maddm_card['indirect_flux_source_method']  or 'cosmixs' in self.maddm_card['indirect_flux_source_method'].lower():
             logger.info(f"Calculating cosmic rays fluxes using gammas and neutrinos spectra from the {self.maddm_card['indirect_flux_source_method']} tables.")
             if not self.options['pppc4dmid_path']:
-                logger.error("PPPC4DMID not installed, will not calculate fluxes.")
+                logger.error("PPPC4DMID/CosmiXs not installed, will not calculate fluxes.")
                 return
         elif 'pythia' in self.maddm_card['indirect_flux_source_method'] or 'vincia' in self.maddm_card['indirect_flux_source_method']:
             logger.info('Calculating cosmic rays fluxes using pythia8 ' + '(vincia) '*(self.maddm_card['indirect_flux_source_method'] == 'vincia') + 'gammas and neutrinos spectra.')
