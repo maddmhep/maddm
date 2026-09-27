@@ -1459,7 +1459,7 @@ class MadDM_interface(master_interface.MasterCmd):
 
 
         if not os.path.exists(so_rel_path):
-            logger.error("RAPIDD library not found at %s. Compiling it now..." % so_rel_path)
+            logger.warning("RAPIDD library not found at %s. Compiling it now..." % so_rel_path)
             # Compile the RAPIDD library
             import subprocess
 
