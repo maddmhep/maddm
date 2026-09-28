@@ -1896,10 +1896,10 @@ class MADDMRunCmd(cmd.CmdShell):
         else: result['xsi'] = 1.0
 
         if self.mode['direct']:
-            RP_rel_path = self.plugin_path[0] + "/maddm/vendor/RAPIDD_for_DM/rapidd/"
-            RP_abs_path = os.path.abspath(RP_rel_path)
-            sys.path.insert(0, RP_abs_path)
-            from alpha_map import sigmaSI_nucleon_mdm, sigmaSD_nucleon_mdm
+            RP_parent = os.path.abspath(pjoin(self.plugin_path[0], 'maddm', 'vendor', 'RAPIDD_for_DM'))
+            if RP_parent not in sys.path:
+                sys.path.insert(0, RP_parent)
+            from rapidd.alpha_map import sigmaSI_nucleon_mdm, sigmaSD_nucleon_mdm
             result['sigmaN_SI_p'], result['sigmaN_SI_n'] = sigmaSI_nucleon_mdm(self.maddm_card, alphaq_values, mdm)
             result['sigmaN_SD_p'], result['sigmaN_SD_n'] = sigmaSD_nucleon_mdm(self.maddm_card, alphaq_values, mdm)
             result['sigmaN_SI_n']    *= GeV2pb*pb2cm2
@@ -1911,26 +1911,23 @@ class MADDMRunCmd(cmd.CmdShell):
             result['lim_sigmaN_SD_p'] = self.limits.SD_max(mdm, 'p')
             result['lim_sigmaN_SD_n'] = self.limits.SD_max(mdm, 'n')
 
-
-            from calc_dRdE import DDrate_save
+            from rapidd.calc_dRdE import DDrate_save
             rapidd_out_path = pjoin(self.dir_path,'output', self.run_name)
 
             if (self.maddm_card['vescape'] == 544.0) and (self.maddm_card['vmp'] == 238.0):
                 DDrate_save(self.maddm_card, alphaq_values, mdm, rapidd_out_path)
 
             else:
-                from halo import gen_shm_table 
+                from rapidd.halo import gen_shm_table
                 halo_path = rapidd_out_path + '/SHM.dat'
                 gen_shm_table(halo_path, self.maddm_card)
                 DDrate_save(self.maddm_card, alphaq_values, mdm, rapidd_out_path, halo_path=halo_path)
-
 
         self.last_results = result
         self.last_results['run'] = self.run_name
 
         # if self.mode['direct'] == 'p-value':
             
-
         if self.mode['direct_electron'] and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
             self.launch_direct_electron()
                           
@@ -3984,7 +3981,6 @@ class MADDMRunCmd(cmd.CmdShell):
             logger.info("Start computing %s" % ','.join([name for name, value in self.mode.items() if value]))
         return self.mode
 
-
     def compile(self):
         """compile the code"""
 
@@ -3992,7 +3988,6 @@ class MADDMRunCmd(cmd.CmdShell):
 
         if self.in_scan_mode:
             return
-
         self.maddm_card.write_include_file(pjoin(self.dir_path,'include'))
         misc.compile(['all'],cwd=self.dir_path)
 
@@ -5370,6 +5365,13 @@ class MadDMCard(banner_mod.RunCard):
         elif self['indirect_flux_earth_method'] == 'PPPC4DMID_ep':
             logger.warning('since pythia8 is used to generate spectra at source, indirect_flux_earth_method has been switched to DRAGON')
             self['indirect_flux_earth_method'] = 'dragon' 
+
+    def write_include_file(self, output_dir, output_file=None):
+        """MG5>=3 compatible: skip autodef/custom_fcts/fct_mod (unused by MadDM)"""
+        self.check_validity()
+        self.update_system_parameter_for_include()
+        for incname in self.includepath:
+            self.write_one_include_file(output_dir, incname, output_file)
                 
                 
 class Indirect_Cmd(me5_interface.MadEventCmdShell):
