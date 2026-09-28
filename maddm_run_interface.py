@@ -5372,6 +5372,30 @@ class MadDMCard(banner_mod.RunCard):
         self.update_system_parameter_for_include()
         for incname in self.includepath:
             self.write_one_include_file(output_dir, incname, output_file)
+
+    def get_default(self, name, default=None, log_level=None):
+        """MG5>=3.8: skip the *_default.dat lookup, which re-parses
+        maddm_card_default.dat as a generic RunCardLO and produces
+        misleading 'run_card' warnings (unused by MadDM)."""
+        lower_name = name.lower()
+        if lower_name not in self.user_set:
+            if log_level is None:
+                if lower_name in self.system_only:
+                    log_level = 5
+                elif lower_name in self.auto_set:
+                    log_level = 5
+                elif lower_name in self.hidden_param:
+                    log_level = 10
+                else:
+                    log_level = 20
+            if default is None:
+                default = dict.__getitem__(self, lower_name)
+            logger.log(log_level, '%s missed argument %s. Takes default: %s'
+                                   % (self.filename, name, default))
+            self[name] = default
+            return default
+        else:
+            return self[name]
                 
                 
 class Indirect_Cmd(me5_interface.MadEventCmdShell):
