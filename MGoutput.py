@@ -1140,18 +1140,32 @@ class ProcessExporterIndirectD:
 
     def modify_banner(self):
         """enforce that <init> in events.lhe have id 52 for both beam (ensure that py8 accepts it)"""
-        
-        all_lines = open(pjoin(self.dir_path,'bin','internal','banner.py')).readlines()
-        
-        for i, line in enumerate(all_lines):
-            if 'def get_idbmup(lpp):' in line:
-                break
+        path = pjoin(self.dir_path, 'bin', 'internal', 'banner.py')
+        all_lines = open(path).readlines()
 
-        next_line = all_lines[i+1] 
+        # Match signature regardless of args (lpp / self, lpp, beam=1)
+        for i, line in enumerate(all_lines):
+            if re.match(r'\s*def get_idbmup\(', line):
+                break
+        else:
+            logger.warning('get_idbmup not found in banner.py: DM ID 52 not enforced')
+            return
+
+        # Find last line of docstring (single- or multi-line)
+        j = i + 1
+        body = all_lines[j].strip()
+        if body.startswith(('"""', "'''")):
+            quote = body[:3]
+            if not (len(body) > 3 and body.endswith(quote)):
+                j += 1
+                while quote not in all_lines[j]:
+                    j += 1
+
+        next_line = all_lines[i+1]
         nb_space = next_line.find(next_line.strip())
-        all_lines.insert(i+2, '%sreturn 52 #enforce DM ID for pythia8\n' % (' '*nb_space))
-        
-        open(pjoin(self.dir_path,'bin','internal','banner.py'),'w').writelines(all_lines)
+        all_lines.insert(j+1, '%sreturn 52 #enforce DM ID for pythia8\n' % (' '*nb_space))
+
+        open(path, 'w').writelines(all_lines)
         
     def modify_history(self, history):
         """modify history to make an proc_card_mg5 more similar to the real process
