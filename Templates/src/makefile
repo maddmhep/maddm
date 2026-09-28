@@ -1,4 +1,15 @@
 include ../Source/make_opts
+
+# macOS only: set linker sysroot if not already provided
+ifeq ($(shell uname -s),Darwin)
+  ifeq ($(SDKROOT),)
+    SDK_PATH := $(shell xcrun --show-sdk-path 2>/dev/null)
+    ifneq ($(SDK_PATH),)
+      LDFLAGS += -Wl,-syslibroot,$(SDK_PATH)
+    endif
+  endif
+endif
+
 prog = maddm
 fort= $(FC)
 
@@ -29,10 +40,10 @@ clean:
 	-rm -f ../$(prog).x
 
 maddm: $(objs_all)
-	$(fort) $(flags) $(objs_all) $(libs) -o $(prog).x
+	$(fort) $(flags) $(objs_all) $(libs) $(LDFLAGS) -o $(prog).x
 
 relic_density: $(objs_all)
-	$(fort) $(flags) $(objs_all) $(libs) -o $(prog).x
+	$(fort) $(flags) $(objs_all) $(libs) $(LDFLAGS) -o $(prog).x
 
 direct_detection: $(objs_all)
-	$(fort) $(flags) $(objs_all) $(libs) -o $(prog).x
+	$(fort) $(flags) $(objs_all) $(libs) $(LDFLAGS) -o $(prog).x
