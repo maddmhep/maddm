@@ -732,7 +732,7 @@ class Fermi_bounds:
              return result[2] , result[0]
 
 class RegionOfInterest(object):
-    ''' Definition of a region of interest (ROI) with default profile, masks and
+    r''' Definition of a region of interest (ROI) with default profile, masks and
         instructions on J-factor computation.
 
         Parameters

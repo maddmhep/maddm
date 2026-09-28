@@ -96,7 +96,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         self.resonances = set() 
         self.proc_characteristic = MADDMProcCharacteristic()
         
-    def convert_model(self, model, wanted_lorentz = [], wanted_couplings = []):
+    def convert_model(self, model, wanted_lorentz = [], wanted_couplings = [], **opts):
         """-----------------------------------------------------------------------#  
         #                                                                       #
         #  Create a full valid MG4 model from a MG5 model (coming from UFO)     #
@@ -115,7 +115,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         self.proc_characteristic['model'] = model.get('modelpath+restriction')
         
         out =  super(ProcessExporterMadDM, self).convert_model(model, 
-                                               wanted_lorentz, wanted_couplings)
+                                               wanted_lorentz, wanted_couplings, **opts)
         return out
 
     def write_procdef_mg5(self,*args,**opts):
@@ -1275,7 +1275,7 @@ class ProcessExporterIndirectD:
              
              
     def convert_model(self, model, wanted_lorentz = [],
-                             wanted_couplings = []):
+                             wanted_couplings = [], **opts):
         """ Create a full valid MG4 model from a MG5 model (coming from UFO)"""
 
         # make sure that mass/width external parameter without assoicated particle
@@ -1291,7 +1291,7 @@ class ProcessExporterIndirectD:
         
         
         super(ProcessExporterIndirectD, self).convert_model(model, 
-                                                wanted_lorentz, wanted_couplings)
+                                                wanted_lorentz, wanted_couplings, **opts)
 
 
     #===========================================================================
