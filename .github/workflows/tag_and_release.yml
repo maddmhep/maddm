@@ -1,0 +1,59 @@
+---
+name: Tag and create release
+on:  # yamllint disable-line rule:truthy
+  pull_request:
+    # Trigger only after closing a PR on the master branch
+    # Accept only merged PR (see later)
+    types:
+      - closed
+    # Trigger on:
+    branches:
+      - master
+jobs:
+  release_on_merge:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Check out the code
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      # Step 2: Get version
+      - name: Get version
+        id: get_version
+        run: |
+          VERSION="v$(grep -Eo -m 1 '([0-9]+\.){2}[0-9]+' ./version)"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      # Step 3: Tag the commit
+      - name: Create tag
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git tag -a "${{ steps.get_version.outputs.version }}" -m "Release ${{ steps.get_version.outputs.version }}"
+          git push --follow-tags
+
+      # Step 4: Pack everything in both a zip and a tar.gz
+      - name: Create artifacts tarballs
+        run: |
+          mkdir -p artifacts
+          git ls-files --recurse-submodules > filelist.txt
+          tar -czf artifacts/maddm.tar.gz -T filelist.txt
+          zip -@ artifacts/maddm.zip < filelist.txt
+        shell: bash
+
+      # Step 5: Prepare release notes
+      - name: Prepare release notes
+        run: |
+          echo "# MadDM ${{ steps.get_version.outputs.version }} ($(date +%Y-%m-%d))" > release_notes.md
+        shell: bash
+
+      # Step 6: Create release and upload artifacts
+      - name: Create release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ steps.get_version.outputs.version }}
+          bodyFile: "release_notes.md"
+          artifacts: "artifacts/*"

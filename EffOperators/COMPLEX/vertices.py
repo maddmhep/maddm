@@ -3,10 +3,11 @@
 # Date: Tue 20 Jan 2015 15:06:46
 
 
-from object_library import all_vertices, Vertex
-import particles as P
-import couplings as C
-import lorentz as L
+from __future__ import absolute_import
+from .object_library import all_vertices, Vertex
+from . import particles as P
+from . import couplings as C
+from . import lorentz as L
 
 
 V_1 = Vertex(name = 'V_1',
@@ -117,3 +118,14 @@ V_18 = Vertex(name = 'V_18',
               lorentz = [ L.FFVV1, L.FFVV2 ],
               couplings = {(0,0):C.GC_6,(0,1):C.GC_5})
 
+V_19 = Vertex(name = 'V_19',
+             particles = [ P.e__plus__, P.e__minus__, P.fdm__tilde__, P.P__tilde__fdm ],
+             color = [ '1' ],
+             lorentz = [ L.FFFF7, L.FFFF8 ],
+             couplings = {(0,0):C.GC_7,(0,1):C.GC_8})
+
+V_20 = Vertex(name = 'V_20',
+             particles = [ P.e__plus__, P.e__minus__, P.sdm__tilde__, P.P__tilde__sdm ],
+             color = [ '1' ],
+             lorentz = [ L.FFSS1 ],
+             couplings = {(0,0):C.GC_4})

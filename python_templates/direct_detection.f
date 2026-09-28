@@ -116,7 +116,7 @@ c-------------------------------------------------------------------------------
       
       implicit none
       
-      integer i, j, jeff,jtot, k ,proton, even, SI
+      integer i, j, jeff,jtot, k ,proton, even, SI, quarks(12)
       double precision p_ext(0:3,4)
       double precision fNt(6) 
       double precision M(6)
@@ -224,6 +224,9 @@ C             for the SI/SD case with the same quark associated
 C        JTOT same as JEFF but for the EFF+FULL
 
       i = dd_process_ids(j)
+      quarks = (/-1,1,-2,2,-3,3,-4,4,-5,5,-6,6/)
+      if(ANY(quarks==i)) then
+      
 C     Determine JEFF
       if (SI.eq.1)then
          do k=1, 2*dd_num_processes
@@ -260,7 +263,7 @@ C     LONG Determination of  JTOT
             do k=1, 2*dd_num_processes
                siorsd = dd_tot_process_names(k)(5:6) ! return 'SI' or 'SD'
                if (dd_tot_process_ids(k).eq.i.and.siorsd.eq.'SD')then
-                  jeff = k
+                  jtot = k
                   exit          ! exit the loop
                endif
             enddo
@@ -298,6 +301,10 @@ c HERE DEFINE THE FOUR MOMENTA - RIGHT NOW JUST ANY NUMBERS
       Minterf_q = 0.5d0*Minterf_q
       Minterf_q = Minterf_q / smatrix_dd_eff(p_ext,1,1,jeff)
 
+      if(ISNAN(Minterf_q)) then
+            Minterf_q=0
+      endif
+
 c compute ff_p or ff_n
 c      write(*,*) '--------------------------------'
 c      write(*,*) 'full + eff: ',smatrix_dd_tot(p_ext,1,1,i)
@@ -308,7 +315,7 @@ c      write(*,*) '--------------------------------'
       if (even .eq. 1) then 
         ! symmetric so do not have to distinguish quark from anti-quark
         Minterf=0.5d0*Minterf_q
-c        write(*,*) "Even contribution : ", Minterf
+        !write(*,*) "Even contribution : ", Minterf
       else
         ! antisymmetric so we have to distinguish quark from anti-quark
          if (i.ge.0) then
@@ -316,11 +323,12 @@ c        write(*,*) "Even contribution : ", Minterf
          else
             Minterf=-0.5d0*Minterf_q
          endif
-c	write(*,*) "Odd contribution : ", Minterf
+	!write(*,*) "Odd contribution : ", Minterf
       endif
-c      write(*,*) 'M_interf: ', Minterf
+      !write(*,*) 'M_interf: ', Minterf
       NucleonFF=NucleonFF+(fNt(ABS(i))*Minterf)
-c      write(*,*) 'fN: ', NucleonFF
+      !write(*,*) 'fN: ', NucleonFF
+      endif
       enddo
       
       end function

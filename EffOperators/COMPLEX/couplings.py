@@ -3,9 +3,10 @@
 # Date: Tue 20 Jan 2015 15:06:46
 
 
-from object_library import all_couplings, Coupling
+from __future__ import absolute_import
+from .object_library import all_couplings, Coupling
 
-from function_library import complexconjugate, re, im, csc, sec, acsc, asec, cot
+from .function_library import complexconjugate, re, im, csc, sec, acsc, asec, cot
 
 
 
@@ -33,3 +34,10 @@ GC_6 = Coupling(name = 'GC_6',
                 value = '2*complex(0,1)*vdmm*vSIe',
                 order = {'SIEFFV':2})
 
+GC_7 = Coupling(name = 'GC_7',
+                value = 'complex(0,1)*GDMA',
+                order = {'SDEFFF':2})
+
+GC_8 = Coupling(name = 'GC_8',
+                value = 'complex(0,1)*GDMS',
+                order = {'SIEFFF':2})

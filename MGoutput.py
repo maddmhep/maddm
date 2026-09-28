@@ -1,3 +1,5 @@
+#from __future__ import absolute_import
+from __future__ import print_function
 import logging
 import math
 import os
@@ -5,11 +7,15 @@ import shutil
 import sys
 import collections
 import random
-from StringIO import StringIO
+import six
+StringIO = six
 import re
 
-import maddm_run_interface
-
+try:
+    from . import maddm_run_interface
+except ImportError:
+    import maddm_run_interface
+    
 # python routines from MadGraph
 import madgraph.iolibs.export_v4 as export_v4
 import madgraph.iolibs.file_writers as writers
@@ -26,15 +32,17 @@ from madgraph.core.base_objects import Process
 import madgraph.interface.reweight_interface as rwgt_interface
 import madgraph.various.banner as bannermod
 from madgraph.core import base_objects
+from six.moves import range
+from six.moves import zip
 
 
-class MYStringIO(StringIO):
+class MYStringIO(six.StringIO):
     """one stringIO behaving like our dedicated writer for writelines"""
     def writelines(self, lines):
         if isinstance(lines, list):
-            return StringIO.writelines(self, '\n'.join(lines))
+            return six.StringIO.writelines(self, '\n'.join(lines))
         else:
-            return StringIO.writelines(self, lines)
+            return six.StringIO.writelines(self, lines)
         
 # Root path
 MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
@@ -47,10 +55,10 @@ class MADDMProcCharacteristic(banner_mod.ProcCharacteristic):
     
     def default_setup(self):
         """initialize the directory to the default value""" 
-
         self.add_param('has_relic_density', False)
         self.add_param('relic_density_off', False)
         self.add_param('has_direct_detection', False)
+        self.add_param('has_direct_electron', False)
         self.add_param('has_directional_detection', False)
         self.add_param('has_indirect_detection', False)
         self.add_param('has_indirect_spectral', False)
@@ -88,7 +96,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         self.resonances = set() 
         self.proc_characteristic = MADDMProcCharacteristic()
         
-    def convert_model(self, model, wanted_lorentz = [], wanted_couplings = []):
+    def convert_model(self, model, wanted_lorentz = [], wanted_couplings = [], **opts):
         """-----------------------------------------------------------------------#  
         #                                                                       #
         #  Create a full valid MG4 model from a MG5 model (coming from UFO)     #
@@ -107,7 +115,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         self.proc_characteristic['model'] = model.get('modelpath+restriction')
         
         out =  super(ProcessExporterMadDM, self).convert_model(model, 
-                                               wanted_lorentz, wanted_couplings)
+                                               wanted_lorentz, wanted_couplings, **opts)
         return out
 
     def write_procdef_mg5(self,*args,**opts):
@@ -169,13 +177,13 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
 
         temp_dir = os.path.join(self.mgme_dir, 'Template')        
         # Add make_opts file in Source
-        print os.path.join(temp_dir, 'LO/Source', 'make_opts') #modified by antony
+        print(os.path.join(temp_dir, 'LO/Source', 'make_opts')) #modified by antony
         shutil.copy(os.path.join(temp_dir, 'LO/Source', 'make_opts'), #modified by antony
                     os.path.join(self.dir_path, 'Source'))        
  
         # Add the makefile 
         filename = os.path.join(self.dir_path,'Source','makefile')
-        self.write_source_makefile(writers.FortranWriter(filename))            
+        self.write_source_makefile(writers.FortranWriter(filename), model)
 
     def get_dd_type(self, process):
         orders = process.get('orders')
@@ -287,10 +295,13 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         # Set lowercase/uppercase Fortran code
         writers.FortranWriter.downcase = False
 
-
+        # Extract the process information to name the subroutine
+        process_name = self.get_process_name(matrix_element, print_id=False)
         replace_dict = super(ProcessExporterMadDM,self).write_matrix_element_v4(
-                                            None, matrix_element, fortran_model)
+                                            None, matrix_element, fortran_model,
+                                            proc_prefix=process_name + '_')
 
+        replace_dict['proc_prefix'] = process_name + '_'
 
         # Extract the process information to name the subroutine
         process_name = self.get_process_name(matrix_element, print_id=False) 
@@ -961,8 +972,36 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
             p = self.model.get_particle(pdg)
             to_replace['quark_masses'].append('M(%s) = %s' % (pdg, p.get('mass')))
         to_replace['quark_masses'] = '\n           '.join(to_replace['quark_masses'])
-        
+
         writer.write(open(pjoin(MDMDIR, 'python_templates', 'direct_detection.f')).read() % to_replace)
+
+        """Adding the electron mass definition in dm_response_direct_e.f"""
+        
+        writer = open(pjoin(self.dir_path, 'src', 'dm_response_direct_e.f'), 'w')
+        to_replace = {'electron_mass':[]}
+        pdg = 11
+        p = self.model.get_particle(pdg)
+        to_replace['electron_mass'] = 'M_e = %s' % (p.get('mass'))
+        writer.write(open(pjoin(MDMDIR, 'python_templates', 'dm_response_direct_e.f')).read() % to_replace)
+
+        """Adding the electron mass definition and the maddm path in electron_recoil_signal.f"""
+
+        writer = open(pjoin(self.dir_path , 'src', 'electron_recoil_signal.f'), 'w')
+        to_replace = {'electron_mass':[],'maddm_path':[]}
+        pdg = 11
+        p = self.model.get_particle(pdg)
+        to_replace['electron_mass'] = 'M_e = %s' % (p.get('mass'))
+        to_replace['maddm_path'] = 'maddm_path = "' + MDMDIR +'"'
+        writer.write(open(pjoin(MDMDIR, 'python_templates', 'electron_recoil_signal.f')).read() % to_replace)
+
+        writer = open(pjoin(self.dir_path, 'src', 'direct_detection_RAPIDD.f'), 'w')
+        to_replace = {'quark_masses':[]}
+        for pdg in range(1,7):
+            p = self.model.get_particle(pdg)
+            to_replace['quark_masses'].append('M(%s) = %s' % (pdg, p.get('mass')))
+        to_replace['quark_masses'] = '\n           '.join(to_replace['quark_masses'])
+        writer.write(open(pjoin(MDMDIR, 'python_templates', 'direct_detection_RAPIDD.f')).read() % to_replace)
+        
         
 
 class Indirect_Reweight(rwgt_interface.ReweightInterface):
@@ -1033,7 +1072,7 @@ class Indirect_Reweight(rwgt_interface.ReweightInterface):
         return super(Indirect_Reweight, self).do_change(line)
 
 
-class ProcessExporterIndirectD(object):
+class ProcessExporterIndirectD:
     """_________________________________________________________________________#
     #                                                                         #
     #  This class is used to export the matrix elements generated from        #
@@ -1080,7 +1119,7 @@ class ProcessExporterIndirectD(object):
                      cwd=os.path.dirname(path))   
         
         filename = os.path.join(self.dir_path, 'Cards', 'me5_configuration.txt')
-        self.cmd.do_save('options %s' % filename.replace(' ', '\ '), check=False,
+        self.cmd.do_save('options %s' % filename.replace(' ', r'\ '), check=False,
                          to_keep={'mg5_path':MG5DIR})
         
         self.write_procdef_mg5( pjoin(self.dir_path, 'SubProcesses', \
@@ -1101,18 +1140,32 @@ class ProcessExporterIndirectD(object):
 
     def modify_banner(self):
         """enforce that <init> in events.lhe have id 52 for both beam (ensure that py8 accepts it)"""
-        
-        all_lines = open(pjoin(self.dir_path,'bin','internal','banner.py')).readlines()
-        
-        for i, line in enumerate(all_lines):
-            if 'def get_idbmup(lpp):' in line:
-                break
+        path = pjoin(self.dir_path, 'bin', 'internal', 'banner.py')
+        all_lines = open(path).readlines()
 
-        next_line = all_lines[i+1] 
+        # Match signature regardless of args (lpp / self, lpp, beam=1)
+        for i, line in enumerate(all_lines):
+            if re.match(r'\s*def get_idbmup\(', line):
+                break
+        else:
+            logger.warning('get_idbmup not found in banner.py: DM ID 52 not enforced')
+            return
+
+        # Find last line of docstring (single- or multi-line)
+        j = i + 1
+        body = all_lines[j].strip()
+        if body.startswith(('"""', "'''")):
+            quote = body[:3]
+            if not (len(body) > 3 and body.endswith(quote)):
+                j += 1
+                while quote not in all_lines[j]:
+                    j += 1
+
+        next_line = all_lines[i+1]
         nb_space = next_line.find(next_line.strip())
-        all_lines.insert(i+2, '%sreturn 52 #enforce DM ID for pythia8\n' % (' '*nb_space))
-        
-        open(pjoin(self.dir_path,'bin','internal','banner.py'),'w').writelines(all_lines)
+        all_lines.insert(j+1, '%sreturn 52 #enforce DM ID for pythia8\n' % (' '*nb_space))
+
+        open(path, 'w').writelines(all_lines)
         
     def modify_history(self, history):
         """modify history to make an proc_card_mg5 more similar to the real process
@@ -1123,7 +1176,7 @@ class ProcessExporterIndirectD(object):
         indirect_done = False
 
         for line in history:
-            line = re.sub('\s+', ' ', line)
+            line = re.sub(r'\s+', ' ', line)
         
             if line.startswith(('define darkmatter', 'define benchmark','define coannihilator')):
                 continue
@@ -1239,7 +1292,7 @@ class ProcessExporterIndirectD(object):
              
              
     def convert_model(self, model, wanted_lorentz = [],
-                             wanted_couplings = []):
+                             wanted_couplings = [], **opts):
         """ Create a full valid MG4 model from a MG5 model (coming from UFO)"""
 
         # make sure that mass/width external parameter without assoicated particle
@@ -1255,7 +1308,7 @@ class ProcessExporterIndirectD(object):
         
         
         super(ProcessExporterIndirectD, self).convert_model(model, 
-                                                wanted_lorentz, wanted_couplings)
+                                                wanted_lorentz, wanted_couplings, **opts)
 
 
     #===========================================================================
