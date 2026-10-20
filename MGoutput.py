@@ -1107,7 +1107,7 @@ class ProcessExporterIndirectD:
         new_history = self.modify_history(history)
         
         super(ProcessExporterIndirectD, self).finalize(matrix_elements, new_history, mg5options, flaglist)
-        
+
         path = pjoin(self.dir_path, 'Cards', 'param_card.dat')
         if os.path.exists(pjoin('..','..', 'Cards', 'param_card.dat')):
             try:
@@ -1305,9 +1305,19 @@ class ProcessExporterIndirectD:
                     self.model['parameters'][('external',)].remove(param)
                     param = base_objects.ModelVariable(param.name, str(param.value), 'real')
                     self.model['parameters'][tuple()].append(param)
-        
-        
-        super(ProcessExporterIndirectD, self).convert_model(model, 
+
+
+        if self.opt['export_format'] == 'plugin':
+            # Indirect_* is a MadEvent output: let UFO_model_to_mg4 write the
+            # MadEvent version of Source/MODEL (vector.inc, maxparticles.inc, ...)
+            self.opt['export_format'] = 'madevent'
+            try:
+                super(ProcessExporterIndirectD, self).convert_model(model,
+                                                wanted_lorentz, wanted_couplings, **opts)
+            finally:
+                self.opt['export_format'] = 'plugin'
+        else:
+            super(ProcessExporterIndirectD, self).convert_model(model,
                                                 wanted_lorentz, wanted_couplings, **opts)
 
 

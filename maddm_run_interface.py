@@ -81,6 +81,16 @@ logger_tuto = logging.getLogger('tutorial_plugin')
 
 MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
 
+# MG5_aMC >= 3.8.0 added AskRun.get_cardcmd_for_reweight, which returns None for
+# reweight modes provided by plugins (e.g. MadDM's 'reweight=indirect'), making
+# ControlSwitch.get_cardcmd crash with "'NoneType' object is not iterable".
+# Wrap it so that it always returns a list (no extra commands, as in MG5 <= 3.6).
+if hasattr(me5_interface.AskRun, 'get_cardcmd_for_reweight'):
+    _mg5_get_cardcmd_for_reweight = me5_interface.AskRun.get_cardcmd_for_reweight
+    def _get_cardcmd_for_reweight(self, value):
+        return _mg5_get_cardcmd_for_reweight(self, value) or []
+    me5_interface.AskRun.get_cardcmd_for_reweight = _get_cardcmd_for_reweight
+
 #Is there a better definition of infinity?
 __infty__ = float('inf')
 __mnestlog0__ = -1.0E90
@@ -2297,7 +2307,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 set_level = 50
             logger.info("Computing sigmav with method: %s" % self.maddm_card['sigmav_method'])
             with self.me_cmd.RunWebHandling(pjoin(self.dir_path, indirect_directory)):
-                with misc.TMP_variable(banner_mod.RunCard, 'get_idbmup', lambda *args: 52):
+                with misc.TMP_variable(banner_mod.RunCard, 'get_idbmup', lambda *args, **opts: 52):
                     #this with statement ensure that only one process is running within
                     #that directory.
                     with misc.MuteLogger(['madgraph','madevent','cmdprint'], [set_level]*3):
@@ -5425,12 +5435,13 @@ class Indirect_Cmd(me5_interface.MadEventCmdShell):
         return
 
 
-    def make_make_all_html_results(self, folder_names = []):
+    def make_make_all_html_results(self, folder_names = [], jobs=[], get_attr=None):
         """keep track of the P results via an instance variable.
            Do not do the html output
+           (same signature and return values as sum_html.make_all_html_results)
         """
         run = self.results.current['run_name']
-        Presults = sum_html.collect_result(self, folder_names=folder_names)
+        Presults = sum_html.collect_result(self, folder_names=folder_names, jobs=jobs)
 
         self.Presults = {}
         for i, P_comb in enumerate(Presults):
@@ -5438,7 +5449,11 @@ class Indirect_Cmd(me5_interface.MadEventCmdShell):
             self.Presults['xsec_%s' % P_comb.name[7:]] = P_comb.xsec
             self.Presults['xerr_%s' % P_comb.name[7:]] = P_comb.xerru
 
-        return Presults.xsec, Presults.xerru
+        if not get_attr:
+            return Presults.xsec, Presults.xerru
+        elif isinstance(get_attr, tuple):
+            return [getattr(Presults, attr) for attr in get_attr]
+        return getattr(Presults, get_attr)
 
     def check_nb_events(self):
         """Redefine maximum number of events for MadDM"""
