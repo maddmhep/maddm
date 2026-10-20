@@ -4,10 +4,11 @@
 
 
 from __future__ import division
-from object_library import all_particles, Particle
-import parameters as Param
+from __future__ import absolute_import
+from .object_library import all_particles, Particle
+from . import parameters as Param
 
-import propagators as Prop
+from . import propagators as Prop
 
 u = Particle(pdg_code = 2,
              name = 'u',
@@ -152,4 +153,20 @@ P__tilde__vdm = Particle(pdg_code = 999000008,
                          Y = 0)
 
 vdm__tilde__ = P__tilde__vdm.anti()
+
+e__minus__ = Particle(pdg_code = 11,
+                      name = 'e-',
+                      antiname = 'e+',
+                      spin = 2,
+                      color = 1,
+                      mass = Param.Me,
+                      width = Param.ZERO,
+                      texname = 'e-',
+                      antitexname = 'e+',
+                      charge = -1,
+                      GhostNumber = 0,
+                      LeptonNumber = 1,
+                      Y = 0)
+
+e__plus__ = e__minus__.anti()
 

@@ -1,9 +1,11 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import logging
 import os
 import collections
 
-import maddm_run_interface as maddm_run_interface
-import dm_tutorial_text as dm_tutorial_text
+from . import maddm_run_interface as maddm_run_interface
+from . import dm_tutorial_text as dm_tutorial_text
 
 import madgraph.core.base_objects as base_objects
 import madgraph.core.helas_objects as helas_objects
@@ -19,7 +21,10 @@ import models.model_reader as model_reader
 from madgraph import MG5DIR
 
 import re
-
+import six
+from six.moves import map
+from six.moves import range
+from six.moves import zip
 pjoin = os.path.join
 
 logger = logging.getLogger('madgraph.plugin.maddm')
@@ -38,6 +43,22 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
+try:
+    import scipy
+except ImportError:
+    HAS_SCIPY = False 
+else:
+    HAS_SCIPY = True
+
+try:
+    import numpy
+except ImportError:
+    HAS_NUMPY = False
+else:
+    HAS_NUMPY = True
+
+if HAS_NUMPY and HAS_SCIPY:
+    from . import jfactor_gc as jfactor_gc
 
 class DMError(Exception): pass
 
@@ -48,7 +69,7 @@ class MadDM_interface(master_interface.MasterCmd):
 
     intro_banner=\
   "            ====================================================\n"+\
-  "            |                  "+bcolors.OKBLUE+"  MadDM v3.2                     "+bcolors.ENDC+"|\n"\
+  "            |                  "+bcolors.OKBLUE+"  MadDM v3.3                     "+bcolors.ENDC+"|\n"\
   "            ====================================================\n"+\
   "                                                                               \n"+\
   "                #########                                                        \n"+\
@@ -60,10 +81,10 @@ class MadDM_interface(master_interface.MasterCmd):
   "       ########//#####\\\\###########                   "+bcolors.FAIL+"arXiv:2107.04598        \n"+bcolors.ENDC+\
   "       ######################### ## ___________________________________________\n"+\
   "       ####################### 0  # "+bcolors.OKGREEN+" _     _               _  _____   _     _  \n"+bcolors.ENDC+\
-  "       #############   0  ###    ## "+bcolors.OKGREEN+"| \   / |   ___    ___|| | ___ \ | \   / | \n"+bcolors.ENDC+\
+  "       #############   0  ###    ## "+bcolors.OKGREEN+"| \\   / |   ___    ___|| | ___ \\ | \\   / | \n"+bcolors.ENDC+\
   "       ##############    #########  "+bcolors.OKGREEN+"||\\\\ //|| / __ |  / __ | ||   || ||\\\\ //|| \n"+bcolors.ENDC+\
   "        ##########################  "+bcolors.OKGREEN+"||  V  || ||__||  ||__|| ||___|| ||  V  || \n"+bcolors.ENDC+\
-  "         ###################   ##   "+bcolors.OKGREEN+"||     || \_____\ \____| |_____/ ||     || \n"+bcolors.ENDC+\
+  "         ###################   ##   "+bcolors.OKGREEN+"||     || \\_____\\ \\____| |_____/ ||     || \n"+bcolors.ENDC+\
   "          ############       ###    ___________________________________________\n"+\
   "           ##########    ######                                                 \n"+\
   "             ################                                                   \n"+\
@@ -84,13 +105,17 @@ class MadDM_interface(master_interface.MasterCmd):
                    'DD': 1996,
                    'ID': 1995}
     
-    eff_operators_SI = {1:'SIEFFS', 2:'SIEFFF', 3:'SIEFFV'}
-    eff_operators_SD = {1:False, 2:'SDEFFF', 3:'SDEFFV'} 
+    eff_operators_SI_nucleon = {1:'SIEFFS', 2:'SIEFFF', 3:'SIEFFV'}
+    eff_operators_SD_nucleon = {1:False, 2:'SDEFFF', 3:'SDEFFV'} 
+
+    eff_operators_SI_electron = {1:'SIEFFS', 2:'SIEFFF', 3:'SIEFFV'}
+    eff_operators_SD_electron = {1:False, 2:'SDEFFF', 3:'SDEFFV'}
     
     
     # for install command:
     _install_opts = list(master_interface.MasterCmd._install_opts)
     _install_opts.append('PPPC4DMID')
+    _install_opts.append('RAPIDD')
     _advanced_install_opts = list(master_interface.MasterCmd._advanced_install_opts)
     _advanced_install_opts +=['gsl', 'fitsio','dragon','dragon_data']
     
@@ -124,7 +149,99 @@ class MadDM_interface(master_interface.MasterCmd):
         self.exec_cmd('save options %s' % 'pppc4dmid_path')
 
         return
-    
+
+    #===========================================================================
+    # RAPIDD (direct detection, git submodule vendor/RAPIDD_for_DM)
+    #===========================================================================
+    rapidd_dir = pjoin(MDMDIR, 'vendor', 'RAPIDD_for_DM')
+    rapidd_url = 'https://github.com/cheekyparticle/RAPIDD_for_DM.git'
+
+    def do_install(self, line, *args, **opts):
+        """add 'install RAPIDD' to the MG5_aMC install command"""
+
+        split = self.split_arg(line)
+        if split and split[0].lower() == 'rapidd':
+            return self.install_rapidd()
+        return super(MadDM_interface, self).do_install(line, *args, **opts)
+
+    @classmethod
+    def get_rapidd_lib(cls):
+        """path of the compiled RAPIDD library"""
+
+        import platform
+        lib_name = {'Linux': 'libRAPIDD.so',
+                    'Darwin': 'libRAPIDD.dylib',
+                    'Windows': 'RAPIDD.dll'}.get(platform.system())
+        if not lib_name:
+            raise OSError("Unsupported operating system")
+        return pjoin(cls.rapidd_dir, 'lib', 'build', lib_name)
+
+    @classmethod
+    def is_rapidd_downloaded(cls):
+        return os.path.exists(pjoin(cls.rapidd_dir, 'instructions_cmake.sh'))
+
+    def install_rapidd(self):
+        """download (if needed) and compile RAPIDD. Return True on success"""
+
+        import shutil
+        import subprocess
+
+        if not self.is_rapidd_downloaded():
+            if not shutil.which('git'):
+                logger.error("git is required to download RAPIDD. Please install git, or run:\n"
+                             "  git clone %s %s" % (self.rapidd_url, self.rapidd_dir))
+                return False
+            logger.info("Downloading RAPIDD in %s" % self.rapidd_dir, '$MG:BOLD')
+            try:
+                if os.path.exists(pjoin(MDMDIR, '.git')):
+                    # maddm is a git checkout: RAPIDD is a submodule
+                    subprocess.run(['git', 'submodule', 'update', '--init', '--recursive',
+                                    pjoin('vendor', 'RAPIDD_for_DM')],
+                                   check=True, cwd=MDMDIR)
+                else:
+                    # maddm is not a git checkout: clone RAPIDD directly
+                    if os.path.isdir(self.rapidd_dir) and not os.listdir(self.rapidd_dir):
+                        os.rmdir(self.rapidd_dir)
+                    subprocess.run(['git', 'clone', '--recursive', self.rapidd_url, self.rapidd_dir],
+                                   check=True)
+            except subprocess.CalledProcessError as error:
+                logger.error("RAPIDD download failed: %s" % error)
+                return False
+
+        if not shutil.which('cmake'):
+            logger.error("cmake is required to compile RAPIDD. Please install cmake and run 'install RAPIDD'.")
+            return False
+        logger.info("Compiling RAPIDD...", '$MG:BOLD')
+        try:
+            subprocess.run(['sh', 'instructions_cmake.sh'], check=True, cwd=self.rapidd_dir)
+        except subprocess.CalledProcessError as error:
+            logger.error("RAPIDD compilation failed: %s" % error)
+            return False
+
+        if not os.path.exists(self.get_rapidd_lib()):
+            logger.error("RAPIDD compilation failed: %s not found" % self.get_rapidd_lib())
+            return False
+        logger.info("RAPIDD installed.", '$MG:BOLD')
+        return True
+
+    def check_rapidd(self):
+        """make sure that RAPIDD is available, asking the user to install it if
+        needed. Return True if RAPIDD can be used."""
+
+        if os.path.exists(self.get_rapidd_lib()):
+            return True
+
+        if self.is_rapidd_downloaded():
+            question = "RAPIDD (needed for direct detection) is not compiled. Do you want to compile it now?"
+        else:
+            question = "RAPIDD (needed for direct detection) is not installed. Do you want to download and compile it now?"
+        ans = self.ask(question, 'y', ['y', 'n'])
+        if ans == 'n':
+            logger.warning("RAPIDD not installed: skipping DM-nucleon direct detection. "
+                           "You can install it later with 'install RAPIDD'.")
+            return False
+        return self.install_rapidd()
+
     def set_configuration(self, config_path=None, final=True, **opts):
 
         out = master_interface.MasterCmd.set_configuration(self, config_path, final, **opts)
@@ -159,6 +276,8 @@ class MadDM_interface(master_interface.MasterCmd):
         # self.coannihilation_diff = 1
         self.option_2to2lo = False # keep track if the user wants to use this option
         self._relic_off = True
+        self._has_direct_nucleon = False
+        self._has_direct_electron = False
         self._has_indirect = False
         self._has_spectral = False
         self.relic_generated_by_id = False # keep track if relic has been generated by id
@@ -197,7 +316,7 @@ class MadDM_interface(master_interface.MasterCmd):
                 'z2-even': [p for p in self._curr_model.get('particles') if abs(p.get('pdg_code')) not in [a.get('pdg_code') for a in self._z2_odd+self._disconnected_particles]],
                 'disconnected': self._disconnected_particles
             }
-            which = [arg for arg in arguments if arg in to_display.keys()]
+            which = [arg for arg in arguments if arg in list(to_display.keys())]
             which = list(set(which))
             for arg in which:
                 logger.info(arg + ": " + ", ".join([p.get_name() for p in to_display[arg]]))
@@ -214,7 +333,7 @@ class MadDM_interface(master_interface.MasterCmd):
                 'indirect': bool(self._indirect_amps)
             }
             # in the following lines we filter out only the allowed options
-            which = [arg for arg in arguments if arg in generated_amps.keys() + ['all', 'last']]
+            which = [arg for arg in arguments if arg in list(generated_amps.keys()) + ['all', 'last']]
             which = list(set(which))
             for arg in which:
                 arguments.remove(arg)
@@ -232,7 +351,7 @@ class MadDM_interface(master_interface.MasterCmd):
             N_head = 80
             if 'last' in which:
                 header = "==== LAST %s " % arguments[0].upper()
-                print header + "=" * max([N_head - len(header), 0])
+                print(header + "=" * max([N_head - len(header), 0]))
                 with misc.TMP_variable(self, ['_curr_amps'], [self._last_amps]):
                     try:
                         super(MadDM_interface, self).do_display(*args, **opts)
@@ -244,7 +363,7 @@ class MadDM_interface(master_interface.MasterCmd):
                     if (category == 'relic') and self._relic_off:
                         continue
                     header = "==== %s %s " % (category.upper(), arguments[0].upper())
-                    print header + "=" * max([N_head - len(header), 0])
+                    print(header + "=" * max([N_head - len(header), 0]))
                     with misc.TMP_variable(self, ['_curr_amps'], [getattr(self, "_%s_amps" % category)]):
                         super(MadDM_interface, self).do_display(*args, **opts)
                 return
@@ -297,6 +416,44 @@ class MadDM_interface(master_interface.MasterCmd):
         logger.info("**************** MG5AMC OPTION ***************************")
         super(MadDM_interface, self).help_display()
 
+################################################################################        
+# J-FACTOR COMMAND
+################################################################################        
+    def do_jfactor(self, *args, **opts):
+        ''' compute the J-factor, leveraging the script jfactor_gc.py
+        '''
+        if not (HAS_NUMPY and HAS_SCIPY):
+            logger.error("numpy and/or scipy are required to run this command")
+        parser = jfactor_gc.command_parser()
+        arguments = self.split_arg(args[0]) #args[0] is the line of the command
+        jfactor_value, density_profile = jfactor_gc.parse_cmd_line(parser=parser, cmd_line=arguments)
+        logger.info("J-factor = %.4e GeV^2 cm^{-5}" % jfactor_value)
+        logger.info("Density profile: " + str(density_profile))
+
+    def complete_jfactor(self, text, line, begidx, endidx, formatting = True):
+        # args = self.split_arg(line[:begidx])
+        # 
+        # out = super(MadDM_interface, self).complete_display(text, line, begidx, endidx)
+        #
+        # if out is None:
+        #     out = []
+        # if not isinstance(out, dict):
+        #     out = {"standard options": out}
+        #
+        # if len(args) > 0 and all(arg in ['darkmatter', 'coannihilators', 'z2-odd', 'z2-even', 'disconnected'] for arg in args[1:]):
+        #     options = ['darkmatter', 'coannihilators', 'z2-odd', 'z2-even', 'disconnected']
+        #     out['maddm options'] = self.list_completion(text, options , line)
+        #
+        # if len(args) > 1 and args[1] in ['processes', 'diagrams', 'diagrams_text']:
+        #     options = ['relic', 'direct', 'indirect', 'all', 'last']
+        #     out['processes|diagrams|diagrams_text options'] = self.list_completion(text, options, line)
+        #
+        # return self.deal_multiple_categories(out, formatting)
+        pass
+
+    def help_jfactor(self):
+        parser = jfactor_gc.command_parser()
+        logger.info(parser.format_help().replace("usage: %s" % parser.prog, bcolors.BOLD + "Compute the J-Factor for the Galactic Center\n" + bcolors.ENDC + "             jfactor"))
 
 ################################################################################        
 # DEFINE COMMAND
@@ -315,18 +472,20 @@ class MadDM_interface(master_interface.MasterCmd):
                     #remove None
                     self._dm_candidate = [dm for dm in self._dm_candidate if dm]
                     if not self._dm_candidate:
-                        raise DMError, '%s is not a valid particle for the model.' % args[1] 
+                        raise DMError('%s is not a valid particle for the model.' % args[1]) 
+                    self._z2_odd.extend([p for p in self._dm_candidate])
+                    self.find_z2_odd_particles()
+
                     if len(self._dm_candidate) == 1:
                         # No update of the model if 2(or more) DM since DD is not possible
-                        self._z2_odd.extend([p for p in self._dm_candidate])
-                        self.find_z2_odd_particles()
                         self.update_model_with_EFT()
                     else:
                         txt = self._curr_model.write_param_card()
                         ff = open('/tmp/param_card.dat','w')
                         ff.write(txt)
                         ff.close()
-                        self.define_benchmark(answer=True, path='/tmp/param_card.dat')
+                        with misc.TMP_variable(self, '_dm_candidate', []):
+                            self.define_benchmark(answer=True, path='/tmp/param_card.dat')
                         
             elif args[0] == 'coannihilator':
                 if not self._dm_candidate:
@@ -466,9 +625,9 @@ class MadDM_interface(master_interface.MasterCmd):
 
         # Check to see if we actually found a DM candidate
         if not dm_particles:
-            raise DMError, "No dark matter candidates in the model!"
+            raise DMError("No dark matter candidates in the model!")
         if dm_mass == 0:
-            raise DMError, "No dark matter candidate since we found a DarkEnergy candidate: %s" % dm_particles[0]['name']
+            raise DMError("No dark matter candidate since we found a DarkEnergy candidate: %s" % dm_particles[0]['name'])
 
         # Validity check
         dm_names = [p.get('name') for p in dm_particles]
@@ -602,9 +761,13 @@ class MadDM_interface(master_interface.MasterCmd):
     #     else:
     #         logger.info("No coannihilation partners found.", '$MG:BOLD')
 
-    def search_coannihilator(self):
+    def search_coannihilator(self,excluded=None):
         ''' automatically make the coannihilators list equal to the list of Z2-odd particles found, exclude dark matter candidates. '''
-        self._coannihilation[:] = [p for p in self._z2_odd if p.get_pdg_code() not in [dm.get_pdg_code() for dm in self._dm_candidate]]
+        if excluded is None:
+            excluded = []
+        self._coannihilation[:] = [p for p in self._z2_odd if 
+                           (p.get_pdg_code() not in [dm.get_pdg_code() for dm in self._dm_candidate] and 
+                           p.get_pdg_code() not in excluded)]
         logger.info("Found coannihilator(s): " + ", ".join([p.get_name() for p in self._coannihilation]))
 
     def find_z2_odd_particles(self):
@@ -742,7 +905,7 @@ class MadDM_interface(master_interface.MasterCmd):
         
         if args[1] == 'maddm_first_indirect':
             args.insert(1, pjoin(MG5DIR, 'input', 'mg5_configuration.txt'))
-            print args
+            print(args)
             return args
         else:
             return super(MadDM_interface, self).check_save(args)
@@ -823,9 +986,9 @@ class MadDM_interface(master_interface.MasterCmd):
             if '@' in line: # this allows to substitute the tag words with the numbers allowed in MadDM
                 try:
                     line = re.sub(r'''(?<=@)(%s\b)''' % '\\b|'.join(self.process_tag), 
-                                lambda x: `self.process_tag[x.group(0)]`, line)
+                                lambda x: repr(self.process_tag[x.group(0)]), line)
                     tag = int(re.search(r'(?<=@)\d+', line).group(0))
-                    maddm_can_handle = tag in self.process_tag.values()
+                    maddm_can_handle = tag in list(self.process_tag.values())
                 except:
                     tag = None
                     maddm_can_handle = False
@@ -866,7 +1029,7 @@ class MadDM_interface(master_interface.MasterCmd):
                             self._has_indirect = (self._has_indirect or line_or_cont == 'cont')
                             self._has_spectral = (self._has_spectral or line_or_cont == 'line')
                             return function_return
-                    except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
+                    except (self.InvalidCmd, diagram_generation.NoDiagramException) as error:
                         logger.error(error)
                         self.change_principal_cmd('MadGraph')
                         return
@@ -878,11 +1041,11 @@ class MadDM_interface(master_interface.MasterCmd):
                         # switch on relic density in case the input process is related to relic density
                         self._relic_off = (self._relic_off and (tag not in [self.process_tag['DM2SM'], self.process_tag['DMSM']]))
                         return function_return
-                    except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
+                    except (self.InvalidCmd, diagram_generation.NoDiagramException) as error:
                         logger.error(error)
                         return
                 elif user:
-                    logger.error("Process not supported by MadDM, allowed tags are: " + ", ".join(self.process_tag.keys()))
+                    logger.error("Process not supported by MadDM, allowed tags are: " + ", ".join(list(self.process_tag.keys())))
                     return
             
             return super(MadDM_interface, self).do_add(line)
@@ -1000,7 +1163,7 @@ class MadDM_interface(master_interface.MasterCmd):
 
     def do_output(self, line):
         """ """
-        
+
         if not self._curr_amps:
             self.do_generate('relic_density')
             self.do_add('direct_detection')
@@ -1010,26 +1173,26 @@ class MadDM_interface(master_interface.MasterCmd):
             self.history.append('add direct_detection')            
             self.history.append('add indirect_detection')
             self.history.append('add indirect_spectral_features')
-        
+
         args = self.split_arg(line)
         if not args or args[0] not in self._export_formats + ['maddm']:
             if self._curr_amps:
-                if any(amp.get('process').get('id') in self.process_tag.values()
+                if any(amp.get('process').get('id') in list(self.process_tag.values())
                         for amp in self._curr_amps):
                     args.insert(0, 'maddm')
-            
+
         if args and args[0] == 'maddm':
             line = ' '.join(args)
 
         if self._curr_amps:
             super(MadDM_interface, self).do_output(line)
-        
+
         path = self._done_export[0]
         if any(proc for proc in self._ID_cont_procs + self._ID_line_procs):
-            self.output_indirect(path, 'Indirect_tree_cont', self._ID_cont_procs[0], self._ID_cont_matrix_elements[0], self._ID_cont_amps[0])
-            self.output_indirect(path, 'Indirect_tree_line', self._ID_line_procs[0], self._ID_line_matrix_elements[0], self._ID_line_amps[0])
-            self.output_indirect(path, 'Indirect_LI_cont',   self._ID_cont_procs[1], self._ID_cont_matrix_elements[1], self._ID_cont_amps[1])
-            self.output_indirect(path, 'Indirect_LI_line',   self._ID_line_procs[1], self._ID_line_matrix_elements[1], self._ID_line_amps[1])
+            self.output_indirect(path, 'Indirect_tree_cont', self._ID_cont_procs[0], self._ID_cont_matrix_elements[0], self._ID_cont_amps[0], opts = args[2:])
+            self.output_indirect(path, 'Indirect_tree_line', self._ID_line_procs[0], self._ID_line_matrix_elements[0], self._ID_line_amps[0], opts = args[2:])
+            self.output_indirect(path, 'Indirect_LI_cont',   self._ID_cont_procs[1], self._ID_cont_matrix_elements[1], self._ID_cont_amps[1], opts = args[2:])
+            self.output_indirect(path, 'Indirect_LI_line',   self._ID_line_procs[1], self._ID_line_matrix_elements[1], self._ID_line_amps[1], opts = args[2:])
 
         # find processes names map and write proc_characteristics file
         curr_processes_names_map      = self.extract_processes_names(self._get_processes_from_amplitudes_list(self._curr_amps))
@@ -1039,15 +1202,18 @@ class MadDM_interface(master_interface.MasterCmd):
         li_line_processes_names_map   = self.extract_processes_names(self._get_processes_from_amplitudes_list(self._ID_line_amps[1]))
         # store processes explicitly asked by indirect detection, so that we can consider them only when using fast mode
         indirect_detection_asked_processes = list(tree_cont_processes_names_map.keys()) + list(tree_line_processes_names_map.keys()) + list(li_cont_processes_names_map.keys()) + list(li_line_processes_names_map.keys())
-        import MGoutput
+        from . import MGoutput
         proc_path = pjoin(path, 'matrix_elements', 'proc_characteristics')
         proc_charac = MGoutput.MADDMProcCharacteristic(proc_path)
         proc_charac['relic_density_off']      = self._relic_off
+        proc_charac['has_direct_detection'] = self._has_direct_nucleon # otherwise we should rename the other occurrences of has_direct_detection accordingly
+        proc_charac['has_directional_detection'] = self._has_direct_nucleon # if we have direct detection, then we have directional detection as well
+        proc_charac['has_direct_electron'] = self._has_direct_electron
         proc_charac['has_indirect_detection'] = self._has_indirect
         proc_charac['has_indirect_spectral']  = self._has_spectral
         proc_charac['forbid_fast']            = self._forbid_fast
         proc_charac['pdg_particle_map']       = self._pdg_particle_map
-        proc_charac['processes_names_map']    = dict(curr_processes_names_map.items() + tree_cont_processes_names_map.items() + tree_line_processes_names_map.items() + li_cont_processes_names_map.items() + li_line_processes_names_map.items())
+        proc_charac['processes_names_map']    = { **curr_processes_names_map, **tree_cont_processes_names_map, **tree_line_processes_names_map, **li_cont_processes_names_map, **li_line_processes_names_map }
         proc_charac['indirect_detection_asked_processes'] = indirect_detection_asked_processes
         proc_charac.write(proc_path)
 
@@ -1121,7 +1287,7 @@ class MadDM_interface(master_interface.MasterCmd):
             proc_parsing_friendly.append(",".join(str_parts))
         return collections.OrderedDict(zip(proc_human_readable, proc_parsing_friendly))
 
-    def output_indirect(self, path, directory, ID_procs, ID_matrix_elements, ID_amps):
+    def output_indirect(self, path, directory, ID_procs, ID_matrix_elements, ID_amps, opts):
         ''' Output commands for indirect_detection or loop-induced '''
         if not ID_amps:
             return
@@ -1130,13 +1296,16 @@ class MadDM_interface(master_interface.MasterCmd):
         # if loop_induced:
         #     self._forbid_fast = True
 
+        if "--hel_recycling" not in opts:
+            opts += ["--hel_recycling=False"]
+
         import aloha.aloha_lib as aloha_lib
         aloha_lib.KERNEL = aloha_lib.Computation()
 
         with misc.TMP_variable(self,
             ['_curr_proc_defs', '_curr_matrix_elements', '_curr_amps', '_done_export'],
             [ID_procs, ID_matrix_elements, ID_amps, None]):
-            super(MadDM_interface, self).do_output('indirect %s/%s' % (path, directory))
+            super(MadDM_interface, self).do_output('indirect %s/%s %s' % (path, directory, " ".join(opts)))
             ID_amps[:] = self._curr_amps
             
         #ensure to sync the param_card
@@ -1284,7 +1453,7 @@ class MadDM_interface(master_interface.MasterCmd):
         self.define_multiparticles('dm_particles', self._dm_candidate+self._coannihilation)
 
         self.do_display('multiparticles')
-        sm_pdgs = range(1, 7) + range(11, 17) + range(21, 26) #quarks/leptons/bosons
+        sm_pdgs = list(range(1, 7)) + list(range(11, 17)) + list(range(21, 26)) #quarks/leptons/bosons
         sm_part = [self._curr_model.get_particle(pdg) for pdg in sm_pdgs if self._curr_model.get_particle(pdg)]
 
         self.define_multiparticles('fs_particles', sm_part +bsm_final_states)
@@ -1305,8 +1474,8 @@ class MadDM_interface(master_interface.MasterCmd):
 
         # Generate all the DM -> DM processes
         nb_dm = len(self._dm_candidate + self._coannihilation)
-        for i in xrange(nb_dm):
-            for j in xrange(i,nb_dm):
+        for i in range(nb_dm):
+            for j in range(i,nb_dm):
                 if  excluded_particles:
                     proc = "DM_particle_%s DM_particle_%s > dm_particles dm_particles / %s %s @DM2DM"\
                        % (i,j,' '.join(excluded_particles), coupling)
@@ -1328,8 +1497,8 @@ class MadDM_interface(master_interface.MasterCmd):
 
         # Generate all the DM particles scattering off of the thermal background and
         # change to a different DM species (again, no pure scatterings)
-        for i in xrange(nb_dm):
-            for j in xrange(nb_dm):
+        for i in range(nb_dm):
+            for j in range(nb_dm):
                 if i == j:
                     continue
                 if excluded_particles:
@@ -1347,8 +1516,7 @@ class MadDM_interface(master_interface.MasterCmd):
 
     def generate_direct(self, excluded_particles=[]):
         """User level function which performs direct detection functions        
-           Generates the DM - q,g scattering matrix elements for spin dependent 
-           and spin independent direct detection cross section                   
+           Generate both DM - q,g and DM - e direct detection
            Currently works only with canonical mode and one dm candidate.        
            The function also merges the dark matter model with the effective        
            vertex model.          
@@ -1364,21 +1532,72 @@ class MadDM_interface(master_interface.MasterCmd):
         if len(self._dm_candidate) > 1:
             logger.warning("More than one DM candidate. Can not run Direct Detection.")
             return 
-  
-        #generate a special
+
+        ### Check that RAPIDD is installed (ask to download/compile it if not)
+        if self.check_rapidd():
+            self._has_direct_nucleon = self.generate_direct_nucleon(excluded_particles)
+
         
+        self._has_direct_electron = self.generate_direct_electron(excluded_particles)
+
+    def generate_direct_electron(self, excluded_particles=[]):
+        """User level function which performs direct detection functions        
+           Generates the DM - e scattering matrix elements for spin dependent 
+           and spin independent direct detection cross section                   
+           Currently works only with canonical mode and one dm candidate.        
+           The function also merges the dark matter model with the effective        
+           vertex model.          
+        """
+        dm_spin = int(self._dm_candidate[0]['spin'])
+        eff_operators_SI_electron = self.eff_operators_SI_electron[dm_spin]
+        eff_operators_SD_electron = self.eff_operators_SD_electron[dm_spin]
+        
+        logger.info("Generating X Electron > X Electron diagrams from the full lagrangian...")
+        has_direct = self.DiagramsDD_electron(eff_operators_SI_electron, eff_operators_SD_electron, 'QED', excluded_particles)
+
+        if not has_direct:
+            logger.warning("No Direct Detection Feynman Diagram for DM-electron scattering.")
+            return False
+        
+        logger.info("Generating X Electron > X Electron diagrams from the effective lagrangian...")
+        #ONLY EFFECTIVE LAGRANGIAN
+        self.DiagramsDD_electron(eff_operators_SI_electron, eff_operators_SD_electron, 'SI',excluded_particles)
+
+        logger.info("INFO: Generating X Electron > X Electron diagrams from the effective+full lagrangian...")
+        #EFFECTIVE + FULL
+        self.DiagramsDD_electron(eff_operators_SI_electron, eff_operators_SD_electron, 'SI+QED',excluded_particles)
+    
+        if (eff_operators_SD_electron != False):
+            logger.info("Doing the spin dependent part...")
+            logger.info("Generating X Electron > X Electron diagrams from the effective lagrangian...")
+        
+            self.DiagramsDD_electron(eff_operators_SI_electron, eff_operators_SD_electron, 'SD',excluded_particles)
+            #EFFECTIVE + FULL
+            logger.info("Generating X Electron > X Electron diagrams from the effective + full lagrangian...")
+            self.DiagramsDD_electron(eff_operators_SI_electron, eff_operators_SD_electron, 'SD+QED',excluded_particles)
+
+        return True
+
+    def generate_direct_nucleon(self, excluded_particles=[]):
+        """User level function which performs direct detection functions        
+           Generates the DM - q,g scattering matrix elements for spin dependent 
+           and spin independent direct detection cross section                   
+           Currently works only with canonical mode and one dm candidate.        
+           The function also merges the dark matter model with the effective        
+           vertex model.          
+        """
         #Now figure out the label of the effective vertex to use. The convention is:
         #<SI or SD>EFF<F, S, or V>, i.e. SIEFFV for Spin Independent Effective vertex for Vector Current.
         dm_spin = int(self._dm_candidate[0]['spin'])
-        eff_operators_SI = self.eff_operators_SI[dm_spin]
-        eff_operators_SD = self.eff_operators_SD[dm_spin]
+        eff_operators_SI = self.eff_operators_SI_nucleon[dm_spin]
+        eff_operators_SD = self.eff_operators_SD_nucleon[dm_spin]
         
         logger.info("Generating X Nucleon > X Nucleon diagrams from the full lagrangian...")
         has_direct = self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'QED', excluded_particles)
 
         if not has_direct:
-            logger.warning("No Direct Detection Feynman Diagram")
-            return
+            logger.warning("No Direct Detection Feynman Diagram for DM-nucleus scattering.")
+            return False
         
         logger.info("Generating X Nucleon > X Nucleon diagrams from the effective lagrangian...")
         #ONLY EFFECTIVE LAGRANGIAN
@@ -1397,6 +1616,8 @@ class MadDM_interface(master_interface.MasterCmd):
             logger.info("Generating X Nucleon > X Nucleon diagrams from the effective + full lagrangian...")
             self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'SD+QED',excluded_particles)
 
+        return True
+
     #-----------------------------------------------------------------------#
     @misc.mute_logger(['madgraph','aloha','cmdprint'], [30,30,30])
     def DiagramsDD(self, SI_name, SD_name, type, excluded=[]):
@@ -1411,19 +1632,24 @@ class MadDM_interface(master_interface.MasterCmd):
                  GenerateDiagramsDirDetect() function and no where else!
         """                                                             
 
-        quarks = range(1,7) # ['d', 'u', 's', 'c', 'b','t']
+        quarks = list(range(1,7)) # ['d', 'u', 's', 'c', 'b','t']
         antiquarks = [-1*pdg for pdg in quarks] # ['d~', 'u~', 's~', 'c~', 'b~','t~']
-        
+
+        def format_order(name, order):
+            if not name:
+                return ''
+            return name+order
+
         if type == 'SI':
-            orders = '%s==2' % SI_name
+            orders = format_order(SI_name, '==2')
         elif type == 'SD':
-            orders = '%s==2' % SD_name
+            orders = format_order(SD_name, '==2')
         elif type == 'QED':
-            orders = '%s=0 %s=0' % (SD_name, SI_name)
+            orders = format_order(SD_name, '=0') + ' ' + format_order(SI_name, '=0')
         elif type == 'SI+QED':
-            orders = '%s=0 %s<=99' % (SD_name, SI_name)
+            orders = format_order(SD_name, '=0') + ' ' + format_order(SI_name, '<=99')
         elif type == 'SD+QED':
-            orders = '%s<=99 %s=0' % (SD_name, SI_name)
+            orders = format_order(SD_name, '<=99') + ' ' + format_order(SI_name, '=0')
                 
         #loop over quarks
         has_diagram = False
@@ -1438,7 +1664,7 @@ class MadDM_interface(master_interface.MasterCmd):
 
             try:
                 self.do_add('process %s' %proc, user=False)
-            except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
+            except (self.InvalidCmd, diagram_generation.NoDiagramException) as error:
                 logger.debug(error)
             else:
                 has_diagram = True
@@ -1453,11 +1679,78 @@ class MadDM_interface(master_interface.MasterCmd):
 
                 try:
                     self.do_add('process %s' % proc, user=False)
-                except (self.InvalidCmd, diagram_generation.NoDiagramException), error:
+                except (self.InvalidCmd, diagram_generation.NoDiagramException) as error:
                     logger.debug(error)
                 else:
                     has_diagram = True
            
+        self._last_amps = [amp for amp in self._curr_amps if amp.get('process').get('id') == self.process_tag['DD']]
+        return has_diagram
+
+    #-----------------------------------------------------------------------#
+    @misc.mute_logger(['madgraph','aloha','cmdprint'], [30,30,30])
+    def DiagramsDD_electron(self, SI_name, SD_name, type, excluded=[]):
+        """Generates direct detection electron scattering diagrams. i_dm is the index of DM part. 
+                 Whether spin dependent or spin independent diagrams should be                 
+                 calculated. XX_order parameters determine maximum order of  a
+                 coupling. For instance, if you only want effective vertices for
+                 spin independent coupling you would set SI_order = 2 and all others
+                 to zero. If you want the spin independent full lagrangian + eff.
+                 then you need to set SI_order=2 and QED_order=2...
+        """                                                             
+
+        def format_order(name, order):
+            if not name:
+                return ''
+            return name+order
+
+        if type == 'SI':
+            orders = format_order(SI_name, '==2')
+        elif type == 'SD':
+            orders = format_order(SD_name, '==2')
+        elif type == 'QED':
+            orders = format_order(SD_name, '=0') + ' ' + format_order(SI_name, '=0')
+        elif type == 'SI+QED':
+            orders = format_order(SD_name, '=0') + ' ' + format_order(SI_name, '<=99')
+        elif type == 'SD+QED':
+            orders = format_order(SD_name, '<=99') + ' ' + format_order(SI_name, '=0')
+           
+        #if no DD diagrams
+        has_diagram = False
+
+        #PDG number of the electron
+        electron = 11
+
+        for i in [electron,-1*electron]:
+            proc = ' %(DM)s %(P)s > %(DM)s %(P)s %(excluded)s %(orders)s @DD' %\
+                    {'DM': self._dm_candidate[0].get('name'),
+                     'P': i,
+                     'excluded': ('/ %s' % ' '.join(excluded) if excluded else ''),
+                     'orders': orders
+                     }
+
+            try:
+                self.do_add('process %s' %proc, user=False)
+            except (self.InvalidCmd, diagram_generation.NoDiagramException) as error:
+                logger.debug(error)
+            else:
+                has_diagram = True
+            
+            if self._dm_candidate[0].get('antiname') != self._dm_candidate[0].get('name'):
+                proc = ' %(DM)s %(P)s > %(DM)s %(P)s %(excluded)s %(orders)s @DD' %\
+                    {'DM': self._dm_candidate[0].get('antiname'),
+                     'P': i,
+                     'excluded': ('/ %s' % ' '.join(excluded) if excluded else ''),
+                     'orders': orders
+                     }
+
+                try:
+                    self.do_add('process %s' % proc, user=False)
+                except (self.InvalidCmd, diagram_generation.NoDiagramException) as error:
+                    logger.debug(error)
+                else:
+                    has_diagram = True
+
         self._last_amps = [amp for amp in self._curr_amps if amp.get('process').get('id') == self.process_tag['DD']]
         return has_diagram
 
@@ -1505,8 +1798,8 @@ class MadDM_interface(master_interface.MasterCmd):
             return bool(amplitude['decay_chains'])
         
         diagrams = bool(amplitude['diagrams'])
-        born_diagrams = bool('born_diagrams' in amplitude.keys() and amplitude['born_diagrams'])
-        loop_diagrams = bool('loop_diagrams' in amplitude.keys() and amplitude['loop_diagrams'])
+        born_diagrams = bool('born_diagrams' in list(amplitude.keys()) and amplitude['born_diagrams'])
+        loop_diagrams = bool('loop_diagrams' in list(amplitude.keys()) and amplitude['loop_diagrams'])
         return any([diagrams, born_diagrams, loop_diagrams])
 
     def indirect_contains_photon(self, final_states):
@@ -1574,9 +1867,9 @@ class MadDM_interface(master_interface.MasterCmd):
             The processes are loop-induced if the model does not provide effective vertices.
             The user can specify a single final state to analyze.
         """
-        print("-"*99)
+        print(("-"*99))
         logger.warning("You are using the module indirect_spectral_feature. This module is still in beta release.\nInstabilities at small velocities, vave_indirect_line < 1e-3c, might occur. Consider choosing larger values of vave_indirect_line if possible.")
-        print("-"*99)
+        print(("-"*99))
 
         self._has_spectral, state = self.check_indirect_and_spectral(cmd = 'indirect_spectral_features', argument = argument)
         if state:
@@ -1597,7 +1890,7 @@ class MadDM_interface(master_interface.MasterCmd):
         backup_amps = [amp for amp in self._ID_line_amps[0] + self._ID_line_amps[1]]
         if argument == []:
             # exclude electric and color charged particles because of course they can't generate 'a _bsm_' diagrams
-            charged_particles = [pdg_code for pdg_code, particle in self._curr_model.get('particle_dict').iteritems() if particle.get('charge') != 0. or particle.get('color') != 1]
+            charged_particles = [pdg_code for pdg_code, particle in six.iteritems(self._curr_model.get('particle_dict')) if particle.get('charge') != 0. or particle.get('color') != 1]
             odd_and_disconnected = self.list_odd_disconnected_pdg()
             bsm_content = self.indirect_bsm_multiparticle(excluded = charged_particles+odd_and_disconnected)
             final_states = ['22 22', '22 23', '22 25']
@@ -1676,7 +1969,7 @@ class MadDM_interface(master_interface.MasterCmd):
                                      [ID_procs[0], ID_matrix_elements[0], ID_amps[0]]):
                     self.do_add('process %s' % proc, user=False)
                     last_amp = self._curr_amps[-1]
-            except diagram_generation.NoDiagramException, error:
+            except diagram_generation.NoDiagramException as error:
                 if not self.model_nlo:
                     logger.error(". ".join(error.args))
                 if allow_loops and self.model_nlo:
@@ -1687,7 +1980,7 @@ class MadDM_interface(master_interface.MasterCmd):
                             self.do_add('process %s' % proc, user=False)
                             last_amp = self._curr_amps[-1]
                             self._forbid_fast = True
-                        except ( self.InvalidCmd, diagram_generation.NoDiagramException ), error:
+                        except (self.InvalidCmd, diagram_generation.NoDiagramException) as error:
                             if "cannot handle loop processes" in error.args[0]:
                                 logger.error("No amplitudes have been generated at tree-level, and this model does not allow for loop-induced computations.")
                                 self.model_nlo = False
@@ -1698,11 +1991,11 @@ class MadDM_interface(master_interface.MasterCmd):
                                 self.do_add('process %s' % proc, user=False)
                                 last_amp = self._curr_amps[-1]
                                 self._forbid_fast = True
-                            except ( self.InvalidCmd, diagram_generation.NoDiagramException ), error:
+                            except (self.InvalidCmd, diagram_generation.NoDiagramException) as error:
                                 # if no loop-induced diagrams have been found then change back the command interface to MadGraph
                                 logger.error(error.args[0].replace('noborn = QED', 'noborn = QCD or QED'))
                                 self.change_principal_cmd('MadGraph')
-            except self.InvalidCmd, error:
+            except self.InvalidCmd as error:
                 logger.error(". ".join(error.args))
             if self.is_amplitude_not_empty(last_amp):
                 temp_amps.append(last_amp)

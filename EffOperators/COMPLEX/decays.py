@@ -3,7 +3,8 @@
 # Date: Tue 20 Jan 2015 15:06:46
 
 
-from object_library import all_decays, Decay
-import particles as P
+from __future__ import absolute_import
+from .object_library import all_decays, Decay
+from . import particles as P
 
 

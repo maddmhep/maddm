@@ -4,10 +4,11 @@
 
 
 
-from object_library import all_parameters, Parameter
+from __future__ import absolute_import
+from .object_library import all_parameters, Parameter
 
 
-from function_library import complexconjugate, re, im, csc, sec, acsc, asec, cot
+from .function_library import complexconjugate, re, im, csc, sec, acsc, asec, cot
 
 # This is a default parameter object representing 0.
 ZERO = Parameter(name = 'ZERO',
@@ -129,6 +130,14 @@ MB = Parameter(name = 'MB',
                lhablock = 'MASS',
                lhacode = [ 5 ])
 
+Me = Parameter(name = 'Me',
+               nature = 'external',
+               type = 'real',
+               value = 0.000511,
+               texname = '\\text{Me}',
+               lhablock = 'MASS',
+               lhacode = [ 11 ])
+
 sdmm = Parameter(name = 'sdmm',
                  nature = 'external',
                  type = 'real',
@@ -196,3 +205,15 @@ G = Parameter(name = 'G',
               type = 'real',
               value = '2*cmath.sqrt(aS)*cmath.sqrt(cmath.pi)',
               texname = 'G')
+
+GDMS = Parameter(name = 'GDMS',
+                 nature = 'internal',
+                 type = 'real',
+                 value = '1.',
+                 texname = 'G_S')
+
+GDMA = Parameter(name = 'GDMA',
+                 nature = 'internal',
+                 type = 'real',
+                 value = '1.',
+                 texname = 'G_A')

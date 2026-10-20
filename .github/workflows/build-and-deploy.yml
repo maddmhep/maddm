@@ -1,0 +1,51 @@
+---
+name: Build and Deploy Documentation
+on:  # yamllint disable-line rule:truthy
+  push:
+    # Trigger on pushes only to certain branches
+    branches:
+      - dev
+      - master
+    # Trigger only when changes happen in the doc or examples folders
+    paths: [doc/**, examples/**]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Check out the code
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      # Step 2: Set up Python
+      - name: Set up Python 3.x
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.x
+
+      # Step 3: Install dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install sphinx pydata-sphinx-theme sphinx-gallery pygit2
+          pip install sphinx sphinx-gallery matplotlib numpy
+
+      # Step 4: Build the documentation
+      - name: Build the documentation
+        run: |
+          cd doc
+          make html
+
+      # Step 5: Deploy to gh-pages
+      - name: Deploy documentation to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./doc/_build/html
+          # You can specify the target branch, which is gh-pages in this case
+          publish_branch: gh-pages
+          # If the branch is 'main', the folder will be 'stable',
+          # otherwise 'dev'
+          # Using the GitHub context variable `github.ref` to get
+          # the branch name
+          destination_dir: |
+            ${{ github.ref == 'refs/heads/master' && 'stable' || 'dev' }}

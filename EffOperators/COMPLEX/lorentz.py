@@ -3,9 +3,10 @@
 # Date: Tue 20 Jan 2015 15:06:46
 
 
-from object_library import all_lorentz, Lorentz
+from __future__ import absolute_import
+from .object_library import all_lorentz, Lorentz
 
-from function_library import complexconjugate, re, im, csc, sec, acsc, asec, cot
+from .function_library import complexconjugate, re, im, csc, sec, acsc, asec, cot
 
 
 FFSS1 = Lorentz(name = 'FFSS1',
@@ -35,6 +36,14 @@ FFFF5 = Lorentz(name = 'FFFF5',
 FFFF6 = Lorentz(name = 'FFFF6',
                 spins = [ 2, 2, 2, 2 ],
                 structure = 'Gamma(-1,2,-2)*Gamma(-1,4,-3)*ProjP(-3,3)*ProjP(-2,1)')
+
+FFFF7 = Lorentz(name = 'FFFF7',
+                spins = [ 2, 2, 2, 2 ],
+                structure = 'Gamma5(-3,3)*Gamma5(-2,1)*Gamma(-1,2,-2)*Gamma(-1,4,-3)')
+
+FFFF8 = Lorentz(name = 'FFFF8',
+                spins = [ 2, 2, 2, 2 ],
+                structure = 'Identity(2,1)*Identity(4,3)')
 
 FFVV1 = Lorentz(name = 'FFVV1',
                 spins = [ 2, 2, 3, 3 ],
