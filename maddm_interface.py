@@ -115,6 +115,7 @@ class MadDM_interface(master_interface.MasterCmd):
     # for install command:
     _install_opts = list(master_interface.MasterCmd._install_opts)
     _install_opts.append('PPPC4DMID')
+    _install_opts.append('RAPIDD')
     _advanced_install_opts = list(master_interface.MasterCmd._advanced_install_opts)
     _advanced_install_opts +=['gsl', 'fitsio','dragon','dragon_data']
     
@@ -148,7 +149,99 @@ class MadDM_interface(master_interface.MasterCmd):
         self.exec_cmd('save options %s' % 'pppc4dmid_path')
 
         return
-    
+
+    #===========================================================================
+    # RAPIDD (direct detection, git submodule vendor/RAPIDD_for_DM)
+    #===========================================================================
+    rapidd_dir = pjoin(MDMDIR, 'vendor', 'RAPIDD_for_DM')
+    rapidd_url = 'https://github.com/cheekyparticle/RAPIDD_for_DM.git'
+
+    def do_install(self, line, *args, **opts):
+        """add 'install RAPIDD' to the MG5_aMC install command"""
+
+        split = self.split_arg(line)
+        if split and split[0].lower() == 'rapidd':
+            return self.install_rapidd()
+        return super(MadDM_interface, self).do_install(line, *args, **opts)
+
+    @classmethod
+    def get_rapidd_lib(cls):
+        """path of the compiled RAPIDD library"""
+
+        import platform
+        lib_name = {'Linux': 'libRAPIDD.so',
+                    'Darwin': 'libRAPIDD.dylib',
+                    'Windows': 'RAPIDD.dll'}.get(platform.system())
+        if not lib_name:
+            raise OSError("Unsupported operating system")
+        return pjoin(cls.rapidd_dir, 'lib', 'build', lib_name)
+
+    @classmethod
+    def is_rapidd_downloaded(cls):
+        return os.path.exists(pjoin(cls.rapidd_dir, 'instructions_cmake.sh'))
+
+    def install_rapidd(self):
+        """download (if needed) and compile RAPIDD. Return True on success"""
+
+        import shutil
+        import subprocess
+
+        if not self.is_rapidd_downloaded():
+            if not shutil.which('git'):
+                logger.error("git is required to download RAPIDD. Please install git, or run:\n"
+                             "  git clone %s %s" % (self.rapidd_url, self.rapidd_dir))
+                return False
+            logger.info("Downloading RAPIDD in %s" % self.rapidd_dir, '$MG:BOLD')
+            try:
+                if os.path.exists(pjoin(MDMDIR, '.git')):
+                    # maddm is a git checkout: RAPIDD is a submodule
+                    subprocess.run(['git', 'submodule', 'update', '--init', '--recursive',
+                                    pjoin('vendor', 'RAPIDD_for_DM')],
+                                   check=True, cwd=MDMDIR)
+                else:
+                    # maddm is not a git checkout: clone RAPIDD directly
+                    if os.path.isdir(self.rapidd_dir) and not os.listdir(self.rapidd_dir):
+                        os.rmdir(self.rapidd_dir)
+                    subprocess.run(['git', 'clone', '--recursive', self.rapidd_url, self.rapidd_dir],
+                                   check=True)
+            except subprocess.CalledProcessError as error:
+                logger.error("RAPIDD download failed: %s" % error)
+                return False
+
+        if not shutil.which('cmake'):
+            logger.error("cmake is required to compile RAPIDD. Please install cmake and run 'install RAPIDD'.")
+            return False
+        logger.info("Compiling RAPIDD...", '$MG:BOLD')
+        try:
+            subprocess.run(['sh', 'instructions_cmake.sh'], check=True, cwd=self.rapidd_dir)
+        except subprocess.CalledProcessError as error:
+            logger.error("RAPIDD compilation failed: %s" % error)
+            return False
+
+        if not os.path.exists(self.get_rapidd_lib()):
+            logger.error("RAPIDD compilation failed: %s not found" % self.get_rapidd_lib())
+            return False
+        logger.info("RAPIDD installed.", '$MG:BOLD')
+        return True
+
+    def check_rapidd(self):
+        """make sure that RAPIDD is available, asking the user to install it if
+        needed. Return True if RAPIDD can be used."""
+
+        if os.path.exists(self.get_rapidd_lib()):
+            return True
+
+        if self.is_rapidd_downloaded():
+            question = "RAPIDD (needed for direct detection) is not compiled. Do you want to compile it now?"
+        else:
+            question = "RAPIDD (needed for direct detection) is not installed. Do you want to download and compile it now?"
+        ans = self.ask(question, 'y', ['y', 'n'])
+        if ans == 'n':
+            logger.warning("RAPIDD not installed: skipping DM-nucleon direct detection. "
+                           "You can install it later with 'install RAPIDD'.")
+            return False
+        return self.install_rapidd()
+
     def set_configuration(self, config_path=None, final=True, **opts):
 
         out = master_interface.MasterCmd.set_configuration(self, config_path, final, **opts)
@@ -1440,41 +1533,10 @@ class MadDM_interface(master_interface.MasterCmd):
             logger.warning("More than one DM candidate. Can not run Direct Detection.")
             return 
 
-        ### Check that RAPIDD is installed 
-        # Determine the platform and set the library name accordingly
-        import platform
-
-        if platform.system() == 'Linux':
-            lib_name = 'libRAPIDD.so'
-        elif platform.system() == 'Darwin':  # Darwin is macOS
-            lib_name = 'libRAPIDD.dylib'
-        elif platform.system() == 'Windows':
-            lib_name = 'RAPIDD.dll'
-        else:
-            raise OSError("Unsupported operating system")
-        
-        rapidd_dir = os.path.join(self.plugin_path[0], "maddm/vendor/RAPIDD_for_DM")
-        so_rel_path = self.plugin_path[0] + "/maddm/vendor/RAPIDD_for_DM/lib/build/" + lib_name
-        instructions_script = self.plugin_path[0] + "/maddm/vendor/RAPIDD_for_DM/instructions_cmake.sh"
-
-
-        if not os.path.exists(so_rel_path):
-            logger.warning("RAPIDD library not found at %s. Compiling it now..." % so_rel_path)
-            # Compile the RAPIDD library
-            import subprocess
-
-            try:
-                subprocess.run(["sh", instructions_script], check=True, cwd=rapidd_dir)
-                logger.info("RAPIDD compilation finished.")
-
-                self._has_direct_nucleon = self.generate_direct_nucleon(excluded_particles)
-                
-            except subprocess.CalledProcessError as e:
-                logger.error("RAPIDD compilation failed with error: %s", e)
-
-        else:
+        ### Check that RAPIDD is installed (ask to download/compile it if not)
+        if self.check_rapidd():
             self._has_direct_nucleon = self.generate_direct_nucleon(excluded_particles)
-        
+
         
         self._has_direct_electron = self.generate_direct_electron(excluded_particles)
 

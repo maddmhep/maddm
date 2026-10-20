@@ -1906,7 +1906,7 @@ class MADDMRunCmd(cmd.CmdShell):
         else: result['xsi'] = 1.0
 
         if self.mode['direct']:
-            RP_parent = os.path.abspath(pjoin(self.plugin_path[0], 'maddm', 'vendor', 'RAPIDD_for_DM'))
+            RP_parent = os.path.abspath(pjoin(MDMDIR, 'vendor', 'RAPIDD_for_DM'))
             if RP_parent not in sys.path:
                 sys.path.insert(0, RP_parent)
             from rapidd.alpha_map import sigmaSI_nucleon_mdm, sigmaSD_nucleon_mdm

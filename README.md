@@ -74,6 +74,8 @@ For the gamma-ray line final state, MadDM performs an analysis of the signal aga
 
 Some third-party packages can be installed using the `install` command in the shell. Be sure to cite them as indicated during the install phase if you use them.
 
+DM-nucleon direct detection requires [RAPIDD](https://github.com/cheekyparticle/RAPIDD_for_DM) (needs `git` and `cmake`). If it is missing, MadDM asks to download and compile it the first time you generate `direct_detection`; you can also install it at any time with `MadDM> install RAPIDD`.
+
 ## Citation
 
 If you are using this tool or the results obtained with it in a published work, please cite one or more of the previous references.
