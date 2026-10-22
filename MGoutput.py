@@ -975,31 +975,16 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
 
         writer.write(open(pjoin(MDMDIR, 'python_templates', 'direct_detection.f')).read() % to_replace)
 
-        """Adding the electron mass definition in dm_response_direct_e.f"""
-        
-        writer = open(pjoin(self.dir_path, 'src', 'dm_response_direct_e.f'), 'w')
-        to_replace = {'electron_mass':[]}
-        pdg = 11
-        p = self.model.get_particle(pdg)
-        to_replace['electron_mass'] = 'M_e = %s' % (p.get('mass'))
-        writer.write(open(pjoin(MDMDIR, 'python_templates', 'dm_response_direct_e.f')).read() % to_replace)
-
-        """Adding the electron mass definition and the maddm path in electron_recoil_signal.f"""
-
-        writer = open(pjoin(self.dir_path , 'src', 'electron_recoil_signal.f'), 'w')
-        to_replace = {'electron_mass':[],'maddm_path':[]}
-        pdg = 11
-        p = self.model.get_particle(pdg)
-        to_replace['electron_mass'] = 'M_e = %s' % (p.get('mass'))
-        to_replace['maddm_path'] = 'maddm_path = "' + MDMDIR +'"'
-        writer.write(open(pjoin(MDMDIR, 'python_templates', 'electron_recoil_signal.f')).read() % to_replace)
+        """Adding the quark and electron mass definitions in direct_detection_RAPIDD.f"""
 
         writer = open(pjoin(self.dir_path, 'src', 'direct_detection_RAPIDD.f'), 'w')
-        to_replace = {'quark_masses':[]}
+        to_replace = {'quark_masses':[], 'electron_mass':[]}
         for pdg in range(1,7):
             p = self.model.get_particle(pdg)
             to_replace['quark_masses'].append('M(%s) = %s' % (pdg, p.get('mass')))
         to_replace['quark_masses'] = '\n           '.join(to_replace['quark_masses'])
+        p = self.model.get_particle(11)
+        to_replace['electron_mass'] = 'M_e = %s' % (p.get('mass'))
         writer.write(open(pjoin(MDMDIR, 'python_templates', 'direct_detection_RAPIDD.f')).read() % to_replace)
         
         

@@ -1806,7 +1806,8 @@ class MADDMRunCmd(cmd.CmdShell):
         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
 
         result['tot_SM_xsec'] = -1
-        alphaq_values = {"alpha_d": [], "alpha_u": [], "alpha_s": [], "alpha_c": [], "alpha_b": [], "alpha_t": [] }
+        alphaq_values = {"alpha_d": [], "alpha_u": [], "alpha_s": [], "alpha_c": [], "alpha_b": [], "alpha_t": [], "alpha_e": [] }
+        electron_info = {}
 
         for line in open(pjoin(self.dir_path, output)):
       
@@ -1826,6 +1827,8 @@ class MADDMRunCmd(cmd.CmdShell):
                     values = list(map(float, parts[1:5]))
                     alphaq_values[parts[0].strip()] = np.array(values)  # Store as NumPy array
 
+                elif parts[0].strip() in ('dm_spin', 'M_e'):
+                    electron_info[parts[0].strip()] = float(parts[1])
     
 
 
@@ -1909,29 +1912,60 @@ class MADDMRunCmd(cmd.CmdShell):
             RP_parent = os.path.abspath(pjoin(MDMDIR, 'vendor', 'RAPIDD_for_DM'))
             if RP_parent not in sys.path:
                 sys.path.insert(0, RP_parent)
-            from rapidd.alpha_map import sigmaSI_nucleon_mdm, sigmaSD_nucleon_mdm
-            result['sigmaN_SI_p'], result['sigmaN_SI_n'] = sigmaSI_nucleon_mdm(self.maddm_card, alphaq_values, mdm)
-            result['sigmaN_SD_p'], result['sigmaN_SD_n'] = sigmaSD_nucleon_mdm(self.maddm_card, alphaq_values, mdm)
-            result['sigmaN_SI_n']    *= GeV2pb*pb2cm2
-            result['sigmaN_SI_p']    *= GeV2pb*pb2cm2
-            result['sigmaN_SD_p']    *= GeV2pb*pb2cm2
-            result['sigmaN_SD_n']    *= GeV2pb*pb2cm2
+            from rapidd.alpha_map import sigmaSI_nucleon_mdm, sigmaSD_nucleon_mdm, nucleon_alphas_valid
             result['lim_sigmaN_SI_n'] = self.limits.SI_max(mdm)
             result['lim_sigmaN_SI_p'] = self.limits.SI_max(mdm)
             result['lim_sigmaN_SD_p'] = self.limits.SD_max(mdm, 'p')
             result['lim_sigmaN_SD_n'] = self.limits.SD_max(mdm, 'n')
 
-            from rapidd.calc_dRdE import DDrate_save
-            rapidd_out_path = pjoin(self.dir_path,'output', self.run_name)
-
-            if (self.maddm_card['vescape'] == 544.0) and (self.maddm_card['vmp'] == 238.0):
-                DDrate_save(self.maddm_card, alphaq_values, mdm, rapidd_out_path)
-
+            # no DM-quark process (all the quark alphas are -1): skip the nucleon computation
+            if not nucleon_alphas_valid(alphaq_values):
+                for key in ['sigmaN_SI_p', 'sigmaN_SI_n', 'sigmaN_SD_p', 'sigmaN_SD_n']:
+                    result[key] = -1
             else:
-                from rapidd.halo import gen_shm_table
-                halo_path = rapidd_out_path + '/SHM.dat'
-                gen_shm_table(halo_path, self.maddm_card)
-                DDrate_save(self.maddm_card, alphaq_values, mdm, rapidd_out_path, halo_path=halo_path)
+                result['sigmaN_SI_p'], result['sigmaN_SI_n'] = sigmaSI_nucleon_mdm(self.maddm_card, alphaq_values, mdm)
+                result['sigmaN_SD_p'], result['sigmaN_SD_n'] = sigmaSD_nucleon_mdm(self.maddm_card, alphaq_values, mdm)
+                result['sigmaN_SI_n']    *= GeV2pb*pb2cm2
+                result['sigmaN_SI_p']    *= GeV2pb*pb2cm2
+                result['sigmaN_SD_p']    *= GeV2pb*pb2cm2
+                result['sigmaN_SD_n']    *= GeV2pb*pb2cm2
+
+                from rapidd.calc_dRdE import DDrate_save
+                rapidd_out_path = pjoin(self.dir_path,'output', self.run_name)
+
+                if (self.maddm_card['vescape'] == 544.0) and (self.maddm_card['vmp'] == 238.0):
+                    DDrate_save(self.maddm_card, alphaq_values, mdm, rapidd_out_path)
+
+                else:
+                    from rapidd.halo import gen_shm_table
+                    halo_path = rapidd_out_path + '/SHM.dat'
+                    gen_shm_table(halo_path, self.maddm_card)
+                    DDrate_save(self.maddm_card, alphaq_values, mdm, rapidd_out_path, halo_path=halo_path)
+
+        # DM-electron scattering: alphas from the Fortran, rates and signals from RAPIDD
+        if self.mode['direct_electron'] and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
+            RP_parent = os.path.abspath(pjoin(MDMDIR, 'vendor', 'RAPIDD_for_DM'))
+            if RP_parent not in sys.path:
+                sys.path.insert(0, RP_parent)
+            from rapidd.alpha_map import electron_alphas_valid
+            if electron_alphas_valid(alphaq_values):
+                from rapidd.calc_dRdE import DDrate_electron_save
+                rapidd_out_path = pjoin(self.dir_path,'output', self.run_name)
+                if (self.maddm_card['vescape'] == 544.0) and (self.maddm_card['vmp'] == 238.0):
+                    from rapidd.core import halo_path as electron_halo_path
+                else:
+                    from rapidd.core import calc_halo
+                    electron_halo_path = pjoin(rapidd_out_path, 'SHM_electron.dat')
+                    calc_halo(electron_halo_path, profile="SHM", vesc=self.maddm_card['vescape'],
+                              v0=self.maddm_card['vmp'], v0_lsr=self.maddm_card['vmp'],
+                              v_pec=(self.maddm_card['vSun_r'], self.maddm_card['vSun_phi'], self.maddm_card['vSun_theta']))
+                result.update(DDrate_electron_save(self.maddm_card, alphaq_values, electron_info['dm_spin'],
+                                                   electron_info['M_e'], mdm, rapidd_out_path,
+                                                   halo_path=electron_halo_path))
+            else:
+                result['DM_response'] = -1
+            # sigma_e is needed by the summary
+            result.setdefault('sigma_e', -1)
 
         self.last_results = result
         self.last_results['run'] = self.run_name
