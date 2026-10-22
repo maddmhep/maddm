@@ -36,13 +36,6 @@ c direct_detection.f
 c directional_detection.f
       double precision d2RdEdcostheta, Fhelm, V_E, Gaussian
 
-c dm_response_direct_e.f
-      double precision dm_resp, dm_response, sigma_e, electron_mass
-
-c electron_recoil_signal.f
-      double precision sig_Xenon10(7),tot_sig_Xenon1T,tot_bkg_Xenon1T
-      integer bin_Xenon10(8), n_obs_Xenon10(7), n_obs_Xenon1T
-
 c direct_detection_RAPIDD.f
       
 
@@ -196,18 +189,6 @@ c  Directional detection switch
       double precision Naa, G_fermi, g1,sec, GeV, cm, cs, fm, km, kmtocm, barn, picobarn, GeVtokev, pbtocm2,
      & GeVtoMeV, invcmtoGeV, cmtoinvGeV,Mevtokev,daytosec, hrtosec,tontokg,hukgtokg, gevtopb, pbtocm3
       common/simu/Energy_bins,cos_theta_bins,day_bins,En_min,En_max,cos_min,cos_max,day_min,day_max
-      integer gridsize_k, gridsize_q, S2_max_Xenon10, S2_bin_max_Xenon1T, len_E_e_resp
-      double precision hbar, GeVtoKg, GeVtoJ, mtocm
-      double precision m_Xenon, au
-      double precision q_min,q_max,k_min,k_max
-
-
-!  Atomic response range
-      parameter(q_min = 1.0d-6) ! GeV
-      parameter(q_max = 1.0d-3) ! GeV
-      parameter(k_min = 1.0d-7) ! GeV
-      parameter(k_max = 1.0d-4) ! GeV
-
 
 !  Constants
       parameter(m_proton = 0.938d0)
@@ -216,12 +197,6 @@ c  Directional detection switch
       parameter(Naa       = 6.023d+26) ! Avogadro's number
       parameter(G_fermi   = 1.166d-5) ! Fermi Constant in (GeV**(-2))
       parameter(g1        = 0.357088d0) ! value of the U(1) gauge coupling constant
-      parameter(gridsize_k  = 100)
-      parameter(gridsize_q  = 200)
-      parameter(S2_max_Xenon10 = 203)
-      parameter(len_E_e_resp = 41)
-      parameter(S2_bin_max_Xenon1T = 63)
-      parameter(m_Xenon   = 131.293d0) ! Average over all isotopes in (au)
 
 
 ! base units
@@ -229,14 +204,12 @@ c  Directional detection switch
       parameter(GeV   = 1.d0)
       parameter(cm    = 1.d0)
       parameter(cs    = 1.d0)
-      parameter(hbar = 6.582119569d-25)  ! GeV s
 
 ! Some important constants and conversion factors.
 
       parameter(fm         = 1.d-13) ! cm
       parameter(km         = 1.d+5)  ! cm
       parameter(kmtocm     = 1.d+5)  !cm
-      parameter(mtocm      = 1.d+2)  ! cm
       parameter(barn       = 1.d-24) ! cm^2
       parameter(picobarn    = 1.d-12*1.d-24) ! cm^2
       parameter(GeVtokev   = 1.d+6)
@@ -251,9 +224,6 @@ c  Directional detection switch
       parameter(gevtopb    = 3.893793721d+8) ! (hbar c)**2: GeV**(-2) -> pb
       parameter(pbtocm3    = 2.99d-26)
       parameter(pbtocm2    = 1.00d-36)
-      parameter(au         = 1.66053906660d-27) ! Kg
-      parameter(GeVtoKg    = 1.78266192d-27) ! GeV**(-1) Kg
-      parameter(GeVtoJ     = 1.602176634d-10) ! GeV**(-1) J
 
 c------------------------Capture rate---------------------------------
       logical do_capture

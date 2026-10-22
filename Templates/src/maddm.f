@@ -20,6 +20,7 @@ c parameters used in this routine only
       !double precision dmquark_alpha
       double precision dalphas(4), ualphas(4), salphas(4), calphas(4)
       double precision balphas(4), talphas(4)
+      double precision ealphas(4), m_electron
       !external dmquark_alpha
       double precision vID_natural
       double precision cross_sec_relic(size(process_names)), tot_cross_sec, channel_percent
@@ -159,27 +160,16 @@ c                                        c
       write(33,*) "alpha_b: ", balphas(1), ": ", balphas(2), ": ", balphas(3), ": ", balphas(4)
       write(33,*) "alpha_t: ", talphas(1), ": ", talphas(2), ": ", talphas(3), ": ", talphas(4)
 
-c ---- DM-e SIGNAL CALCULATION -----
-c     calls are to dm_response() that returns the DM response function,
-c     and to electron_recoil_signal that computes the signal.
+c ---- DM-e ALPHAS -----
+c     calls dmelectron_alpha() that returns the DM-electron alphas
+c     (aSIe, aSIo, aSDe, aSDo) and the electron mass. The rates and the
+c     XENON10/XENON1T signals are computed by RAPIDD on the python side.
       if (do_direct_electron.and.((direct_electron_mode.eq."always").or.
      &                            (mdm(1).le.direct_electron_dm_mass_max))) then
-            dm_resp = dm_response()
-            call electron_recoil_signal(dm_resp,bin_Xenon10,sig_Xenon10,n_obs_Xenon10,
-     &                                  tot_sig_Xenon1T,tot_bkg_Xenon1T, n_obs_Xenon1T)
-            if (dm_resp.eq.-1) then
-                  sigma_e = -1
-            else
-                  sigma_e = dm_resp/(16.d0*pi*(mdm(1)+electron_mass())**2)
-            endif
-            write(33,*) 'DM_response', dm_resp
-            write(33,*) 'sigma_e', sigma_e
-            write(33,*) 'Xenon10_bins' , bin_Xenon10
-            write(33,*) 'Xenon10_signal' , sig_Xenon10
-            write(33,*) 'Xenon10_obs', n_obs_Xenon10
-            write(33,*) 'Xenon1T_signal', tot_sig_Xenon1T
-            write(33,*) 'Xenon1T_bkg', tot_bkg_Xenon1T
-            write(33,*) 'Xenon1T_obs', n_obs_Xenon1T
+            call dmelectron_alpha(ealphas, m_electron)
+            write(33,*) "alpha_e: ", ealphas(1), ": ", ealphas(2), ": ", ealphas(3), ": ", ealphas(4)
+            write(33,*) "dm_spin: ", dof_dm(1)
+            write(33,*) "M_e: ", m_electron
       endif
         
 c     Compute the relic density channels percentage
