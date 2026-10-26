@@ -1812,11 +1812,6 @@ class MADDMRunCmd(cmd.CmdShell):
         for line in open(pjoin(self.dir_path, output)):
       
                 splitline = line.split()
-                #If capture rate is calculated.
-                if 'ccap' in line:
-                    oname = splitline[0].strip(':')+'_'+splitline[1]
-                    val = splitline[2]
-                    result[oname.split(':')[0] ] = val
 
                 ##### explicitly tell the code how to read alphas here 
 
@@ -2076,18 +2071,11 @@ class MADDMRunCmd(cmd.CmdShell):
                           'sigmaN_SD_p', 'lim_sigmaN_SD_p',
                           'sigmaN_SD_n', 'lim_sigmaN_SD_n']
 
-           
-            # if self.mode['direct'] == 'directional':
-            #     order += ['Nevents', 'smearing']
 
             if self.mode['direct_electron'] and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
                 order += ['pvalue_Xenon10','pvalue_Xenon1T']
 
-            if self.mode['capture']:
-                detailled_keys = [k for k in self.last_results if k.startswith('ccap_') and '#' not in k]
-                for key in detailled_keys:
-                    order += [key]
- 
+
             # *** Indirect detection
             if self.mode['indirect'] or self.mode['spectral']:
                 halo_vel_cont = self.maddm_card['vave_indirect_cont']
@@ -3283,10 +3271,6 @@ class MADDMRunCmd(cmd.CmdShell):
                     mess_alldm    = self.det_message_screen(D['sig'], D['lim'] )
                     self.print_ind(D['n'],th_cross , D['sig'], ul,  thermal=dm_scen ,direc = False , exp=D['exp']) # leave False to avout GeV^-2
          
-#        if self.mode['direct'] == 'directional':
-#            logger.info(' Nevents          : %i', self.last_results['Nevents'])
-#            logger.info(' smearing         : %.2e', self.last_results['smearing'])
-
         if self.mode['direct_electron'] and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
 
             def det_message_screen(n1,n2):
@@ -3309,12 +3293,6 @@ class MADDMRunCmd(cmd.CmdShell):
                     
                 logger.info( self.form_s('Sigma_e             All DM = ') + self.form_n(sigma_e) + self.form_s('      ' + det_message_screen(0.05,pval_Xenon10)) + self.form_s('     Xenon10 p_val    = ') + self.form_n(pval_Xenon10))
                 logger.info( self.form_s('Sigma_e             All DM = ') + self.form_n(sigma_e) + self.form_s('      ' + det_message_screen(0.05,pval_Xenon1T)) + self.form_s('     Xenon1ton p_val  = ') + self.form_n(pval_Xenon1T))
-
-        if self.mode['capture']:
-            logger.info('\n capture coefficients: ')
-            detailled_keys = [k for k in self.last_results.keys() if k.startswith('ccap')]
-            for key in detailled_keys:
-                logger.info(' %s            : %.2e s^-1' % (key, self.last_results[key]))
 
         # INDIRECT DETECTION
         detailled_keys = [k for k in self.last_results.keys() if k.startswith('taacsID#')]
@@ -3424,20 +3402,6 @@ class MADDMRunCmd(cmd.CmdShell):
 
             # self.save_remove_output(scan = False)
 
-    def save_direct_detection(self, output_dir, output_run):
-        ''' direct detection output is created in the output directory, move to run directory '''
-        for file_name in ['d2NdEdcos.dat','dNdcos.dat','dNdE.dat','rate.dat']:
-            f_path = pjoin(output_dir, file_name)
-            if os.path.isfile(f_path):
-                shutil.move( f_path, pjoin(output_run, file_name) )
-
-    def remove_direct_detection(self, output_dir):
-        ''' direct detection output is created in the output directory, remove those files '''
-        for file_name in ['d2NdEdcos.dat','dNdcos.dat','dNdE.dat','rate.dat']:
-            f_path = pjoin(output_dir, file_name)
-            if os.path.isfile(f_path):
-                os.remove(f_path)
-
     def create_symlink_to_events(self, indirect_directory, events_run, output_run):
         ''' when sigmav_method != inclusive, then we need to create a symlink to the events_run directory in the output_dir '''
         if not os.path.islink( pjoin(output_run, 'Output_' + indirect_directory) ):
@@ -3528,9 +3492,7 @@ class MADDMRunCmd(cmd.CmdShell):
         # define operations
         operations = [
             lambda **kwargs: self.save_MadDM_card(),
-            lambda **kwargs: self.save_direct_detection(output_dir = kwargs['output_dir'], output_run = kwargs['output_run']),
             lambda **kwargs: self.save_spec_flux(out_run = kwargs['output_run'], spec_source = kwargs['spec_source'], flux_source = kwargs['flux_source'], flux_earth = kwargs['flux_earth']),
-            lambda **kwargs: self.remove_direct_detection(output_dir = kwargs['output_dir'])
         ]
 
         # PPPC4DMID files
@@ -3547,18 +3509,14 @@ class MADDMRunCmd(cmd.CmdShell):
             # save_switch has no effect in this case
             do_operation = [
                 True,
-                True,
-                True,
-                False
+                True
             ]
         else:
             # output for scan
             # everything depends on save_switch
             do_operation = [
                 False,
-                save_switch == 'all',
-                save_switch != 'off',
-                save_switch != 'all'
+                save_switch != 'off'
             ]
 
         for do_it, operation in zip(do_operation, operations):
@@ -3754,10 +3712,6 @@ class MADDMRunCmd(cmd.CmdShell):
 
         if direct:
 
-            for name in ['d2NdEdcos.dat','dNdE.dat','dNdcos.dat','rate.dat']:
-                if os.path.isfile(pjoin(self.dir_path, 'output',name)):
-                   shutil.move(pjoin(self.dir_path, 'output',name) ,  pjoin(self.dir_path, 'output', point , name))
-            
             out.write('\n################################################\n')
             out.write('# Direct Detection [cm^2]                      #\n')
             out.write('################################################\n\n')
@@ -3959,7 +3913,6 @@ class MADDMRunCmd(cmd.CmdShell):
     
                 elif value == 'OFF':
                     self.mode[key] = False
-            self.mode['capture'] = False
             # create the inc file for maddm
             logger.debug('2to2 in ask_run_configuration: %s' % self._two2twoLO)
 
@@ -4011,9 +3964,7 @@ class MADDMRunCmd(cmd.CmdShell):
             # create the inc file for maddm
             self.maddm_card.set('do_relic_density', self.mode['relic'], user=False)
             self.maddm_card.set('do_direct_detection', True if self.mode['direct'] else False, user=False)
-            #self.maddm_card.set('do_directional_detection', self.mode['direct'] == 'directional', user=False)
             self.maddm_card.set('do_direct_electron', True if self.mode['direct_electron'] else False, user=False)
-            self.maddm_card.set('do_capture', self.mode['capture'], user=False)
             self.maddm_card.set('do_indirect_detection', True if self.mode['indirect'] else False, user=False)
             self.maddm_card.set('do_indirect_spectral', self.mode['spectral'], user=False)
             self.maddm_card.set('do_flux', True if (self.mode['indirect'] and self.mode['indirect'] != 'sigmav') else False, user=False)
@@ -4261,12 +4212,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         """return the command to set the maddm_card consistent with the switch"""
         
         cmd =[]
-        # if value == 'directional':
-        #     cmd.append('set do_directional_detection True')
-        #     value = 'direct'
-        # else:
-        #     cmd.append('set do_directional_detection False')
-        
+
         if value in ['ON', 'direct']:
             cmd.append('set do_direct_detection True')
         else:
@@ -4719,9 +4665,7 @@ But also to edit the content of the various file defining the  run/benchmark (bo
 
 To bypass the computation of relic density you can do
 > relic=OFF            
-to make the computation of the directional detection
-> direct=directional
-                
+
 You can also edit the card referenced.
 Note that you can 
    1) edit any parameter like this:
@@ -4797,9 +4741,6 @@ When you are done with such edition, just press enter (or write 'done' or '0')
         logger.info("direct flag can take two values: ON/OFF")
         logger.info('     ')
         logger.info("     Theoretical elastic spin-independent and spin-dependent cross section dark matter off nucleons")
-        logger.info('     ')
-        # logger.info("  directional", "$MG:BOLD")
-        # logger.info("     Directional event rate (double differential event rate)")
         
     def help_direct_electron(self):
         logger.info("direct_electron flag can take two values: ON/OFF")
@@ -5162,8 +5103,6 @@ class MadDMCard(banner_mod.RunCard):
         self.add_param('do_relic_density', True, system=True)
         self.add_param('do_direct_detection', False, system=True)
         self.add_param('do_direct_electron', False, system=True)
-        self.add_param('do_directional_detection', False, system=True)
-        self.add_param('do_capture', False, system=True)
         self.add_param('do_flux', False, system=True, include=False)
 
         self.add_param('do_indirect_detection', False, system=True)
@@ -5190,83 +5129,46 @@ class MadDMCard(banner_mod.RunCard):
         
         # Direct Detection nucleon form factors (fPx - proton, fNx - neutron)
         #Scalar FF
-        self.add_param('SPu', 0.0153, hidden=True)
-        self.add_param('SPd',0.0191, hidden=True)
-        self.add_param('SPs', 0.0447, hidden=True)
-        self.add_param('SPg', 1 - 0.0153 - 0.0191 - 0.0447, hidden=True)
-        self.add_param('SNu', 0.0110, hidden=True)
-        self.add_param('SNd', 0.0273, hidden=True)
-        self.add_param('SNs', 0.0447, hidden=True)
-        self.add_param('SNg', 1 - 0.0110 - 0.0273 - 0.0447, hidden=True)
+        self.add_param('SPu', 0.0153, hidden=True, include=False)
+        self.add_param('SPd',0.0191, hidden=True, include=False)
+        self.add_param('SPs', 0.0447, hidden=True, include=False)
+        self.add_param('SPg', 1 - 0.0153 - 0.0191 - 0.0447, hidden=True, include=False)
+        self.add_param('SNu', 0.0110, hidden=True, include=False)
+        self.add_param('SNd', 0.0273, hidden=True, include=False)
+        self.add_param('SNs', 0.0447, hidden=True, include=False)
+        self.add_param('SNg', 1 - 0.0110 - 0.0273 - 0.0447, hidden=True, include=False)
         # Vector FF
-        self.add_param('VPu', 2.0, hidden=True)
-        self.add_param('VPd', 1.0, hidden=True)
-        self.add_param('VNu', 1.0, hidden=True)
-        self.add_param('Vnd', 2.0, hidden=True)
+        self.add_param('VPu', 2.0, hidden=True, include=False)
+        self.add_param('VPd', 1.0, hidden=True, include=False)
+        self.add_param('VNu', 1.0, hidden=True, include=False)
+        self.add_param('Vnd', 2.0, hidden=True, include=False)
         # Axial Vector FF
-        self.add_param('AVPu',0.842, hidden=True)
-        self.add_param('AVPd',-0.427, hidden=True)
-        self.add_param('AVPs',-0.085, hidden=True)
-        self.add_param('AVNu',-0.427, hidden=True)
-        self.add_param('AVNd',0.842, hidden=True)
-        self.add_param('AVNs',-0.085, hidden=True)
+        self.add_param('AVPu',0.842, hidden=True, include=False)
+        self.add_param('AVPd',-0.427, hidden=True, include=False)
+        self.add_param('AVPs',-0.085, hidden=True, include=False)
+        self.add_param('AVNu',-0.427, hidden=True, include=False)
+        self.add_param('AVNd',0.842, hidden=True, include=False)
+        self.add_param('AVNs',-0.085, hidden=True, include=False)
         # Sigma(mu,nu) FF
-        self.add_param('SigPu',0.84, hidden=True)
-        self.add_param('SigPd',-0.23, hidden=True)
-        self.add_param('SigPs',-0.046, hidden=True)
-        self.add_param('SigNu',-0.23, hidden=True)
-        self.add_param('SigNd',0.84, hidden=True)
-        self.add_param('SigNs',-0.046, hidden=True)
-        #
-        # For Directional detection and direct detection rates
-        #
-        self.add_param('material', 1, allowed = list(range(1,14)),
-                        comment="""Choose the target material
-    - 1: Xenon
-    - 2: Germanium 
-    - 3: Silicon
-    - 4: Argon
-    - 5: Neon
-    - 6: Sodium
-    - 7: Iodine
-    - 8: Carbon
-    - 9: Flourine
-    - 10: Sulphur
-    For Compounds:
-    - 11: NaI 
-    - 12: CF4
-    - 13: CS2""")
-        
-        #Setting up the DM constants following Eur. Phys. J. C (2021) 81: 907.
-        self.add_param('vMP', 238.0)
-        self.add_param('vescape', 544.0)
-        self.add_param('vEarth_mod', 29.8)
-        self.add_param('vSun_r', 11.1)
-        self.add_param('vSun_phi', 12.2)
-        self.add_param('vSun_theta', 7.3)
-        self.add_param('rhoDM', 0.3)
-        #detector 
-        self.add_param('detector_size', 1000.0)
-        self.add_param('En_threshold', 4.0)
-        self.add_param('lambd', 1.0)
-        self.add_param('sig_theta', 3.0)
-        
-        self.add_param('En_min', 0.0)
-        self.add_param('En_max', 100.0)
-        self.add_param('cos_min', -1.0)
-        self.add_param('cos_max', 1.0)
-        self.add_param('day_min', 0.0)
-        self.add_param('day_max', 365.0)
-        self.add_param('Energy_bins', 100)
-        self.add_param('cos_theta_bins', 20)
-        self.add_param('day_bins', 10)
-        self.add_param('smearing', False)
-        
+        self.add_param('SigPu',0.84, hidden=True, include=False)
+        self.add_param('SigPd',-0.23, hidden=True, include=False)
+        self.add_param('SigPs',-0.046, hidden=True, include=False)
+        self.add_param('SigNu',-0.23, hidden=True, include=False)
+        self.add_param('SigNd',0.84, hidden=True, include=False)
+        self.add_param('SigNs',-0.046, hidden=True, include=False)
+        # Galactic halo, used by RAPIDD for the direct detection rates.
+        # Setting up the DM constants following Eur. Phys. J. C (2021) 81: 907.
+        self.add_param('vMP', 238.0, include=False)
+        self.add_param('vescape', 544.0, include=False)
+        self.add_param('vEarth_mod', 29.8, include=False)
+        self.add_param('vSun_r', 11.1, include=False)
+        self.add_param('vSun_phi', 12.2, include=False)
+        self.add_param('vSun_theta', 7.3, include=False)
+        self.add_param('rhoDM', 0.3, include=False)
+
         # For electronic recoil
         self.add_param('direct_electron_mode', 'auto', allowed=['auto', 'always'], include=True)
         self.add_param('direct_electron_dm_mass_max', 1., comment="Max value of DM mass allowed to make the electronic recoil computation in case direct_electron_mode is set to 'auto'", include=True, hidden=True)
-
-        #For the solar/earth capture rate
 
         # velocities for indirect detection
         self.add_param('vave_indirect_cont', 0.00002, include=True, fortran_name='vave_indirect')
@@ -5511,7 +5413,7 @@ class Priors:
 
 class Likelihoods:
     likelihoods = ['gaussian', 'half_gauss', 'user', 'off']
-    observables = ['relic', 'directSI','directSD_p', 'directSD_n', 'indirect', 'spectral', 'capture']
+    observables = ['relic', 'directSI','directSD_p', 'directSD_n', 'indirect', 'spectral']
 
 
 class Multinest(object):
@@ -5579,7 +5481,6 @@ class Multinest(object):
                 self.output_observables.append('sigmaN_SI_p')
                 self.output_observables.append('sigmaN_SD_n')
                 self.output_observables.append('sigmaN_SD_p')
-                self.output_observables.append('Nevents')
 
             if self.maddm_run.mode['indirect']:
                 if 'inclusive' in self.maddm_run.maddm_card['sigmav_method']:
@@ -5598,11 +5499,6 @@ class Multinest(object):
                 xsecs = [k for k in self.maddm_run.last_results.keys() if k.startswith("taacsID#") and self.maddm_run.is_spectral_finalstate(self.maddm_run.str_processes[k.replace("taacsID#","")])]
                 for proc in xsecs:
                     self.output_observables.append(proc)
-
-            if self.maddm_run.mode['capture']:
-                detailled_keys = [k for k in self.maddm_run.last_results.keys() if k.startswith('ccap_')]
-                for key in detailled_keys:
-                    self.output_observables.append(key)
 
             #FIX THIS! HERE ADD FLUXES        
             #if self.maddm_run.mode['CR_flux']:
