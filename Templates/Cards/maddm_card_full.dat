@@ -59,14 +59,11 @@
 
 ###################################################################################
 #
-# Direct(ional) Detection 
+# Direct Detection 
 #
 ###################################################################################
 
-# choose the target material (type "help material" for more target code)
-   %(material)s         = material ! 1: Xenon, 2: Germanium, 3: Silicon, ...
-
-# galactic halo DM constants (for direct detection & capture rate by sun/earth)
+# galactic halo DM constants (for the RAPIDD direct detection rates)
    %(vmp)s     = vMP  ! The most probable WIMP velocity v_0 (km/s)
    %(vEarth_mod)s  = vEarth_mod
    %(vSun_r)s      = vSun_r
@@ -74,28 +71,6 @@
    %(vSun_theta)s  = vSun_theta
    %(vescape)s     = vescape  ! The escape velocity of WIMPS in the Halo (km/s)
    %(rhodm)s       = rhoDM   ! The density of WIMPs in our local Universe (GeV/c^2/cm^-3)
-
-# choose the size of the detector
-   %(detector_size)s    = detector_size  ! For 1 ton = 1000 kg detector
-   %(en_threshold)s       = En_threshold     ! in keVnr
-
-# choose the energy resolution coefficient and range 
-   %(lambd)s       = lambd ! lambda (sigma_E = lambda*sqrt(E))
-   %(sig_theta)s       = sig_theta ! angular resolution
-   %(en_min)s       = En_min          ! minimum recoil Energy
-   %(en_max)s     = En_max          ! maximum recoil energy
-   %(energy_bins)s       = Energy_bins     ! Number of Energy bins
-   %(cos_min)s      = cos_min         ! Minimum cosine of recoil angle
-   %(cos_max)s       = cos_max         ! Maximum cosine of recoil angle
-   %(cos_theta_bins)s        = cos_theta_bins  ! Number of cosine angle bins
-
-# running time of the detector
-   %(day_min)s       = day_min         ! 1st day of observation.
-   %(day_max)s     = day_max         ! 1 year later.
-   %(day_bins)s        = day_bins        ! Number of time bins
-
-# Turn on detector smearing or not (both energy and angle)
-   %(smearing)s     = smearing
 
 # Electronic recoil
 # select 'always' if you want to always do this computation independently on the

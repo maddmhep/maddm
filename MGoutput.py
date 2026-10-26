@@ -59,10 +59,8 @@ class MADDMProcCharacteristic(banner_mod.ProcCharacteristic):
         self.add_param('relic_density_off', False)
         self.add_param('has_direct_detection', False)
         self.add_param('has_direct_electron', False)
-        self.add_param('has_directional_detection', False)
         self.add_param('has_indirect_detection', False)
         self.add_param('has_indirect_spectral', False)
-        self.add_param('has_capture', False)
         self.add_param('dm_candidate', [0])
         self.add_param('coannihilator', [0])
         self.add_param('forbid_fast', False)
@@ -289,8 +287,6 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
             self.proc_characteristic['has_relic_density'] = True
         if proc_id in [self.DD]:
             self.proc_characteristic['has_direct_detection'] = True
-            self.proc_characteristic['has_directional_detection'] = True
-            self.proc_characteristic['has_capture'] = True
 
         # Set lowercase/uppercase Fortran code
         writers.FortranWriter.downcase = False
@@ -963,18 +959,6 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
 
     #-----------------------------------------------------------------------#   
     def WriteMassDirectDetection(self):
-        """Adding the light quark mass definition in direct_detection.f"""
-        
-        writer = open(pjoin(self.dir_path, 'src', 'direct_detection.f'), 'w')
-        
-        to_replace = {'quark_masses':[]}
-        for pdg in range(1,7):
-            p = self.model.get_particle(pdg)
-            to_replace['quark_masses'].append('M(%s) = %s' % (pdg, p.get('mass')))
-        to_replace['quark_masses'] = '\n           '.join(to_replace['quark_masses'])
-
-        writer.write(open(pjoin(MDMDIR, 'python_templates', 'direct_detection.f')).read() % to_replace)
-
         """Adding the quark and electron mass definitions in direct_detection_RAPIDD.f"""
 
         writer = open(pjoin(self.dir_path, 'src', 'direct_detection_RAPIDD.f'), 'w')
