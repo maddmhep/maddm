@@ -225,8 +225,10 @@ c           Compute the non relativistic coefficients and use them to get the
 c           dark matter response function.
 c--------------------------------------------------------------------------------
             if(dm_spin.eq.1) then
-                  c_1 = 2*M_e*(alpha_SI_even + 2*mdm(1)*alpha_SI_odd)
-                  get_dm_response = (c_1)**2 * GeVtoKg**2 * gevtopb * picobarn
+c                 The scalar effective operator already contains the DM mass (2*mdm*phi^dag phi ebar e),
+c                 so in terms of the alphas the matching is the same as for the fermion SI case
+                  c_1 = 4*mdm(1)*M_e*(alpha_SI_odd + alpha_SI_even)
+                  get_dm_response = (c_1)**2 * gevtopb * picobarn
             else if(dm_spin.eq.2) then
                   c_1 = 4*mdm(1)*M_e*(alpha_SI_odd + alpha_SI_even)
                   c_4 = 16*mdm(1)*M_e*(2*alpha_SD_odd - alpha_SD_even)
