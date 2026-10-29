@@ -167,7 +167,11 @@ c     and to electron_recoil_signal that computes the signal.
             dm_resp = dm_response()
             call electron_recoil_signal(dm_resp,bin_Xenon10,sig_Xenon10,n_obs_Xenon10,
      &                                  tot_sig_Xenon1T,tot_bkg_Xenon1T, n_obs_Xenon1T)
-            sigma_e = dm_resp/(16.d0*pi*(mdm(1)+0.5109989e-3)**2)
+            if (dm_resp.eq.-1) then
+                  sigma_e = -1
+            else
+                  sigma_e = dm_resp/(16.d0*pi*(mdm(1)+electron_mass())**2)
+            endif
             write(33,*) 'DM_response', dm_resp
             write(33,*) 'sigma_e', sigma_e
             write(33,*) 'Xenon10_bins' , bin_Xenon10

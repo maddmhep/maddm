@@ -39,7 +39,8 @@ c Select scalar, fermion or vector DM particle and compute the dark matter
 c response function
 c --------------------------------------------------------------------------------
             dm_response = -1
-            if (do_get_dm_response) then
+c           Vector DM-e scattering is not implemented yet
+            if (do_get_dm_response.and.(dm_spin.eq.1.or.dm_spin.eq.2)) then
                   dm_response = get_dm_response(dm_spin)
             endif
 
@@ -82,6 +83,19 @@ c-------------------------------------------------------------------------c
 
             dm_e_process_name = trim(DM_NAMES(1)) // 'em_' // trim(DM_NAMES(1)) // 'em'
             dm_p_process_name = trim(DM_NAMES(1)) // 'ep_' // trim(DM_NAMES(1)) // 'ep'
+
+            j_dm_e = 0
+            j_dm_p = 0
+            j_eff_SI_dm_e = 0
+            j_eff_SI_dm_p = 0
+            j_tot_SI_dm_e = 0
+            j_tot_SI_dm_p = 0
+            j_eff_SD_dm_e = 0
+            j_eff_SD_dm_p = 0
+            j_tot_SD_dm_e = 0
+            j_tot_SD_dm_p = 0
+            alpha_SD_even = 0.d0
+            alpha_SD_odd  = 0.d0
 c            write (*,*) 'dm_e_process_name = ' , dm_e_process_name
 c            write (*,*) 'dm_p_process_name = ' , dm_p_process_name
 c            write(*,*) 'dm info : ' , dof_dm(1)
@@ -188,6 +202,12 @@ c            write (*,*) "j_eff_SD_dm_p :" , j_eff_SD_dm_p
 c            write (*,*) "j_tot_SD_dm_p :" , j_tot_SD_dm_p
             
 
+c           If one of the full, effective or full+effective processes is missing
+c           (e.g. no effective operator for this DM type) the alphas cannot be computed
+            get_dm_response = -1
+            if ((j_dm_e*j_dm_p*j_eff_SI_dm_e*j_eff_SI_dm_p*j_tot_SI_dm_e*j_tot_SI_dm_p).eq.0) return
+            if ((dm_spin.ne.1).and.((j_eff_SD_dm_e*j_eff_SD_dm_p*j_tot_SD_dm_e*j_tot_SD_dm_p).eq.0)) return
+
 c--------------------------------------------------------------------------------
 c           Compute the interference terms and use them to get the even and odd effective 
 c           coefficients in the SI and SD case
@@ -235,8 +255,6 @@ c                 The alphas are projections on the axial x axial operator: the 
 c                 (alpha_SD_even + alpha_SD_odd) times it, as for c_1 (a tensor term gives alpha_SD_odd = -2 C_T)
                   c_4 = 16*mdm(1)*M_e*(alpha_SD_odd + alpha_SD_even)
                   get_dm_response = ((c_1)**2 + (3.d0/16.d0)*(c_4)**2) * gevtopb * picobarn
-            else if(dm_spin.eq.3) then
-                  ! will be implmented in future work
             endif
             
             if(ISNAN(get_dm_response)) then
@@ -259,4 +277,26 @@ c            write(*,*) 'c_4            : ', c_4
 c            write(*,*) 'dm_response    : ', get_dm_response
 c            write(*,*) '---------------------------------------------------------------'
       
+      end function
+
+
+
+c-------------------------------------------------------------------------c
+      function electron_mass()
+c-------------------------------------------------------------------------c
+c                                                                         c
+c     Returns the electron mass (GeV) of the model.                       c
+c                                                                         c
+c-------------------------------------------------------------------------c
+            implicit none
+
+            double precision M_e
+
+c           electron_mass is declared in maddm.inc
+            include 'maddm.inc'
+            include 'coupl.inc'
+
+            %(electron_mass)s       ! electron mass M_e (GeV)
+            electron_mass = M_e
+
       end function

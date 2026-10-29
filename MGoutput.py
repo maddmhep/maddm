@@ -991,7 +991,10 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         pdg = 11
         p = self.model.get_particle(pdg)
         to_replace['electron_mass'] = 'M_e = %s' % (p.get('mass'))
-        to_replace['maddm_path'] = 'maddm_path = "' + MDMDIR +'"'
+        # split the path over continuation lines, to stay within the fixed-form line length
+        path_chunks = [MDMDIR[i:i+60] for i in range(0, len(MDMDIR), 60)] or ['']
+        to_replace['maddm_path'] = 'maddm_path = "' + path_chunks[0] + '"' + \
+                                   ''.join('\n     &           // "%s"' % chunk for chunk in path_chunks[1:])
         writer.write(open(pjoin(MDMDIR, 'python_templates', 'electron_recoil_signal.f')).read() % to_replace)
 
         writer = open(pjoin(self.dir_path, 'src', 'direct_detection_RAPIDD.f'), 'w')

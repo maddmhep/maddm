@@ -18,7 +18,7 @@
         integer i, ik, iq, id, iS2, S2, tot_num_shell, len_bin_Xenon10, s2_roi_min_Xenon1T, s2_roi_max_Xenon1T
         character(20) shell_filenames(50), filename
         character(2) target, shell_names(50)
-        character(200) maddm_path, atom_resp_path
+        character(512) maddm_path, atom_resp_path
         double precision dRdlogE_shell_kg_day(gridsize_k), rate_vs_time_shell(day_bins), tot_rate_shell
         double precision dRdS2_shell_Xenon10(S2_max_Xenon10)
         double precision diff_rate_logE(gridsize_k),dRdE_kg_day_GeV(gridsize_k),rate_vs_time(day_bins),tot_rate_kg_day
@@ -42,6 +42,9 @@ c ------------------------------------------------------------------------------
             do i=1,len_bin_Xenon10-1
                 sig_Xenon10(i)=-1
             enddo
+            tot_sig_Xenon1T = -1
+            tot_bkg_Xenon1T = -1
+            n_obs_Xenon1T = -1
             Return
         endif
 
@@ -199,9 +202,13 @@ c        enddo
 c       Xenon1T
         call Xenon1T_results(M_dm,s2_roi_min_Xenon1T,s2_roi_max_Xenon1T,n_obs_Xenon1T,tot_bkg_Xenon1T)
 
-        do iS2=s2_roi_min_Xenon1T,s2_roi_max_Xenon1T
-            tot_sig_Xenon1T = tot_sig_Xenon1T + dRdiS2_Xenon1T(iS2)
-        enddo
+        if (n_obs_Xenon1T.eq.-1) then
+            tot_sig_Xenon1T = -1
+        else
+            do iS2=s2_roi_min_Xenon1T,s2_roi_max_Xenon1T
+                tot_sig_Xenon1T = tot_sig_Xenon1T + dRdiS2_Xenon1T(iS2)
+            enddo
+        endif
 
 c ------------------------------------------------------------------------------------------------
 c       Setup the bins and write the results
@@ -364,7 +371,7 @@ c           Loop over day_bins.
 c               Compute the differential rate, than use to compute dR/dlogE, total rate and total events
                 dRdlogEdday_kg_day(ik,id) =
      &             get_dRdlogE(ik,E_e(ik),E_binding,q_exc,dq,M_dm,M_e,ioniz_amplitude,get_vEarth(daymid(id)))
-     &             *dday/365.0*daytosec
+     &             *dday/(day_max - day_min)*daytosec
 
                 tot_rate_kg_day         = tot_rate_kg_day + dRdlogEdday_kg_day(ik,id) * dlogE(ik)
                 rate_vs_time(id) = rate_vs_time(id) + dRdlogEdday_kg_day(ik,id) * dlogE(ik)
@@ -466,16 +473,16 @@ c           Multiply also for the constant in front of the integral, and divide 
         double precision W, f_e, binomial_prob, gauss_prob, exposure_Xenon10
         double precision sigma_Xenon10, Xenon10_flat_efficency, Xenon10_trigger_efficency(S2_max_Xenon10)
         integer S2
-        character(200) maddm_path, Xenon10_efficency_path
+        character(512) maddm_path, Xenon10_efficency_path
 
-        parameter(f_e = 1.d0/1.2)       ! Fraction of quanta observed as electrons
-        parameter(exposure_Xenon10 = 15)            ! Kg days
-        parameter(Xenon10_flat_efficency = 0.92)
+        parameter(f_e = 1.d0/1.2d0)       ! Fraction of quanta observed as electrons
+        parameter(exposure_Xenon10 = 15.d0)            ! Kg days
+        parameter(Xenon10_flat_efficency = 0.92d0)
         
         %(maddm_path)s          ! MadDM path
         Xenon10_efficency_path = trim(maddm_path) // '/Detector_responses/Xenon10_TriggerEfficiency.txt'
 
-        do n_electr = 0,n_electr_max
+        do n_electr = 1,n_electr_max
             dRdne_shell(n_electr) = 0
         enddo
 
@@ -484,12 +491,12 @@ c           Multiply also for the constant in front of the integral, and divide 
         enddo
 
 c       Mean energy used to produce a quanta
-        W = 13.8E-9 ! GeV
+        W = 13.8d-9 ! GeV
 
 c       Secondary scintillation gain factor and sigma.
         g2_Xenon10 = 27
 
-        sigma_Xenon10 = 6.7
+        sigma_Xenon10 = 6.7d0
 
 c       Write the rate vs n for each shell
 
@@ -583,24 +590,25 @@ c       Multiply for the exposure and efficency
         double precision E_e(gridsize_k+1), dRdE_kg_day_GeV(gridsize_k), dRdiS2_Xenon1T(S2_bin_max_Xenon1T)
         double precision E_e_resp(len_E_e_resp), E_e_bin_edges(len_E_e_resp+1), S2_val(S2_bin_max_Xenon1T)
         double precision rate, rate_interp(len_E_e_resp), s2_resp(len_E_e_resp,S2_bin_max_Xenon1T)
+        double precision E_interp(gridsize_k)
         integer i, ik, iE, iS2, error
         character(2) target, shell_name
-        character(200) path, maddm_path
+        character(512) path, maddm_path
         double precision exposure_Xenon1T
         
 c       Raw exposure, not the effective one. The selection cuts are considered inside the detector response.
-        parameter(exposure_Xenon1T = 356524.7)     ! kg days (0.97678 tonne years)
+        parameter(exposure_Xenon1T = 356770.d0)     ! kg days (0.97678 tonne years, XENON1T data release)
 
 c       S2 values corresponding to S2 bin number (iS2 = 1 -> S2 = 90.7964 ... etc)
         S2_val =
-     &  (/90.7964, 92.4105, 94.0533, 95.7253, 97.427, 99.159, 100.9218, 102.7158, 104.5418,
-     &  106.4003, 108.2918, 110.2169, 112.1762, 114.1704, 116.2, 118.2657, 120.3681,
-     &  122.5079, 124.6857, 126.9022, 129.1582, 131.4543, 133.7911, 136.1695, 138.5902,
-     &  141.054, 143.5615, 146.1136, 148.711, 151.3547, 154.0453, 156.7838, 159.571,
-     &  162.4077, 165.2948, 168.2332, 171.2239, 174.2678, 177.3658, 180.5188, 183.7279,
-     &  186.994, 190.3182, 193.7015, 197.145, 200.6496, 204.2166, 207.847, 211.5419,
-     &  215.3025, 219.1299, 223.0254, 226.9901, 231.0254, 235.1323, 239.3123, 243.5665,
-     &  247.8964, 252.3033, 256.7885, 261.3535, 265.9996, 270.7282/)
+     &  (/90.7964d0, 92.4105d0, 94.0533d0, 95.7253d0, 97.427d0, 99.159d0, 100.9218d0, 102.7158d0, 104.5418d0,
+     &  106.4003d0, 108.2918d0, 110.2169d0, 112.1762d0, 114.1704d0, 116.2d0, 118.2657d0, 120.3681d0,
+     &  122.5079d0, 124.6857d0, 126.9022d0, 129.1582d0, 131.4543d0, 133.7911d0, 136.1695d0, 138.5902d0,
+     &  141.054d0, 143.5615d0, 146.1136d0, 148.711d0, 151.3547d0, 154.0453d0, 156.7838d0, 159.571d0,
+     &  162.4077d0, 165.2948d0, 168.2332d0, 171.2239d0, 174.2678d0, 177.3658d0, 180.5188d0, 183.7279d0,
+     &  186.994d0, 190.3182d0, 193.7015d0, 197.145d0, 200.6496d0, 204.2166d0, 207.847d0, 211.5419d0,
+     &  215.3025d0, 219.1299d0, 223.0254d0, 226.9901d0, 231.0254d0, 235.1323d0, 239.3123d0, 243.5665d0,
+     &  247.8964d0, 252.3033d0, 256.7885d0, 261.3535d0, 265.9996d0, 270.7282d0/)
 
 C       Read the XENON1T energy bins and S2 response
         %(maddm_path)s          ! MadDM path
@@ -637,13 +645,16 @@ c       Convert the last one
 
 c       If the last values have a difference < 5 percent, consider them as the same
 c       NOTE: this is just a small adjustment, to make sure that we consider all the rate inside the ROI
-        if ((E_e_resp(len_E_e_resp) - E_e(gridsize_k))/E_e(gridsize_k).le.(0.05)) then
-            E_e(gridsize_k) = E_e_resp(len_E_e_resp)
+        do ik=1,gridsize_k
+            E_interp(ik) = E_e(ik)
+        enddo
+        if ((E_e_resp(len_E_e_resp) - E_interp(gridsize_k))/E_interp(gridsize_k).le.(0.05d0)) then
+            E_interp(gridsize_k) = E_e_resp(len_E_e_resp)
         endif
 
 c       Interpolate dRdiS2_Xenon1T into the XENON1T response energy bins
         do iE=1,len_E_e_resp
-            call interpolate(E_e, dRdE_kg_day_GeV, gridsize_k, E_e_resp(iE), rate)
+            call interpolate(E_interp, dRdE_kg_day_GeV, gridsize_k, E_e_resp(iE), rate)
             rate_interp(iE) = rate
         enddo
 
@@ -723,34 +734,23 @@ c       Magnitude of the total velocity vector
 !-----------------------------------------------------------------------------------------!
             Use, intrinsic :: iso_fortran_env, Only : iostat_end
 
-            character(100) atom_resp_path
+            character(len=*) atom_resp_path
             character(2) target
             character(20) filename, shell_filenames(50)
             integer error, num_shell
-
-            include '../include/maddm.inc'
-            include '../include/maddm_card.inc'
+c           Files of the Xenon shells, in the order used so far (alphabetical order of the files).
+c           They are listed here instead of running ls in the MadDM directory.
+            character(2) xe_shells(11)
+            integer i
+            data xe_shells /'1s','2p','2s','3d','3p','3s','4d','4p','4s','5p','5s'/
 
             num_shell = 0
-
-            call system('ls ' // trim(atom_resp_path) // ' > ' // trim(atom_resp_path) // 'fileNames.txt')
-            open(1, FILE = trim(atom_resp_path)//'fileNames.txt', action="read")
-                    Do
-                        Read(1, *, iostat = error) filename
-                        Select Case(error)
-                        Case(0)
-                              if(filename(1:3).eq.(trim(target)//'_')) then
-                                    num_shell = num_shell + 1
-                                    shell_filenames(num_shell) = filename
-                              endif
-                        Case(iostat_end)
-                              Exit
-                        Case Default
-                              Write(*, *) 'Error in reading file'
-                              Stop
-                        End Select
-                    enddo
-            close(1)
+            if (target.eq.'Xe') then
+                do i=1,11
+                    num_shell = num_shell + 1
+                    shell_filenames(num_shell) = trim(target) // '_' // xe_shells(i) // '.txt'
+                enddo
+            endif
 
         end subroutine get_shell_filenames
 
@@ -768,7 +768,7 @@ c       Magnitude of the total velocity vector
 
                 double precision atomic_response_matrix(gridsize_k,gridsize_q)
                 character(20) shell_filename
-                character(100) atom_resp_path
+                character(len=*) atom_resp_path
                 integer j,k,error
 
                 open(2, FILE = trim(atom_resp_path)//trim(shell_filename), action="read")
@@ -810,7 +810,7 @@ c                                    Write(*,*) ''
 
                 integer S2_max
                 double precision efficency(S2_max)
-                character(200) path
+                character(len=*) path
                 integer S2,error
 
                 open(99, FILE = trim(path), action="read")
@@ -847,37 +847,37 @@ c                        write(*,*) S2, efficency(S2)
             if(target.eq.'Xe') then
 
                 if(shell_name.eq.'1s') then
-                    binding_energy = 33317.56055656222 * 1.0E-9 ! GeV
+                    binding_energy = 33317.56055656222d0 * 1.0d-9 ! GeV
 
                 else if(shell_name.eq.'2s') then
-                    binding_energy = 5149.213639792182 * 1.0E-9 ! GeV
+                    binding_energy = 5149.213639792182d0 * 1.0d-9 ! GeV
 
                 else if(shell_name.eq.'2p') then
-                    binding_energy = 4837.706588171414 * 1.0E-9 ! GeV
+                    binding_energy = 4837.706588171414d0 * 1.0d-9 ! GeV
 
                 else if(shell_name.eq.'3s') then
-                    binding_energy = 1093.2351842564003 * 1.0E-9 ! GeV
+                    binding_energy = 1093.2351842564003d0 * 1.0d-9 ! GeV
 
                 else if(shell_name.eq.'3p') then
-                    binding_energy = 958.4299495823894 * 1.0E-9 ! GeV
+                    binding_energy = 958.4299495823894d0 * 1.0d-9 ! GeV
 
                 else if(shell_name.eq.'3d') then
-                    binding_energy = 710.7303605534998 * 1.0E-9 ! GeV
+                    binding_energy = 710.7303605534998d0 * 1.0d-9 ! GeV
 
                 else if(shell_name.eq.'4s') then
-                    binding_energy = 213.7805688618793 * 1.0E-9 ! GeV
+                    binding_energy = 213.7805688618793d0 * 1.0d-9 ! GeV
 
                 else if(shell_name.eq.'4p') then
-                    binding_energy = 163.49493390058458 * 1.0E-9 ! GeV
+                    binding_energy = 163.49493390058458d0 * 1.0d-9 ! GeV
 
                 else if(shell_name.eq.'4d') then
-                    binding_energy = 75.58972072252894 * 1.0E-9 ! GeV
+                    binding_energy = 75.58972072252894d0 * 1.0d-9 ! GeV
 
                 else if(shell_name.eq.'5s') then
-                    binding_energy = 25.69862365041479 * 1.0E-9 ! GeV
+                    binding_energy = 25.69862365041479d0 * 1.0d-9 ! GeV
 
                 else if(shell_name.eq.'5p') then
-                    binding_energy = 12.44330433672413 * 1.0E-9 ! GeV
+                    binding_energy = 12.44330433672413d0 * 1.0d-9 ! GeV
 
                 else
                     write(*,*) 'Invalid shell_name'
@@ -934,7 +934,7 @@ c                        write(*,*) S2, efficency(S2)
             double precision gauss_prob, sigma, pi
             integer val, mean
 
-            pi = 3.14159265359
+            pi = 3.14159265358979d0
 
             gauss_prob = 1.d0/(sigma*sqrt(2.d0*pi)) * exp(-1.d0/2.d0*((val-mean)/sigma)**2)
 
@@ -1001,22 +1001,30 @@ c                        write(*,*) S2, efficency(S2)
         double precision s2_roi_min_double,s2_roi_max_double,n_obs_double
         double precision s2_roi_min_xenon(arr_size),s2_roi_max_xenon(arr_size),n_obs_xenon(arr_size)
         
-        dm_mass_xenon = (/0.01,0.02,0.03,0.05,0.07,0.1,0.14,0.2,0.3,0.5,0.7,1.0,2.0,5.0,10.0/)
+        dm_mass_xenon = (/0.01d0,0.02d0,0.03d0,0.05d0,0.07d0,0.1d0,0.14d0,0.2d0,0.3d0,0.5d0,0.7d0,1.0d0,2.0d0,5.0d0,10.0d0/)
 
-        s2_roi_min_xenon = (/30.0,30.0,30.0,30.0,34.0,35.0,35.0,35.0,35.0,35.0,35.0,35.0,35.0,35.0,35.0/)
+        s2_roi_min_xenon = (/30.0d0,30.0d0,30.0d0,30.0d0,34.0d0,35.0d0,35.0d0,35.0d0,
+     &                       35.0d0,35.0d0,35.0d0,35.0d0,35.0d0,35.0d0,35.0d0/)
         
-        s2_roi_max_xenon = (/46.0,46.0,48.0,54.0,56.0,60.0,62.0,63.0,63.0,63.0,63.0,63.0,63.0,63.0,63.0/)
+        s2_roi_max_xenon = (/45.0d0,45.0d0,48.0d0,54.0d0,56.0d0,60.0d0,62.0d0,63.0d0,
+     &                       63.0d0,63.0d0,63.0d0,63.0d0,63.0d0,63.0d0,63.0d0/)
     
-        n_obs_xenon = (/8.0, 8.0, 9.0, 14.0, 13.0, 14.0, 15.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0/)
+        n_obs_xenon = (/8.0d0, 8.0d0, 9.0d0, 14.0d0, 13.0d0, 14.0d0, 15.0d0, 16.0d0,
+     &                  16.0d0, 16.0d0, 16.0d0, 16.0d0, 16.0d0, 16.0d0, 16.0d0/)
     
         n_bkg_xenon =
-     &      (/2.429147965767682, 2.429147965767682, 2.723379181094673, 3.560164460077108, 2.9683432010305126,
-     &      3.2525520597626167, 3.7342708054194262, 3.7272835762603256, 3.7272835762603256, 3.7272835762603256,
-     &      3.7272835762603256, 3.7272835762603256, 3.7272835762603256, 3.7272835762603256, 3.7272835762603256/)
+     &      (/2.429147965767682d0, 2.429147965767682d0, 2.723379181094673d0, 3.560164460077108d0, 2.9683432010305126d0,
+     &      3.2525520597626167d0, 3.7342708054194262d0, 3.7272835762603256d0, 3.7272835762603256d0, 3.7272835762603256d0,
+     &      3.7272835762603256d0, 3.7272835762603256d0, 3.7272835762603256d0, 3.7272835762603256d0, 3.7272835762603256d0/)
 
         if ((dm_mass.lt.dm_mass_xenon(1)).or.(dm_mass.gt.dm_mass_xenon(arr_size))) then
             write(*,'(A33,F4.2,A3,F4.1,A5)') "DM mass outside XENON1T bounds: ("
      &              ,dm_mass_xenon(1)," : ",dm_mass_xenon(arr_size),") GeV"
+c           no ROI: empty loop in the caller, signal/background/observed flagged with -1
+            s2_roi_min = 1
+            s2_roi_max = 0
+            n_obs = -1
+            n_bkg = -1
             return
         else
             call interpolate(dm_mass_xenon, s2_roi_min_xenon, arr_size, dm_mass, s2_roi_min_double)

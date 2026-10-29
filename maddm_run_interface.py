@@ -2182,43 +2182,9 @@ class MADDMRunCmd(cmd.CmdShell):
                 Xenon1T_obs = self.last_results['Xenon1T_obs']
 
                 self.last_results['pvalue_Xenon10'] = get_pvalue_min(Xenon10_obs,Xenon10_sig)
-                self.last_results['pvalue_Xenon1T'] = get_pvalue(Xenon1T_obs,Xenon1T_sig,Xenon1T_bkg)
-
-
-    def launch_direct_electron(self):
-
-        def get_pvalue_min(n_obs,expected_val):
-            pvalues = []
-            for obs,exp in zip(n_obs,expected_val):
-                pvalues.append(poisson.cdf(obs,exp))
-            return min(pvalues)
-
-        def get_pvalue(obs,sig,bkg):
-            pvalue = poisson.cdf(obs,sig+bkg)
-            return pvalue
-        
-        self.last_results['pvalue_Xenon10'] = -1
-        self.last_results['pvalue_Xenon1T'] = -1
-        
-        if ("Xenon10_signal" not in self.last_results) and ("Xenon1T_signal" not in self.last_results):
-            logger.warning("XENON10 or XENON1T signal not found, exclusion limits computation for electronic recoil is disabled.")
-            return
-        else:
-            if HAS_NUMPY is False:
-                logger.warning("numpy module not available, exclusion limits computation is disabled.")
-                return
-            elif HAS_SCIPY is False:
-                logger.warning("scipy module not available, exclusion limits computation is disabled.")
-                return
-            elif self.last_results['DM_response']!=-1:
-                Xenon10_sig = self.last_results['Xenon10_signal']
-                Xenon10_obs = self.last_results['Xenon10_obs']
-                Xenon1T_sig = self.last_results['Xenon1T_signal']
-                Xenon1T_bkg = self.last_results['Xenon1T_bkg']
-                Xenon1T_obs = self.last_results['Xenon1T_obs']
-
-                self.last_results['pvalue_Xenon10'] = get_pvalue_min(Xenon10_obs,Xenon10_sig)
-                self.last_results['pvalue_Xenon1T'] = get_pvalue(Xenon1T_obs,Xenon1T_sig,Xenon1T_bkg)
+                # XENON1T results are -1 when the DM mass is outside the XENON1T table
+                if Xenon1T_obs != -1:
+                    self.last_results['pvalue_Xenon1T'] = get_pvalue(Xenon1T_obs,Xenon1T_sig,Xenon1T_bkg)
 
 
     def launch_multinest(self):

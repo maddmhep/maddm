@@ -37,7 +37,7 @@ c directional_detection.f
       double precision d2RdEdcostheta, Fhelm, V_E, Gaussian
 
 c dm_response_direct_e.f
-      double precision dm_resp, dm_response, sigma_e
+      double precision dm_resp, dm_response, sigma_e, electron_mass
 
 c electron_recoil_signal.f
       double precision sig_Xenon10(7),tot_sig_Xenon1T,tot_bkg_Xenon1T
@@ -203,10 +203,10 @@ c  Directional detection switch
 
 
 !  Atomic response range
-      parameter(q_min = 1.0E-6) ! GeV
-      parameter(q_max = 1.0E-3) ! GeV
-      parameter(k_min = 1.0E-7) ! GeV
-      parameter(k_max = 1.0E-4) ! GeV
+      parameter(q_min = 1.0d-6) ! GeV
+      parameter(q_max = 1.0d-3) ! GeV
+      parameter(k_min = 1.0d-7) ! GeV
+      parameter(k_max = 1.0d-4) ! GeV
 
 
 !  Constants
@@ -221,7 +221,7 @@ c  Directional detection switch
       parameter(S2_max_Xenon10 = 203)
       parameter(len_E_e_resp = 41)
       parameter(S2_bin_max_Xenon1T = 63)
-      parameter(m_Xenon   = 131.293) ! Average over all isotopes in (au)
+      parameter(m_Xenon   = 131.293d0) ! Average over all isotopes in (au)
 
 
 ! base units
@@ -229,7 +229,7 @@ c  Directional detection switch
       parameter(GeV   = 1.d0)
       parameter(cm    = 1.d0)
       parameter(cs    = 1.d0)
-      parameter(hbar = 6.582E-25)  ! GeV s
+      parameter(hbar = 6.582119569d-25)  ! GeV s
 
 ! Some important constants and conversion factors.
 
@@ -248,12 +248,12 @@ c  Directional detection switch
       parameter(hrtosec    = 60.d0*60.d0)
       parameter(tontokg    = 1000.d0)
       parameter(hukgtokg   = 100.d0)
-      parameter(gevtopb    = 3.89d+8)
+      parameter(gevtopb    = 3.893793721d+8) ! (hbar c)**2: GeV**(-2) -> pb
       parameter(pbtocm3    = 2.99d-26)
       parameter(pbtocm2    = 1.00d-36)
-      parameter(au         = 1.660539E-27) ! Kg
-      parameter(GeVtoKg    = 1.78E-27) ! GeV**(-1) Kg
-      parameter(GeVtoJ     = 1.6022E-10) ! GeV**(-1) J
+      parameter(au         = 1.66053906660d-27) ! Kg
+      parameter(GeVtoKg    = 1.78266192d-27) ! GeV**(-1) Kg
+      parameter(GeVtoJ     = 1.602176634d-10) ! GeV**(-1) J
 
 c------------------------Capture rate---------------------------------
       logical do_capture
