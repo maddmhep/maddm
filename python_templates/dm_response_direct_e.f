@@ -231,7 +231,9 @@ c                 so in terms of the alphas the matching is the same as for the 
                   get_dm_response = (c_1)**2 * gevtopb * picobarn
             else if(dm_spin.eq.2) then
                   c_1 = 4*mdm(1)*M_e*(alpha_SI_odd + alpha_SI_even)
-                  c_4 = 16*mdm(1)*M_e*(2*alpha_SD_odd - alpha_SD_even)
+c                 The alphas are projections on the axial x axial operator: the DM-e- amplitude is
+c                 (alpha_SD_even + alpha_SD_odd) times it, as for c_1 (a tensor term gives alpha_SD_odd = -2 C_T)
+                  c_4 = 16*mdm(1)*M_e*(alpha_SD_odd + alpha_SD_even)
                   get_dm_response = ((c_1)**2 + (3.d0/16.d0)*(c_4)**2) * gevtopb * picobarn
             else if(dm_spin.eq.3) then
                   ! will be implmented in future work
