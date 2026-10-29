@@ -95,6 +95,10 @@ if hasattr(me5_interface.AskRun, 'get_cardcmd_for_reweight'):
 __infty__ = float('inf')
 __mnestlog0__ = -1.0E90
 
+# DM-electron scattering: the ALLOWED/EXCLUDED verdict uses the XENONnT upper limit on sigma_e.
+# The XENON10/XENON1T p-value analysis is kept in the code but switched off; set to True to restore it.
+__dme_use_xenon_pvalue__ = False
+
 class ExpConstraints:
 
     def __init__(self):
@@ -111,7 +115,8 @@ class ExpConstraints:
         self._dd_limit_file = {
             'si'        : pjoin(MDMDIR, 'ExpData', 'LZ2024_SI.dat'),  
             'sd_proton' : pjoin(MDMDIR, 'ExpData', 'Pico60_sd_proton_2019.dat'),
-            'sd_neutron': pjoin(MDMDIR, 'ExpData', 'LZ2024_SDn.dat')
+            'sd_neutron': pjoin(MDMDIR, 'ExpData', 'LZ2024_SDn.dat'),
+            'electron'  : pjoin(MDMDIR, 'ExpData', 'XENONnT_DMe_SI.dat')
         }
 
         self._dd_limit_mdm = dict()
@@ -209,6 +214,7 @@ class ExpConstraints:
             logger.info('Spin Independent cross section: %s' % self._dd_limit_file['si'])
             logger.info('Spin Dependent cross section (p): %s' % self._dd_limit_file['sd_proton'])
             logger.info('Spin Dependent cross section (n): %s' % self._dd_limit_file['sd_neutron'])
+            logger.info('DM-electron cross section: %s' % self._dd_limit_file['electron'])
         else:
             logger.info('Spin (in)dependent not available due to the missing python module: numpy')
 #        for chan in self._allowed_final_states:
@@ -269,6 +275,23 @@ class ExpConstraints:
                     return -1
                 else:
                     return np.interp(mdm, self._dd_limit_mdm['sd_neutron'], self._dd_limit_sigma['sd_neutron'])
+
+    #Returns a value in cm^2
+    def DMe_max(self, mdm):
+        ''' upper limit on the DM-electron reference cross section sigma_e (heavy mediator) '''
+        if not HAS_NUMPY:
+            logger.warning("missing numpy module for DM-electron limit")
+            return -1
+
+        if 'electron' not in self._dd_limit_mdm:
+            return -1
+
+        if (mdm < np.min(self._dd_limit_mdm['electron']) or mdm > np.max(self._dd_limit_mdm['electron'])):
+            logger.warning('Dark matter mass value '+str(mdm)+' is outside the range of DM-electron limit')
+            return -1
+        else:
+            # the limit spans several decades with few points: interpolate in log-log
+            return np.power(10., np.interp(np.log10(mdm), np.log10(self._dd_limit_mdm['electron']), np.log10(self._dd_limit_sigma['electron'])))
 
     # Returns a value in cm^3/s
     def ID_max(self, mdm, channel, sigmav = True):
@@ -1939,8 +1962,9 @@ class MADDMRunCmd(cmd.CmdShell):
         # if self.mode['direct_nucleon'] == 'p-value':
             
         if self.mode['direct_electron'] and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
+            self.last_results['lim_sigma_e'] = self.limits.DMe_max(mdm)
             self.launch_direct_electron()
-                          
+
 #        if self.mode['indirect'] and not self._two2twoLO:
 #            with misc.MuteLogger(names=['madevent','madgraph'],levels=[50,50]):
 #                self.launch_indirect(force)
@@ -2047,7 +2071,9 @@ class MADDMRunCmd(cmd.CmdShell):
             #     order += ['Nevents', 'smearing']
 
             if self.mode['direct_electron'] and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
-                order += ['pvalue_Xenon10','pvalue_Xenon1T']
+                order += ['sigma_e', 'lim_sigma_e']
+                if __dme_use_xenon_pvalue__:
+                    order += ['pvalue_Xenon10','pvalue_Xenon1T']
 
             if self.mode['capture']:
                 detailled_keys = [k for k in self.last_results if k.startswith('ccap_') and '#' not in k]
@@ -2163,7 +2189,11 @@ class MADDMRunCmd(cmd.CmdShell):
         
         self.last_results['pvalue_Xenon10'] = -1
         self.last_results['pvalue_Xenon1T'] = -1
-        
+
+        # p-values switched off: the verdict comes from the XENONnT limit on sigma_e (see DMe_max)
+        if not __dme_use_xenon_pvalue__:
+            return
+
         if ("Xenon10_signal" not in self.last_results) and ("Xenon1T_signal" not in self.last_results):
             logger.warning("XENON10 or XENON1T signal not found, exclusion limits computation for electronic recoil is disabled.")
             return
@@ -3230,7 +3260,13 @@ class MADDMRunCmd(cmd.CmdShell):
             pval_Xenon10 = self.last_results['pvalue_Xenon10']
             pval_Xenon1T = self.last_results['pvalue_Xenon1T']
             sigma_e = self.last_results['sigma_e']
-            if pval_Xenon10==-1 and pval_Xenon1T==-1:
+            if not __dme_use_xenon_pvalue__:
+                logger.info('\n****** Direct detection - electron recoil [cm^2]: ')
+                if sigma_e < 0:
+                    logger.info(self.form_s('Sigma_e') + self.form_s('All DM = ' + self.form_n(-1)) + '   No Theory Prediction')
+                else:
+                    self.print_ind('Sigma_e', sigma_e * xsi, sigma_e, self.last_results['lim_sigma_e'], thermal=dm_scen, direc=False, exp='XENONnT')
+            elif pval_Xenon10==-1 and pval_Xenon1T==-1:
                 logger.info( self.form_s('Sigma_e             All DM = ') + self.form_n(-1) + self.form_s('      ' + det_message_screen(0.05,pval_Xenon10)) + self.form_s('     Xenon10 p_val    = ') + self.form_n(pval_Xenon10))
                 logger.info( self.form_s('Sigma_e             All DM = ') + self.form_n(-1) + self.form_s('      ' + det_message_screen(0.05,pval_Xenon1T)) + self.form_s('     Xenon1ton p_val  = ') + self.form_n(pval_Xenon1T))
             else:
@@ -3714,9 +3750,13 @@ class MADDMRunCmd(cmd.CmdShell):
             cross_DMe = self.last_results['sigma_e']
             pval10 = self.last_results['pvalue_Xenon10']
             pval1T = self.last_results['pvalue_Xenon1T']
-            out.write(form_s('Sigma_e ref.') + '= ' + form_s(form_n(cross_DMe)) + '\n')
-            out.write(form_s('Xenon10_pvalue') + '= ' + form_s(form_n(pval10)) + '\n')
-            out.write(form_s('Xenon1T_pvalue') + '= ' + form_s(form_n(pval1T)) + '\n')
+            if not __dme_use_xenon_pvalue__:
+                ul_DMe = self.last_results['lim_sigma_e']
+                out.write(form_s('Sigma_e ref.') + '= ' + form_s('['+ form_n(cross_DMe) + ',' + form_n(ul_DMe) + ']') + '# XENONnT\n')
+            else:
+                out.write(form_s('Sigma_e ref.') + '= ' + form_s(form_n(cross_DMe)) + '\n')
+                out.write(form_s('Xenon10_pvalue') + '= ' + form_s(form_n(pval10)) + '\n')
+                out.write(form_s('Xenon1T_pvalue') + '= ' + form_s(form_n(pval1T)) + '\n')
         
 
         if indirect or spectral:      
