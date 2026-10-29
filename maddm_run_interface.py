@@ -1905,7 +1905,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
         else: result['xsi'] = 1.0
 
-        if self.mode['direct']:
+        if self.mode['direct_nucleon']:
             RP_parent = os.path.abspath(pjoin(MDMDIR, 'vendor', 'RAPIDD_for_DM'))
             if RP_parent not in sys.path:
                 sys.path.insert(0, RP_parent)
@@ -1936,7 +1936,7 @@ class MADDMRunCmd(cmd.CmdShell):
         self.last_results = result
         self.last_results['run'] = self.run_name
 
-        # if self.mode['direct'] == 'p-value':
+        # if self.mode['direct_nucleon'] == 'p-value':
             
         if self.mode['direct_electron'] and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
             self.launch_direct_electron()
@@ -2036,14 +2036,14 @@ class MADDMRunCmd(cmd.CmdShell):
             order.append('xsi')
 
             # *** Direct Detection
-            if self.mode['direct'] :
+            if self.mode['direct_nucleon'] :
                 order += ['sigmaN_SI_p', 'lim_sigmaN_SI_p', 
                           'sigmaN_SI_n', 'lim_sigmaN_SI_n',
                           'sigmaN_SD_p', 'lim_sigmaN_SD_p',
                           'sigmaN_SD_n', 'lim_sigmaN_SD_n']
 
            
-            # if self.mode['direct'] == 'directional':
+            # if self.mode['direct_nucleon'] == 'directional':
             #     order += ['Nevents', 'smearing']
 
             if self.mode['direct_electron'] and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
@@ -3198,7 +3198,7 @@ class MADDMRunCmd(cmd.CmdShell):
             if len(skip) != 0:
                 logger.info('No contribution from processes: %s', ', '.join(skip))
 
-        if self.mode['direct']:
+        if self.mode['direct_nucleon']:
             # units = self.last_results['GeV2pb*pb2cm2']
             direct_names = [ { 'n': 'SigmaN_SI_p', 'sig': self.last_results['sigmaN_SI_p'], 'lim': self.last_results['lim_sigmaN_SI_p'], 'exp': 'LZ2024' },
                              { 'n': 'SigmaN_SI_n', 'sig': self.last_results['sigmaN_SI_n'], 'lim': self.last_results['lim_sigmaN_SI_n'], 'exp': 'LZ2024' },
@@ -3215,7 +3215,7 @@ class MADDMRunCmd(cmd.CmdShell):
                     mess_alldm    = self.det_message_screen(D['sig'], D['lim'] )
                     self.print_ind(D['n'],th_cross , D['sig'], ul,  thermal=dm_scen ,direc = False , exp=D['exp']) # leave False to avout GeV^-2
          
-#        if self.mode['direct'] == 'directional':
+#        if self.mode['direct_nucleon'] == 'directional':
 #            logger.info(' Nevents          : %i', self.last_results['Nevents'])
 #            logger.info(' smearing         : %.2e', self.last_results['smearing'])
 
@@ -3348,7 +3348,7 @@ class MADDMRunCmd(cmd.CmdShell):
         logger.info('')
 
         if not self.param_card_iterator:
-            self.save_summary_single(relic = self.mode['relic'], direct = self.mode['direct'], direct_electron = self.mode['direct_electron'], \
+            self.save_summary_single(relic = self.mode['relic'], direct = self.mode['direct_nucleon'], direct_electron = self.mode['direct_electron'], \
                                 indirect = self.mode['indirect'], spectral = self.mode['spectral'],
                                 fluxes_source= self.mode['indirect'].startswith('flux') if isinstance(self.mode['indirect'],str) else self.mode['indirect'], 
                                 fluxes_earth = False )                  
@@ -3942,8 +3942,8 @@ class MADDMRunCmd(cmd.CmdShell):
         if not self.in_scan_mode:
             # create the inc file for maddm
             self.maddm_card.set('do_relic_density', self.mode['relic'], user=False)
-            self.maddm_card.set('do_direct_detection', True if self.mode['direct'] else False, user=False)
-            #self.maddm_card.set('do_directional_detection', self.mode['direct'] == 'directional', user=False)
+            self.maddm_card.set('do_direct_detection', True if self.mode['direct_nucleon'] else False, user=False)
+            #self.maddm_card.set('do_directional_detection', self.mode['direct_nucleon'] == 'directional', user=False)
             self.maddm_card.set('do_direct_electron', True if self.mode['direct_electron'] else False, user=False)
             self.maddm_card.set('do_capture', self.mode['capture'], user=False)
             self.maddm_card.set('do_indirect_detection', True if self.mode['indirect'] else False, user=False)
@@ -3967,11 +3967,11 @@ class MADDMRunCmd(cmd.CmdShell):
         self.maddm_card.write_include_file(pjoin(self.dir_path,'include'))
         misc.compile(['all'],cwd=self.dir_path)
 
-        # if self.mode['relic'] and self.mode['direct']:
+        # if self.mode['relic'] and self.mode['direct_nucleon']:
         #     misc.compile(['all'],cwd=self.dir_path)
-        # elif self.mode['relic'] and not self.mode['direct']:
+        # elif self.mode['relic'] and not self.mode['direct_nucleon']:
         #     misc.compile(['relic_density'],cwd=self.dir_path)
-        # elif self.mode['direct'] and not self.mode['relic']:
+        # elif self.mode['direct_nucleon'] and not self.mode['relic']:
         #     misc.compile(['direct_detection'],cwd=self.dir_path)
         # elif self.mode['indirect'] and not self.mode['relic']:
         #     misc.compile(['relic_density'],cwd=self.dir_path)
@@ -4112,7 +4112,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
     """
 
     to_control= [('relic', 'Compute the Relic Density'),
-                 ('direct', 'Compute direct detection - nucleon recoil'),
+                 ('direct_nucleon', 'Compute direct detection - nucleon recoil'),
                  ('direct_electron', 'Compute direct detection - electron recoil'),
                  ('indirect', 'Compute indirect detection/flux (cont spectrum)'),
                  ('spectral', 'Compute indirect detection in aX (line spectrum)'),
@@ -4155,41 +4155,42 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         return self.allowed_relic
 
     ####################################################################
-    # everything related to direct option
-    ####################################################################    
-    def set_default_direct(self):
-        """set the default value for direct="""
-        
+    # everything related to direct_nucleon option
+    ####################################################################
+    def set_default_direct_nucleon(self):
+        """set the default value for direct_nucleon="""
+
         if self.availmode['has_direct_detection']:
-            self.switch['direct'] = 'ON'
-      
+            self.switch['direct_nucleon'] = 'ON'
+
         else:
-            self.switch['direct'] = 'Not Avail.'
+            self.switch['direct_nucleon'] = 'Not Avail.'
 
-    def get_allowed_direct(self):
-        """Specify which parameter are allowed for direct="""
-        
-        
-        if hasattr(self, 'allowed_direct'):
-            return getattr(self, 'allowed_direct')
+    def get_allowed_direct_nucleon(self):
+        """Specify which parameter are allowed for direct_nucleon="""
+
+
+        if hasattr(self, 'allowed_direct_nucleon'):
+            return getattr(self, 'allowed_direct_nucleon')
 
         if self.availmode['has_direct_detection']:
-  
-            self.allowed_direct =  ['ON','OFF']
+
+            self.allowed_direct_nucleon =  ['ON','OFF']
+            return self.allowed_direct_nucleon
         else:
             return []
 
-    def check_value_direct(self, value):
-        """ allow direct=ON in top of standard mode """
-        
-        if value in self.get_allowed('direct'):
+    def check_value_direct_nucleon(self, value):
+        """ allow direct_nucleon=ON in top of standard mode """
+
+        if value in self.get_allowed('direct_nucleon'):
             return True
-        
+
         value =value.lower()
         if value in ['on'] and self.availmode['has_direct_detection' ]:
-            return 'direct'
-        
-    def get_cardcmd_direct(self, value):
+            return 'ON'
+
+    def get_cardcmd_direct_nucleon(self, value):
         """return the command to set the maddm_card consistent with the switch"""
         
         cmd =[]
@@ -4792,7 +4793,7 @@ When you are done with such edition, just press enter (or write 'done' or '0')
             self.setDM('vave_indirect_cont', self.maddm.get('vave_indirect'), loglevel = 30)
 
         # If direct detection is ON ensure that quark mass are not zero
-        if self.switch['direct'] != 'OFF':
+        if self.switch['direct_nucleon'] != 'OFF':
             to_change = []
             for i in range(1,7):
                 if self.param_card.get_value('mass', i) == 0.:
@@ -5506,7 +5507,7 @@ class Multinest(object):
                 self.output_observables.append('x_f')
                 self.output_observables.append('xsi')
                 
-            if self.maddm_run.mode['direct']:
+            if self.maddm_run.mode['direct_nucleon']:
                 self.output_observables.append('sigmaN_SI_n')
                 self.output_observables.append('sigmaN_SI_p')
                 self.output_observables.append('sigmaN_SD_n')
@@ -5543,7 +5544,7 @@ class Multinest(object):
             #        self.output_observables.append(key)
         
         # add likelihoods parts for each category
-        self.likelihood_parts = [mode for mode in ['relic', 'direct', 'indirect', 'spectral'] if self.maddm_run.mode[mode]]
+        self.likelihood_parts = [mode for mode in ['relic', 'direct_nucleon', 'indirect', 'spectral'] if self.maddm_run.mode[mode]]
 
         # number of parameters to output
         # this includes the parameters which are scanned over (they go in first)
@@ -5730,7 +5731,7 @@ class Multinest(object):
 
         if self.maddm_run.mode['relic']:
             omegah2 = results['Omegah^2']
-        if self.maddm_run.mode['direct']:
+        if self.maddm_run.mode['direct_nucleon']:
             spinSI = 0.5*(results['sigmaN_SI_p'] + results['sigmaN_SI_n'])# * GeV2pb * pb2cm2
             spinSDp = results['sigmaN_SD_p']#  * GeV2pb * pb2cm2
             spinSDn = results['sigmaN_SD_n']# * GeV2pb * pb2cm2
@@ -5748,7 +5749,7 @@ class Multinest(object):
         mdm = self.maddm_run.param_card.get_value('mass', self.maddm_run.proc_characteristics['dm_candidate'][0])
         #logger.debug('MDM: %.3e', mdm)
         logger.debug(self.maddm_run.mode['relic'])
-        logger.debug(self.maddm_run.mode['direct'])
+        logger.debug(self.maddm_run.mode['direct_nucleon'])
 
         ndim_obs = ndim + len(self.output_observables)
 
@@ -5786,9 +5787,9 @@ class Multinest(object):
                 chi += relic_contrib
 
             #direct detection (SI)
-            if self.maddm_run.mode['direct']:
-                cube[ndim_obs+self.likelihood_parts.index('direct')] = 0
-            if obs == 'directSI' and self.maddm_run.mode['direct']:
+            if self.maddm_run.mode['direct_nucleon']:
+                cube[ndim_obs+self.likelihood_parts.index('direct_nucleon')] = 0
+            if obs == 'directSI' and self.maddm_run.mode['direct_nucleon']:
                 if likelihood=='half_gauss':
 
                     if spinSI > self.maddm_run.limits.SI_max(mdm):
@@ -5813,11 +5814,11 @@ class Multinest(object):
                     direct_contrib_1 = 0
 
                 # add to cube
-                cube[ndim_obs+self.likelihood_parts.index('direct')] += direct_contrib_1
+                cube[ndim_obs+self.likelihood_parts.index('direct_nucleon')] += direct_contrib_1
                 chi += direct_contrib_1
 
             #direct detection (SD) proton and neutron
-            if obs.startswith('directSD') and self.maddm_run.mode['direct']:
+            if obs.startswith('directSD') and self.maddm_run.mode['direct_nucleon']:
                 nucleon = obs.split('_')[1]
                 if likelihood=='half_gauss':
                     if nucleon =='p':
@@ -5848,7 +5849,7 @@ class Multinest(object):
                     logger.error('You are not using a valid likelihood function for SD direct detection. Omitting the contribution!')
                     direct_contrib_2=0
                 # add to cube
-                cube[ndim_obs+self.likelihood_parts.index('direct')] += direct_contrib_2
+                cube[ndim_obs+self.likelihood_parts.index('direct_nucleon')] += direct_contrib_2
                 chi += direct_contrib_2
 
             # indirect detection:
