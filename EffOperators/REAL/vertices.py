@@ -170,16 +170,16 @@ V_27 = Vertex(name = 'V_27',
               particles = [ P.e__plus__, P.e__minus__, P.P__tilde__sdm, P.P__tilde__sdm ],
               color = [ '1' ],
               lorentz = [ L.FFSS1 ],
-              couplings = {(0,0):C.GC_8})
+              couplings = {(0,0):C.GC_5})
 
 V_28 = Vertex(name = 'V_28',
               particles = [ P.e__plus__, P.e__minus__, P.Fsdm ],
               color = [ '1' ],
               lorentz = [ L.FFS1 ],
-              couplings = {(0,0):C.GC_9})
+              couplings = {(0,0):C.GC_8})
 
 V_29 = Vertex(name = 'V_29',
               particles = [ P.e__plus__, P.e__minus__, P.Fvdm ],
               color = [ '1' ],
               lorentz = [ L.FFV1 ],
-              couplings = {(0,0):C.GC_10})
+              couplings = {(0,0):C.GC_9})
