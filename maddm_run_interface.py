@@ -4877,7 +4877,7 @@ When you are done with such edition, just press enter (or write 'done' or '0')
             if args[1] == 'default':
                 logging.info('replace %s by the default card' % args[0])
                 self.maddm = MadDMCard(self.paths['maddm_default'])
-        elif args[0] in self.maddm_set and args[0] not in self.conflict:
+        elif args[0] in [l.lower() for l in self.maddm_set] and args[0] not in self.conflict:
             start = 0
 
         #For setting the exp. constraints
