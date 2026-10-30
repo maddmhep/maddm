@@ -116,7 +116,7 @@ class ExpConstraints:
             'si'        : pjoin(MDMDIR, 'ExpData', 'LZ2024_SI.dat'),  
             'sd_proton' : pjoin(MDMDIR, 'ExpData', 'Pico60_sd_proton_2019.dat'),
             'sd_neutron': pjoin(MDMDIR, 'ExpData', 'LZ2024_SDn.dat'),
-            'electron'  : pjoin(MDMDIR, 'ExpData', 'XENONnT_DMe_SI.dat')
+            'electron'  : pjoin(MDMDIR, 'vendor', 'RAPIDD_for_DM', 'lib', 'experiments', 'XENONnT', 'XENONnT_DMe_SI.dat')
         }
 
         self._dd_limit_mdm = dict()
