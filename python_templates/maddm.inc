@@ -148,7 +148,7 @@ c constants
 
 c conversion factors
       double precision gevtopb, pbtocm3
-      parameter(gevtopb    = 3.89d+8)
+      parameter(gevtopb    = 3.893793721d+8) ! (hbar c)**2: GeV**(-2) -> pb
       parameter(pbtocm3    = 2.99d-26)
 
 c------------------------ Resonance information --------------------------

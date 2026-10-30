@@ -95,6 +95,10 @@ if hasattr(me5_interface.AskRun, 'get_cardcmd_for_reweight'):
 __infty__ = float('inf')
 __mnestlog0__ = -1.0E90
 
+# DM-electron scattering: the ALLOWED/EXCLUDED verdict uses the XENONnT upper limit on sigma_e.
+# The XENON10/XENON1T p-value analysis is kept in the code but switched off; set to True to restore it.
+__dme_use_xenon_pvalue__ = False
+
 class ExpConstraints:
 
     def __init__(self):
@@ -111,7 +115,8 @@ class ExpConstraints:
         self._dd_limit_file = {
             'si'        : pjoin(MDMDIR, 'ExpData', 'LZ2024_SI.dat'),  
             'sd_proton' : pjoin(MDMDIR, 'ExpData', 'Pico60_sd_proton_2019.dat'),
-            'sd_neutron': pjoin(MDMDIR, 'ExpData', 'LZ2024_SDn.dat')
+            'sd_neutron': pjoin(MDMDIR, 'ExpData', 'LZ2024_SDn.dat'),
+            'electron'  : pjoin(MDMDIR, 'vendor', 'RAPIDD_for_DM', 'lib', 'experiments', 'XENONnT', 'XENONnT_DMe_SI.dat')
         }
 
         self._dd_limit_mdm = dict()
@@ -209,6 +214,7 @@ class ExpConstraints:
             logger.info('Spin Independent cross section: %s' % self._dd_limit_file['si'])
             logger.info('Spin Dependent cross section (p): %s' % self._dd_limit_file['sd_proton'])
             logger.info('Spin Dependent cross section (n): %s' % self._dd_limit_file['sd_neutron'])
+            logger.info('DM-electron cross section: %s' % self._dd_limit_file['electron'])
         else:
             logger.info('Spin (in)dependent not available due to the missing python module: numpy')
 #        for chan in self._allowed_final_states:
@@ -269,6 +275,23 @@ class ExpConstraints:
                     return -1
                 else:
                     return np.interp(mdm, self._dd_limit_mdm['sd_neutron'], self._dd_limit_sigma['sd_neutron'])
+
+    #Returns a value in cm^2
+    def DMe_max(self, mdm):
+        ''' upper limit on the DM-electron reference cross section sigma_e (heavy mediator) '''
+        if not HAS_NUMPY:
+            logger.warning("missing numpy module for DM-electron limit")
+            return -1
+
+        if 'electron' not in self._dd_limit_mdm:
+            return -1
+
+        if (mdm < np.min(self._dd_limit_mdm['electron']) or mdm > np.max(self._dd_limit_mdm['electron'])):
+            logger.warning('Dark matter mass value '+str(mdm)+' is outside the range of DM-electron limit')
+            return -1
+        else:
+            # the limit spans several decades with few points: interpolate in log-log
+            return np.power(10., np.interp(np.log10(mdm), np.log10(self._dd_limit_mdm['electron']), np.log10(self._dd_limit_sigma['electron'])))
 
     # Returns a value in cm^3/s
     def ID_max(self, mdm, channel, sigmav = True):
@@ -1903,7 +1926,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
         else: result['xsi'] = 1.0
 
-        if self.mode['direct']:
+        if self.mode['direct_nucleon']:
             RP_parent = os.path.abspath(pjoin(MDMDIR, 'vendor', 'RAPIDD_for_DM'))
             if RP_parent not in sys.path:
                 sys.path.insert(0, RP_parent)
@@ -1965,11 +1988,12 @@ class MADDMRunCmd(cmd.CmdShell):
         self.last_results = result
         self.last_results['run'] = self.run_name
 
-        # if self.mode['direct'] == 'p-value':
+        # if self.mode['direct_nucleon'] == 'p-value':
             
         if self.mode['direct_electron'] and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
+            self.last_results['lim_sigma_e'] = self.limits.DMe_max(mdm)
             self.launch_direct_electron()
-                          
+
 #        if self.mode['indirect'] and not self._two2twoLO:
 #            with misc.MuteLogger(names=['madevent','madgraph'],levels=[50,50]):
 #                self.launch_indirect(force)
@@ -2065,7 +2089,7 @@ class MADDMRunCmd(cmd.CmdShell):
             order.append('xsi')
 
             # *** Direct Detection
-            if self.mode['direct'] :
+            if self.mode['direct_nucleon'] :
                 order += ['sigmaN_SI_p', 'lim_sigmaN_SI_p', 
                           'sigmaN_SI_n', 'lim_sigmaN_SI_n',
                           'sigmaN_SD_p', 'lim_sigmaN_SD_p',
@@ -2073,7 +2097,9 @@ class MADDMRunCmd(cmd.CmdShell):
 
 
             if self.mode['direct_electron'] and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
-                order += ['pvalue_Xenon10','pvalue_Xenon1T']
+                order += ['sigma_e', 'lim_sigma_e']
+                if __dme_use_xenon_pvalue__:
+                    order += ['pvalue_Xenon10','pvalue_Xenon1T']
 
 
             # *** Indirect detection
@@ -2185,7 +2211,11 @@ class MADDMRunCmd(cmd.CmdShell):
         
         self.last_results['pvalue_Xenon10'] = -1
         self.last_results['pvalue_Xenon1T'] = -1
-        
+
+        # p-values switched off: the verdict comes from the XENONnT limit on sigma_e (see DMe_max)
+        if not __dme_use_xenon_pvalue__:
+            return
+
         if ("Xenon10_signal" not in self.last_results) and ("Xenon1T_signal" not in self.last_results):
             logger.warning("XENON10 or XENON1T signal not found, exclusion limits computation for electronic recoil is disabled.")
             return
@@ -2204,43 +2234,9 @@ class MADDMRunCmd(cmd.CmdShell):
                 Xenon1T_obs = self.last_results['Xenon1T_obs']
 
                 self.last_results['pvalue_Xenon10'] = get_pvalue_min(Xenon10_obs,Xenon10_sig)
-                self.last_results['pvalue_Xenon1T'] = get_pvalue(Xenon1T_obs,Xenon1T_sig,Xenon1T_bkg)
-
-
-    def launch_direct_electron(self):
-
-        def get_pvalue_min(n_obs,expected_val):
-            pvalues = []
-            for obs,exp in zip(n_obs,expected_val):
-                pvalues.append(poisson.cdf(obs,exp))
-            return min(pvalues)
-
-        def get_pvalue(obs,sig,bkg):
-            pvalue = poisson.cdf(obs,sig+bkg)
-            return pvalue
-        
-        self.last_results['pvalue_Xenon10'] = -1
-        self.last_results['pvalue_Xenon1T'] = -1
-        
-        if ("Xenon10_signal" not in self.last_results) and ("Xenon1T_signal" not in self.last_results):
-            logger.warning("XENON10 or XENON1T signal not found, exclusion limits computation for electronic recoil is disabled.")
-            return
-        else:
-            if HAS_NUMPY is False:
-                logger.warning("numpy module not available, exclusion limits computation is disabled.")
-                return
-            elif HAS_SCIPY is False:
-                logger.warning("scipy module not available, exclusion limits computation is disabled.")
-                return
-            elif self.last_results['DM_response']!=-1:
-                Xenon10_sig = self.last_results['Xenon10_signal']
-                Xenon10_obs = self.last_results['Xenon10_obs']
-                Xenon1T_sig = self.last_results['Xenon1T_signal']
-                Xenon1T_bkg = self.last_results['Xenon1T_bkg']
-                Xenon1T_obs = self.last_results['Xenon1T_obs']
-
-                self.last_results['pvalue_Xenon10'] = get_pvalue_min(Xenon10_obs,Xenon10_sig)
-                self.last_results['pvalue_Xenon1T'] = get_pvalue(Xenon1T_obs,Xenon1T_sig,Xenon1T_bkg)
+                # XENON1T results are -1 when the DM mass is outside the XENON1T table
+                if Xenon1T_obs != -1:
+                    self.last_results['pvalue_Xenon1T'] = get_pvalue(Xenon1T_obs,Xenon1T_sig,Xenon1T_bkg)
 
 
     def launch_multinest(self):
@@ -3254,7 +3250,7 @@ class MADDMRunCmd(cmd.CmdShell):
             if len(skip) != 0:
                 logger.info('No contribution from processes: %s', ', '.join(skip))
 
-        if self.mode['direct']:
+        if self.mode['direct_nucleon']:
             # units = self.last_results['GeV2pb*pb2cm2']
             direct_names = [ { 'n': 'SigmaN_SI_p', 'sig': self.last_results['sigmaN_SI_p'], 'lim': self.last_results['lim_sigmaN_SI_p'], 'exp': 'LZ2024' },
                              { 'n': 'SigmaN_SI_n', 'sig': self.last_results['sigmaN_SI_n'], 'lim': self.last_results['lim_sigmaN_SI_n'], 'exp': 'LZ2024' },
@@ -3282,7 +3278,13 @@ class MADDMRunCmd(cmd.CmdShell):
             pval_Xenon10 = self.last_results['pvalue_Xenon10']
             pval_Xenon1T = self.last_results['pvalue_Xenon1T']
             sigma_e = self.last_results['sigma_e']
-            if pval_Xenon10==-1 and pval_Xenon1T==-1:
+            if not __dme_use_xenon_pvalue__:
+                logger.info('\n****** Direct detection - electron recoil [cm^2]: ')
+                if sigma_e < 0:
+                    logger.info(self.form_s('Sigma_e') + self.form_s('All DM = ' + self.form_n(-1)) + '   No Theory Prediction')
+                else:
+                    self.print_ind('Sigma_e', sigma_e * xsi, sigma_e, self.last_results['lim_sigma_e'], thermal=dm_scen, direc=False, exp='XENONnT')
+            elif pval_Xenon10==-1 and pval_Xenon1T==-1:
                 logger.info( self.form_s('Sigma_e             All DM = ') + self.form_n(-1) + self.form_s('      ' + det_message_screen(0.05,pval_Xenon10)) + self.form_s('     Xenon10 p_val    = ') + self.form_n(pval_Xenon10))
                 logger.info( self.form_s('Sigma_e             All DM = ') + self.form_n(-1) + self.form_s('      ' + det_message_screen(0.05,pval_Xenon1T)) + self.form_s('     Xenon1ton p_val  = ') + self.form_n(pval_Xenon1T))
             else:
@@ -3394,7 +3396,7 @@ class MADDMRunCmd(cmd.CmdShell):
         logger.info('')
 
         if not self.param_card_iterator:
-            self.save_summary_single(relic = self.mode['relic'], direct = self.mode['direct'], direct_electron = self.mode['direct_electron'], \
+            self.save_summary_single(relic = self.mode['relic'], direct = self.mode['direct_nucleon'], direct_electron = self.mode['direct_electron'], \
                                 indirect = self.mode['indirect'], spectral = self.mode['spectral'],
                                 fluxes_source= self.mode['indirect'].startswith('flux') if isinstance(self.mode['indirect'],str) else self.mode['indirect'], 
                                 fluxes_earth = False )                  
@@ -3736,9 +3738,13 @@ class MADDMRunCmd(cmd.CmdShell):
             cross_DMe = self.last_results['sigma_e']
             pval10 = self.last_results['pvalue_Xenon10']
             pval1T = self.last_results['pvalue_Xenon1T']
-            out.write(form_s('Sigma_e ref.') + '= ' + form_s(form_n(cross_DMe)) + '\n')
-            out.write(form_s('Xenon10_pvalue') + '= ' + form_s(form_n(pval10)) + '\n')
-            out.write(form_s('Xenon1T_pvalue') + '= ' + form_s(form_n(pval1T)) + '\n')
+            if not __dme_use_xenon_pvalue__:
+                ul_DMe = self.last_results['lim_sigma_e']
+                out.write(form_s('Sigma_e ref.') + '= ' + form_s('['+ form_n(cross_DMe) + ',' + form_n(ul_DMe) + ']') + '# XENONnT\n')
+            else:
+                out.write(form_s('Sigma_e ref.') + '= ' + form_s(form_n(cross_DMe)) + '\n')
+                out.write(form_s('Xenon10_pvalue') + '= ' + form_s(form_n(pval10)) + '\n')
+                out.write(form_s('Xenon1T_pvalue') + '= ' + form_s(form_n(pval1T)) + '\n')
         
 
         if indirect or spectral:      
@@ -3963,7 +3969,7 @@ class MADDMRunCmd(cmd.CmdShell):
         if not self.in_scan_mode:
             # create the inc file for maddm
             self.maddm_card.set('do_relic_density', self.mode['relic'], user=False)
-            self.maddm_card.set('do_direct_detection', True if self.mode['direct'] else False, user=False)
+            self.maddm_card.set('do_direct_detection', True if self.mode['direct_nucleon'] else False, user=False)
             self.maddm_card.set('do_direct_electron', True if self.mode['direct_electron'] else False, user=False)
             self.maddm_card.set('do_indirect_detection', True if self.mode['indirect'] else False, user=False)
             self.maddm_card.set('do_indirect_spectral', self.mode['spectral'], user=False)
@@ -3986,11 +3992,11 @@ class MADDMRunCmd(cmd.CmdShell):
         self.maddm_card.write_include_file(pjoin(self.dir_path,'include'))
         misc.compile(['all'],cwd=self.dir_path)
 
-        # if self.mode['relic'] and self.mode['direct']:
+        # if self.mode['relic'] and self.mode['direct_nucleon']:
         #     misc.compile(['all'],cwd=self.dir_path)
-        # elif self.mode['relic'] and not self.mode['direct']:
+        # elif self.mode['relic'] and not self.mode['direct_nucleon']:
         #     misc.compile(['relic_density'],cwd=self.dir_path)
-        # elif self.mode['direct'] and not self.mode['relic']:
+        # elif self.mode['direct_nucleon'] and not self.mode['relic']:
         #     misc.compile(['direct_detection'],cwd=self.dir_path)
         # elif self.mode['indirect'] and not self.mode['relic']:
         #     misc.compile(['relic_density'],cwd=self.dir_path)
@@ -4131,7 +4137,7 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
     """
 
     to_control= [('relic', 'Compute the Relic Density'),
-                 ('direct', 'Compute direct detection - nucleon recoil'),
+                 ('direct_nucleon', 'Compute direct detection - nucleon recoil'),
                  ('direct_electron', 'Compute direct detection - electron recoil'),
                  ('indirect', 'Compute indirect detection/flux (cont spectrum)'),
                  ('spectral', 'Compute indirect detection in aX (line spectrum)'),
@@ -4174,41 +4180,42 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         return self.allowed_relic
 
     ####################################################################
-    # everything related to direct option
-    ####################################################################    
-    def set_default_direct(self):
-        """set the default value for direct="""
-        
+    # everything related to direct_nucleon option
+    ####################################################################
+    def set_default_direct_nucleon(self):
+        """set the default value for direct_nucleon="""
+
         if self.availmode['has_direct_detection']:
-            self.switch['direct'] = 'ON'
-      
+            self.switch['direct_nucleon'] = 'ON'
+
         else:
-            self.switch['direct'] = 'Not Avail.'
+            self.switch['direct_nucleon'] = 'Not Avail.'
 
-    def get_allowed_direct(self):
-        """Specify which parameter are allowed for direct="""
-        
-        
-        if hasattr(self, 'allowed_direct'):
-            return getattr(self, 'allowed_direct')
+    def get_allowed_direct_nucleon(self):
+        """Specify which parameter are allowed for direct_nucleon="""
+
+
+        if hasattr(self, 'allowed_direct_nucleon'):
+            return getattr(self, 'allowed_direct_nucleon')
 
         if self.availmode['has_direct_detection']:
-  
-            self.allowed_direct =  ['ON','OFF']
+
+            self.allowed_direct_nucleon =  ['ON','OFF']
+            return self.allowed_direct_nucleon
         else:
             return []
 
-    def check_value_direct(self, value):
-        """ allow direct=ON in top of standard mode """
-        
-        if value in self.get_allowed('direct'):
+    def check_value_direct_nucleon(self, value):
+        """ allow direct_nucleon=ON in top of standard mode """
+
+        if value in self.get_allowed('direct_nucleon'):
             return True
-        
+
         value =value.lower()
         if value in ['on'] and self.availmode['has_direct_detection' ]:
-            return 'direct'
-        
-    def get_cardcmd_direct(self, value):
+            return 'ON'
+
+    def get_cardcmd_direct_nucleon(self, value):
         """return the command to set the maddm_card consistent with the switch"""
         
         cmd =[]
@@ -4801,7 +4808,7 @@ When you are done with such edition, just press enter (or write 'done' or '0')
             self.setDM('vave_indirect_cont', self.maddm.get('vave_indirect'), loglevel = 30)
 
         # If direct detection is ON ensure that quark mass are not zero
-        if self.switch['direct'] != 'OFF':
+        if self.switch['direct_nucleon'] != 'OFF':
             to_change = []
             for i in range(1,7):
                 if self.param_card.get_value('mass', i) == 0.:
@@ -5476,7 +5483,7 @@ class Multinest(object):
                 self.output_observables.append('x_f')
                 self.output_observables.append('xsi')
                 
-            if self.maddm_run.mode['direct']:
+            if self.maddm_run.mode['direct_nucleon']:
                 self.output_observables.append('sigmaN_SI_n')
                 self.output_observables.append('sigmaN_SI_p')
                 self.output_observables.append('sigmaN_SD_n')
@@ -5507,7 +5514,7 @@ class Multinest(object):
             #        self.output_observables.append(key)
         
         # add likelihoods parts for each category
-        self.likelihood_parts = [mode for mode in ['relic', 'direct', 'indirect', 'spectral'] if self.maddm_run.mode[mode]]
+        self.likelihood_parts = [mode for mode in ['relic', 'direct_nucleon', 'indirect', 'spectral'] if self.maddm_run.mode[mode]]
 
         # number of parameters to output
         # this includes the parameters which are scanned over (they go in first)
@@ -5694,7 +5701,7 @@ class Multinest(object):
 
         if self.maddm_run.mode['relic']:
             omegah2 = results['Omegah^2']
-        if self.maddm_run.mode['direct']:
+        if self.maddm_run.mode['direct_nucleon']:
             spinSI = 0.5*(results['sigmaN_SI_p'] + results['sigmaN_SI_n'])# * GeV2pb * pb2cm2
             spinSDp = results['sigmaN_SD_p']#  * GeV2pb * pb2cm2
             spinSDn = results['sigmaN_SD_n']# * GeV2pb * pb2cm2
@@ -5712,7 +5719,7 @@ class Multinest(object):
         mdm = self.maddm_run.param_card.get_value('mass', self.maddm_run.proc_characteristics['dm_candidate'][0])
         #logger.debug('MDM: %.3e', mdm)
         logger.debug(self.maddm_run.mode['relic'])
-        logger.debug(self.maddm_run.mode['direct'])
+        logger.debug(self.maddm_run.mode['direct_nucleon'])
 
         ndim_obs = ndim + len(self.output_observables)
 
@@ -5750,9 +5757,9 @@ class Multinest(object):
                 chi += relic_contrib
 
             #direct detection (SI)
-            if self.maddm_run.mode['direct']:
-                cube[ndim_obs+self.likelihood_parts.index('direct')] = 0
-            if obs == 'directSI' and self.maddm_run.mode['direct']:
+            if self.maddm_run.mode['direct_nucleon']:
+                cube[ndim_obs+self.likelihood_parts.index('direct_nucleon')] = 0
+            if obs == 'directSI' and self.maddm_run.mode['direct_nucleon']:
                 if likelihood=='half_gauss':
 
                     if spinSI > self.maddm_run.limits.SI_max(mdm):
@@ -5777,11 +5784,11 @@ class Multinest(object):
                     direct_contrib_1 = 0
 
                 # add to cube
-                cube[ndim_obs+self.likelihood_parts.index('direct')] += direct_contrib_1
+                cube[ndim_obs+self.likelihood_parts.index('direct_nucleon')] += direct_contrib_1
                 chi += direct_contrib_1
 
             #direct detection (SD) proton and neutron
-            if obs.startswith('directSD') and self.maddm_run.mode['direct']:
+            if obs.startswith('directSD') and self.maddm_run.mode['direct_nucleon']:
                 nucleon = obs.split('_')[1]
                 if likelihood=='half_gauss':
                     if nucleon =='p':
@@ -5812,7 +5819,7 @@ class Multinest(object):
                     logger.error('You are not using a valid likelihood function for SD direct detection. Omitting the contribution!')
                     direct_contrib_2=0
                 # add to cube
-                cube[ndim_obs+self.likelihood_parts.index('direct')] += direct_contrib_2
+                cube[ndim_obs+self.likelihood_parts.index('direct_nucleon')] += direct_contrib_2
                 chi += direct_contrib_2
 
             # indirect detection:

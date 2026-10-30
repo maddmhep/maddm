@@ -295,7 +295,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         process_name = self.get_process_name(matrix_element, print_id=False)
         replace_dict = super(ProcessExporterMadDM,self).write_matrix_element_v4(
                                             None, matrix_element, fortran_model,
-                                            proc_prefix=process_name + '_')
+                                            write=False, proc_prefix=process_name + '_')
 
         replace_dict['proc_prefix'] = process_name + '_'
 

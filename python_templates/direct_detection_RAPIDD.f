@@ -49,7 +49,7 @@ c-------------------------------------------------------------------------c
 
             character(1) target_type
             integer idx, dm_spin, j
-            logical do_get_alpha
+            logical do_get_alpha, found
             double precision alphas(4)  ! Return array aSIe, aSIo, aSDe, aSDo
             double precision m_target
             double precision aSIe, aSIo, aSDe, aSDo
@@ -115,7 +115,8 @@ c ------------------------------------------------------------------------------
                   aSDe = 0d0
                   aSDo = 0d0
                   call get_dm_target_alpha(dm_spin, dm_t_process_name, dm_tx_process_name,
-     &                                     m_target, aSIe, aSIo, aSDe, aSDo)
+     &                                     m_target, aSIe, aSIo, aSDe, aSDo, found)
+                  if (.not.found) return
                   case(3) ! will be implmented in future work
                   write (*,*) "vector DM-target scattering still not implemented!"
                   return
@@ -135,13 +136,15 @@ c ------------------------------------------------------------------------------
 
 c-------------------------------------------------------------------------c
       subroutine get_dm_target_alpha(dm_spin, proc_name, antiproc_name, m_target,
-     &                               alpha_SI_even, alpha_SI_odd, alpha_SD_even, alpha_SD_odd)
+     &                               alpha_SI_even, alpha_SI_odd, alpha_SD_even, alpha_SD_odd, found)
 c-------------------------------------------------------------------------c
 c                                                                         c
 c Compute the even and odd effective coefficients (alphas) from the       c
 c interference between the full and the effective matrix elements, for   c
 c the DM-target (proc_name) and DM-antitarget (antiproc_name) processes   c
 c at rest. The SD alphas are computed only if dm_spin.ne.1.               c
+c found is .false. (and the alphas are not computed) if one of the full,  c
+c effective or full+effective processes is missing.                       c
 c                                                                         c
 c-------------------------------------------------------------------------c
             implicit none
@@ -156,12 +159,25 @@ c-------------------------------------------------------------------------c
             character(50) process_name
             double precision Minterf_SI_t, Minterf_SI_tx, Minterf_SD_t, Minterf_SD_tx
             double precision alpha_SI_even, alpha_SI_odd, alpha_SD_even, alpha_SD_odd
+            logical found
 
             include 'maddm.inc'
             include 'coupl.inc'
             include 'process_names.inc'
             include 'maddm_card.inc'
             include 'dm_info.inc'
+
+            found = .false.
+            j_dm_t = 0
+            j_dm_tx = 0
+            j_eff_SI_dm_t = 0
+            j_eff_SI_dm_tx = 0
+            j_tot_SI_dm_t = 0
+            j_tot_SI_dm_tx = 0
+            j_eff_SD_dm_t = 0
+            j_eff_SD_dm_tx = 0
+            j_tot_SD_dm_t = 0
+            j_tot_SD_dm_tx = 0
 
 c Four momenta of the particles involved in the scattering (at rest)
             p_ext(0,1) = mdm(1)
@@ -247,6 +263,12 @@ c                 JTOT same as JEFF but for the EFF+FULL
                         endif
                   endif
             enddo
+
+c           If one of the full, effective or full+effective processes is missing
+c           (e.g. no effective operator for this DM type) the alphas cannot be computed
+            if ((j_dm_t*j_dm_tx*j_eff_SI_dm_t*j_eff_SI_dm_tx*j_tot_SI_dm_t*j_tot_SI_dm_tx).eq.0) return
+            if ((dm_spin.ne.1).and.((j_eff_SD_dm_t*j_eff_SD_dm_tx*j_tot_SD_dm_t*j_tot_SD_dm_tx).eq.0)) return
+            found = .true.
 
 c--------------------------------------------------------------------------------
 c           Compute the interference terms and use them to get the even and odd effective
