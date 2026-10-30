@@ -52,7 +52,6 @@ try:
     from scipy.optimize import brute, fmin, minimize_scalar, bisect
     from scipy.special import gammainc
     from scipy import stats
-    from scipy.stats import poisson
 
 except ImportError as error:
     print(error)
@@ -108,15 +107,13 @@ class ExpConstraints:
         self._oh2_planck = 0.1200 # from 1807.06209 Tab. 2 (TT,TE,EE+lowE+lensing) quoted also in abstract
         self._oh2_planck_width = 0.0012
 
-        # self._dd_si_limit_file = pjoin(MDMDIR, 'ExpData', 'Xenon1T_data_2018.dat')
-        # self._dd_sd_proton_limit_file = pjoin(MDMDIR, 'ExpData', 'Pico60_sd_proton.dat') # <---------CHANGE THE FILE!!!
-        # self._dd_sd_neutron_limit_file = pjoin(MDMDIR, 'ExpData', 'Lux_2017_sd_neutron.dat')
-
+        # direct detection limits are shipped with RAPIDD
+        rapidd_exp_dir = pjoin(MDMDIR, 'vendor', 'RAPIDD_for_DM', 'lib', 'experiments')
         self._dd_limit_file = {
-            'si'        : pjoin(MDMDIR, 'ExpData', 'LZ2024_SI.dat'),  
-            'sd_proton' : pjoin(MDMDIR, 'ExpData', 'Pico60_sd_proton_2019.dat'),
-            'sd_neutron': pjoin(MDMDIR, 'ExpData', 'LZ2024_SDn.dat'),
-            'electron'  : pjoin(MDMDIR, 'vendor', 'RAPIDD_for_DM', 'lib', 'experiments', 'XENONnT', 'XENONnT_DMe_SI.dat')
+            'si'        : pjoin(rapidd_exp_dir, 'lz2024', 'LZ2024_SI.dat'),
+            'sd_proton' : pjoin(rapidd_exp_dir, 'PICO60', 'Pico60_sd_proton_2019.dat'),
+            'sd_neutron': pjoin(rapidd_exp_dir, 'lz2024', 'LZ2024_SDn.dat'),
+            'electron'  : pjoin(rapidd_exp_dir, 'XENONnT', 'XENONnT_DMe_SI.dat')
         }
 
         self._dd_limit_mdm = dict()
@@ -270,7 +267,7 @@ class ExpConstraints:
                 else:
                     return np.interp(mdm, self._dd_limit_mdm['sd_proton'], self._dd_limit_sigma['sd_proton'])
             elif nucleon=='n':
-                if (mdm < np.min(self._dd_limit_mdm['sd_proton']) or mdm > np.max(self._dd_limit_mdm['sd_proton'])):
+                if (mdm < np.min(self._dd_limit_mdm['sd_neutron']) or mdm > np.max(self._dd_limit_mdm['sd_neutron'])):
                     logger.warning('Dark matter mass value '+str(mdm)+' is outside the range of SD limit')
                     return -1
                 else:
@@ -1874,38 +1871,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
 
                         
-                    if 'Xenon10_bins' in line:
-                        Xenon10_bins = []
-                        for i in range(1,9):
-                            Xenon10_bins.append(secure_float_f77(splitline[i]))
-                        result['Xenon10_bins'] = Xenon10_bins
-
-                    elif 'Xenon10_signal' in line:
-                        Xenon10_signal = []
-                        for i in range(1,8):
-                            Xenon10_signal.append(secure_float_f77(splitline[i]))
-                        result['Xenon10_signal'] = Xenon10_signal
-
-                    elif 'Xenon10_obs' in line:
-                        Xenon10_obs = []
-                        for i in range(1,8):
-                            Xenon10_obs.append(secure_float_f77(splitline[i]))
-                        result['Xenon10_obs'] = Xenon10_obs
-
-                    elif 'Xenon1T_signal' in line:
-                        result['Xenon1T_signal'] = secure_float_f77(splitline[1])
-
-                    elif 'Xenon1T_bkg' in line:
-                        result['Xenon1T_bkg'] = secure_float_f77(splitline[1])
-
-                    elif 'Xenon1T_obs' in line:
-                        result['Xenon1T_obs'] = secure_float_f77(splitline[1])
-
-                    elif 'sigma_e' in line:
-                        result['sigma_e'] = secure_float_f77(splitline[1])
-
-                    else:
-                        result[splitline[0].split(':')[0]] = secure_float_f77(splitline[1])
+                    result[splitline[0].split(':')[0]] = secure_float_f77(splitline[1])
                             
         np_names = ['g','nue','numu','nutau']
         
@@ -1941,24 +1907,16 @@ class MADDMRunCmd(cmd.CmdShell):
                 for key in ['sigmaN_SI_p', 'sigmaN_SI_n', 'sigmaN_SD_p', 'sigmaN_SD_n']:
                     result[key] = -1
             else:
+                # cross sections in cm^2
                 result['sigmaN_SI_p'], result['sigmaN_SI_n'] = sigmaSI_nucleon_mdm(self.maddm_card, alphaq_values, mdm)
                 result['sigmaN_SD_p'], result['sigmaN_SD_n'] = sigmaSD_nucleon_mdm(self.maddm_card, alphaq_values, mdm)
-                result['sigmaN_SI_n']    *= GeV2pb*pb2cm2
-                result['sigmaN_SI_p']    *= GeV2pb*pb2cm2
-                result['sigmaN_SD_p']    *= GeV2pb*pb2cm2
-                result['sigmaN_SD_n']    *= GeV2pb*pb2cm2
 
                 from rapidd.calc_dRdE import DDrate_save
+                from rapidd.core import halo_path_from_card
                 rapidd_out_path = pjoin(self.dir_path,'output', self.run_name)
-
-                if (self.maddm_card['vescape'] == 544.0) and (self.maddm_card['vmp'] == 238.0):
-                    DDrate_save(self.maddm_card, alphaq_values, mdm, rapidd_out_path)
-
-                else:
-                    from rapidd.halo import gen_shm_table
-                    halo_path = rapidd_out_path + '/SHM.dat'
-                    gen_shm_table(halo_path, self.maddm_card)
-                    DDrate_save(self.maddm_card, alphaq_values, mdm, rapidd_out_path, halo_path=halo_path)
+                # default halo table, recomputed only if vescape, vmp or vSun differ from the default
+                halo_path = halo_path_from_card(self.maddm_card, rapidd_out_path)
+                DDrate_save(self.maddm_card, alphaq_values, mdm, rapidd_out_path, halo_path=halo_path)
 
         # DM-electron scattering: alphas from the Fortran, rates and signals from RAPIDD
         if self.mode['direct_electron'] and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
@@ -1968,18 +1926,13 @@ class MADDMRunCmd(cmd.CmdShell):
             from rapidd.alpha_map import electron_alphas_valid
             if electron_alphas_valid(alphaq_values):
                 from rapidd.calc_dRdE import DDrate_electron_save
+                from rapidd.core import halo_path_from_card
                 rapidd_out_path = pjoin(self.dir_path,'output', self.run_name)
-                if (self.maddm_card['vescape'] == 544.0) and (self.maddm_card['vmp'] == 238.0):
-                    from rapidd.core import halo_path as electron_halo_path
-                else:
-                    from rapidd.core import calc_halo
-                    electron_halo_path = pjoin(rapidd_out_path, 'SHM_electron.dat')
-                    calc_halo(electron_halo_path, profile="SHM", vesc=self.maddm_card['vescape'],
-                              v0=self.maddm_card['vmp'], v0_lsr=self.maddm_card['vmp'],
-                              v_pec=(self.maddm_card['vSun_r'], self.maddm_card['vSun_phi'], self.maddm_card['vSun_theta']))
+                # default halo table, recomputed only if vescape, vmp or vSun differ from the default
+                halo_path = halo_path_from_card(self.maddm_card, rapidd_out_path)
                 result.update(DDrate_electron_save(self.maddm_card, alphaq_values, electron_info['dm_spin'],
                                                    electron_info['M_e'], mdm, rapidd_out_path,
-                                                   halo_path=electron_halo_path))
+                                                   halo_path=halo_path))
             else:
                 result['DM_response'] = -1
             # sigma_e is needed by the summary
@@ -2199,16 +2152,6 @@ class MADDMRunCmd(cmd.CmdShell):
 
     def launch_direct_electron(self):
 
-        def get_pvalue_min(n_obs,expected_val):
-            pvalues = []
-            for obs,exp in zip(n_obs,expected_val):
-                pvalues.append(poisson.cdf(obs,exp))
-            return min(pvalues)
-
-        def get_pvalue(obs,sig,bkg):
-            pvalue = poisson.cdf(obs,sig+bkg)
-            return pvalue
-        
         self.last_results['pvalue_Xenon10'] = -1
         self.last_results['pvalue_Xenon1T'] = -1
 
@@ -2227,16 +2170,17 @@ class MADDMRunCmd(cmd.CmdShell):
                 logger.warning("scipy module not available, exclusion limits computation is disabled.")
                 return
             elif self.last_results['DM_response']!=-1:
+                from rapidd.stats import poisson_pvalue, binned_poisson_pvalue_min
                 Xenon10_sig = self.last_results['Xenon10_signal']
                 Xenon10_obs = self.last_results['Xenon10_obs']
                 Xenon1T_sig = self.last_results['Xenon1T_signal']
                 Xenon1T_bkg = self.last_results['Xenon1T_bkg']
                 Xenon1T_obs = self.last_results['Xenon1T_obs']
 
-                self.last_results['pvalue_Xenon10'] = get_pvalue_min(Xenon10_obs,Xenon10_sig)
+                self.last_results['pvalue_Xenon10'] = binned_poisson_pvalue_min(Xenon10_obs,Xenon10_sig)
                 # XENON1T results are -1 when the DM mass is outside the XENON1T table
                 if Xenon1T_obs != -1:
-                    self.last_results['pvalue_Xenon1T'] = get_pvalue(Xenon1T_obs,Xenon1T_sig,Xenon1T_bkg)
+                    self.last_results['pvalue_Xenon1T'] = poisson_pvalue(Xenon1T_obs,Xenon1T_sig+Xenon1T_bkg)
 
 
     def launch_multinest(self):
@@ -5681,10 +5625,7 @@ class Multinest(object):
 #            if self.output_observables != []:
 #            logger.debug('output obs: %s ' % self.output_observables)
             for i, observable in enumerate(self.output_observables):
-                #if it's dm-nucleon cross section convert the units to cm2
-                if observable.startswith('sigmaN'):
-                    cube[ndim+i] = results[observable] * GeV2pb *pb2cm2
-                elif observable in results:
+                if observable in results:
                     cube[ndim+i] = results[observable]
                 elif observable in self.param_blocks:
                     block, lhaid = self.param_blocks[observable][0]
