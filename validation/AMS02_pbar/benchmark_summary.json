@@ -1,0 +1,39 @@
+[
+  {
+    "name": "bb_majorana_100",
+    "mass_GeV": 100.0,
+    "branching": {
+      "bb": 1.0
+    },
+    "source_factor": 1.0,
+    "sigmav95_cm3s": 1.7760877559029818e-26,
+    "excluded_all_dm": true,
+    "excluded_thermal": false,
+    "delta_chi2_at_limit": 2.705543503937978
+  },
+  {
+    "name": "bb_dirac_100",
+    "mass_GeV": 100.0,
+    "branching": {
+      "bb": 1.0
+    },
+    "source_factor": 0.5,
+    "sigmav95_cm3s": 3.5521755118059636e-26,
+    "excluded_all_dm": false,
+    "excluded_thermal": false,
+    "delta_chi2_at_limit": 2.705543503937978
+  },
+  {
+    "name": "bb_WW_majorana_200",
+    "mass_GeV": 200.0,
+    "branching": {
+      "bb": 0.7,
+      "WW": 0.3
+    },
+    "source_factor": 1.0,
+    "sigmav95_cm3s": 1.345522308807475e-26,
+    "excluded_all_dm": true,
+    "excluded_thermal": false,
+    "delta_chi2_at_limit": 2.705543429476105
+  }
+]

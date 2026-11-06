@@ -1,0 +1,91 @@
+################################################
+#                 MadDM v. 3.3                 #
+################################################
+
+
+# Galactic halo for recoil rates and Galactic signals
+rholocal = 4.0000000000e-01 # GeV/cm^3
+vMP = 2.3800000000e+02 # km/s
+vescape = 5.4400000000e+02 # km/s
+mw_velocity_model = shm
+mw_shm_rms_relative_speed_kms = 4.0198066930e+02
+mw_shm_npts = 16
+
+################################################
+# Direct Detection [cm^2]                      #
+################################################
+
+# Published limits retain the experimental reference halos.
+SigmaN_SI_p                   = [2.15e-46,3.30e-48]           # LZ2024
+SigmaN_SI_n                   = [2.15e-46,3.30e-48]           # LZ2024
+SigmaN_SD_p                   = [6.53e-42,4.29e-41]           # Pico60 (2019)
+SigmaN_SD_n                   = [8.80e-42,5.90e-43]           # LZ2024
+
+################################################
+# Indirect Detection                           #
+################################################
+# Results in brackets display [prediction, upper limit]
+
+# Annihilation cross section computed with the method: inclusive
+# <sigma v>[cm^3 s^-1] of continuum spectrum final states and Fermi dSph limits (if available, else -1)
+n1n1_bbx                      = [2.33e-28,1.67e-26]           
+
+# Global Fermi dSph Limit computed with CosmiXs spectra
+TotalSM_xsec                  = [2.33e-28,-1.00e+00]          
+Fermi_Likelihood              = -1.00e+00                     
+Fermi_pvalue                  = -1.00e+00                     
+
+# AMS-02 antiprotons: QUAINT-MED / NFW, 95% one-sided profile bound
+AMS02_pbar_status = disabled
+# Rates: UL95=upper limit; best_fit=data-fitted amplitude; model=coupling prediction.
+# q_upper is a likelihood-ratio statistic, not a p-value; zero below the best fit.
+# Thermal means multiplying the model rate by xsi^2; xsi=1 gives identical statistics.
+AMS02_pbar_sigmav_UL95 = -1.0000000000e+00 # cm^3/s; one-sided 95% CL upper limit, fixed model branching fractions
+AMS02_pbar_sigmav_best_fit = -1.0000000000e+00 # cm^3/s; pbar-data best fit after profiling secondary and solar parameters
+AMS02_pbar_sigmav_model = -1.0000000000e+00 # cm^3/s; theoretical total at the model couplings and Milky Way velocity
+AMS02_pbar_q_upper_model = -1.0000000000e+00 # one-sided profiled Delta chi2 at theoretical rate; exclusion threshold 2.7055434541
+AMS02_pbar_q_upper_model_thermal = -1.0000000000e+00 # same statistic at xsi^2 times theoretical rate; equals AllDM when xsi=1
+AMS02_pbar_excluded = -1.0000000000e+00
+AMS02_pbar_excluded_thermal = -1.0000000000e+00
+AMS02_pbar_chi2_background = -1.0000000000e+00
+AMS02_pbar_chi2_best = -1.0000000000e+00
+AMS02_pbar_norm_upper = -1.0000000000e+00
+AMS02_pbar_slope_upper = -1.0000000000e+00
+AMS02_pbar_phi_upper = -1.0000000000e+00
+AMS02_pbar_velocity = 1.3408631824e-03 # RMS relative speed / c
+AMS02_pbar_AllDM = NOT EVALUATED
+AMS02_pbar_Thermal = NOT EVALUATED
+# Flux and fit diagnostics: AMS02_pbar_fluxes.dat, AMS02_pbar_limits.json
+
+# Antideuteron event forecasts: unknown / unknown; two-event sensitivities
+AMS02_dbar_status = disabled
+AMS02_dbar_events_low = -1.0000000000e+00
+AMS02_dbar_events_high = -1.0000000000e+00
+AMS02_dbar_events_total = -1.0000000000e+00
+AMS02_dbar_events_low_thermal = -1.0000000000e+00
+AMS02_dbar_events_high_thermal = -1.0000000000e+00
+AMS02_dbar_events_total_thermal = -1.0000000000e+00
+GAPS_dbar_events = -1.0000000000e+00
+GAPS_dbar_events_thermal = -1.0000000000e+00
+AMS02_dbar_phi = -1.0000000000e+00
+AMS02_dbar_phi_thermal = -1.0000000000e+00
+AMS02_dbar_model_sigmav = -1.0000000000e+00
+# Forecast diagnostics: AMS02_dbar_events.json, AMS02_dbar_events.dat, AMS02_dbar_fluxes.dat
+
+# Galactic-center excess: prompt spectrum, systematic-band fit
+GCE_sigmav_best = -1.000000000000e+00
+GCE_sigmav_error_minus = -1.000000000000e+00
+GCE_sigmav_error_plus = -1.000000000000e+00
+GCE_sigmav_error = -1.000000000000e+00
+GCE_chi2 = -1.000000000000e+00
+GCE_ndof = -1.000000000000e+00
+GCE_chi2_ndof = -1.000000000000e+00
+GCE_model_sigmav = -1.000000000000e+00
+GCE_status = disabled
+
+# CosmiXsPPPC charged fluxes at Earth (IS and TOA)
+CosmiXsPPPC_pbar_flux_earth = CosmiXsPPPC_pbar_flux_earth.dat
+CosmiXsPPPC_dbar_flux_earth = CosmiXsPPPC_dbar_flux_earth.dat
+# Flux inputs, units and settings: CosmiXsPPPC_flux_earth.json
+
+# Positron results will come soon.

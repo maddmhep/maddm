@@ -1,0 +1,12 @@
+
+# Galactic-center excess: prompt spectrum, systematic-band fit
+GCE_sigmav_best = 1.420748485004e-25
+GCE_sigmav_error_minus = 4.447496142952e-26
+GCE_sigmav_error_plus = 4.170236018062e-26
+GCE_sigmav_error = 4.308866080507e-26
+GCE_chi2 = 4.320032077896e+01
+GCE_ndof = 1.000000000000e+01
+GCE_chi2_ndof = 4.320032077896e+00
+GCE_model_sigmav = 2.363047264471e-27
+GCE_status = ok
+# Upper-limit rows checked separately; fitted detections=11

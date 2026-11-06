@@ -420,7 +420,11 @@ c           Minimum velocity required for recoil.
             vmin = ((ER+Eb)/q_exc(iq) + q_exc(iq)/(2*M_dm))*c ! [cm/sec]
 
 c           Dark matter integrated velocity distibution eta [cm**(-1) sec] (integrated also in cos(theta)) 
-            if(vmin.le.(vesc-vE)) then
+            if (vE.lt.1.d-8*v0) then
+                eta = 2.d0*pi*v0**2/kNorm * max(0.d0,exp(-(vmin/v0)**2)-exp(-(vesc/v0)**2))
+            else if (vmin.le.(vE-vesc)) then
+                eta = 1.d0/vE
+            else if (vmin.le.(vesc-vE)) then
                 eta = (v0**2 * pi)/(2*vE*kNorm) *
      &                ((-4.d0)*exp(-(vesc/v0)**2)*vE + sqrt(pi)*v0*(erf((vmin+vE)/v0) - erf((vmin-vE)/v0)))
             else if ((vesc-vE).le.vmin.and.vmin.le.(vesc+vE)) then
@@ -434,7 +438,7 @@ c           Integrate q_exc*eta*ioniz_amplitude over q_exc (second index of ioni
 c           The first index ik is for the momenta of the outgoing electron.
 c           Multiply also for the constant in front of the integral, and divide for the Xenon mass.
             get_dRdlogE = get_dRdlogE + const_integral * (dq(iq)*GeVtoJ*mtocm**2)/c * (q_exc(iq)*GeVtoJ*mtocm**2)/c
-     &                                         * eta * ioniz_amplitude(ik,iq) / (m_Xenon*au)
+     &                                         * max(0.d0,eta) * ioniz_amplitude(ik,iq) / (m_Xenon*au)
 
         enddo
 

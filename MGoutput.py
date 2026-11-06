@@ -12,8 +12,10 @@ StringIO = six
 import re
 
 try:
+    from . import indirect_compat
     from . import maddm_run_interface
 except ImportError:
+    import indirect_compat
     import maddm_run_interface
     
 # python routines from MadGraph
@@ -1046,7 +1048,23 @@ class Indirect_Reweight(rwgt_interface.ReweightInterface):
     def create_standalone_directory(self, *args, **opts):
         if self.shuffling_mode == 'shuffle':
             return
+        indirect_compat.require_reweight_build_tools()
         return super(Indirect_Reweight, self).create_standalone_directory(*args, **opts)
+
+    def load_interface_model(self, *args, **opts):
+        path, data, interface = super(Indirect_Reweight, self).load_interface_model(*args, **opts)
+        # Existing LHE banners may contain `add process direct_detection`
+        # alongside the generated annihilation matrix elements.
+        data['processes'] = [process for process in data['processes']
+                             if not indirect_compat.is_maddm_process_shortcut(process)]
+        if not data['processes']:
+            raise self.InvalidCmd('No matrix-element processes in the indirect event banner. '
+                                  'Regenerate the MadDM output and relaunch.')
+        return path, data, interface
+
+    def compile_SubProcess_dir(self, directory):
+        with indirect_compat.reweight_build_environment():
+            return super(Indirect_Reweight, self).compile_SubProcess_dir(directory)
     
     @staticmethod
     def maddm_get_sqrts(m, ve):
@@ -1177,6 +1195,8 @@ class ProcessExporterIndirectD:
 
         for line in history:
             line = re.sub(r'\s+', ' ', line)
+            if line.startswith('add process ') and indirect_compat.is_maddm_process_shortcut(line[12:]):
+                line = 'add ' + line[12:]
         
             if line.startswith(('define darkmatter', 'define benchmark','define coannihilator')):
                 continue

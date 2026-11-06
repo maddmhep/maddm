@@ -1,0 +1,9 @@
+{
+  "issue": "ConfigFile.get is an alias of __getitem__ and rejects a default positional argument",
+  "reported_exception": "ConfigFile.__getitem__() takes 2 positional arguments but 3 were given",
+  "runtime_source": "test_pbar_v0/Indirect_tree_cont/bin/internal/banner.py",
+  "runtime_source_sha256": "42bb15c4eabdbc30877b444cc48c5dc1ee2a99b2286bea002c7345bf521c9b44",
+  "fix": "Use card_value: indexed reads with KeyError fallback, for both the run hook and adapter settings",
+  "bypass_check_empty_preserved": true,
+  "full_MadGraph_generation_or_Fortran_compilation_tested": false
+}

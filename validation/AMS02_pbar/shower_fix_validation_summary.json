@@ -1,0 +1,74 @@
+{
+  "update": "shower_input_and_precise_dependencies",
+  "date": "2026-10-22",
+  "tests": {
+    "unit_and_integration": 68,
+    "log": "shower_fix_final_tests.log",
+    "compiled_shower_cases": [
+      "full 10000-event supplied sample",
+      "one-event EOF with finite normalization",
+      "empty input fails without spectra",
+      "weighted 1:3 flavor samples give the expected weighted yields"
+    ],
+    "python313_log": "shower_fix_python313_tests.log",
+    "python313_unit_and_integration": 68,
+    "python_versions_passed": [
+      "3.12.14",
+      "3.13.16"
+    ]
+  },
+  "runtime": {
+    "unit_tests_python": "3.12.14",
+    "pythia": "8.317",
+    "pythia_source": "pythia8mc 8.317.0 source and shared library, official PyPI distribution",
+    "compiled_CXX": "g++ 13.3.0",
+    "reweight_python": "3.13.16",
+    "reweight_numpy": "2.3.5",
+    "reweight_meson": "1.12.1",
+    "reweight_ninja": "1.13.2",
+    "reweight_fortran": "gfortran 13.3.0"
+  },
+  "supplied_failures": {
+    "reweight": "FileNotFoundError: meson is absent from the active Python 3.13 environment",
+    "shower": "Blank lines in required LHE numeric blocks make Pythia report EOF before the first event; zero accepted events"
+  },
+  "input_copy": {
+    "event_count": 10000,
+    "removed_blank_lines": 9492,
+    "all_nonblank_tokens_identical": true,
+    "original_file_modified": false
+  },
+  "combined_fermi": {
+    "source": "Shower replay of the supplied run_04 sample, original event kinematics and weights",
+    "mass_GeV": 1000.0,
+    "n_dwarfs": 55,
+    "profiled_J": true,
+    "upper_limit_cm3s": 2.5832288655449774e-25,
+    "q_at_limit": 3.8414588155154092,
+    "record": "shower_replay_Fermi_dSph_limits.json"
+  },
+  "code_changes": [
+    "MGoutput.py: explicit Meson/Ninja prerequisite check before precise reweight export",
+    "indirect_compat.py: validated LHE copy, numeric blank removal, all-event sentinel conversion, known source upgrade/build stamp",
+    "maddm_run_interface.py: source/build synchronization, prepared input, stale-spectrum cleanup and diagnostics",
+    "Templates/bin/internal/main101.cc and Templates/bin/main101.cc: checked init/EOF/errors, successful-event counting, event-weight-aware histogram normalization"
+  ],
+  "unchanged": [
+    "19 pbar limit tables",
+    "AMS and propagated numerical input data",
+    "pbar nuisance parameters and likelihood",
+    "Fermi likelihood tables and confidence convention"
+  ],
+  "limitations": [
+    "No complete MadGraph import/generation/velocity-reweight launch was executed.",
+    "The actual supplied Fortran reweight module was rebuilt/imported and one matrix element evaluated under Python 3.13; this is not a full MadGraph reweight integration.",
+    "The live C++ shower and actual Python shower/reader/Fermi hooks were exercised with the supplied existing events; it is not a newly generated physical model prediction.",
+    "Linux validation does not execute the user macOS toolchain."
+  ],
+  "hashes": {
+    "Pasted markdown.md": "acf534449d45de98d9914a4bfc9bb894a96f8e28bfaf332bb0df9d3d9ec40f5d",
+    "pythia8.log": "23af5322b9f3f08562d4d7868aa421fd5cf3fd537067c28b88c8edd97c0f5d36",
+    "unweighted_events.lhe.gz": "75d60c91829edfdfccb453f2c23ed26be7784d7dd4a0db35607db34073123dda",
+    "main101.cc": "4a5954aee386250cbe7d98df3168ca5821803eef703a0aadd695792beff454d5"
+  }
+}

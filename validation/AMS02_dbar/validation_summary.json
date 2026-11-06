@@ -1,0 +1,156 @@
+{
+  "package_version": 7,
+  "date": "2026-10-22",
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.39",
+  "mg5": "3.8.0",
+  "mg5_commit": "abfd2c92873b3cfe4baa65c661b580e5cc07d45f",
+  "launch_python": "3.13.16",
+  "compiler": "GNU Fortran 13.3.0",
+  "model": "supplied Scalar Higgs Portal at 1000 GeV, supplied parameters unchanged",
+  "launches": [
+    {
+      "label": "fast_pbar_disabled",
+      "run": "run_18",
+      "status": "ok",
+      "rates": 12,
+      "solar_modulation_source": "fixed dbar_phi; no pbar model-point flux fit available",
+      "all_DM_phi_GV": 0.7,
+      "AMS02_low_events": 4.5640551922170215e-05,
+      "AMS02_high_events": 0.000470302687965118,
+      "AMS02_total_events": 0.0005159432398872882,
+      "GAPS_events": 1.0724211384876106e-05,
+      "rate_source_runs": [
+        "run_18"
+      ],
+      "result_sha256": "aaad3c1286aaf1fcbb00f8807a9dc315a38d2f2fa24f9514ca13995f35f637eb"
+    },
+    {
+      "label": "precise_flux_source",
+      "run": "run_20",
+      "status": "ok",
+      "rates": 12,
+      "solar_modulation_source": "pbar model-point nuisance fits (all-DM and thermal separately)",
+      "all_DM_phi_GV": 0.8375035076205172,
+      "AMS02_low_events": 8.450461320516089e-05,
+      "AMS02_high_events": 0.0009115300277300291,
+      "AMS02_total_events": 0.00099603464093519,
+      "GAPS_events": 1.9400934687167437e-05,
+      "rate_source_runs": [
+        "run_20_pbar"
+      ],
+      "result_sha256": "7454791ce1d21d6eaf5c194eed292f063fa1dca66e7d735bf5449a3cd91b690d",
+      "same_rates_as_pbar": true,
+      "combined_Fermi_status": "ok",
+      "combined_pbar_status": "ok",
+      "automatic_pdf_bytes": 29652,
+      "automatic_pdf_sha256": "229107d1146f5563e68819262bc942134413863b73cecb0c82da553c66151091",
+      "PDF_rendered_and_visually_checked": true,
+      "events_per_velocity_run": 100,
+      "Dbar_extra_event_runs": 0
+    },
+    {
+      "label": "precise_sigmav",
+      "run": "run_22",
+      "status": "ok",
+      "rates": 12,
+      "solar_modulation_source": "fixed dbar_phi; no pbar model-point flux fit available",
+      "all_DM_phi_GV": 0.7,
+      "AMS02_low_events": 9.127688133109245e-05,
+      "AMS02_high_events": 0.0009405577496772076,
+      "AMS02_total_events": 0.0010318346310083,
+      "GAPS_events": 2.1447453107291924e-05,
+      "rate_source_runs": [
+        "run_22_pbar"
+      ],
+      "result_sha256": "a37b6f0d0297ffe086681cc136fb5b3156bac4ab2c89503daf432fb94185c12e",
+      "same_rates_as_pbar": true,
+      "Dbar_extra_event_runs": 0,
+      "events_per_velocity_run": 100
+    },
+    {
+      "label": "fast_sigmav",
+      "run": "run_23",
+      "status": "ok",
+      "rates": 12,
+      "solar_modulation_source": "fixed dbar_phi; no pbar model-point flux fit available",
+      "all_DM_phi_GV": 0.7,
+      "AMS02_low_events": 4.5640551922170215e-05,
+      "AMS02_high_events": 0.000470302687965118,
+      "AMS02_total_events": 0.0005159432398872882,
+      "GAPS_events": 1.0724211384876106e-05,
+      "rate_source_runs": [
+        "run_23"
+      ],
+      "result_sha256": "af8275cf31d96854d49871fa5f646243b139b08dc2b32402c8be73ca98318b70",
+      "same_rates_as_pbar": true
+    }
+  ],
+  "tests": {
+    "3.12.14": {
+      "tests": 84,
+      "skips": 0,
+      "failures": 0,
+      "live_shower_events": 10000,
+      "log": "dbar_final_tests.log"
+    },
+    "3.13.16": {
+      "tests": 84,
+      "skips": 0,
+      "failures": 0,
+      "live_shower_events": 10000,
+      "log": "dbar_python313_tests.log"
+    }
+  },
+  "plot": {
+    "source_attachment": "plot_ams02_pbar_fluxes_updated(1).py",
+    "sha256": "7c877760377e794a1847562269ee4002c55686ba27b0ce6e8447c26caf4c2bdb",
+    "attachment_byte_identical": true,
+    "residual_scale": "linear",
+    "flux_axes": "base-10 logarithmic",
+    "rigidity_axis_minimum_upper_bound_GV": 1000,
+    "output": "vector PDF with 600-dpi settings"
+  },
+  "data": {
+    "source_archive": "tosend.zip::tosend/CosmicRay-flux-main/dbar_flux_Annihilation_tab.zip",
+    "inner_archive_sha256": "9759c3d729e72b286e9b1df1ac5c0a312a29138cee551d2640b86dfc74c8c4de",
+    "member": "dbar_flux_Annihilation_tab/dbar_flux_QUAINT_MED_NFW.dat",
+    "sha256": "35f2263fef681248903b227989b2f65144475ff6450f12b32167299cd5225a10",
+    "modifications": "none",
+    "energy": "total kinetic energy K in GeV; not per nucleon",
+    "flux_units": "GeV^-1 m^-2 s^-1 sr^-1, per total kinetic energy",
+    "sigmav_ref_cm3s": 3e-26,
+    "rho_local_GeVcm3": 0.4,
+    "propagation": "QUAINT-MED",
+    "halo": "NFW",
+    "mass_number": 2,
+    "absolute_charge": 1,
+    "mass_GeV": 1.875613,
+    "sensitivity_units": "(GeV/n)^-1 m^-2 s^-1 sr^-1",
+    "reference_events": 2,
+    "reference": "https://arxiv.org/abs/2602.15132",
+    "source_reference": "https://github.com/CosmiXsPPPC/CosmicRay-flux"
+  },
+  "unchanged_from_v6": [
+    "All existing pbar input data and 19 channel bounds",
+    "Fermi dwarf tables and likelihood",
+    "pbar likelihood",
+    "Fortran and C++ physics sources",
+    "precise velocity-reweight implementation"
+  ],
+  "scope_notes": [
+    "Forecasts are sensitivity-scaled DM signal expectations, not detector response simulations or Dbar exclusion limits.",
+    "Full precise smoke launches used 100 events per velocity, not production-precision photon yields.",
+    "The relocated validation UFO cache was cleared before fresh precise launches; no UFO/MG5 source changes are bundled.",
+    "macOS toolchain not executed.",
+    "Inherited fast/precise rate-method difference retained as documented in version 6."
+  ],
+  "source_sha256": {
+    "dbar_interface.py": "f274f5e2de5aecc2986b635da64ce0bf0bf66cbaea43220082fd7600a8fdfe74",
+    "maddm_run_interface.py": "168870b08ceb189c9743ff54893756e9fad5e42d353b67bce4dcfe7a5c9eab30",
+    "pbar_interface.py": "89a3052342c22bbfe6468fe1d053e0f5cbf762ff75317d4f4d07543468f111fb",
+    "pbar_plot.py": "7c877760377e794a1847562269ee4002c55686ba27b0ce6e8447c26caf4c2bdb",
+    "Templates/Cards/maddm_card.dat": "46ddb12e2436cdf850d56c99772f2abe3214b3779a09b5790b682d453ad88af7",
+    "Templates/Cards/maddm_card_full.dat": "3d5690b91d3313bc9918a5de8c55d05e0a4d8e8aa826fa693b3d3efe8ebe9c6a",
+    "tests/test_dbar_events.py": "c6250b5048c3fbcc22d95d557a062a4f4be06bf8d643590f4f7d16f1e22dc724"
+  }
+}

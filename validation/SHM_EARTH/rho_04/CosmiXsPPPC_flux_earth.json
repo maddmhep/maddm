@@ -1,0 +1,90 @@
+{
+  "positron": {
+    "status": "pending_tables",
+    "message": "Positron results will come soon."
+  },
+  "pbar": {
+    "status": "ok",
+    "halo": "NFW",
+    "scheme": "QUAINT",
+    "setup": "MED",
+    "propagation": "QUAINT-MED",
+    "model_mass_GeV": 96.68807,
+    "flux_units": "GeV^-1 m^-2 s^-1 sr^-1",
+    "energy_column": "K_GeV",
+    "source_factor": 1.0,
+    "table_convention": "self_conjugate",
+    "rho_local_GeVcm3": 0.4,
+    "xsi": 1.0,
+    "dm_table": "/workspace/scratch/dd5358b6da5b/maddm_update/maddm/ExpData/CR_flux/pbar_flux_QUAINT_MED_NFW.dat",
+    "secondary_table": "/workspace/scratch/dd5358b6da5b/maddm_update/maddm/ExpData/AMS02_pbar/secondary_QUAINT_IS.txt",
+    "cases": {
+      "all_dm": {
+        "sigmav_cm3s": 2.3320382730636146e-28,
+        "phi_GV": 0.7,
+        "secondary_norm": 1.0,
+        "secondary_slope": 0.0
+      },
+      "thermal": {
+        "sigmav_cm3s": 2.3320382730636146e-28,
+        "phi_GV": 0.7,
+        "secondary_norm": 1.0,
+        "secondary_slope": 0.0
+      }
+    },
+    "branching": {
+      "bb": 1.0
+    },
+    "solar_modulation_source": "fixed dbar_phi; no pbar model-point flux fit available",
+    "no_tabulated_signal": false,
+    "velocity_model": "shm",
+    "vmp_kms": 238.0,
+    "vescape_kms": 544.0,
+    "nodes": 16,
+    "velocity": 0.0013408631824318466,
+    "rate_velocity_convention": "RMS relative speed / c",
+    "file": "CosmiXsPPPC_pbar_flux_earth.dat"
+  },
+  "dbar": {
+    "status": "ok",
+    "halo": "NFW",
+    "scheme": "QUAINT",
+    "setup": "MED",
+    "propagation": "QUAINT-MED",
+    "model_mass_GeV": 96.68807,
+    "flux_units": "(GeV/n)^-1 m^-2 s^-1 sr^-1",
+    "energy_column": "T_GeV_per_n",
+    "source_factor": 1.0,
+    "table_convention": "self_conjugate",
+    "rho_local_GeVcm3": 0.4,
+    "xsi": 1.0,
+    "dm_table": "/workspace/scratch/dd5358b6da5b/maddm_update/maddm/ExpData/CR_flux/dbar_flux_QUAINT_MED_NFW.dat",
+    "secondary_table": "/workspace/scratch/dd5358b6da5b/maddm_update/maddm/ExpData/AMS02_dbar/secondary_QUAINT_IS.txt",
+    "cases": {
+      "all_dm": {
+        "sigmav_cm3s": 2.3320382730636146e-28,
+        "phi_GV": 0.7,
+        "secondary_norm": 1.0,
+        "secondary_slope": 0.0
+      },
+      "thermal": {
+        "sigmav_cm3s": 2.3320382730636146e-28,
+        "phi_GV": 0.7,
+        "secondary_norm": 1.0,
+        "secondary_slope": 0.0
+      }
+    },
+    "branching": {
+      "bb": 1.0
+    },
+    "solar_modulation_source": "fixed dbar_phi; no pbar model-point flux fit available",
+    "no_tabulated_signal": false,
+    "velocity_model": "shm",
+    "vmp_kms": 238.0,
+    "vescape_kms": 544.0,
+    "nodes": 16,
+    "velocity": 0.0013408631824318466,
+    "rate_velocity_convention": "RMS relative speed / c",
+    "file": "CosmiXsPPPC_dbar_flux_earth.dat"
+  }
+}

@@ -1,0 +1,324 @@
+{
+  "status": "ok",
+  "mass_GeV": 1000.0,
+  "propagation": "SLIM-MAX",
+  "halo": "NFW",
+  "total_sigmav_cm3s": 2.3630472644709218e-27,
+  "branching": {
+    "hh": 0.24587508508447514,
+    "uu": 4.817663796871364e-12,
+    "cc": 1.1949975890827086e-06,
+    "tt": 0.02095379668458415,
+    "dd": 1.8820283341582093e-11,
+    "ss": 7.558028546835178e-09,
+    "bb": 1.6366085519982425e-05,
+    "ZZ": 0.24390758472116741,
+    "WW": 0.4892451822377215,
+    "ee": 6.448864599333029e-14,
+    "mumu": 2.7571304172200703e-09,
+    "tautau": 7.798500813461679e-07
+  },
+  "rates": [
+    {
+      "process": "xsdmxsdm_hh",
+      "sigmav_cm3s": 5.810144472104241e-28,
+      "source": "Indirect_tree_cont",
+      "source_run": "run_28_pbar",
+      "initial_states": [
+        "300",
+        "300"
+      ],
+      "final_states": [
+        "25",
+        "25"
+      ],
+      "decay_chains": false
+    },
+    {
+      "process": "xsdmxsdm_uux",
+      "sigmav_cm3s": 1.1384367256337471e-38,
+      "source": "Indirect_tree_cont",
+      "source_run": "run_28_pbar",
+      "initial_states": [
+        "300",
+        "300"
+      ],
+      "final_states": [
+        "2",
+        "-2"
+      ],
+      "decay_chains": false
+    },
+    {
+      "process": "xsdmxsdm_ccx",
+      "sigmav_cm3s": 2.8238357839312413e-33,
+      "source": "Indirect_tree_cont",
+      "source_run": "run_28_pbar",
+      "initial_states": [
+        "300",
+        "300"
+      ],
+      "final_states": [
+        "4",
+        "-4"
+      ],
+      "decay_chains": false
+    },
+    {
+      "process": "xsdmxsdm_ttx",
+      "sigmav_cm3s": 4.9514811935786446e-29,
+      "source": "Indirect_tree_cont",
+      "source_run": "run_28_pbar",
+      "initial_states": [
+        "300",
+        "300"
+      ],
+      "final_states": [
+        "6",
+        "-6"
+      ],
+      "decay_chains": false
+    },
+    {
+      "process": "xsdmxsdm_ddx",
+      "sigmav_cm3s": 4.4473219066893226e-38,
+      "source": "Indirect_tree_cont",
+      "source_run": "run_28_pbar",
+      "initial_states": [
+        "300",
+        "300"
+      ],
+      "final_states": [
+        "1",
+        "-1"
+      ],
+      "decay_chains": false
+    },
+    {
+      "process": "xsdmxsdm_ssx",
+      "sigmav_cm3s": 1.7859978682392002e-35,
+      "source": "Indirect_tree_cont",
+      "source_run": "run_28_pbar",
+      "initial_states": [
+        "300",
+        "300"
+      ],
+      "final_states": [
+        "3",
+        "-3"
+      ],
+      "decay_chains": false
+    },
+    {
+      "process": "xsdmxsdm_bbx",
+      "sigmav_cm3s": 3.8673833618091634e-32,
+      "source": "Indirect_tree_cont",
+      "source_run": "run_28_pbar",
+      "initial_states": [
+        "300",
+        "300"
+      ],
+      "final_states": [
+        "5",
+        "-5"
+      ],
+      "decay_chains": false
+    },
+    {
+      "process": "xsdmxsdm_zz",
+      "sigmav_cm3s": 5.763651508590643e-28,
+      "source": "Indirect_tree_cont",
+      "source_run": "run_28_pbar",
+      "initial_states": [
+        "300",
+        "300"
+      ],
+      "final_states": [
+        "23",
+        "23"
+      ],
+      "decay_chains": false
+    },
+    {
+      "process": "xsdmxsdm_wpwm",
+      "sigmav_cm3s": 1.1561094895424254e-27,
+      "source": "Indirect_tree_cont",
+      "source_run": "run_28_pbar",
+      "initial_states": [
+        "300",
+        "300"
+      ],
+      "final_states": [
+        "24",
+        "-24"
+      ],
+      "decay_chains": false
+    },
+    {
+      "process": "xsdmxsdm_emep",
+      "sigmav_cm3s": 1.5238971850397282e-40,
+      "source": "Indirect_tree_cont",
+      "source_run": "run_28_pbar",
+      "initial_states": [
+        "300",
+        "300"
+      ],
+      "final_states": [
+        "11",
+        "-11"
+      ],
+      "decay_chains": false
+    },
+    {
+      "process": "xsdmxsdm_mummup",
+      "sigmav_cm3s": 6.515229490201459e-36,
+      "source": "Indirect_tree_cont",
+      "source_run": "run_28_pbar",
+      "initial_states": [
+        "300",
+        "300"
+      ],
+      "final_states": [
+        "13",
+        "-13"
+      ],
+      "decay_chains": false
+    },
+    {
+      "process": "xsdmxsdm_tamtap",
+      "sigmav_cm3s": 1.842822601422488e-33,
+      "source": "Indirect_tree_cont",
+      "source_run": "run_28_pbar",
+      "initial_states": [
+        "300",
+        "300"
+      ],
+      "final_states": [
+        "15",
+        "-15"
+      ],
+      "decay_chains": false
+    }
+  ],
+  "table": {
+    "mass_GeV": 1000.0,
+    "branching": {
+      "hh": 0.24587508508447514,
+      "uu": 4.817663796871364e-12,
+      "cc": 1.1949975890827086e-06,
+      "tt": 0.02095379668458415,
+      "dd": 1.8820283341582093e-11,
+      "ss": 7.558028546835178e-09,
+      "bb": 1.6366085519982425e-05,
+      "ZZ": 0.24390758472116741,
+      "WW": 0.4892451822377215,
+      "ee": 6.448864599333029e-14,
+      "mumu": 2.7571304172200703e-09,
+      "tautau": 7.798500813461679e-07
+    },
+    "propagation": "SLIM-MAX",
+    "halo": "NFW",
+    "rho_local_GeVcm3": 0.4,
+    "source_factor": 1.0,
+    "normalization": "native CosmiXsPPPC annihilation tables",
+    "table_sha256": "55fc03da9bb3c6953c4e144008fb6b878ad57941ad095bbaa80b59cffda6cea8"
+  },
+  "species": "antideuteron",
+  "mass_number": 2,
+  "absolute_charge": 1,
+  "mass_particle_GeV": 1.875613,
+  "table_convention": "self_conjugate",
+  "source_factor": 1.0,
+  "rho_local_GeVcm3": 0.4,
+  "xsi": 1.0,
+  "solar_modulation_source": "pbar model-point nuisance fits (all-DM and thermal separately)",
+  "cases": {
+    "all_dm": {
+      "sigmav_cm3s": 2.3630472644709218e-27,
+      "phi_GV": 1.2293648056291893,
+      "windows": {
+        "AMS02_low": {
+          "T_min_GeV_per_n": 0.18,
+          "T_max_GeV_per_n": 0.7,
+          "sensitivity_per_GeV_per_n": 8e-07,
+          "reference_events": 2.0,
+          "integrated_flux": 3.4054535887408895e-11,
+          "integration_absolute_error": 3.780812983512504e-25,
+          "average_flux_per_GeV_per_n": 6.548949209117094e-11,
+          "expected_events": 0.00016372373022792737
+        },
+        "AMS02_high": {
+          "T_min_GeV_per_n": 2.0,
+          "T_max_GeV_per_n": 4.2,
+          "sensitivity_per_GeV_per_n": 2e-07,
+          "reference_events": 2.0,
+          "integrated_flux": 4.10428410155026e-10,
+          "integration_absolute_error": 4.556670709144072e-24,
+          "average_flux_per_GeV_per_n": 1.8655836825228454e-10,
+          "expected_events": 0.0018655836825228456
+        },
+        "GAPS": {
+          "T_min_GeV_per_n": 0.1,
+          "T_max_GeV_per_n": 0.3,
+          "sensitivity_per_GeV_per_n": 2e-06,
+          "reference_events": 2.0,
+          "integrated_flux": 6.371598119887522e-12,
+          "integration_absolute_error": 7.073894936357485e-26,
+          "average_flux_per_GeV_per_n": 3.185799059943761e-11,
+          "expected_events": 3.185799059943761e-05
+        }
+      },
+      "AMS02_total_events": 0.002029307412750773
+    },
+    "thermal": {
+      "sigmav_cm3s": 2.3630472644709218e-27,
+      "phi_GV": 1.2293648056291893,
+      "windows": {
+        "AMS02_low": {
+          "T_min_GeV_per_n": 0.18,
+          "T_max_GeV_per_n": 0.7,
+          "sensitivity_per_GeV_per_n": 8e-07,
+          "reference_events": 2.0,
+          "integrated_flux": 3.4054535887408895e-11,
+          "integration_absolute_error": 3.780812983512504e-25,
+          "average_flux_per_GeV_per_n": 6.548949209117094e-11,
+          "expected_events": 0.00016372373022792737
+        },
+        "AMS02_high": {
+          "T_min_GeV_per_n": 2.0,
+          "T_max_GeV_per_n": 4.2,
+          "sensitivity_per_GeV_per_n": 2e-07,
+          "reference_events": 2.0,
+          "integrated_flux": 4.10428410155026e-10,
+          "integration_absolute_error": 4.556670709144072e-24,
+          "average_flux_per_GeV_per_n": 1.8655836825228454e-10,
+          "expected_events": 0.0018655836825228456
+        },
+        "GAPS": {
+          "T_min_GeV_per_n": 0.1,
+          "T_max_GeV_per_n": 0.3,
+          "sensitivity_per_GeV_per_n": 2e-06,
+          "reference_events": 2.0,
+          "integrated_flux": 6.371598119887522e-12,
+          "integration_absolute_error": 7.073894936357485e-26,
+          "average_flux_per_GeV_per_n": 3.185799059943761e-11,
+          "expected_events": 3.185799059943761e-05
+        }
+      },
+      "AMS02_total_events": 0.002029307412750773
+    }
+  },
+  "method": "N=2*integral_T1^T2(Phi_TOA(T)dT)/((T2-T1)*sensitivity)",
+  "flux_units": "(GeV/n)^-1 m^-2 s^-1 sr^-1",
+  "zero_model_rate": false,
+  "no_tabulated_signal": false,
+  "notes": [
+    "DM signal only; no secondary Dbar background added.",
+    "Two-event sensitivity forecast, not a detector response or a confidence bound.",
+    "The table uses total kinetic energy; both energy and flux Jacobian are converted.",
+    "All-DM uses full density; thermal uses xsi^2 times the rate.",
+    "Native source convention is the same explicit assumption as for pbar."
+  ],
+  "secondary_path": "/workspace/scratch/dd5358b6da5b/maddm_work/maddm-rc-33-indirect/ExpData/AMS02_dbar/secondary_SLIM_IS.txt",
+  "velocity": 0.00075
+}

@@ -1,0 +1,213 @@
+{
+  "generated_utc": "2026-10-22T09:01:39.841380+00:00",
+  "fingerprint": "38f411dca5119fbe7a8163b9058e84d2ade1930ebf79e381f41569381b48240e",
+  "calculation": {
+    "input_and_core_sha256": {
+      "ams02_pbar/core.py": "8762859bd9de7e0ddc6ebedcaad5b640d51cbaefe2ff811240fbdbcd761812cd",
+      "ams02_pbar/data/pbar_ams02.txt": "ef006d73836073af2be5975109629461119a66da5829e9e7d8c729cf4f575ebc",
+      "ams02_pbar/data/secondary_QUAINT_IS.txt": "0e9518a6ecfec430f31a7173179c4b48fed364f096529d2a05528376558590fe",
+      "ams02_pbar/data/pbar_flux_QUAINT_MED_NFW.dat": "1219d8a43d44c32831fdb15accfb7ffe504b4cdcf64bcff2b31b41b4baf39931"
+    },
+    "config": {
+      "norm_bounds": [
+        0.8,
+        1.2
+      ],
+      "slope_bounds": [
+        -0.1,
+        0.1
+      ],
+      "phi_bounds_GV": [
+        0.0,
+        2.0
+      ],
+      "pivot_GeV": 10.0,
+      "rigidity_min_GV": 0.0,
+      "rigidity_max_GV": null,
+      "delta_chi2": 2.705543454095404
+    },
+    "rho_local_GeVcm3": 0.4,
+    "source_factor": 1.0,
+    "branching": "one channel with branching fraction exactly one"
+  },
+  "n_channels": 19,
+  "n_mass_nodes": 64,
+  "mass_nodes_GeV": [
+    5.0,
+    10.0,
+    15.0,
+    20.0,
+    25.0,
+    30.0,
+    40.0,
+    50.0,
+    60.0,
+    70.0,
+    75.0,
+    80.0,
+    85.0,
+    90.0,
+    95.0,
+    100.0,
+    110.0,
+    120.0,
+    130.0,
+    140.0,
+    150.0,
+    160.0,
+    162.5,
+    180.0,
+    200.0,
+    220.0,
+    240.0,
+    260.0,
+    280.0,
+    300.0,
+    330.0,
+    360.0,
+    400.0,
+    450.0,
+    500.0,
+    550.0,
+    600.0,
+    650.0,
+    700.0,
+    750.0,
+    800.0,
+    900.0,
+    1000.0,
+    1100.0,
+    1200.0,
+    1300.0,
+    1500.0,
+    1700.0,
+    2000.0,
+    2500.0,
+    3000.0,
+    4000.0,
+    5000.0,
+    6000.0,
+    7000.0,
+    8000.0,
+    9000.0,
+    10000.0,
+    12000.0,
+    15000.0,
+    20000.0,
+    30000.0,
+    50000.0,
+    100000.0
+  ],
+  "expected_cases": 1216,
+  "completed_cases": 1216,
+  "finite_limits": 1132,
+  "no_signal_cases": 84,
+  "failed_cases": 0,
+  "complete": true,
+  "max_delta_chi2_residual": 1.9152828079072037e-07,
+  "channel_filenames": {
+    "ee": "MadDM_AMS02_pbar_Limit_ee.txt",
+    "mumu": "MadDM_AMS02_pbar_Limit_mumu.txt",
+    "tautau": "MadDM_AMS02_pbar_Limit_tautau.txt",
+    "nu_e_nu_e": "MadDM_AMS02_pbar_Limit_nuenue.txt",
+    "nu_mu_nu_mu": "MadDM_AMS02_pbar_Limit_numunumu.txt",
+    "nu_tau_nu_tau": "MadDM_AMS02_pbar_Limit_nutaunutau.txt",
+    "uu": "MadDM_AMS02_pbar_Limit_uu.txt",
+    "dd": "MadDM_AMS02_pbar_Limit_dd.txt",
+    "ss": "MadDM_AMS02_pbar_Limit_ss.txt",
+    "cc": "MadDM_AMS02_pbar_Limit_cc.txt",
+    "bb": "MadDM_AMS02_pbar_Limit_bb.txt",
+    "tt": "MadDM_AMS02_pbar_Limit_tt.txt",
+    "AA": "MadDM_AMS02_pbar_Limit_gammagamma.txt",
+    "gg": "MadDM_AMS02_pbar_Limit_gg.txt",
+    "WW": "MadDM_AMS02_pbar_Limit_WW.txt",
+    "ZZ": "MadDM_AMS02_pbar_Limit_ZZ.txt",
+    "hh": "MadDM_AMS02_pbar_Limit_hh.txt",
+    "AZ": "MadDM_AMS02_pbar_Limit_gammaZ.txt",
+    "hZ": "MadDM_AMS02_pbar_Limit_hZ.txt"
+  },
+  "channels": {
+    "ee": {
+      "finite_limits": 64,
+      "no_signal": 0
+    },
+    "mumu": {
+      "finite_limits": 64,
+      "no_signal": 0
+    },
+    "tautau": {
+      "finite_limits": 64,
+      "no_signal": 0
+    },
+    "nu_e_nu_e": {
+      "finite_limits": 57,
+      "no_signal": 7
+    },
+    "nu_mu_nu_mu": {
+      "finite_limits": 57,
+      "no_signal": 7
+    },
+    "nu_tau_nu_tau": {
+      "finite_limits": 57,
+      "no_signal": 7
+    },
+    "uu": {
+      "finite_limits": 64,
+      "no_signal": 0
+    },
+    "dd": {
+      "finite_limits": 64,
+      "no_signal": 0
+    },
+    "ss": {
+      "finite_limits": 64,
+      "no_signal": 0
+    },
+    "cc": {
+      "finite_limits": 64,
+      "no_signal": 0
+    },
+    "bb": {
+      "finite_limits": 64,
+      "no_signal": 0
+    },
+    "tt": {
+      "finite_limits": 42,
+      "no_signal": 22
+    },
+    "AA": {
+      "finite_limits": 64,
+      "no_signal": 0
+    },
+    "gg": {
+      "finite_limits": 64,
+      "no_signal": 0
+    },
+    "WW": {
+      "finite_limits": 64,
+      "no_signal": 0
+    },
+    "ZZ": {
+      "finite_limits": 64,
+      "no_signal": 0
+    },
+    "hh": {
+      "finite_limits": 46,
+      "no_signal": 18
+    },
+    "AZ": {
+      "finite_limits": 57,
+      "no_signal": 7
+    },
+    "hZ": {
+      "finite_limits": 48,
+      "no_signal": 16
+    }
+  },
+  "errors": [],
+  "python": "3.12.14",
+  "versions": {
+    "numpy": "2.3.5",
+    "scipy": "1.17.0"
+  }
+}

@@ -1,0 +1,76 @@
+################################################
+#                 MadDM v. 3.3                 #
+################################################
+
+
+
+################################################
+# Indirect Detection                           #
+################################################
+# Results in brackets display [prediction, upper limit]
+
+# Annihilation cross section computed with the method: inclusive
+# <sigma v>[cm^3 s^-1] of continuum spectrum final states and Fermi dSph limits (if available, else -1)
+xsdmxsdm_hh                   = [2.91e-28,1.88e-25]           
+xsdmxsdm_ddx                  = [2.22e-38,2.19e-25]           
+xsdmxsdm_uux                  = [5.69e-39,2.19e-25]           
+xsdmxsdm_ssx                  = [8.93e-36,2.19e-25]           
+xsdmxsdm_ccx                  = [1.41e-33,2.02e-25]           
+xsdmxsdm_bbx                  = [1.93e-32,1.95e-25]           
+xsdmxsdm_ttx                  = [2.48e-29,2.05e-25]           
+xsdmxsdm_zz                   = [2.88e-28,2.67e-25]           
+xsdmxsdm_wpwm                 = [5.78e-28,2.82e-25]           
+xsdmxsdm_emep                 = [7.62e-41,2.73e-24]           
+xsdmxsdm_mummup               = [3.26e-36,5.09e-24]           
+xsdmxsdm_tamtap               = [9.21e-34,2.93e-25]           
+
+# Fermi dSph channel tables; combined bound/likelihood not evaluated
+TotalSM_xsec                  = [1.18e-27,-1.00e+00]          
+Fermi_Likelihood              = -1.00e+00                     
+Fermi_pvalue                  = -1.00e+00                     
+
+# AMS-02 antiprotons: QUAINT-MED / NFW, 95% one-sided profile bound
+AMS02_pbar_status = tabulated_channels
+# Individual channel comparisons; no combined mixed-channel bound
+AMS02_pbar_velocity = 7.5000000000e-04
+xsdmxsdm_hh [sigmav_MW, sigmav95] = [2.9052587845e-28, 2.5635206693e-26]  AllDM=ALLOWED  Thermal=ALLOWED
+xsdmxsdm_ddx [sigmav_MW, sigmav95] = [2.2237608778e-38, 4.1856709779e-26]  AllDM=ALLOWED  Thermal=ALLOWED
+xsdmxsdm_uux [sigmav_MW, sigmav95] = [5.6925568106e-39, 4.1844381547e-26]  AllDM=ALLOWED  Thermal=ALLOWED
+xsdmxsdm_ssx [sigmav_MW, sigmav95] = [8.9303761841e-36, 4.1856709779e-26]  AllDM=ALLOWED  Thermal=ALLOWED
+xsdmxsdm_ccx [sigmav_MW, sigmav95] = [1.4119957965e-33, 2.0592373400e-26]  AllDM=ALLOWED  Thermal=ALLOWED
+xsdmxsdm_bbx [sigmav_MW, sigmav95] = [1.9337856716e-32, 4.2167337249e-26]  AllDM=ALLOWED  Thermal=ALLOWED
+xsdmxsdm_ttx [sigmav_MW, sigmav95] = [2.4758302372e-29, 1.7816672815e-26]  AllDM=ALLOWED  Thermal=ALLOWED
+xsdmxsdm_zz [sigmav_MW, sigmav95] = [2.8819716769e-28, 3.7495132470e-26]  AllDM=ALLOWED  Thermal=ALLOWED
+xsdmxsdm_wpwm [sigmav_MW, sigmav95] = [5.7807685514e-28, 4.2305603191e-26]  AllDM=ALLOWED  Thermal=ALLOWED
+xsdmxsdm_emep [sigmav_MW, sigmav95] = [7.6198699318e-41, 2.3579830724e-24]  AllDM=ALLOWED  Thermal=ALLOWED
+xsdmxsdm_mummup [sigmav_MW, sigmav95] = [3.2578190862e-36, 2.4210713575e-24]  AllDM=ALLOWED  Thermal=ALLOWED
+xsdmxsdm_tamtap [sigmav_MW, sigmav95] = [9.2146438972e-34, 2.4632113710e-24]  AllDM=ALLOWED  Thermal=ALLOWED
+# Channel diagnostics: AMS02_pbar_channel_limits.dat, AMS02_pbar_limits.json
+
+# Antideuteron event forecasts: QUAINT-MED / NFW; two-event sensitivities
+AMS02_dbar_status = ok
+AMS02_dbar_events_low = 7.1313362378e-05
+AMS02_dbar_events_high = 7.3484794995e-04
+AMS02_dbar_events_total = 8.0616131232e-04
+AMS02_dbar_events_low_thermal = 7.1313362378e-05
+AMS02_dbar_events_high_thermal = 7.3484794995e-04
+AMS02_dbar_events_total_thermal = 8.0616131232e-04
+GAPS_dbar_events = 1.6756580289e-05
+GAPS_dbar_events_thermal = 1.6756580289e-05
+AMS02_dbar_phi = 7.0000000000e-01
+AMS02_dbar_phi_thermal = 7.0000000000e-01
+AMS02_dbar_model_sigmav = 1.1815798872e-27
+# Solar modulation: fixed dbar_phi; no pbar model-point flux fit available
+# Forecast diagnostics: AMS02_dbar_events.json, AMS02_dbar_events.dat, AMS02_dbar_fluxes.dat
+
+# Galactic-center excess: prompt spectrum, systematic-band fit
+GCE_sigmav_best = 6.764167760389e-26
+GCE_sigmav_error_minus = 2.117447554607e-26
+GCE_sigmav_error_plus = 1.985443965650e-26
+GCE_sigmav_error = 2.051445760129e-26
+GCE_chi2 = 4.320031672754e+01
+GCE_ndof = 1.000000000000e+01
+GCE_chi2_ndof = 4.320031672754e+00
+GCE_model_sigmav = 1.181579887177e-27
+GCE_status = ok
+# Upper-limit rows checked separately; fitted detections=11

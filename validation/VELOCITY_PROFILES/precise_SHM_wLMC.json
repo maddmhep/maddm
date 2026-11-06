@@ -1,0 +1,23 @@
+{
+  "halo_velocity_profile": "SHM_wLMC",
+  "vmp_kms": 238.0,
+  "vescape_kms": 544.0,
+  "halo_lmc_fraction": 0.006,
+  "halo_lmc_vb": 570.0,
+  "halo_lmc_sigb": 100.0,
+  "halo_lmc_vcut": 200.0,
+  "halo_lmc_cosb": -0.71,
+  "halo_lmc_azimuth_deg": 0.0,
+  "rholocal_gev_cm3": 0.4,
+  "mw_velocity_model": "shm",
+  "mw_quadrature_file": "MW_relative_speed.dat",
+  "mw_shm_npts": 8,
+  "mw_rms_relative_speed_kms": 405.7752574000166,
+  "rapidd_recoil_halo_file": "DD_halo.dat",
+  "rapidd_lab_frame": "annual mean",
+  "lmc_bulk_velocity_galactic_kms": [
+    332.00330183681626,
+    -462.68506675424265,
+    -24.420003523214724
+  ]
+}

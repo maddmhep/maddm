@@ -1,0 +1,23 @@
+{
+  "revision": 8,
+  "tests": {
+    "python312": {
+      "passed": 95,
+      "skipped": 0
+    },
+    "python313": {
+      "passed": 95,
+      "skipped": 0
+    }
+  },
+  "full_runs": [
+    "full_fast",
+    "full_precise_BIG_MIN_Einasto"
+  ],
+  "mg5_version": "3.8.0",
+  "platform": "Linux",
+  "propagated_tables": 54,
+  "gce_detections": 11,
+  "gce_upper_limit_checks": 15,
+  "plot_visual_review": true
+}

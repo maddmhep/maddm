@@ -1,0 +1,20 @@
+{
+  "source_archive": "tosend.zip::tosend/CosmicRay-flux-main/dbar_flux_Annihilation_tab.zip",
+  "inner_archive_sha256": "9759c3d729e72b286e9b1df1ac5c0a312a29138cee551d2640b86dfc74c8c4de",
+  "member": "dbar_flux_Annihilation_tab/dbar_flux_QUAINT_MED_NFW.dat",
+  "sha256": "35f2263fef681248903b227989b2f65144475ff6450f12b32167299cd5225a10",
+  "modifications": "none",
+  "energy": "total kinetic energy K in GeV; not per nucleon",
+  "flux_units": "GeV^-1 m^-2 s^-1 sr^-1, per total kinetic energy",
+  "sigmav_ref_cm3s": 3e-26,
+  "rho_local_GeVcm3": 0.4,
+  "propagation": "QUAINT-MED",
+  "halo": "NFW",
+  "mass_number": 2,
+  "absolute_charge": 1,
+  "mass_GeV": 1.875613,
+  "sensitivity_units": "(GeV/n)^-1 m^-2 s^-1 sr^-1",
+  "reference_events": 2,
+  "reference": "https://arxiv.org/abs/2602.15132",
+  "source_reference": "https://github.com/CosmiXsPPPC/CosmicRay-flux"
+}

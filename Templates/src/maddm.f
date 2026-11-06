@@ -232,7 +232,8 @@ C             print*,'proc:',PROCESS_NAMES(k),' photon? ',IS_LINE_PROCESS(k)
             cycle
            end if
            sigv =  taacs_ID(k,vID_natural)*pbtocm3*vID_natural  ! 2.d0
-           write(33,fmt='(A8,A12,A4,ES14.7,A7)') 'sigma*v:',PROCESS_NAMES(k),' ',sigv, ' cm^3/s'
+            write(33,fmt='(A,A,A,ES24.16,A)') 'sigma*v:',
+     &            trim(PROCESS_NAMES(k)), ' ', sigv, ' cm^3/s'
         enddo
 c        print*,'total:', total_cross * gevtopb * pbtocm3
 c        write(33,fmt='(A8,A12,A4,ES14.7,A7)') 'DM --> all:' 
@@ -247,10 +248,24 @@ C             print*,'proc:',PROCESS_NAMES(k),' photon? ',IS_LINE_PROCESS(k)
             cycle
            end if
            sigv =  taacs_ID(k,vID_natural)*pbtocm3*vID_natural  ! 2.d0
-           write(33,fmt='(A8,A12,A4,ES14.7,A7)') 'sigma*v:',PROCESS_NAMES(k),' ',sigv, ' cm^3/s'
+            write(33,fmt='(A,A,A,ES24.16,A)') 'sigma*v:',
+     &            trim(PROCESS_NAMES(k)), ' ', sigv, ' cm^3/s'
         enddo
       endif
 
+c Independent antiproton rates, including generated photon final states.
+c They do not overwrite the continuum/dwarf or gamma-line rates above.
+      if (do_indirect_detection.and.only2to2lo.and.do_pbar_limits) then
+         vID_natural = sqrt(3.d0) * vave_indirect_pbar
+         do k=1, ANN_NUM_PROCESSES
+            sigv = taacs_ID(k,vID_natural)*pbtocm3*vID_natural
+            write(33,fmt='(A,A,A,ES24.16,A)') 'pbar_sv:',
+     &            trim(PROCESS_NAMES(k)), ' ', sigv, ' cm^3/s'
+         enddo
+      endif
+
+      if (only2to2lo) call write_maddm_shm_rates(
+     &    do_indirect_detection, do_indirect_spectral)
       close(33)
 c-------------------------------------------------------------------------c
 c  Other test functions
@@ -326,3 +341,5 @@ c      call Lux_Exclusion(5.d0,7000.d0,3.d-10,7.d-8,25.d0)
 
 
       end
+
+      include 'maddm_mw_rates.inc'

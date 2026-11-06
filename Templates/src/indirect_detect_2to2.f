@@ -5,10 +5,12 @@ c-------------------------------------------------
       function taacs_ID(channel, vave)
       implicit none
       include 'maddm.inc'
-      double precision vave
-      double precision channel
+      double precision vave, momentum
+      integer channel
 
-      taacs_ID = cross_check_process(1, 1, channel, 1,mdm(1)*vave,mdm(1)*vave , 1)
+c     vave is the pair speed, so each incoming particle has speed vave/2.
+      momentum = mdm(1)*vave/sqrt(4.d0-vave*vave)
+      taacs_ID = cross_check_process(1,1,channel,1,momentum,momentum,1)
 c      print*, taacs_ID
 
       return

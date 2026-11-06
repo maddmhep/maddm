@@ -1,0 +1,46 @@
+{
+  "created_date": "2026-10-21",
+  "input_archive": "tosend.zip",
+  "input_archive_sha256": "1cce749c5829c7f3ea19c00bc2fe2286dafe91b106c9d7a0bca92ef7766435fb",
+  "sources": [
+    {
+      "path": "ExpData/AMS02_pbar/pbar_ams02.txt",
+      "source_member": "tosend/data/pbar_ams02.txt",
+      "sha256": "ef006d73836073af2be5975109629461119a66da5829e9e7d8c729cf4f575ebc",
+      "bytes": 5387,
+      "modifications": "none; secondary file renamed only"
+    },
+    {
+      "path": "ExpData/AMS02_pbar/secondary_QUAINT_IS.txt",
+      "source_member": "tosend/data/local_fluxes_1HBAR_Ekn_Model1DKisoVc_SolMod0DFF_phi0_00GV_QUAINT.out",
+      "sha256": "0e9518a6ecfec430f31a7173179c4b48fed364f096529d2a05528376558590fe",
+      "bytes": 63662,
+      "modifications": "none; secondary file renamed only"
+    },
+    {
+      "path": "ExpData/AMS02_pbar/pbar_flux_QUAINT_MED_NFW.dat",
+      "source_member": "tosend/CosmicRay-flux-main/pbar_flux_Annihilation_tab.zip::pbar_flux_Annihilation_tab/pbar_flux_QUAINT_MED_NFW.dat",
+      "sha256": "1219d8a43d44c32831fdb15accfb7ffe504b4cdcf64bcff2b31b41b4baf39931",
+      "bytes": 1593624,
+      "modifications": "none; secondary file renamed only"
+    }
+  ],
+  "scope": {
+    "species": "antiproton",
+    "interaction": "annihilation",
+    "dm_propagation": "QUAINT-MED",
+    "dm_halo": "NFW"
+  },
+  "unverified": [
+    "Exact MED transport parameters of the secondary QUAINT file: no parameter card supplied.",
+    "Native particle/antiparticle source convention beyond the stated annihilation-rate benchmark.",
+    "Statistical/systematic decomposition and correlations of SSDC-exported vertical errors."
+  ],
+  "urls": [
+    "https://github.com/CosmiXsPPPC/CosmicRay-flux",
+    "https://arxiv.org/abs/2606.10017",
+    "https://ams02.space/publications/202102"
+  ],
+  "integration_baseline_commit": "3b3f8d1141c10c3a80bafb63d47ef47e721c48b8",
+  "native_table_source_convention": "Explicit card assumption, pbar_table_convention; default self_conjugate"
+}

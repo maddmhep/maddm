@@ -47,3 +47,6 @@ relic_density: $(objs_all)
 
 direct_detection: $(objs_all)
 	$(fort) $(flags) $(objs_all) $(libs) $(LDFLAGS) -o $(prog).x
+
+# MadDM: recompile source objects when generated includes change.
+$(objs_all): $(wildcard $(incdir)/*.inc)

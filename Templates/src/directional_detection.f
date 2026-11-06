@@ -928,10 +928,9 @@ c--------------------------------For CS2----------------------------------------
       Allocate (sigmaWN(n))
       
 !	Some variables
-      c         = 3.d+5 ! Speed of light in km/s
+      c         = 299792.458d0*km/sec
             
       MD0       = MD*(GeV/cs**2)
-      E0        = (1.d0/2.d0)*MD0*((v0/c)**2)*GeVtoKeV ! most probable kinetic energy of WIMPs
 
       sigmawnSI = sigmawn0SI*picobarn !WIMP-proton spin independent cross-section in cm^2
       sigmawpSI = sigmawp0SI*picobarn !WIMP-neutron spin independent cross-section in cm^2
@@ -942,7 +941,8 @@ c--------------------------------For CS2----------------------------------------
       mu_p      = MD0*M_proton/(MD0 + M_proton) ! reduced mass of Proton-WIMP
       mu_n      = MD0*M_neutron/(MD0 + M_neutron) ! reduced mass of Neutron-WIMP
 
-      v0        = vMP*(km/sec) !Most Probable velocity of WIMPs in DM Halo
+      v0        = vMP*(km/sec) ! Most probable Galactic speed
+      E0        = 0.5d0*MD0*(v0/c)**2*GeVtoKeV
       vesc      = vescape*(km/sec) ! Escape velocity of a WIMP from the Galactic Halo.
       vearth    = ve*(km/sec) ! Velocity of the Earth, taken from the V_E function.
       AMU       = 0.932d0*(GeV/cs**2) ! Atomic Mass Units
@@ -992,7 +992,7 @@ c form factor contribution terms for the spin dependent calculation.
          ss(i)      = kratio*(1.d0/(2.d0*E0*r(i)))*(exp(-((vearth*costheta -vmin(i))/v0)**2))
          st(i)      = (1.d0/(2.d0*E0*r(i)))*kratio*exp(-(vesc/v0)**2)
 
-         if((vmin(i) .lt. vesc) .and. (exp(-((vearth*costheta -vmin(i))/v0)**2) .gt. exp(-(vesc/v0)**2)))then
+         if (abs(vmin(i)-vearth*costheta).lt.vesc) then
             s(i) = ss(i) - st(i) !Makes sure to calculate the distribution in the correct kinematic regime.
          else
             s(i) = 0.d0
@@ -1266,48 +1266,13 @@ c form factor contribution terms for the spin dependent calculation.
 
 !-----------------------------------------------------------------------------------------!
       Real*8 Function V_E(days)
+c     Use the same laboratory motion as the electron recoil calculation.
+      implicit none
+      double precision days, get_vEarth
+      V_E = get_vEarth(days)
+      end
+
 !-----------------------------------------------------------------------------------------!
-!     This function calculates the velocity of the earth from the galactic velocity and !
-!     sun proper motion.                                                                !
-!-----------------------------------------------------------------------------------------!
-      Implicit none
-      
-      Real*8	 pi, degtorad, cosbx, cosby, cosbz, g, lambda, Lx, Ly, Lz, L0
-      Real*8	 V_E1(3), days, ecc, uearthave, u_E, vuGal(3), vuSun(3), vu_E(3)
-      
-      vuGal = (/ 0.d0, 230.d0, 0.d0 /) ! velocity of the Galactic rotation
-      vuSun = (/ 10.d0, 13.d0, 7.d0 /) ! Sun's proper motion relative to nearby stars
-      
-      pi = 4.d0*Atan(1.d0)
-      degtorad = pi/180.d0      ! converting degrees to radians
-      cosbx = cos(-5.5303*degtorad) 
-      cosby = cos(59.575*degtorad)
-      cosbz = cos(29.812*degtorad)
-      
-!     Following Lewin and Smith Appendix B.
-      L0 = 13.d0*degtorad
-      Lx = 266.141d0*degtorad
-      Ly = -13.3485d0*degtorad
-      Lz = 179.3212d0*degtorad
-      
-      g = degtorad*357.528d0 + 0.9856003d0*days*degtorad 
-      lambda = degtorad*280.46d0 + degtorad*0.9856474d0*days +
-     &     degtorad*1.915d0*sin(g) + degtorad*0.02d0*sin(2.d0*g) !galactic coordinates of the earth on each day.
-      ecc = 0.016722d0          ! Earth eccentricity.
-      uearthave = 29.79d0 
-      u_E = uearthave*(1.d0 - ecc*sin(lambda - L0)) ! Average velocity of the earth around the Sun.
-      vu_E = (/ u_E*cosbx*sin(lambda - Lx), u_E*cosby*sin(lambda - Ly), u_E*cosbz*sin(lambda - Lz) /) 
-      
-      V_E1(1) = vuGal(1) + vuSun(1) + vu_E(1)
-      V_E1(2) = vuGal(2) + vuSun(2) + vu_E(2)
-      V_E1(3) = vuGal(3) + vuSun(3) + vu_E(3)
-      
-      V_E = sqrt(V_E1(1)**2 + V_E1(2)**2 + V_E1(3)**2)
-      
-      return
-      end 
-      
-!--------------------------------------------------------------------------------------- -!
       Real*8 Function FHelm(ER, A)
 !-----------------------------------------------------------------------------------------!
 !     The Helm form factor as a function of recoil energy ER and target atomic mass A   !

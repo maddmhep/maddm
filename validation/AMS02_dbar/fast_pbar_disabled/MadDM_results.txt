@@ -1,0 +1,65 @@
+################################################
+#                 MadDM v. 3.3                 #
+################################################
+
+
+
+################################################
+# Indirect Detection                           #
+################################################
+# Results in brackets display [prediction, upper limit]
+
+# Annihilation cross section computed with the method: inclusive
+# <sigma v>[cm^3 s^-1] of continuum spectrum final states and Fermi dSph limits (if available, else -1)
+xsdmxsdm_hh                   = [2.91e-28,1.88e-25]           
+xsdmxsdm_ddx                  = [2.22e-38,2.19e-25]           
+xsdmxsdm_uux                  = [5.69e-39,2.19e-25]           
+xsdmxsdm_ssx                  = [8.93e-36,2.19e-25]           
+xsdmxsdm_ccx                  = [1.41e-33,2.02e-25]           
+xsdmxsdm_bbx                  = [1.93e-32,1.95e-25]           
+xsdmxsdm_ttx                  = [2.48e-29,2.05e-25]           
+xsdmxsdm_zz                   = [2.88e-28,2.67e-25]           
+xsdmxsdm_wpwm                 = [5.78e-28,2.82e-25]           
+xsdmxsdm_emep                 = [7.62e-41,2.73e-24]           
+xsdmxsdm_mummup               = [3.26e-36,5.09e-24]           
+xsdmxsdm_tamtap               = [9.21e-34,2.93e-25]           
+
+# Fermi dSph channel tables; combined bound/likelihood not evaluated
+TotalSM_xsec                  = [1.18e-27,-1.00e+00]          
+Fermi_Likelihood              = -1.00e+00                     
+Fermi_pvalue                  = -1.00e+00                     
+
+# AMS-02 antiprotons: QUAINT-MED / NFW, 95% one-sided profile bound
+AMS02_pbar_status = disabled
+AMS02_pbar_sigmav = -1.0000000000e+00
+AMS02_pbar_sigmav_best = -1.0000000000e+00
+AMS02_pbar_model_sigmav = -1.0000000000e+00
+AMS02_pbar_q = -1.0000000000e+00
+AMS02_pbar_q_thermal = -1.0000000000e+00
+AMS02_pbar_excluded = -1.0000000000e+00
+AMS02_pbar_excluded_thermal = -1.0000000000e+00
+AMS02_pbar_chi2_background = -1.0000000000e+00
+AMS02_pbar_chi2_best = -1.0000000000e+00
+AMS02_pbar_norm_upper = -1.0000000000e+00
+AMS02_pbar_slope_upper = -1.0000000000e+00
+AMS02_pbar_phi_upper = -1.0000000000e+00
+AMS02_pbar_velocity = 7.5000000000e-04
+AMS02_pbar_AllDM = NOT EVALUATED
+AMS02_pbar_Thermal = NOT EVALUATED
+# Flux and fit diagnostics: AMS02_pbar_fluxes.dat, AMS02_pbar_limits.json
+
+# Antideuteron event forecasts: QUAINT-MED / NFW; two-event sensitivities
+AMS02_dbar_status = ok
+AMS02_dbar_events_low = 4.5640551922e-05
+AMS02_dbar_events_high = 4.7030268797e-04
+AMS02_dbar_events_total = 5.1594323989e-04
+AMS02_dbar_events_low_thermal = 4.5640551922e-05
+AMS02_dbar_events_high_thermal = 4.7030268797e-04
+AMS02_dbar_events_total_thermal = 5.1594323989e-04
+GAPS_dbar_events = 1.0724211385e-05
+GAPS_dbar_events_thermal = 1.0724211385e-05
+AMS02_dbar_phi = 7.0000000000e-01
+AMS02_dbar_phi_thermal = 7.0000000000e-01
+AMS02_dbar_model_sigmav = 1.1815798872e-27
+# Solar modulation: fixed dbar_phi; no pbar model-point flux fit available
+# Forecast diagnostics: AMS02_dbar_events.json, AMS02_dbar_events.dat, AMS02_dbar_fluxes.dat

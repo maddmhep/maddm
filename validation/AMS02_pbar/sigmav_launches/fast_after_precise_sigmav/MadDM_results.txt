@@ -1,0 +1,48 @@
+################################################
+#                 MadDM v. 3.3                 #
+################################################
+
+
+
+################################################
+# Indirect Detection                           #
+################################################
+# Results in brackets display [prediction, upper limit]
+
+# Annihilation cross section computed with the method: inclusive
+# <sigma v>[cm^3 s^-1] of continuum spectrum final states and Fermi dSph limits (if available, else -1)
+xsdmxsdm_hh                   = [2.91e-28,1.88e-25]           
+xsdmxsdm_ddx                  = [2.22e-38,2.19e-25]           
+xsdmxsdm_uux                  = [5.69e-39,2.19e-25]           
+xsdmxsdm_ssx                  = [8.93e-36,2.19e-25]           
+xsdmxsdm_ccx                  = [1.41e-33,2.02e-25]           
+xsdmxsdm_bbx                  = [1.93e-32,1.95e-25]           
+xsdmxsdm_ttx                  = [2.48e-29,2.05e-25]           
+xsdmxsdm_zz                   = [2.88e-28,2.67e-25]           
+xsdmxsdm_wpwm                 = [5.78e-28,2.82e-25]           
+xsdmxsdm_emep                 = [7.62e-41,2.73e-24]           
+xsdmxsdm_mummup               = [3.26e-36,5.09e-24]           
+xsdmxsdm_tamtap               = [9.21e-34,2.93e-25]           
+
+# Fermi dSph channel tables; combined bound/likelihood not evaluated
+TotalSM_xsec                  = [1.18e-27,-1.00e+00]          
+Fermi_Likelihood              = -1.00e+00                     
+Fermi_pvalue                  = -1.00e+00                     
+
+# AMS-02 antiprotons: QUAINT-MED / NFW, 95% one-sided profile bound
+AMS02_pbar_status = tabulated_channels
+# Individual channel comparisons; no combined mixed-channel bound
+AMS02_pbar_velocity = 7.5000000000e-04
+xsdmxsdm_hh [sigmav_MW, sigmav95] = [2.9052587845e-28, 4.0055010458e-26]  AllDM=ALLOWED  Thermal=ALLOWED
+xsdmxsdm_ddx [sigmav_MW, sigmav95] = [2.2237608778e-38, 6.5401109030e-26]  AllDM=ALLOWED  Thermal=ALLOWED
+xsdmxsdm_uux [sigmav_MW, sigmav95] = [5.6925568106e-39, 6.5381846167e-26]  AllDM=ALLOWED  Thermal=ALLOWED
+xsdmxsdm_ssx [sigmav_MW, sigmav95] = [8.9303761841e-36, 6.5401109030e-26]  AllDM=ALLOWED  Thermal=ALLOWED
+xsdmxsdm_ccx [sigmav_MW, sigmav95] = [1.4119957965e-33, 3.2175583437e-26]  AllDM=ALLOWED  Thermal=ALLOWED
+xsdmxsdm_bbx [sigmav_MW, sigmav95] = [1.9337856716e-32, 6.5886464452e-26]  AllDM=ALLOWED  Thermal=ALLOWED
+xsdmxsdm_ttx [sigmav_MW, sigmav95] = [2.4758302372e-29, 2.7838551274e-26]  AllDM=ALLOWED  Thermal=ALLOWED
+xsdmxsdm_zz [sigmav_MW, sigmav95] = [2.8819716769e-28, 5.8586144485e-26]  AllDM=ALLOWED  Thermal=ALLOWED
+xsdmxsdm_wpwm [sigmav_MW, sigmav95] = [5.7807685514e-28, 6.6102504986e-26]  AllDM=ALLOWED  Thermal=ALLOWED
+xsdmxsdm_emep [sigmav_MW, sigmav95] = [7.6198699318e-41, 3.6843485506e-24]  AllDM=ALLOWED  Thermal=ALLOWED
+xsdmxsdm_mummup [sigmav_MW, sigmav95] = [3.2578190862e-36, 3.7829239961e-24]  AllDM=ALLOWED  Thermal=ALLOWED
+xsdmxsdm_tamtap [sigmav_MW, sigmav95] = [9.2146438972e-34, 3.8487677672e-24]  AllDM=ALLOWED  Thermal=ALLOWED
+# Channel diagnostics: AMS02_pbar_channel_limits.dat, AMS02_pbar_limits.json

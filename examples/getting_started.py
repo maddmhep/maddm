@@ -147,11 +147,7 @@ Once you are all set, press Enter to launch the process. The results will be dis
     INFO: Using generic Fermi dSph limits for light quarks (u,d,s) 
     INFO: DM DM > SM SM       All DM = 1.73e-28       ALLOWED   	Fermi dSph ul    = 2.96e-27 
     INFO:  
-    INFO: *** Fluxes at earth [particle cm^-2 sr^-1]: 
-    INFO: gammas Flux         =	5.67e-12             
-    INFO: neutrinos_e Flux    =	2.71e-12             
-    INFO: neutrinos_mu Flux   =	5.00e-12             
-    INFO: neutrinos_tau Flux  =	4.26e-15             
+    INFO: Positron results will come soon.
     INFO:  
     INFO:  
     INFO: Results written in: /root/DMspin1/output/run_01/MadDM_results.txt
@@ -173,8 +169,6 @@ Install additional tools
 
     MadDM> install pythia8
     MadDM> install PPPC4DMID
-    MadDM> install dragon
-    MadDM> install dragon_data_from_galprop
     MadDM> quit
 
 """

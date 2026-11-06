@@ -6,6 +6,7 @@ import collections
 
 from . import maddm_run_interface as maddm_run_interface
 from . import dm_tutorial_text as dm_tutorial_text
+from . import rapidd_install
 
 import madgraph.core.base_objects as base_objects
 import madgraph.core.helas_objects as helas_objects
@@ -117,25 +118,19 @@ class MadDM_interface(master_interface.MasterCmd):
     _install_opts.append('PPPC4DMID')
     _install_opts.append('RAPIDD')
     _advanced_install_opts = list(master_interface.MasterCmd._advanced_install_opts)
-    _advanced_install_opts +=['gsl', 'fitsio','dragon','dragon_data']
+    _advanced_install_opts += ['gsl', 'fitsio']
     
     install_ad = dict(master_interface.MasterCmd.install_ad)
-    install_ad.update({'PPPC4DMID': ['1012.4515'],
-                       'dragon':['0807.4730'],
-                       'dragon_data':['1712.09755']}
-                       )
+    install_ad.update({'PPPC4DMID': ['1012.4515']})
     install_name =  dict(master_interface.MasterCmd.install_name)
     install_name.update({'PPPC4DMID':'PPPC4DMID'})
-    install_name.update({'dragon_data_from_galprop':'dragon_data'})
     # path to PPPC4DMID
     
     options_configuration = dict(master_interface.MasterCmd.options_configuration)
     options_configuration['pppc4dmid_path'] = None
-    options_configuration['dragon_path'] = None
     options_configuration['maddm_first_indirect'] = True
     
     _set_options = list(master_interface.MasterCmd._set_options)
-    _set_options.append('dragon_data_from_galprop')
     
     
     def post_install_PPPC4DMID(self):
@@ -153,7 +148,7 @@ class MadDM_interface(master_interface.MasterCmd):
     #===========================================================================
     # RAPIDD (direct detection, git submodule vendor/RAPIDD_for_DM)
     #===========================================================================
-    rapidd_dir = pjoin(MDMDIR, 'vendor', 'RAPIDD_for_DM')
+    rapidd_dir = str(rapidd_install.ROOT)
     rapidd_url = 'https://github.com/cheekyparticle/RAPIDD_for_DM.git'
 
     def do_install(self, line, *args, **opts):
@@ -166,19 +161,12 @@ class MadDM_interface(master_interface.MasterCmd):
 
     @classmethod
     def get_rapidd_lib(cls):
-        """path of the compiled RAPIDD library"""
-
-        import platform
-        lib_name = {'Linux': 'libRAPIDD.so',
-                    'Darwin': 'libRAPIDD.dylib',
-                    'Windows': 'RAPIDD.dll'}.get(platform.system())
-        if not lib_name:
-            raise OSError("Unsupported operating system")
-        return pjoin(cls.rapidd_dir, 'lib', 'build', lib_name)
+        """Path of the compiled RAPIDD library."""
+        return str(rapidd_install.library_path(cls.rapidd_dir))
 
     @classmethod
     def is_rapidd_downloaded(cls):
-        return os.path.exists(pjoin(cls.rapidd_dir, 'instructions_cmake.sh'))
+        return rapidd_install.has_source(cls.rapidd_dir)
 
     def install_rapidd(self):
         """download (if needed) and compile RAPIDD. Return True on success"""
@@ -204,37 +192,27 @@ class MadDM_interface(master_interface.MasterCmd):
                         os.rmdir(self.rapidd_dir)
                     subprocess.run(['git', 'clone', '--recursive', self.rapidd_url, self.rapidd_dir],
                                    check=True)
-            except subprocess.CalledProcessError as error:
+            except (OSError, subprocess.CalledProcessError) as error:
                 logger.error("RAPIDD download failed: %s" % error)
                 return False
 
-        if not shutil.which('cmake'):
-            logger.error("cmake is required to compile RAPIDD. Please install cmake and run 'install RAPIDD'.")
-            return False
-        logger.info("Compiling RAPIDD...", '$MG:BOLD')
         try:
-            subprocess.run(['sh', 'instructions_cmake.sh'], check=True, cwd=self.rapidd_dir)
-        except subprocess.CalledProcessError as error:
-            logger.error("RAPIDD compilation failed: %s" % error)
+            rapidd_install.build(self.rapidd_dir)
+        except rapidd_install.RAPIDDError as error:
+            logger.error("%s", error)
             return False
-
-        if not os.path.exists(self.get_rapidd_lib()):
-            logger.error("RAPIDD compilation failed: %s not found" % self.get_rapidd_lib())
-            return False
-        logger.info("RAPIDD installed.", '$MG:BOLD')
         return True
 
     def check_rapidd(self):
-        """make sure that RAPIDD is available, asking the user to install it if
-        needed. Return True if RAPIDD can be used."""
-
-        if os.path.exists(self.get_rapidd_lib()):
-            return True
-
+        """Ensure the local RAPIDD library works before generating nucleon recoils."""
         if self.is_rapidd_downloaded():
-            question = "RAPIDD (needed for direct detection) is not compiled. Do you want to compile it now?"
-        else:
-            question = "RAPIDD (needed for direct detection) is not installed. Do you want to download and compile it now?"
+            try:
+                rapidd_install.ensure(self.rapidd_dir)
+                return True
+            except rapidd_install.RAPIDDError as error:
+                logger.error("Cannot generate DM-nucleon direct detection: %s", error)
+                return False
+        question = "RAPIDD source is missing. Do you want to download and compile it for direct detection?"
         ans = self.ask(question, 'y', ['y', 'n'])
         if ans == 'n':
             logger.warning("RAPIDD not installed: skipping DM-nucleon direct detection. "
@@ -249,8 +227,6 @@ class MadDM_interface(master_interface.MasterCmd):
         if final:
             if self.options['pppc4dmid_path'] and not os.path.exists(self.options['pppc4dmid_path']):
                 self.options['pppc4dmid_path'] = None
-            if self.options['dragon_path'] and not os.path.exists(self.options['dragon_path']):
-                self.options['dragon_path'] = None                
             #self.do_save('options', to_keep={'pppc4dmid_path':'./PPPC4DMID'})
         
         return out
@@ -896,6 +872,9 @@ class MadDM_interface(master_interface.MasterCmd):
         self._ID_line_amps            = [diagram_generation.AmplitudeList() for i in range(2)]
         self._last_amps               = diagram_generation.AmplitudeList()
         self.option_2to2lo = False
+        self._relic_off = True
+        self._has_direct_nucleon = False
+        self._has_direct_electron = False
         self._has_indirect = False
         self._has_spectral = False
         self._forbid_fast  = False
@@ -960,9 +939,10 @@ class MadDM_interface(master_interface.MasterCmd):
         if len(args) and args[0] == 'process':
             args.pop(0)
         if len(args) and args[0] in["relic_density", 'relic']:
-            # check that relic is empty
-            if any(p.get('id') != self.process_tag['DM2SM'] for p in self._curr_proc_defs):
-                logger.warning('relic density Feynman diagram already generated (likely due to indirect mode). Avoid to doing it again.')
+            # Direct scattering definitions do not supply relic annihilation.
+            if any(a.get('process').get('id') == self.process_tag['DM2SM'] for a in self._curr_amps):
+                self._relic_off = False
+                logger.info('Relic-density annihilation was already generated; relic density is enabled by default.')
                 return
             if '/' not in line:
                 return self.generate_relic([])
@@ -1931,10 +1911,8 @@ class MadDM_interface(master_interface.MasterCmd):
             'ID_' variables are the lists which will contains the processes/matrix elements/amplitudes definitions: [0]tree level, [1]loop-induced.
         '''
         if not self.options['pythia8_path']:
-            logger.warning('''In order to have distribution related to indirect detection:
-             Pythia8 needs to be linked to the code. You can install it by typing 'install pythia8'.
-             You can compute the rate (no distribution) by typing 'add indirect 2to2lo'. ''')
-        #    return
+            logger.info('Pythia8 is optional for annihilation rates and bundled charged fluxes. '
+                        'Install it to generate source spectra by showering.')
 
         allow_loops = True
         if '--noloop' in argument:
@@ -2008,7 +1986,7 @@ class MadDM_interface(master_interface.MasterCmd):
         return temp_amps # I return the last amps of all the DM candidates, because this function is called for each final state in turn
 
     def install_indirect(self):
-        """Code to install the reduction library if needed"""
+        """Offer optional source-spectrum tools at the first indirect generation."""
         
         opt = self.options
         
@@ -2016,29 +1994,18 @@ class MadDM_interface(master_interface.MasterCmd):
         if not opt['maddm_first_indirect']:
             return
         
-        logger.info("First time that you asked for indirect detection. Now asking for dependency tool:", '$MG:BOLD')
+        logger.info('Optional tools for indirect-detection source spectra:', '$MG:BOLD')
         to_install = self.ask('install', '0',  ask_class=AskMadDMInstaller, timeout=300, 
                               path_msg=' ')
         
-        rename = {'dragon_data_from_galprop': 'dragon_data'}
-        key_to_opts = {'PPPC4DMID':'pppc4dmid_path',
-                       'dragon': 'dragon_path',
-                       'dragon_data_from_galprop': None,
-                       'pythia8': 'pythia8_path'}
-        
+        key_to_opts = {'PPPC4DMID': 'pppc4dmid_path', 'pythia8': 'pythia8_path'}
+
         for key, value in to_install.items():
             if value == 'install':
-                if key in rename:
-                    key = rename[key]
                 self.exec_cmd('install %s' % key)
-            # Not install
-            elif value == 'off' and key_to_opts[key]:
-                key =  key_to_opts[key]
-                self.exec_cmd("set %s '' " % key)
-                self.exec_cmd('save options %s' % key)
-            elif key_to_opts[key]:
-                key =  key_to_opts[key]
-                self.exec_cmd("set %s %s" % (key,value))
+            elif value != 'off':
+                key = key_to_opts[key]
+                self.exec_cmd('set %s %s' % (key, value))
                 self.exec_cmd('save options %s' % key) 
         self.exec_cmd('set maddm_first_indirect False')
         self.exec_cmd('save options maddm_first_indirect')
@@ -2157,32 +2124,23 @@ class AskMadDMInstaller(loop_interface.AskLoopInstaller):
     
     local_installer = []
     required = []
-    order = ['pythia8', 'PPPC4DMID', 'dragon', 'dragon_data_from_galprop']
+    order = ['pythia8', 'PPPC4DMID']
     bypassed = []
     
    
     def __init__(self, question, *args, **opts):
         
-        self.code = dict([(name, 'install') for name in self.order])
+        self.code = dict.fromkeys(self.order, 'off')
         self.online=True
         #check if some partial installation is already done.  
         if 'mother_interface' in opts:
             mother = opts['mother_interface']
-            if  'heptools_install_dir' in mother.options:
-                install_dir = mother.options['heptools_install_dir']
-            else:
-                install_dir = pjoin(MG5DIR, 'HEPTools')
-
-
-            for c in ['pythia8', 'dragon']:
-                if os.path.exists(pjoin(install_dir, c)):
-                    self.code[c] =  pjoin(install_dir, c)
-                    
-            if os.path.exists(pjoin(MG5DIR, 'PPPC4DMID')):
-                c= 'PPPC4DMID'
-                self.code[c] =  pjoin(MG5DIR, c)
-            if os.path.exists(pjoin(install_dir, 'dragon','data')):
-                self.code['dragon_data_from_galprop'] =  pjoin(install_dir, 'dragon','data')
+            install_dir = mother.options.get('heptools_install_dir') or pjoin(MG5DIR, 'HEPTools')
+            for name, option, default in [('pythia8', 'pythia8_path', pjoin(install_dir, 'pythia8')),
+                                          ('PPPC4DMID', 'pppc4dmid_path', pjoin(MG5DIR, 'PPPC4DMID'))]:
+                path = mother.options.get(option) or default
+                if os.path.isdir(path):
+                    self.code[name] = path
 
         
         # 1. create the question
@@ -2195,27 +2153,18 @@ class AskMadDMInstaller(loop_interface.AskLoopInstaller):
     def create_question(self, first = False):
         """ """
 
-        question = "For indirect detection, MadDM relies on some external tools." +\
-                   "You can decide here which one you want to include." +\
-                   "Not installing all the dependencies will limit functionalities."+\
-                   "\nWhich one do you want to install? (this needs to be done only once)\n"
-        
-        allowed_answer = set(['0','done'])
+        question = ("CosmiXsPPPC antiproton and antideuteron Earth flux tables and secondaries "
+                    "are bundled with MadDM.\nOptional tools for source spectra:\n")
+        allowed_answer = {'0', 'done'}
 
-        #order = ['pythia8', 'PPPC4DMID', 'dragon', 'dragon_data_from_galprop']
-                
         status = {'off': '%(start_red)sdo not install%(stop)s',
                   'install': '%(start_green)swill be installed %(stop)s',
                   'local': '%(start_green)swill be installed %(stop)s(offline installation from local repository)',
                   }
         
-        descript = {'pythia8': ['pythia8', ' shower (precise mode)','[1410.3012]'],
-                    'PPPC4DMID': ['PPPC4DMID', 'all (fast mode)' , '[1012.4515]'],
-                    'dragon': ['dragon', 'propagation (precise mode)' , '[0807.4730]'],
-                    'dragon_data_from_galprop':['dragon_data_from_galprop', 'input for dragon', '[1712.09755]']
-                    }
-        
-        
+        descript = {'pythia8': ['pythia8', 'source shower (precise)', '[1410.3012]'],
+                    'PPPC4DMID': ['PPPC4DMID', 'tabulated source spectra (fast)', '[1012.4515]']}
+
         for i,key in enumerate(self.order,1):
             if key in self.bypassed and self.code[key] == 'off':
                 continue
@@ -2249,34 +2198,8 @@ class AskMadDMInstaller(loop_interface.AskLoopInstaller):
     do_pythia8 = lambda self,line : self.apply_name('pythia8', line)
     do_PPPC4DMID = lambda self,line : self.apply_name('PPPC4DMID', line)
     
-    def do_dragon(self, line):
-        
-        self.apply_name('dragon', line)
-        if self.code['dragon'] in ['install']:
-            self.code['dragon_data_from_galprop'] = 'install'
-        elif self.code['dragon'] != 'off':
-            if os.path.exists(pjoin(self.code['dragon'],'data')):
-                self.apply_name('dragon_data_from_galprop', pjoin(self.code['dragon'],'data'))
-            else:
-                self.apply_name('dragon_data_from_galprop', 'install')
-        else:
-            self.apply_name('dragon_data_from_galprop', 'noinstall')
-            #self.code['dragon_data_from_galprop'] = 'off'
-
-    def do_dragon_data(self, line):
-        
-        self.apply_name('dragon_data_from_galprop', line)
-        if self.code['dragon_data_from_galprop'] in ['install']:
-            if self.code['dragon'] == 'off':
-                self.code['dragon'] = 'install'
-
-    do_dragon_data_from_galprop = do_dragon_data
-
     complete_pythia8 = loop_interface.AskLoopInstaller.complete_prog
     complete_PPPC4DMID = loop_interface.AskLoopInstaller.complete_prog
-    complete_dragon = loop_interface.AskLoopInstaller.complete_prog
-    complete_dragon_data = loop_interface.AskLoopInstaller.complete_prog
-    complete_dragon_data_from_galprop = loop_interface.AskLoopInstaller.complete_prog
 
     
     

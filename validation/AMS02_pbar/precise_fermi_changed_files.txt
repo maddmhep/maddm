@@ -1,0 +1,18 @@
+Changes relative to saved package version 3
+
+CHANGED_FILES_AMS02.md
+README_AMS02_PBAR.md
+examples/plot_ams02_pbar_fluxes.py
+fermi_profile.py
+indirect_compat.py
+maddm_run_interface.py
+tests/test_pbar_plot.py
+tests/test_precise_and_fermi.py
+validation/AMS02_pbar/README.md
+validation/AMS02_pbar/bb_majorana_100/AMS02_pbar_comparison.pdf
+validation/AMS02_pbar/fermi_combined_fixture.json
+validation/AMS02_pbar/precise_fermi_changed_files.txt
+validation/AMS02_pbar/precise_fermi_final_tests.log
+validation/AMS02_pbar/precise_fermi_validation_summary.json
+validation/AMS02_pbar/validation_summary.json
+AMS02_PBAR_MANIFEST.sha256 (regenerated)

@@ -1,0 +1,24 @@
+Package revision 7: Dbar event forecasts and automatic pbar PDFs
+
+Changed  CHANGED_FILES_AMS02.md
+Changed  CITATION.bib
+Added  ExpData/AMS02_dbar/dbar_flux_QUAINT_MED_NFW.dat
+Added  ExpData/AMS02_dbar/provenance.json
+Changed  README.md
+Added  README_AMS02_DBAR.md
+Changed  README_AMS02_PBAR.md
+Changed  Templates/Cards/maddm_card.dat
+Changed  Templates/Cards/maddm_card_full.dat
+Added  dbar_interface.py
+Changed  examples/plot_ams02_pbar_fluxes.py
+Changed  maddm_run_interface.py
+Changed  pbar_interface.py
+Added  pbar_plot.py
+Added  requirements-ams02.txt
+Added  tests/test_dbar_events.py
+Changed  tests/test_pbar_include_repair.py
+Changed  tests/test_pbar_integration.py
+Changed  tests/test_sigmav_channel_limits.py
+
+Validation: validation/AMS02_dbar/ contains four full MG5 launch outputs,
+84-test logs for both Python versions, and validation_summary.json.

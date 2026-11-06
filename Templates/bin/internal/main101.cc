@@ -1,3 +1,4 @@
+// MadDM shower input/counting repair, revision 2026-10-22-v5.
 #include "Pythia8/Pythia.h"
 #include "math.h"
 #include <iostream>
@@ -359,7 +360,10 @@ int main(){
     pythia.settings.addWord("Main:methodDbar", "1");
 	pythia.settings.addWord("Main:nbins", "180");
     // Initialize Les Houches Event File run. List initialization information.
-    pythia.readFile("../../Source/spectrum.cmnd");
+    if (!pythia.readFile("../../Source/spectrum.cmnd")) {
+      cerr << "Cannot read the Pythia spectrum settings card." << endl;
+      return 1;
+    }
   
     double pcoalescence = atof(pythia.word("Main:p_coalescence").data()); //Coalescence momentum in GeV
     double d = atof(pythia.word("Main:d_coalescence").data()); //fm
@@ -417,7 +421,10 @@ int main(){
     cout << endl;
   
     // Initialization
-    pythia.init();
+    if (!pythia.init()) {
+      cerr << "Pythia initialization failed; no spectra were written." << endl;
+      return 1;
+    }
     // Allow for possibility of a few faulty events.
     int nAbort = 20;
     int iAbort = 0;
@@ -467,6 +474,8 @@ int main(){
 	
    // Begin event loop.
     int nEvent = 0;
+    double sumWeights = 0.;
+    bool showerFailed = false;
     int maxevent = pythia.settings.mode("Main:NumberOfEvents");
   
     cout << "mDM: " << mDM << " outdir: "<<  outdir << "Nevents " << maxevent <<endl;
@@ -474,10 +483,19 @@ int main(){
     for (int iEvent = 0; (iEvent < maxevent || maxevent <= 0) ; ++iEvent) {
       // Generate events. Quit if many failures.
       if (!pythia.next()) {
+        if (pythia.info.atEndOfFile()) break;
         if (++iAbort < nAbort) continue;
-        cout << "Event generation aborted prematurely, owing to error!\n";
+        cerr << "Event generation aborted prematurely, owing to error!\n";
+        showerFailed = true;
         break;
       }
+      const double eventWeight = pythia.info.weight();
+      if (!std::isfinite(eventWeight)) {
+        cerr << "Non-finite event weight; no spectra were written." << endl;
+        return 2;
+      }
+      ++nEvent;
+      sumWeights += eventWeight;
       // Loop over all particles and select wished final state particles for histrograms.
   	int deuteroncheck=0; //Check ti avoid two deuterons produced with the same particles.
 	int deuteroncheck_1=0;
@@ -497,21 +515,21 @@ int main(){
 		  double checknbar_mother = 0.;
   		  //select photons
   		  if (idAbs == 22){
-  			  gamma.fill(eI); 
+  			  gamma.fill(eI, eventWeight); 
   			  cont_gamma++;
   		  }
   		  //select positrons (electrons equivalent)
   		  else if (idap == -11){
-  			  electron.fill(eI);
+  			  electron.fill(eI, eventWeight);
   			  cont_pos++;
   		  }
   		  //select antiprotons
 		  else if (idap == -2212){
-  			  antiproton.fill(eI);
+  			  antiproton.fill(eI, eventWeight);
   			  cont_pbar++;
 			  
 			  if (pythia.event[pythia.event[i].mother1()].tau()/1e-12<1e5){
-	  			  antiprotonP.fill(eI);
+	  			  antiprotonP.fill(eI, eventWeight);
 	  			  cont_pbarP++;
 				  /* Here we remove the antiprotons produced from the following particles: nbar0(-2112), Lambdabar0(-3122)
 				  Sigmabar(-3222), Lambda_bbar0(-5122), B_sbar0(-531), B-(-521), B+(521), B0(511), B_s0(531), eta_c(441),
@@ -527,19 +545,19 @@ int main(){
 		  
   		  // select various neutrinos
   		  else if (idap == 12){
-  			  nue.fill(eI);
+  			  nue.fill(eI, eventWeight);
   			  cont_nue++;
   		  }
   		  else if (idap == 14){
-  			  numu.fill(eI);
+  			  numu.fill(eI, eventWeight);
   			  cont_numu++;
   		  }
   		  else if (idap == 16){
-  			  nutau.fill(eI);
+  			  nutau.fill(eI, eventWeight);
   			  cont_nutau++;
   		  }
   		  else {
-  			  rest.fill(eI);
+  			  rest.fill(eI, eventWeight);
   		  }
   		  //THE PART BELOW IS RELATED TO THE ANTIDEUTERON SPECTRUM
 		  //if (idap == -2212 and deuteroncheck==0 and method_Dbar>0 and checkpbar_mother==0){
@@ -592,7 +610,7 @@ int main(){
            				 	//pythia.event.list();
 							deuteroncheck = 1;
                         	double eI  = log10((D_E-D_m)/mDM);
-                        	Dbar.fill(eI);
+                        	Dbar.fill(eI, eventWeight);
                         	cont_Dbar++;
                     	}
                 	  }
@@ -608,13 +626,13 @@ int main(){
           			    if(D_E_1>0.0 and deuteroncheck_1==0 and checkpbar_mother==0 and checknbar_mother==0){
            				 	deuteroncheck_1 = 1;
                         	double eI  = log10((D_E_1-D_m)/mDM);
-                        	Dbar_1.fill(eI);
+                        	Dbar_1.fill(eI, eventWeight);
                         	cont_Dbar_1++;
                     	}
           			    if(D_E_2>0.0 and deuteroncheck_2==0){
            				 	deuteroncheck_2 = 1;
                         	double eI  = log10((D_E_2-D_m)/mDM);
-                        	Dbar_2.fill(eI);
+                        	Dbar_2.fill(eI, eventWeight);
                         	cont_Dbar_2++;
                     	}
           			    if(D_E_3>0.0 and deuteroncheck_3==0){
@@ -622,20 +640,20 @@ int main(){
 							source_size = sourcesize_function(p_px,p_py,p_pz,n_px,n_py,n_pz,p_tt,p_xx,p_yy,p_zz,n_tt,n_xx,n_yy,n_zz);
            				 	deuteroncheck_3 = 1;
                         	double eI  = log10((D_E_3-D_m)/mDM);
-                        	Dbar_3.fill(eI);
+                        	Dbar_3.fill(eI, eventWeight);
                         	cont_Dbar_3++;
                     	}
           			    if(D_E_31>0.0 and deuteroncheck_31==0){
   						  	//pythia.event.list();
 							deuteroncheck_31 = 1;
                         	double eI  = log10((D_E_31-D_m)/mDM);
-                        	Dbar_31.fill(eI);
+                        	Dbar_31.fill(eI, eventWeight);
                         	cont_Dbar_31++;
                     	}
           			    if(D_E_4>0.0 and deuteroncheck_4==0){
            				 	deuteroncheck_4 = 1;
                         	double eI  = log10((D_E_4-D_m)/mDM);
-                        	Dbar_4.fill(eI);
+                        	Dbar_4.fill(eI, eventWeight);
                         	cont_Dbar_4++;
 							//cout << "Multiplicites for Dbar with methods 1/2/3/4  " << (double)cont_Dbar_1/iEvent << "  " << (double)cont_Dbar_2/iEvent << "  " << (double)cont_Dbar_3/iEvent << "  " << (double)cont_Dbar_4/iEvent << endl;
                     	}
@@ -647,28 +665,35 @@ int main(){
 	
       }
     // End of event loop
-      nEvent = iEvent;
+      // nEvent counts successful events, not the zero-based attempt index.
     }
     //Statistic and histrograms
     pythia.stat();
+    cout << "MADDM_SHOWER_ACCEPTED " << nEvent << " SUM_WEIGHTS " << sumWeights << endl;
+    if (showerFailed || nEvent == 0 || !std::isfinite(sumWeights) || sumWeights <= 0.) {
+      cerr << "No usable shower normalization; check LHE numeric records and pythia8.log."
+           << " No spectra were written." << endl;
+      return 2;
+    }
     
     if(method_Dbar!=10 and method_Dbar!=0){
-    	Dbar.operator*=(1./nEvent/DeltaBin_Dbar);
+    	Dbar.operator*=(1./sumWeights/DeltaBin_Dbar);
 	}
 	else if(method_Dbar==10){
-		Dbar_1.operator*=(1./nEvent/DeltaBin_Dbar);
-		Dbar_2.operator*=(1./nEvent/DeltaBin_Dbar);
-		Dbar_3.operator*=(1./nEvent/DeltaBin_Dbar);
-		Dbar_31.operator*=(1./nEvent/DeltaBin_Dbar);
-		Dbar_4.operator*=(1./nEvent/DeltaBin_Dbar);
+		Dbar_1.operator*=(1./sumWeights/DeltaBin_Dbar);
+		Dbar_2.operator*=(1./sumWeights/DeltaBin_Dbar);
+		Dbar_3.operator*=(1./sumWeights/DeltaBin_Dbar);
+		Dbar_31.operator*=(1./sumWeights/DeltaBin_Dbar);
+		Dbar_4.operator*=(1./sumWeights/DeltaBin_Dbar);
 	}
-    gamma.operator*=(1./nEvent/DeltaBin);
-    electron.operator*=(1./nEvent/DeltaBin);
-    antiproton.operator*=(1./nEvent/DeltaBin);
-	antiprotonP.operator*=(1./nEvent/DeltaBin);
-    nue.operator*=(1./nEvent/DeltaBin);
-    numu.operator*=(1./nEvent/DeltaBin);
-    nutau.operator*=(1./nEvent/DeltaBin);
+    gamma.operator*=(1./sumWeights/DeltaBin);
+    electron.operator*=(1./sumWeights/DeltaBin);
+    antiproton.operator*=(1./sumWeights/DeltaBin);
+	antiprotonP.operator*=(1./sumWeights/DeltaBin);
+    nue.operator*=(1./sumWeights/DeltaBin);
+    numu.operator*=(1./sumWeights/DeltaBin);
+    nutau.operator*=(1./sumWeights/DeltaBin);
+    rest.operator*=(1./sumWeights/DeltaBin);
   
     if(method_Dbar!=10 and method_Dbar!=0){
     	Dbar.table(outdir + "./antideuterons_spectrum_pythia8.dat", false, true, true);

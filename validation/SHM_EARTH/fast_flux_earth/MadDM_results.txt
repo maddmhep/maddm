@@ -1,0 +1,84 @@
+################################################
+#                 MadDM v. 3.3                 #
+################################################
+
+
+# Galactic halo for recoil rates and Galactic signals
+rholocal = 5.0000000000e-01 # GeV/cm^3
+vMP = 2.3800000000e+02 # km/s
+vescape = 5.4400000000e+02 # km/s
+mw_velocity_model = shm
+mw_shm_rms_relative_speed_kms = 4.0198513408e+02
+mw_shm_npts = 8
+
+################################################
+# Indirect Detection                           #
+################################################
+# Results in brackets display [prediction, upper limit]
+
+# Annihilation cross section computed with the method: inclusive
+# <sigma v>[cm^3 s^-1] of continuum spectrum final states and Fermi dSph limits (if available, else -1)
+n1n1_bbx                      = [2.33e-28,1.67e-26]           
+
+# Global Fermi dSph Limit computed with CosmiXs spectra
+TotalSM_xsec                  = [2.33e-28,-1.00e+00]          
+Fermi_Likelihood              = -1.00e+00                     
+Fermi_pvalue                  = -1.00e+00                     
+
+# AMS-02 antiprotons: QUAINT-MED / NFW, 95% one-sided profile bound
+AMS02_pbar_status = ok
+# Rates: UL95=upper limit; best_fit=data-fitted amplitude; model=coupling prediction.
+# q_upper is a likelihood-ratio statistic, not a p-value; zero below the best fit.
+# Thermal means multiplying the model rate by xsi^2; xsi=1 gives identical statistics.
+AMS02_pbar_sigmav_UL95 = 1.0931325059e-26 # cm^3/s; one-sided 95% CL upper limit, fixed model branching fractions
+AMS02_pbar_sigmav_best_fit = 6.4215220893e-27 # cm^3/s; pbar-data best fit after profiling secondary and solar parameters
+AMS02_pbar_sigmav_model = 2.3320382720e-28 # cm^3/s; theoretical total at the model couplings and Milky Way velocity
+AMS02_pbar_q_upper_model = 0.0000000000e+00 # one-sided profiled Delta chi2 at theoretical rate; exclusion threshold 2.7055434541
+AMS02_pbar_q_upper_model_thermal = 0.0000000000e+00 # same statistic at xsi^2 times theoretical rate; equals AllDM when xsi=1
+AMS02_pbar_excluded = 0.0000000000e+00
+AMS02_pbar_excluded_thermal = 0.0000000000e+00
+AMS02_pbar_chi2_background = 2.6641312871e+01
+AMS02_pbar_chi2_best = 2.2588363744e+01
+AMS02_pbar_norm_upper = 8.0000000000e-01
+AMS02_pbar_slope_upper = 9.3996290920e-02
+AMS02_pbar_phi_upper = 4.6315160208e-01
+AMS02_pbar_velocity = 1.3408780753e-03 # RMS relative speed / c
+AMS02_pbar_BR_bb = 1.0000000000e+00
+AMS02_pbar_AllDM = ALLOWED
+AMS02_pbar_Thermal = ALLOWED
+# Flux and fit diagnostics: AMS02_pbar_fluxes.dat, AMS02_pbar_limits.json
+
+# Antideuteron event forecasts: QUAINT-MED / NFW; two-event sensitivities
+AMS02_dbar_status = ok
+AMS02_dbar_events_low = 1.2834339410e-02
+AMS02_dbar_events_high = 3.2591636452e-02
+AMS02_dbar_events_total = 4.5425975862e-02
+AMS02_dbar_events_low_thermal = 1.2834339410e-02
+AMS02_dbar_events_high_thermal = 3.2591636452e-02
+AMS02_dbar_events_total_thermal = 4.5425975862e-02
+GAPS_dbar_events = 3.3999341785e-03
+GAPS_dbar_events_thermal = 3.3999341785e-03
+AMS02_dbar_phi = 8.2043065207e-01
+AMS02_dbar_phi_thermal = 8.2043065207e-01
+AMS02_dbar_model_sigmav = 2.3320382720e-28
+# Solar modulation: pbar model-point nuisance fits (all-DM and thermal separately)
+# Forecast diagnostics: AMS02_dbar_events.json, AMS02_dbar_events.dat, AMS02_dbar_fluxes.dat
+
+# Galactic-center excess: prompt spectrum, systematic-band fit
+GCE_sigmav_best = 8.313508906657e-27
+GCE_sigmav_error_minus = 1.472798482882e-27
+GCE_sigmav_error_plus = 1.329802522508e-27
+GCE_sigmav_error = 1.401300502695e-27
+GCE_chi2 = 2.542372795505e+01
+GCE_ndof = 1.000000000000e+01
+GCE_chi2_ndof = 2.542372795505e+00
+GCE_model_sigmav = 2.332038271998e-28
+GCE_status = ok
+# Upper-limit rows checked separately; fitted detections=11
+
+# CosmiXsPPPC charged fluxes at Earth (IS and TOA)
+CosmiXsPPPC_pbar_flux_earth = CosmiXsPPPC_pbar_flux_earth.dat
+CosmiXsPPPC_dbar_flux_earth = CosmiXsPPPC_dbar_flux_earth.dat
+# Flux inputs, units and settings: CosmiXsPPPC_flux_earth.json
+
+# Positron results will come soon.

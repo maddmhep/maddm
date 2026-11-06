@@ -1,0 +1,20 @@
+CONTROLLED RATE FIXTURE: not a generated UFO-model prediction.
+MadDM Results
+
+****** Indirect detection:
+<sigma v> method: reshuffling 
+====== continuum spectrum final states
+DM particle halo velocity: 2e-05 c 
+*** Print <sigma v> [cm^3 s^-1] with Fermi dSph limits
+xx_bbx              All DM = 1.04e-30       ALLOWED            	Fermi dSph ul    = 1.72e-26
+xx_wpwm             All DM = 2.08e-30       ALLOWED            	Fermi dSph ul    = 2.37e-26
+DM DM > all         All DM = 3.12e-30       NO LIMIT           	Fermi dSph ul    = -1.00e+00
+
+====== AMS-02 antiprotons: QUAINT-MED / NFW
+Milky Way DM velocity: 0.00075 c
+*** Print partial <sigma v> [cm^3 s^-1] with BR=1 AMS-02 pbar limits
+xx_bbx              All DM = 3.89e-29       ALLOWED            	AMS-02 pbar ul   = 1.78e-26
+xx_wpwm             All DM = 7.79e-29       ALLOWED            	AMS-02 pbar ul   = 3.08e-26
+Individual channel comparisons; no combined mixed-channel bound is evaluated in sigmav mode.
+
+Results written in: /tmp/tmprfh5iq68/output/run_01/MadDM_results.txt
