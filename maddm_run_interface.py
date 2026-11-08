@@ -10,7 +10,6 @@ import re
 import sys
 import subprocess
 
-from numpy.core.fromnumeric import var
 from . import auxiliary as aux
 import stat
 import shutil
@@ -1767,6 +1766,13 @@ class MADDMRunCmd(cmd.CmdShell):
                               precmd=False, postcmd=False, child=False)
             
     ############################################################################
+    def rapidd_modulation_kwargs(self):
+        """Annual-modulation arguments of the RAPIDD DDrate_save / DDrate_electron_save from the
+        maddm_card (direct_modulation, day_bins; vEarth_mod is read from the card by RAPIDD).
+        The spectra of the single time bins are not saved and the halo loop is silent."""
+        return dict(modulation=bool(self.maddm_card['direct_modulation']), day_bins=int(self.maddm_card['day_bins']),
+                    save_rates_per_bin=False, verbose=False)
+
     def do_launch(self, line):
         """run the code"""
 
@@ -1916,7 +1922,8 @@ class MADDMRunCmd(cmd.CmdShell):
                 rapidd_out_path = pjoin(self.dir_path,'output', self.run_name)
                 # default halo table, recomputed only if vescape, vmp or vSun differ from the default
                 halo_path = halo_path_from_card(self.maddm_card, rapidd_out_path)
-                DDrate_save(self.maddm_card, alphaq_values, mdm, rapidd_out_path, halo_path=halo_path)
+                DDrate_save(self.maddm_card, alphaq_values, mdm, rapidd_out_path, halo_path=halo_path,
+                            **self.rapidd_modulation_kwargs())
 
         # DM-electron scattering: alphas from the Fortran, rates and signals from RAPIDD
         if self.mode['direct_electron'] and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
@@ -1932,11 +1939,15 @@ class MADDMRunCmd(cmd.CmdShell):
                 halo_path = halo_path_from_card(self.maddm_card, rapidd_out_path)
                 result.update(DDrate_electron_save(self.maddm_card, alphaq_values, electron_info['dm_spin'],
                                                    electron_info['M_e'], mdm, rapidd_out_path,
-                                                   halo_path=halo_path))
+                                                   halo_path=halo_path, **self.rapidd_modulation_kwargs()))
             else:
                 result['DM_response'] = -1
             # sigma_e is needed by the summary
             result.setdefault('sigma_e', -1)
+
+        # the modulation halo tables (shared by the DM-nucleus and DM-electron rates) are not kept
+        if self.maddm_card['direct_modulation']:
+            shutil.rmtree(pjoin(self.dir_path, 'output', self.run_name, 'halo_table_modulation'), ignore_errors=True)
 
         self.last_results = result
         self.last_results['run'] = self.run_name
@@ -3500,8 +3511,6 @@ class MADDMRunCmd(cmd.CmdShell):
                 header = '# ' + spec + '\t' + self.maddm_card['indirect_flux_source_method'] + ' spectra at source\n' + '# Log10(x=Ekin/mDM)    dn/dlogx'
                 if 'x' not in spec:
                     dndlogx = self.Spectra.spectra[spec]
-                    if isinstance(var, (int, float, complex)):
-                        continue
                     errors = self.Spectra.errors[spec]
                     aux.write_data_to_file(x, dndlogx, errors = errors, filename = pjoin(out_run, spec + '_spectrum_' + spec_method +'.dat'), header = header)
 
@@ -5116,6 +5125,13 @@ class MadDMCard(banner_mod.RunCard):
         self.add_param('vSun_phi', 12.2, include=False)
         self.add_param('vSun_theta', 7.3, include=False)
         self.add_param('rhoDM', 0.3, include=False)
+        # Annual modulation of the direct detection rates (RAPIDD, DM-nucleus and DM-electron):
+        # the year (365.24 days) is divided in day_bins bins and the halo and the rates are computed
+        # at the center of each bin, t_i = (i + 0.5) * 365.24/day_bins days since March 22.
+        # The Earth velocity has modulus vEarth_mod and the direction of Eq. 11 of arXiv:2105.00599;
+        # the annual-average rates use the fixed vector of March 9 (Eq. 12), independent of vEarth_mod.
+        self.add_param('direct_modulation', False, include=False)
+        self.add_param('day_bins', 12, include=False)
 
         # For electronic recoil
         self.add_param('direct_electron_mode', 'auto', allowed=['auto', 'always'], include=True)
@@ -5240,6 +5256,9 @@ class MadDMCard(banner_mod.RunCard):
         """ """
         
         super(MadDMCard, self).check_validity()
+
+        if self['day_bins'] < 1:
+            raise InvalidMaddmCard('day_bins should be >= 1, get %s' % self['day_bins'])
         
         if self['SPu'] + self['SPs'] + self['SPd'] + self['SPg'] -1 > 1e-3:
             raise InvalidMaddmCard('The sum of SP* parameter should be 1.0 get %s' % (self['SPu'] + self['SPs'] + self['SPd'] + self['SPg']))
