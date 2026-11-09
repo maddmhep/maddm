@@ -24,11 +24,11 @@ import six
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-import pbar_interface as adapter
-import dbar_interface
-import gce_interface
-import cr_earth
-import halo_model
+from indirect import pbar_interface as adapter
+from indirect import dbar_interface
+from indirect import gce_interface
+from indirect import cr_earth
+from indirect import halo_model
 
 SOURCE = ROOT/'maddm_run_interface.py'
 TREE = ast.parse(SOURCE.read_text())
@@ -316,9 +316,9 @@ class RunTests(unittest.TestCase):
         self.assertEqual(adapter.observables(result, .00075)['AMS02_pbar_excluded'], -1.)
 
 
-class UploadedCardTests(unittest.TestCase):
-    @unittest.skipUnless(os.environ.get('MADDM_PBAR_TEST_RUN'), 'requires uploaded generated run')
-    def test_actual_mg5_card_switches_inclusive_flag_and_repairs_driver(self):
+class GeneratedCardTests(unittest.TestCase):
+    @unittest.skipUnless(os.environ.get('MADDM_PBAR_TEST_RUN'), 'requires a generated MG5 run')
+    def test_actual_mg5_card_switches_inclusive_flag_without_editing_driver(self):
         run = Path(os.environ['MADDM_PBAR_TEST_RUN']).resolve()
         sys.path.insert(0, str(run/'Indirect_tree_cont/bin'))
         from internal import banner
@@ -338,11 +338,8 @@ class UploadedCardTests(unittest.TestCase):
             card.write_include_file(str(root/'include'))
             text = (root/'include/maddm_card.inc').read_text()
             self.assertRegex(text, r'ONLY2TO2LO\s*=\s*\.TRUE\.')
-            rate_lines = [line for line in (root/'src/maddm.f').read_text().splitlines()
-                          if "'sigma*v:'" in line and line[:1].lower() != 'c']
-            self.assertEqual(len(rate_lines), 2)
-            self.assertTrue(all('A12' not in line for line in rate_lines))
-            self.assertEqual((root/'src/maddm.f').read_text().count("'sigma*v:'"), 2)
+            self.assertEqual((root/'src/maddm.f').read_bytes(), (run/'src/maddm.f').read_bytes())
+            self.assertEqual((root/'include/maddm.inc').read_bytes(), (run/'include/maddm.inc').read_bytes())
             card.set('sigmav_method', 'reshuffling')
             card.write_include_file(str(root/'include'))
             text = (root/'include/maddm_card.inc').read_text()

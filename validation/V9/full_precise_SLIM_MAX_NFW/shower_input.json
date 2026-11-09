@@ -1,6 +1,0 @@
-{
-  "source": "unweighted_events.lhe.gz",
-  "shower_input": "maddm_shower_events.lhe",
-  "events": 100,
-  "removed_numeric_blank_lines": 0
-}

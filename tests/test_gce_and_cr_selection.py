@@ -8,12 +8,12 @@ import unittest
 from unittest.mock import patch
 import numpy as np
 
-import cr_config
-import dbar_interface
-import gce_interface
-import pbar_interface
-import pbar_plot
-from pbar.core import FluxTable
+from indirect import cr_config
+from indirect import dbar_interface
+from indirect import gce_interface
+from indirect import pbar_interface
+from plotting import plot_ams02_pbar_fluxes as pbar_plot
+from indirect.pbar.core import FluxTable
 from test_pbar_integration import Harness,record,ROOT,ENV,RUN,SOURCE
 import ast
 
@@ -97,13 +97,13 @@ class CRTests(unittest.TestCase):
             self.assertEqual(table.halo,halo)
             self.assertEqual(len(table.masses),64)
 
-    def test_secondary_selection_is_explicit_and_slim_never_falls_back(self):
+    def test_secondary_selection_shares_only_identical_big_and_slim_inputs(self):
         q=cr_config.secondary_path({})
         big=cr_config.secondary_path({'cr_propagation_scheme':'BIG'})
         self.assertNotEqual(q,big)
         slim=cr_config.secondary_path({'cr_propagation_scheme':'SLIM'})
         self.assertTrue(slim.is_file())
-        self.assertNotEqual(slim,q)
+        self.assertEqual(slim,big)
         self.assertEqual(cr_config.secondary_path({'cr_propagation_scheme':'SLIM','pbar_secondary_file':str(q)}),q)
 
     def test_native_limits_only_match_the_original_configuration(self):
@@ -117,11 +117,11 @@ class CRTests(unittest.TestCase):
         default=engine.evaluate(100.,rows,1000022,4,1.,{})
         other=engine.evaluate(100.,rows,1000022,4,1.,dict(cr_halo_profile='Burkert',cr_propagation_scheme='SLIM',cr_propagation_set='MAX'))
         self.assertEqual(other['propagation'],'SLIM-MAX');self.assertEqual(other['halo'],'Burkert')
-        self.assertIn('secondary_SLIM_IS.txt',other['secondary_path'])
+        self.assertIn('secondary_BIG_IS.txt',other['secondary_path'])
         self.assertNotAlmostEqual(other['cases']['all_dm']['AMS02_total_events']/default['cases']['all_dm']['AMS02_total_events'],1.,places=4)
 
     def test_upper_configuration_plot_and_separate_model_curve(self):
-        fixture=ROOT/'validation/AMS02_pbar/bb_majorana_100/AMS02_pbar_fluxes.dat'
+        fixture=ROOT/'tests/fixtures/pbar/AMS02_pbar_fluxes.dat'
         import shutil
         with tempfile.TemporaryDirectory() as directory:
             shutil.copy2(fixture,directory)

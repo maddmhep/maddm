@@ -7,11 +7,11 @@ from unittest.mock import patch
 import numpy as np
 from scipy.integrate import quad, trapezoid
 
-import cr_config
-import cr_earth
-import dbar_interface
-import halo_model
-from pbar.core import FluxTable, Likelihood, SIGMAV_REF
+from indirect import cr_config
+from indirect import cr_earth
+from indirect import dbar_interface
+from indirect import halo_model
+from indirect.pbar.core import FluxTable, Likelihood, SIGMAV_REF
 
 
 class HaloTests(unittest.TestCase):
@@ -81,7 +81,7 @@ class EarthFluxTests(unittest.TestCase):
         scaled = engine.evaluate('dbar', 100., self.mixture, 8, .5, dict(settings, rholocal=.8))
         np.testing.assert_allclose(scaled['_columns'][:, 5], 2*dm_toa)
         np.testing.assert_allclose(result['_columns'][:, 11], .25*dm_toa)
-        self.assertIn('secondary_SLIM_IS.txt', result['secondary_table'])
+        self.assertIn('secondary_BIG_IS.txt', result['secondary_table'])
 
     def test_missing_positron_tables_do_not_enter_active_outputs(self):
         engine = cr_earth.EarthFluxes()

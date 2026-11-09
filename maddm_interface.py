@@ -1305,16 +1305,21 @@ class MadDM_interface(master_interface.MasterCmd):
         else:
             return super(MadDM_interface, self).find_output_type(path)
 
-    def check_output(self,*args, **opts):
-        
-        if 'maddm' in self._export_formats:
-            # can happen if running launch directly
-            export_formats = list(self._export_formats )
-            export_formats.remove('maddm')
-            with misc.TMP_variable(self, '_export_formats', export_formats):
-                return super(MadDM_interface, self).check_output(*args, **opts)
-        else:
-            return super(MadDM_interface, self).check_output(*args, **opts)
+    def check_output(self, args, *extra, **opts):
+        from . import MGoutput
+
+        exporters = {'maddm': MGoutput.ProcessExporterMadDM,
+                     'indirect': MGoutput.ProcessExporterIndirectD}
+        if args and args[0] in exporters:
+            # MG5 otherwise takes the first registered plugin for these names.
+            # Use the exporters belonging to this MadDM interface, including
+            # when another MadDM checkout is installed under PLUGIN.
+            self._export_plugin = exporters[args[0]]
+            args[0] = 'plugin'
+            formats = [f for f in self._export_formats if f != 'plugin'] + ['plugin']
+            with misc.TMP_variable(self, '_export_formats', formats):
+                return super(MadDM_interface, self).check_output(args, *extra, **opts)
+        return super(MadDM_interface, self).check_output(args, *extra, **opts)
 
     def do_launch(self, line):
         

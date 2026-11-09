@@ -31,7 +31,7 @@
     "species": "pbar",
     "scheme": "SLIM",
     "source": "local_fluxes_1HBAR_Ekn_Model1DKisoVc_SolMod0DFF_phi0_00GV_SLIM.out",
-    "target": "ExpData/AMS02_pbar/secondary_SLIM_IS.txt",
+    "target": "ExpData/AMS02_pbar/secondary_BIG_IS.txt",
     "sha256": "e5644a0806f49b327a9816f88c6852bc3978504d57d43853792b2f745c53c221",
     "units": "(GeV/n)^-1 m^-2 s^-1 sr^-1",
     "solar_potential_GV": 0,
@@ -39,7 +39,8 @@
       "MIN",
       "MED",
       "MAX"
-    ]
+    ],
+    "note": "The BIG and SLIM input spectra were byte-identical. The distribution stores one copy; independent SLIM provenance has not been verified."
   },
   {
     "species": "dbar",
@@ -73,7 +74,7 @@
     "species": "dbar",
     "scheme": "SLIM",
     "source": "local_fluxes_2HBAR_Ekn_Model1DKisoVc_SolMod0DFF_phi0_00GV_SLIM.out",
-    "target": "ExpData/AMS02_dbar/secondary_SLIM_IS.txt",
+    "target": "ExpData/AMS02_dbar/secondary_BIG_IS.txt",
     "sha256": "235389ac799b6e54604c4dd6f5d54fc2c280c2fc329aa2b77a94981a72c6def1",
     "units": "(GeV/n)^-1 m^-2 s^-1 sr^-1",
     "solar_potential_GV": 0,
@@ -81,6 +82,7 @@
       "MIN",
       "MED",
       "MAX"
-    ]
+    ],
+    "note": "The BIG and SLIM input spectra were byte-identical. The distribution stores one copy; independent SLIM provenance has not been verified."
   }
 ]

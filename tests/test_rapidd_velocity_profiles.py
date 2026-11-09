@@ -10,7 +10,7 @@ import unittest
 import numpy as np
 from scipy.integrate import quad, trapezoid
 
-import halo_model as halo
+from indirect import halo_model as halo
 
 
 class VelocityProfilesTests(unittest.TestCase):

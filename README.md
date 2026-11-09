@@ -1,38 +1,41 @@
 # MadDM
 
-**CosmiXsPPPC Earth fluxes and shared halo:** see [installation, settings, outputs and changed files](CHANGES_COSMIXSPPPC_SHM.md), [RAPIDD velocity-profile selection](docs/HALO_VELOCITIES.md), and the [implementation note](docs/indirect_detection_notes.pdf).
-
-
 MadDM is a numerical tool designed to compute dark matter relic abundance, dark matter nucleus scattering rates, and dark matter indirect detection predictions in a generic model.  
 Based on the existing MadGraph 5 architecture, MadDM is easily integrable into any MadGraph collider study. The tool features a simple Python interface, maintaining the user-friendliness characteristic of MadGraph 5 without sacrificing functionality.
 
 ## Installation
 
-**MadDM** is a plugin for `MG5_aMC@NLO` (**MadGraph**). To install it and run it, follow the steps below:
+**MadDM** is a plugin for `MG5_aMC@NLO` (**MadGraph**). For a manual
+installation, close MadGraph, move any previous MadDM copies **outside**
+the MadGraph `PLUGIN/` directory, and place this `maddm/` folder in
+`PLUGIN/`. Keep the new folder separate from older installations. From the
+MadGraph root, start the plugin with:
 
-1.  Start MadGraph and type the following in the command line:
+```bash
+./bin/mg5_aMC --mode=maddm
+```
 
-    ``` text
-    MG5_aMC> install maddm
-    ```
+When updating, export old processes again under a new directory name and
+reuse their input cards. See the [indirect detection guide](doc/indirect_detection.rst).
 
-2.  Exit MadGraph and run MadDM with:
-
-    ``` bash
-    ./maddm.py
-    ```
+For a standard installation from MadGraph's package manager, enter
+`install maddm` at the MadGraph prompt.
 
 ### Requirements
 
 - At least MadGraph v3.6 is required to run the latest version of MadDM.
 - MadDM is compatible with the LTS version of MadGraph.
 - MadDM requires:
-   -   Python 3.6+
+   -   Python 3.8+
    -   Fortran
    -   `numpy`
-   -   `scipy` (required for some recent features)
+   -   `scipy`
    -   cmake
-- It supports Python 2.7, but it requires the installation of the `six` package.
+- Install Matplotlib for figures and the Sphinx tutorial examples.
+- With a Git checkout, initialize RAPIDD with
+  `git submodule update --init --recursive`. For nucleon recoil rates,
+  building RAPIDD requires CMake, a C compiler, and GSL.
+
 
 ### Running relic density, direct and indirect detection together
 
@@ -82,44 +85,13 @@ MadDM is also able to compute loop-induced processes relevant to indirect detect
 
 For the gamma-ray line final state, MadDM performs an analysis of the signal against Fermi-LAT gamma-ray line data to assess whether the model parameter space is allowed by current exclusion limits at 95% CL.
 
-### Reading a run directory
+### Documentation
 
-Open `output/<run>/README.md` for a guide to the files produced in that
-run, and `MadDM_results.txt` for the physics summary. With Matplotlib
-installed, MadDM writes `DDrates.pdf` alongside the nuclear recoil rate
-table and `source_spectra.pdf` for the source yields available from the
-selected backend. Source spectra require `indirect = flux_source` or
-`indirect = flux_earth`; `sigmav` computes rates only. The plots use log
-axes and omit species or targets with no positive yield or rate. For
-parameter scans, plots follow the `save_output` retention setting.
-
-| `save_output` | What a scan retains for each point |
-| --- | --- |
-| `off` | `MadDM_results.txt`, `maddm.out`, `README.md`, and JSON summaries for applicable analyses. No spectra, recoil tables, PDFs, or raw event samples are retained. |
-| `spectra` | The summaries plus available indirect spectra, flux tables, and enabled indirect plots. No detailed recoil files or raw LHE samples. |
-| `all` | Full output, including available recoil tables and plots, indirect spectra and plots, and generated event samples. |
-
-These modes do not change the scalar limits or fits written to the scan
-table. The setting applies to scans; single-point runs retain full output.
-
-MadDM writes `MadDM_results.txt` for every completed scan point, including
-with `save_output = off`. It also copies both scripts in [`plotting/`](plotting/README.md)
-to the parent `output/` directory, alongside the scan table. Existing copies
-there are kept so local edits are preserved. For source multiplicities, use
-a flux scan with `save_output = spectra` or `all`.
-
-With `set fast` (`sigmav_method = inclusive`), the combined Fermi-LAT dwarf
-likelihood defaults to the ten highest nominal J factors in the installed
-dwarf data. Set `fermi_fast_dwarfs = all` in `maddm_card.dat`, or enter
-`set fermi_fast_dwarfs all` in the launch menu, for the full sample. The
-precise mode continues to use all 55 dwarfs. The combined limit and both
-model likelihoods use the same sample, recorded in `Fermi_dSph_limits.json`.
-The setting applies to spectrum-based likelihoods; rate-only `sigmav` runs
-continue to use the precomputed channel limits.
-
-## AMS-02 antiproton upper limits
-
-This package adds model-specific two-body annihilation limits using bundled CosmiXsPPPC QUAINT-MED/NFW antiproton fluxes, with secondary normalization, slope and solar modulation profiled. It computes separate Milky Way partial rates and reports full-density and thermal-density exclusions. See [README_AMS02_PBAR.md](README_AMS02_PBAR.md) for installation, fresh-output generation, settings, validation and input assumptions.
+The Sphinx documentation covers [indirect detection](doc/indirect_detection.rst),
+the [shared Galactic halo](doc/galactic_halo.rst), and
+[run outputs and scan plots](doc/plotting.rst). See the
+[MadDM documentation site](https://maddmhep.github.io/maddm/dev/) for
+the tutorials, or build them with `make -C doc html`.
 
 ## References
 
@@ -155,14 +127,7 @@ GSL for that same architecture. If macOS rejects the newly built library
 under Library Validation, run MadDM with a Python environment that allows
 locally built native libraries.
 
-The AMS-02 addition also reports antideuteron event forecasts from the
-propagated CosmiXs Dbar table and saves an antiproton comparison PDF after
-successful flux fits. See [README_AMS02_DBAR.md](README_AMS02_DBAR.md) for
-the sensitivity prescription, settings and output files.
-
 ## Citation
 
 If you are using this tool or the results obtained with it in a published work, please cite one or more of the previous references.
 A [CITATION.bib](./CITATION.bib) file is also available.
-
-See [README_GCE_CR.md](README_GCE_CR.md) for the version 8 GCE fit, propagation/profile controls and run figures.

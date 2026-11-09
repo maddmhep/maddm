@@ -89,7 +89,7 @@ def write_run_products(directory, *, recoil, source_method=None):
         plots.append(('source_spectra.pdf', 'source_spectra_plot', (directory, source_method)))
     for name, plotter, args in plots:
         try:
-            from . import signal_plots
+            from .plotting import signal_plots
             target = directory / name
             target.unlink(missing_ok=True)
             getattr(signal_plots, plotter)(*args, target)

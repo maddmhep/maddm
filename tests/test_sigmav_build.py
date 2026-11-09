@@ -1,5 +1,8 @@
 """Regression checks for fresh builds, interpreter binding and safe rate reuse."""
+import ast
+from contextlib import contextmanager
 import os
+import types
 from pathlib import Path
 import shlex
 import shutil
@@ -9,36 +12,81 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-import indirect_compat
-import pbar_interface
+from indirect import indirect_compat
+from indirect import pbar_interface
 from test_sigmav_channel_limits import Harness
 
 
 class BuildTests(unittest.TestCase):
+    def test_maddm_output_uses_active_package_exporters(self):
+        source = Path(__file__).resolve().parents[1] / 'maddm_interface.py'
+        interface = next(node for node in ast.parse(source.read_text()).body
+                         if isinstance(node, ast.ClassDef) and node.name == 'MadDM_interface')
+        method = next(node for node in interface.body
+                      if isinstance(node, ast.FunctionDef) and node.name == 'check_output')
+
+        class MG5Output:
+            _export_formats = ['madevent']
+
+            def check_output(self, args):
+                # As in MG5, a recognized format bypasses plugin discovery.
+                if args[0] not in self._export_formats:
+                    raise AssertionError('An older plugin could be selected')
+                return args.pop(0), args
+
+        @contextmanager
+        def temporary_value(obj, name, value):
+            previous = getattr(obj, name)
+            setattr(obj, name, value)
+            try:
+                yield
+            finally:
+                setattr(obj, name, previous)
+
+        package = types.ModuleType('_maddm_output_test')
+        package.MGoutput = types.SimpleNamespace(
+            ProcessExporterMadDM=object(), ProcessExporterIndirectD=object())
+        test_class = ast.ClassDef(name='MadDM_interface',
+                                  bases=[ast.Name(id='MG5Output', ctx=ast.Load())],
+                                  keywords=[], body=[method], decorator_list=[])
+        module = ast.fix_missing_locations(ast.Module(body=[test_class], type_ignores=[]))
+        scope = dict(__package__=package.__name__, MG5Output=MG5Output,
+                     misc=types.SimpleNamespace(TMP_variable=temporary_value))
+        with patch.dict(sys.modules, {package.__name__: package}):
+            exec(compile(module, str(source), 'exec'), scope)
+            command = scope['MadDM_interface']()
+            for mode, exporter in [('maddm', package.MGoutput.ProcessExporterMadDM),
+                                   ('indirect', package.MGoutput.ProcessExporterIndirectD)]:
+                self.assertEqual(command.check_output([mode, 'run']), ('plugin', ['run']))
+                self.assertIs(command._export_plugin, exporter)
+                self.assertEqual(command._export_formats, ['madevent'])
+            self.assertEqual(command.check_output(['madevent', 'run']), ('madevent', ['run']))
+
     @unittest.skipUnless(shutil.which('make'), 'requires make')
-    def test_old_make_masks_failure_and_new_build_never_reuses_old_binary(self):
+    def test_exported_makefile_propagates_failed_source_build(self):
+        root_path = Path(__file__).resolve().parents[1]
+        tree = ast.parse((root_path/'MGoutput.py').read_text())
+        method = next(n for n in ast.walk(tree)
+                      if isinstance(n, ast.FunctionDef) and n.name == 'Write_makefile')
+        scope = {'pjoin': os.path.join, 'os': os}
+        exec(compile(ast.Module(body=[method], type_ignores=[]), 'MGoutput.py', 'exec'), scope)
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            (root/'src').mkdir(); (root/'include').mkdir()
-            bad = root/'Source/DHELAS'; bad.mkdir(parents=True)
-            (bad/'makefile').write_text('all:\n\tfalse\n')
-            (root/'makefile').write_text('all:\n\t-cd Source/DHELAS/ && make\n\t-mv src/maddm.x .\n')
-            (root/'src/makefile').write_text('objs_all=maddm.o\nincdir=../include\nall:\n\ttrue\n')
-            (root/'maddm.x').write_text('old executable')
-            (root/'src/maddm.o').write_text('old object')
-            (root/'maddm_build.json').write_text('{"switches": "old"}')
-            before = subprocess.run(['make', 'all'], cwd=root, capture_output=True)
-            self.assertEqual(before.returncode, 0)
-            self.assertEqual((root/'maddm.x').read_text(), 'old executable')
-            pbar_interface.prepare_generated_build(root)
-            after = subprocess.run(['make', 'all'], cwd=root, capture_output=True)
-            self.assertNotEqual(after.returncode, 0)
+            shutil.copy2(root_path/'Templates/makefile_template', root/'makefile_template')
+            export = types.SimpleNamespace(dir_path=directory, proc_characteristic={
+                'has_relic_density': False, 'has_direct_detection': False})
+            scope['Write_makefile'](export)
+            for name in ('Source/DHELAS', 'Source/MODEL', 'matrix_elements', 'lib', 'src'):
+                (root/name).mkdir(parents=True, exist_ok=True)
+            for name in ('Source/DHELAS', 'Source/MODEL'):
+                (root/name/'makefile').write_text('all:\n\ttrue\n')
+            (root/'matrix_elements/makefile').write_text('all:\n\tar cr libmatrix_elements.a\n')
+            (root/'src/makefile').write_text('all:\n\tfalse\n')
+            (root/'src/maddm.x').write_text('old binary')
+            result = subprocess.run(['make', 'all'], cwd=root, capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn('false', result.stdout)
             self.assertFalse((root/'maddm.x').exists())
-            self.assertFalse((root/'src/maddm.o').exists())
-            self.assertFalse((root/'maddm_build.json').exists())
-            pbar_interface.prepare_generated_build(root)
-            self.assertEqual((root/'src/makefile').read_text().count('# MadDM: recompile source objects'), 1)
-            self.assertTrue((root/'makefile.before_maddm_build_fix').exists())
 
     def test_generated_flags_must_match_the_selected_method(self):
         with tempfile.TemporaryDirectory() as directory:

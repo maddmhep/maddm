@@ -3,383 +3,384 @@
   "table_units": "native total kinetic energy GeV; flux GeV^-1 m^-2 s^-1 sr^-1",
   "sources": [
     {
-      "file": "dbar_flux_BIG_MAX_Burkert.dat",
+      "file": "dbar_flux_BIG_MAX_Burkert.dat.gz",
       "sha256": "0f22817c8fb662292bfa1497bb2078c8eaa67bba6f38cc9f5819456e3f57a106",
       "bytes": 1645344,
       "source_archive": "dbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "dbar_flux_BIG_MAX_Burkert.dat"
     },
     {
-      "file": "dbar_flux_BIG_MAX_Einasto.dat",
+      "file": "dbar_flux_BIG_MAX_Einasto.dat.gz",
       "sha256": "c7f9793b6381e36508df6864d3f33919abc31517c7e480553dc5bc757d9cbcc8",
       "bytes": 1644980,
       "source_archive": "dbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "dbar_flux_BIG_MAX_Einasto.dat"
     },
     {
-      "file": "dbar_flux_BIG_MAX_NFW.dat",
+      "file": "dbar_flux_BIG_MAX_NFW.dat.gz",
       "sha256": "2f447893e94a4c6990e4b75476e87729fbd79c0ab785268f0fd988fb557d0ceb",
       "bytes": 1645149,
       "source_archive": "dbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "dbar_flux_BIG_MAX_NFW.dat"
     },
     {
-      "file": "dbar_flux_BIG_MED_Burkert.dat",
+      "file": "dbar_flux_BIG_MED_Burkert.dat.gz",
       "sha256": "6acf3e86f947a193dc8181d1b45eb326478c673a6020c0abe2eca9224b3baf65",
       "bytes": 1645344,
       "source_archive": "dbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "dbar_flux_BIG_MED_Burkert.dat"
     },
     {
-      "file": "dbar_flux_BIG_MED_Einasto.dat",
+      "file": "dbar_flux_BIG_MED_Einasto.dat.gz",
       "sha256": "e73fff10729ef6c13a37696fb1638f20f0b823364945d00e0ba626d0e3eff45b",
       "bytes": 1645071,
       "source_archive": "dbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "dbar_flux_BIG_MED_Einasto.dat"
     },
     {
-      "file": "dbar_flux_BIG_MED_NFW.dat",
+      "file": "dbar_flux_BIG_MED_NFW.dat.gz",
       "sha256": "8c3f02b0f91ce5ca68c9af0100fcbf91c7dab1625daf652418189c4ad7f95c2b",
       "bytes": 1645344,
       "source_archive": "dbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "dbar_flux_BIG_MED_NFW.dat"
     },
     {
-      "file": "dbar_flux_BIG_MIN_Burkert.dat",
+      "file": "dbar_flux_BIG_MIN_Burkert.dat.gz",
       "sha256": "b7c3de91d3c6b41f7419b79f8c3b366708a3f7b51addc5fa43d5898265d56170",
       "bytes": 1645344,
       "source_archive": "dbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "dbar_flux_BIG_MIN_Burkert.dat"
     },
     {
-      "file": "dbar_flux_BIG_MIN_Einasto.dat",
+      "file": "dbar_flux_BIG_MIN_Einasto.dat.gz",
       "sha256": "b53fbcd6cf7b97888d1b5eaa747c399b3c8ab181caf72406485e21502365ae76",
       "bytes": 1645344,
       "source_archive": "dbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "dbar_flux_BIG_MIN_Einasto.dat"
     },
     {
-      "file": "dbar_flux_BIG_MIN_NFW.dat",
+      "file": "dbar_flux_BIG_MIN_NFW.dat.gz",
       "sha256": "f9e2b1660f232dc30f36fdb9ed9187fcd79464182f07a323dae216bde35e1f55",
       "bytes": 1645344,
       "source_archive": "dbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "dbar_flux_BIG_MIN_NFW.dat"
     },
     {
-      "file": "dbar_flux_QUAINT_MAX_Burkert.dat",
+      "file": "dbar_flux_QUAINT_MAX_Burkert.dat.gz",
       "sha256": "044d3d7d64520f3532d07bcc63894c2893278201790044963e9c3153105bff1f",
       "bytes": 1645344,
       "source_archive": "dbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "dbar_flux_QUAINT_MAX_Burkert.dat"
     },
     {
-      "file": "dbar_flux_QUAINT_MAX_Einasto.dat",
+      "file": "dbar_flux_QUAINT_MAX_Einasto.dat.gz",
       "sha256": "fde7b9b96ce0536f9b91e06eab643e713536748303a2be75027a5ac64b25c77e",
       "bytes": 1645058,
       "source_archive": "dbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "dbar_flux_QUAINT_MAX_Einasto.dat"
     },
     {
-      "file": "dbar_flux_QUAINT_MAX_NFW.dat",
+      "file": "dbar_flux_QUAINT_MAX_NFW.dat.gz",
       "sha256": "b9c92242c153b1024643902f5bf902db1e9822c14311b51540ae53a6b9d9b9b4",
       "bytes": 1645227,
       "source_archive": "dbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "dbar_flux_QUAINT_MAX_NFW.dat"
     },
     {
-      "file": "dbar_flux_QUAINT_MED_Burkert.dat",
+      "file": "dbar_flux_QUAINT_MED_Burkert.dat.gz",
       "sha256": "c100ae6428c3192a755e68b2dc01569b1bb8a7e6c86f46fd2fe3c35c214e5478",
       "bytes": 1645344,
       "source_archive": "dbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "dbar_flux_QUAINT_MED_Burkert.dat"
     },
     {
-      "file": "dbar_flux_QUAINT_MED_Einasto.dat",
+      "file": "dbar_flux_QUAINT_MED_Einasto.dat.gz",
       "sha256": "219f68e6372bbc254e89f0507d5165d729923b72a3f0f0e515454ccce232fb1f",
       "bytes": 1645344,
       "source_archive": "dbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "dbar_flux_QUAINT_MED_Einasto.dat"
     },
     {
-      "file": "dbar_flux_QUAINT_MED_NFW.dat",
+      "file": "dbar_flux_QUAINT_MED_NFW.dat.gz",
       "sha256": "35f2263fef681248903b227989b2f65144475ff6450f12b32167299cd5225a10",
       "bytes": 1645344,
       "source_archive": "dbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "dbar_flux_QUAINT_MED_NFW.dat"
     },
     {
-      "file": "dbar_flux_QUAINT_MIN_Burkert.dat",
+      "file": "dbar_flux_QUAINT_MIN_Burkert.dat.gz",
       "sha256": "726932d31185c36f9967a4c0bdbbce7d0c15c8b440dff01ee994be0933090356",
       "bytes": 1645344,
       "source_archive": "dbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "dbar_flux_QUAINT_MIN_Burkert.dat"
     },
     {
-      "file": "dbar_flux_QUAINT_MIN_Einasto.dat",
+      "file": "dbar_flux_QUAINT_MIN_Einasto.dat.gz",
       "sha256": "95288fce0ed05ccf4a6c1e27dedd4aa7255bf959ac8b34e639addcb4aea9f000",
       "bytes": 1645344,
       "source_archive": "dbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "dbar_flux_QUAINT_MIN_Einasto.dat"
     },
     {
-      "file": "dbar_flux_QUAINT_MIN_NFW.dat",
+      "file": "dbar_flux_QUAINT_MIN_NFW.dat.gz",
       "sha256": "44511c0edbca9c4218c7c4c7eb8b0c4c2f1a62d0a7df0d3ba8cc955d79fa93a2",
       "bytes": 1645344,
       "source_archive": "dbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "dbar_flux_QUAINT_MIN_NFW.dat"
     },
     {
-      "file": "dbar_flux_SLIM_MAX_Burkert.dat",
+      "file": "dbar_flux_SLIM_MAX_Burkert.dat.gz",
       "sha256": "3bece22c641c85c955e1be6d4794275f5cf5ed7bffeb26648702138f135d4295",
       "bytes": 1645344,
       "source_archive": "dbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "dbar_flux_SLIM_MAX_Burkert.dat"
     },
     {
-      "file": "dbar_flux_SLIM_MAX_Einasto.dat",
+      "file": "dbar_flux_SLIM_MAX_Einasto.dat.gz",
       "sha256": "877b245c074cf95968c54032527d7e06463d6226d889f3b32d385df37c6ea159",
       "bytes": 1645344,
       "source_archive": "dbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "dbar_flux_SLIM_MAX_Einasto.dat"
     },
     {
-      "file": "dbar_flux_SLIM_MAX_NFW.dat",
+      "file": "dbar_flux_SLIM_MAX_NFW.dat.gz",
       "sha256": "55fc03da9bb3c6953c4e144008fb6b878ad57941ad095bbaa80b59cffda6cea8",
       "bytes": 1645344,
       "source_archive": "dbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "dbar_flux_SLIM_MAX_NFW.dat"
     },
     {
-      "file": "dbar_flux_SLIM_MED_Burkert.dat",
+      "file": "dbar_flux_SLIM_MED_Burkert.dat.gz",
       "sha256": "e4d2ae39029695999c14117cc54fc8671a800b36b114d549c6b001e880c9cfad",
       "bytes": 1645344,
       "source_archive": "dbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "dbar_flux_SLIM_MED_Burkert.dat"
     },
     {
-      "file": "dbar_flux_SLIM_MED_Einasto.dat",
+      "file": "dbar_flux_SLIM_MED_Einasto.dat.gz",
       "sha256": "de1a3e4fc07023ec02a0b229706a094604103706891548e1c7fac13957596b1f",
       "bytes": 1645344,
       "source_archive": "dbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "dbar_flux_SLIM_MED_Einasto.dat"
     },
     {
-      "file": "dbar_flux_SLIM_MED_NFW.dat",
+      "file": "dbar_flux_SLIM_MED_NFW.dat.gz",
       "sha256": "ae6c77fe9ebdb55073471009e1236308df399310d841ba1b4eb3ab7508a26107",
       "bytes": 1645344,
       "source_archive": "dbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "dbar_flux_SLIM_MED_NFW.dat"
     },
     {
-      "file": "dbar_flux_SLIM_MIN_Burkert.dat",
+      "file": "dbar_flux_SLIM_MIN_Burkert.dat.gz",
       "sha256": "721617d0a7692a76029e07ae787c892b721703f479bfea43d8f0cb6500125647",
       "bytes": 1645344,
       "source_archive": "dbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "dbar_flux_SLIM_MIN_Burkert.dat"
     },
     {
-      "file": "dbar_flux_SLIM_MIN_Einasto.dat",
+      "file": "dbar_flux_SLIM_MIN_Einasto.dat.gz",
       "sha256": "0c03cb770057db8fd603daadad5b1eee87b44f986e6591654d64d684ad6606ab",
       "bytes": 1645344,
       "source_archive": "dbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "dbar_flux_SLIM_MIN_Einasto.dat"
     },
     {
-      "file": "dbar_flux_SLIM_MIN_NFW.dat",
+      "file": "dbar_flux_SLIM_MIN_NFW.dat.gz",
       "sha256": "e27ad63bf6dffe670b07dd90ca61bee43d4cb89ee84704c8bb7126aa2c9c3c7f",
       "bytes": 1645344,
       "source_archive": "dbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "dbar_flux_SLIM_MIN_NFW.dat"
     },
     {
-      "file": "pbar_flux_BIG_MAX_Burkert.dat",
+      "file": "pbar_flux_BIG_MAX_Burkert.dat.gz",
       "sha256": "0f531000c5aa501bbedbd516500d4234c9004cc4cf0c32c92d9fd9574e50dd0a",
       "bytes": 1593624,
       "source_archive": "pbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "pbar_flux_BIG_MAX_Burkert.dat"
     },
     {
-      "file": "pbar_flux_BIG_MAX_Einasto.dat",
+      "file": "pbar_flux_BIG_MAX_Einasto.dat.gz",
       "sha256": "647f8ca4fd99755d1e7022bdb1d3c71a4130cc17c3491d2c0c488b2afda8bd70",
       "bytes": 1593428,
       "source_archive": "pbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "pbar_flux_BIG_MAX_Einasto.dat"
     },
     {
-      "file": "pbar_flux_BIG_MAX_NFW.dat",
+      "file": "pbar_flux_BIG_MAX_NFW.dat.gz",
       "sha256": "3223fe160acbbb7937b0d2989b39c00e338acbc486eaf8477f0e50849822e4a7",
       "bytes": 1593498,
       "source_archive": "pbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "pbar_flux_BIG_MAX_NFW.dat"
     },
     {
-      "file": "pbar_flux_BIG_MED_Burkert.dat",
+      "file": "pbar_flux_BIG_MED_Burkert.dat.gz",
       "sha256": "82814ddf98f8de148cc142cdbf3a048201ae059f16917103dcc94cefe44acb5a",
       "bytes": 1593624,
       "source_archive": "pbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "pbar_flux_BIG_MED_Burkert.dat"
     },
     {
-      "file": "pbar_flux_BIG_MED_Einasto.dat",
+      "file": "pbar_flux_BIG_MED_Einasto.dat.gz",
       "sha256": "fc29b5648b1ebc9d60cd9e1e1791d9d34dcb83a3610e0b03b92449767bea4edd",
       "bytes": 1593463,
       "source_archive": "pbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "pbar_flux_BIG_MED_Einasto.dat"
     },
     {
-      "file": "pbar_flux_BIG_MED_NFW.dat",
+      "file": "pbar_flux_BIG_MED_NFW.dat.gz",
       "sha256": "56b47fedf62e67fa5cdb60e1c546c21a358da2395dc76b01a3afe35a8e9b89e1",
       "bytes": 1593533,
       "source_archive": "pbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "pbar_flux_BIG_MED_NFW.dat"
     },
     {
-      "file": "pbar_flux_BIG_MIN_Burkert.dat",
+      "file": "pbar_flux_BIG_MIN_Burkert.dat.gz",
       "sha256": "5ce745229d94872fe248006078454a892a64e029d1f7ecdd5fd6b08236c546a6",
       "bytes": 1593624,
       "source_archive": "pbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "pbar_flux_BIG_MIN_Burkert.dat"
     },
     {
-      "file": "pbar_flux_BIG_MIN_Einasto.dat",
+      "file": "pbar_flux_BIG_MIN_Einasto.dat.gz",
       "sha256": "1a2785e7e27bd31484d21b0b0b85d2c1fa5200ef4da1fc0f20f32606e4b3c76b",
       "bytes": 1593589,
       "source_archive": "pbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "pbar_flux_BIG_MIN_Einasto.dat"
     },
     {
-      "file": "pbar_flux_BIG_MIN_NFW.dat",
+      "file": "pbar_flux_BIG_MIN_NFW.dat.gz",
       "sha256": "3874fcdda0698d06d56c52ce68c6ccf4c4cba3b684be922a8f597328ede89278",
       "bytes": 1593624,
       "source_archive": "pbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "pbar_flux_BIG_MIN_NFW.dat"
     },
     {
-      "file": "pbar_flux_QUAINT_MAX_Burkert.dat",
+      "file": "pbar_flux_QUAINT_MAX_Burkert.dat.gz",
       "sha256": "32976d5fca6422ab4c85c4c0962bf5e073fa2fd7d0e91a40a15b26d3740f5c78",
       "bytes": 1593624,
       "source_archive": "pbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "pbar_flux_QUAINT_MAX_Burkert.dat"
     },
     {
-      "file": "pbar_flux_QUAINT_MAX_Einasto.dat",
+      "file": "pbar_flux_QUAINT_MAX_Einasto.dat.gz",
       "sha256": "a3c1f3fa68a5a4f828a1337b290e64373f9b8becea458d5490f9230c552c858b",
       "bytes": 1593463,
       "source_archive": "pbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "pbar_flux_QUAINT_MAX_Einasto.dat"
     },
     {
-      "file": "pbar_flux_QUAINT_MAX_NFW.dat",
+      "file": "pbar_flux_QUAINT_MAX_NFW.dat.gz",
       "sha256": "9191947459d455471f9cae6545ce13b441260cfe82e625cf37a5acb8f442b22d",
       "bytes": 1593533,
       "source_archive": "pbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "pbar_flux_QUAINT_MAX_NFW.dat"
     },
     {
-      "file": "pbar_flux_QUAINT_MED_Burkert.dat",
+      "file": "pbar_flux_QUAINT_MED_Burkert.dat.gz",
       "sha256": "af1ae5fb20cb1a39c3f19dab8a0da2d5d68ba25ff97f8a4e8ffa87b69613f084",
       "bytes": 1593624,
       "source_archive": "pbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "pbar_flux_QUAINT_MED_Burkert.dat"
     },
     {
-      "file": "pbar_flux_QUAINT_MED_Einasto.dat",
+      "file": "pbar_flux_QUAINT_MED_Einasto.dat.gz",
       "sha256": "02cce5307e67ac17707f3157ca768e97aedd787be3db70614e4975af4e3e0fc0",
       "bytes": 1593512,
       "source_archive": "pbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "pbar_flux_QUAINT_MED_Einasto.dat"
     },
     {
-      "file": "pbar_flux_QUAINT_MED_NFW.dat",
+      "file": "pbar_flux_QUAINT_MED_NFW.dat.gz",
       "sha256": "1219d8a43d44c32831fdb15accfb7ffe504b4cdcf64bcff2b31b41b4baf39931",
       "bytes": 1593624,
       "source_archive": "pbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "pbar_flux_QUAINT_MED_NFW.dat"
     },
     {
-      "file": "pbar_flux_QUAINT_MIN_Burkert.dat",
+      "file": "pbar_flux_QUAINT_MIN_Burkert.dat.gz",
       "sha256": "a6f006f28dc5a77c15331614069f530446de85b33720da16732847e8ab265859",
       "bytes": 1593624,
       "source_archive": "pbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "pbar_flux_QUAINT_MIN_Burkert.dat"
     },
     {
-      "file": "pbar_flux_QUAINT_MIN_Einasto.dat",
+      "file": "pbar_flux_QUAINT_MIN_Einasto.dat.gz",
       "sha256": "cac748b855024c0038717751e82a3767d1760a1b85d75c49ecc31ff5a6a37bbe",
       "bytes": 1593624,
       "source_archive": "pbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "pbar_flux_QUAINT_MIN_Einasto.dat"
     },
     {
-      "file": "pbar_flux_QUAINT_MIN_NFW.dat",
+      "file": "pbar_flux_QUAINT_MIN_NFW.dat.gz",
       "sha256": "aabab89b042020992121e4d43828df1ed5e5626745b16cb64dda9a554190a7bd",
       "bytes": 1593624,
       "source_archive": "pbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "pbar_flux_QUAINT_MIN_NFW.dat"
     },
     {
-      "file": "pbar_flux_SLIM_MAX_Burkert.dat",
+      "file": "pbar_flux_SLIM_MAX_Burkert.dat.gz",
       "sha256": "df35a7d22f94d4904c8e289051249ee55e459961edb572e7de38ab057b8672dc",
       "bytes": 1593624,
       "source_archive": "pbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "pbar_flux_SLIM_MAX_Burkert.dat"
     },
     {
-      "file": "pbar_flux_SLIM_MAX_Einasto.dat",
+      "file": "pbar_flux_SLIM_MAX_Einasto.dat.gz",
       "sha256": "104f918112391cea37dd4b9ea50bc39f069b7365111e2ea0534770877e035edb",
       "bytes": 1593624,
       "source_archive": "pbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "pbar_flux_SLIM_MAX_Einasto.dat"
     },
     {
-      "file": "pbar_flux_SLIM_MAX_NFW.dat",
+      "file": "pbar_flux_SLIM_MAX_NFW.dat.gz",
       "sha256": "8c3ee4b775951f85cbe3fb85e6580b4cd0e009317d6e831f77a862e16d39adc9",
       "bytes": 1593624,
       "source_archive": "pbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "pbar_flux_SLIM_MAX_NFW.dat"
     },
     {
-      "file": "pbar_flux_SLIM_MED_Burkert.dat",
+      "file": "pbar_flux_SLIM_MED_Burkert.dat.gz",
       "sha256": "b554bdc48078d86426555ab25b1c931de5a5635bac034f54418f99b7e617a704",
       "bytes": 1593624,
       "source_archive": "pbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "pbar_flux_SLIM_MED_Burkert.dat"
     },
     {
-      "file": "pbar_flux_SLIM_MED_Einasto.dat",
+      "file": "pbar_flux_SLIM_MED_Einasto.dat.gz",
       "sha256": "8e5990d48de82fc08a504e3487ac138582fc3f0ef8ca79e8943ddc2ce99546f5",
       "bytes": 1593624,
       "source_archive": "pbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "pbar_flux_SLIM_MED_Einasto.dat"
     },
     {
-      "file": "pbar_flux_SLIM_MED_NFW.dat",
+      "file": "pbar_flux_SLIM_MED_NFW.dat.gz",
       "sha256": "8f42040dfe7d5f67a59e6d2fb19347b63b90f0b0d9e36d08e4c576d478b78f8a",
       "bytes": 1593624,
       "source_archive": "pbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "pbar_flux_SLIM_MED_NFW.dat"
     },
     {
-      "file": "pbar_flux_SLIM_MIN_Burkert.dat",
+      "file": "pbar_flux_SLIM_MIN_Burkert.dat.gz",
       "sha256": "b4d37664bd6ec7c1598cbe031a2139671fec7c8a0b346777097de05c528305e5",
       "bytes": 1593624,
       "source_archive": "pbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "pbar_flux_SLIM_MIN_Burkert.dat"
     },
     {
-      "file": "pbar_flux_SLIM_MIN_Einasto.dat",
+      "file": "pbar_flux_SLIM_MIN_Einasto.dat.gz",
       "sha256": "5e221061edd8253fca5d9c383a253713d48190064a15a05ecfd9a8a456c226d3",
       "bytes": 1593624,
       "source_archive": "pbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "pbar_flux_SLIM_MIN_Einasto.dat"
     },
     {
-      "file": "pbar_flux_SLIM_MIN_NFW.dat",
+      "file": "pbar_flux_SLIM_MIN_NFW.dat.gz",
       "sha256": "d4c6186750fc49b9168c634f6da47f3b6f2a59cf5ed36d8388be782c0e849d73",
       "bytes": 1593624,
       "source_archive": "pbar_flux_Annihilation_tab.zip",
-      "modifications": "none"
+      "upstream_file": "pbar_flux_SLIM_MIN_NFW.dat"
     }
   ],
-  "secondary_scope": "Supplied zero-potential USINE pbar/Dbar inputs for BIG, QUAINT and SLIM; one per scheme shared across MIN/MED/MAX by user instruction. See secondary_provenance.json."
+  "secondary_scope": "Supplied zero-potential USINE pbar/Dbar inputs for BIG, QUAINT and SLIM; one per scheme shared across MIN/MED/MAX by user instruction. See secondary_provenance.json.",
+  "compression": "gzip; sha256 and bytes refer to the decompressed upstream tables"
 }

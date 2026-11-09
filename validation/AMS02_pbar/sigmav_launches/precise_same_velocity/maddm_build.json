@@ -1,9 +1,0 @@
-{
-  "sigmav_method": "reshuffling",
-  "indirect_mode": "sigmav",
-  "switches": {
-    "do_indirect_detection": true,
-    "do_indirect_spectral": false,
-    "only2to2lo": false
-  }
-}

@@ -12,13 +12,13 @@ import sys
 import subprocess
 
 from . import auxiliary as aux
-from . import pbar_interface
-from . import dbar_interface
-from . import gce_interface
-from . import cr_earth
-from . import halo_model
-from . import indirect_compat
-from . import fermi_profile
+from .indirect import pbar_interface
+from .indirect import dbar_interface
+from .indirect import gce_interface
+from .indirect import cr_earth
+from .indirect import halo_model
+from .indirect import indirect_compat
+from .indirect import fermi_profile
 from . import rapidd_install
 import stat
 import shutil
@@ -1747,7 +1747,6 @@ class MADDMRunCmd(cmd.CmdShell):
         except ValueError as error:
             raise InvalidMaddmCard(str(error)) from error
         if self.maddm_card['sigmav_method'] == 'inclusive' and (self.mode['indirect'] or self.mode['spectral']):
-            halo_model.setup_generated_driver(self.dir_path)
             halo_model.write_rule(self.dir_path, self._mw_shm_rule)
         else:
             halo_model.write_rule(self.dir_path, None)
@@ -3155,11 +3154,10 @@ class MADDMRunCmd(cmd.CmdShell):
         if not py8:
             raise ModuleMissing('Set pythia8_path to the installed Pythia used to build main101')
 
-        source, build_stamp, build_identity, needs_build = indirect_compat.sync_shower_source(
-            self.dir_path, pjoin(MDMDIR, 'Templates', 'bin', 'internal', 'main101.cc'), py8)
+        source, build_stamp, build_identity, needs_build = indirect_compat.shower_build_state(self.dir_path, py8)
         #compile the pythia8 script
         if needs_build:
-            logger.info('Rebuilding Pythia spectrum executable from the updated source')
+            logger.info('Building Pythia spectrum executable')
             if os.path.exists(pjoin(self.dir_path, 'bin', 'internal', 'main101')):
                 os.remove(pjoin(self.dir_path, 'bin', 'internal', 'main101'))
             files.cp(pjoin(py8, 'share','Pythia8','examples','Makefile'), 
@@ -4408,35 +4406,27 @@ class MADDMRunCmd(cmd.CmdShell):
         self.maddm_card.set('do_indirect_detection', bool(self.mode['indirect']), user=False)
         self.maddm_card.set('do_indirect_spectral', bool(self.mode['spectral']), user=False)
         self.maddm_card.set('only2to2lo', self._two2twoLO, user=False)
+        if not os.path.isfile(pjoin(self.dir_path, 'include', 'maddm_mw_rates.inc')):
+            raise self.InvalidCmd(
+                'This process directory lacks include/maddm_mw_rates.inc: %s. '
+                'Restart MadDM from %s and run output with a new directory name. '
+                'Copy your existing Cards/*.dat files before launching the new output.'
+                % (self.dir_path, MDMDIR))
         self.maddm_card.write_include_file(pjoin(self.dir_path, 'include'),
                                           mw_rates_required=self.mode['indirect'] == 'flux_earth')
-        switches = pbar_interface.check_generated_switches(
+        pbar_interface.check_generated_switches(
             self.dir_path, self.mode['indirect'], self.mode['spectral'], self._two2twoLO)
-        repaired = pbar_interface.prepare_generated_build(self.dir_path)
-        if repaired:
-            logger.info('Updated generated build dependencies: %s', ', '.join(repaired))
-        misc.compile(['all'],cwd=self.dir_path)
+        # Remove old executables so a failed build cannot be mistaken for a new one.
+        for name in ('maddm.x', os.path.join('src', 'maddm.x')):
+            try:
+                os.remove(pjoin(self.dir_path, name))
+            except FileNotFoundError:
+                pass
+        misc.compile(['all'], cwd=self.dir_path)
+        if not os.path.isfile(pjoin(self.dir_path, 'maddm.x')):
+            raise RuntimeError('Compilation did not produce maddm.x')
+        logger.info("compilation done")
 
-        # if self.mode['relic'] and self.mode['direct']:
-        #     misc.compile(['all'],cwd=self.dir_path)
-        # elif self.mode['relic'] and not self.mode['direct']:
-        #     misc.compile(['relic_density'],cwd=self.dir_path)
-        # elif self.mode['direct'] and not self.mode['relic']:
-        #     misc.compile(['direct_detection'],cwd=self.dir_path)
-        # elif self.mode['indirect'] and not self.mode['relic']:
-        #     misc.compile(['relic_density'],cwd=self.dir_path)
-        # else:
-        #     raise Exception, "No computation requested. End the computation"
-    
-        if os.path.isfile(pjoin(self.dir_path, 'maddm.x')):
-            import json
-            with open(pjoin(self.dir_path, 'maddm_build.json'), 'w') as out:
-                json.dump(dict(sigmav_method=self.maddm_card['sigmav_method'],
-                               indirect_mode=self.mode['indirect'], switches=switches), out, indent=2)
-            logger.info("compilation done")
-        else:
-            raise RuntimeError('Compilation did not produce a new maddm.x; the old executable was not reused')
-        
     ############################################################################
     def do_open(self, line):
         """Open a text file/ eps file / html file"""
@@ -5688,7 +5678,7 @@ class MadDMCard(banner_mod.RunCard):
         self.add_param('cr_halo_profile', 'NFW', include=False, allowed=['NFW','Einasto','Burkert'])
         self.add_param('cr_propagation_scheme', 'QUAINT', include=False, allowed=['QUAINT','BIG','SLIM'])
         self.add_param('cr_propagation_set', 'MED', include=False, allowed=['MIN','MED','MAX'])
-        self.add_param('pbar_secondary_file', 'auto', include=False, comment='reference IS spectrum; explicit file required for SLIM')
+        self.add_param('pbar_secondary_file', 'auto', include=False, comment='optional override of the interstellar antiproton spectrum')
         self.add_param('pbar_phi_max', 2., include=False)
         self.add_param('pbar_pivot', 10., include=False, comment='IS secondary tilt pivot in GeV')
         self.add_param('pbar_rigidity_min', 0., include=False)
@@ -5852,11 +5842,6 @@ class MadDMCard(banner_mod.RunCard):
     def write_include_file(self, output_dir, output_file=None, *, mw_rates_required=False):
         """MG5>=3 compatible: skip autodef/custom_fcts/fct_mod (unused by MadDM)"""
         self.check_validity()
-        # Generated directories can retain an old maddm.inc even after the
-        # plugin/card is updated. Repair declarations before card assignments.
-        changed = pbar_interface.repair_generated_pbar_sources(os.path.dirname(os.path.abspath(output_dir)))
-        if changed:
-            logger.info('Updated generated AMS-02 Fortran sources: %s', ', '.join(changed))
         self.update_system_parameter_for_include()
         # This legacy Fortran switch controls MW rate output, used by both
         # analyses. Keep the user's Python likelihood setting unchanged.

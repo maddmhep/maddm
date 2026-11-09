@@ -9,9 +9,9 @@ import numpy as np
 from scipy.integrate import quad
 from scipy.optimize import differential_evolution
 
-from pbar.core import (DMTemplate, FitConfig, FluxTable, Likelihood, SIGMAV_REF,
+from indirect.pbar.core import (DMTemplate, FitConfig, FluxTable, Likelihood, SIGMAV_REF,
                         Spectrum, dtdr, force_field, kinetic_energy)
-from pbar.core import MP
+from indirect.pbar.core import MP
 
 
 class PhysicsTests(unittest.TestCase):

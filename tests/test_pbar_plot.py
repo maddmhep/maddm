@@ -7,10 +7,10 @@ import unittest
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location('pbar_plot', ROOT/'examples/plot_ams02_pbar_fluxes.py')
+spec = importlib.util.spec_from_file_location('pbar_plot', ROOT/'plotting/plot_ams02_pbar_fluxes.py')
 plot = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(plot)
-FIXTURE = ROOT/'validation/AMS02_pbar/bb_majorana_100/AMS02_pbar_fluxes.dat'
+FIXTURE = ROOT/'tests/fixtures/pbar/AMS02_pbar_fluxes.dat'
 
 
 class PlotDataTests(unittest.TestCase):

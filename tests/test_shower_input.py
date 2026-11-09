@@ -10,7 +10,7 @@ import types
 import unittest
 from unittest.mock import patch
 
-import indirect_compat
+from indirect import indirect_compat
 
 ROOT = Path(__file__).resolve().parents[1]
 PARTICLE = '300 -1 0 0 0 0 0 0 0 1000 1000 0 9\n'
@@ -53,32 +53,6 @@ class ShowerInputTests(unittest.TestCase):
             with self.assertRaises(ValueError): indirect_compat.prepare_lhe(src, src)
             self.assertEqual(src.read_text(), LHE)
 
-    @unittest.skipUnless(os.environ.get('MADDM_PBAR_TEST_RUN'), 'requires supplied generated run')
-    def test_uploaded_source_hash_and_10000_event_file(self):
-        run = Path(os.environ['MADDM_PBAR_TEST_RUN'])
-        src = run/'bin/internal/main101.cc'
-        if src.exists():
-            self.assertIn(hashlib.sha256(src.read_bytes()).hexdigest(), indirect_compat.LEGACY_SHOWER_SHA256)
-            with tempfile.TemporaryDirectory() as directory:
-                generated = Path(directory)/'bin/internal/main101.cc'
-                generated.parent.mkdir(parents=True)
-                generated.write_bytes(src.read_bytes())
-                template = ROOT/'Templates/bin/internal/main101.cc'
-                _, _, _, rebuild = indirect_compat.sync_shower_source(directory, template, '/pythia')
-                self.assertTrue(rebuild)
-                self.assertEqual(generated.read_bytes(), template.read_bytes())
-                self.assertEqual(generated.with_suffix('.cc.before_shower_fix').read_bytes(), src.read_bytes())
-        lhe = run/'Indirect_tree_cont/Events/run_04/unweighted_events.lhe.gz'
-        if not lhe.exists(): self.skipTest('new run_04 fixture is not supplied')
-        with tempfile.TemporaryDirectory() as directory:
-            dest = Path(directory)/'shower.lhe'
-            result = indirect_compat.prepare_lhe(lhe, dest)
-            self.assertEqual(result['events'], 10000)
-            self.assertEqual(result['removed_numeric_blank_lines'], 9492)
-            with gzip.open(lhe, 'rt') as inp: original = inp.read()
-            self.assertEqual(original.split(), dest.read_text().split())
-
-
 class BuildTests(unittest.TestCase):
     def test_missing_meson_has_actionable_active_environment_diagnostic(self):
         with patch.object(indirect_compat.sys, 'version_info', (3, 13, 0)), \
@@ -113,14 +87,13 @@ class BuildTests(unittest.TestCase):
             template = ROOT/'Templates/bin/internal/main101.cc'
             source.write_bytes(template.read_bytes())
             source.with_suffix('').write_bytes(b'old binary')
-            path, stamp, identity, build = indirect_compat.sync_shower_source(root, template, '/pythia')
+            path, stamp, identity, build = indirect_compat.shower_build_state(root, '/pythia')
             self.assertTrue(build)
             import json
             stamp.write_text(json.dumps(identity))
-            self.assertFalse(indirect_compat.sync_shower_source(root, template, '/pythia')[3])
+            self.assertFalse(indirect_compat.shower_build_state(root, '/pythia')[3])
             source.write_text('// local customization\n')
-            with self.assertRaisesRegex(RuntimeError, 'local changes'):
-                indirect_compat.sync_shower_source(root, template, '/pythia')
+            self.assertTrue(indirect_compat.shower_build_state(root, '/pythia')[3])
             self.assertEqual(source.read_text(), '// local customization\n')
 
 

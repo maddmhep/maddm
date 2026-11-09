@@ -1,4 +1,0 @@
-# Install into the Python environment that launches MadGraph/MadDM.
-numpy>=1.24
-scipy>=1.10
-matplotlib>=3.7

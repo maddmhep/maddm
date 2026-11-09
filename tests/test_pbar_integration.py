@@ -1,6 +1,6 @@
 """Offline integration checks of actual MadDM method bodies and real pbar fits.
 
-MadGraph/Fortran are not installed here. AST extraction supplies the actual
+The offline checks do not require MadGraph or Fortran. AST extraction supplies the actual
 modified methods with a small run-state harness. No generated matrix element
 or MadGraph shower run is simulated or claimed to have been tested.
 Run from the plugin root: python -m unittest discover -s tests -v
@@ -23,12 +23,12 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-import pbar_interface as adapter
-import dbar_interface
-import gce_interface
-import cr_earth
-import halo_model
-from pbar.core import FitConfig, FluxTable, Likelihood
+from indirect import pbar_interface as adapter
+from indirect import dbar_interface
+from indirect import gce_interface
+from indirect import cr_earth
+from indirect import halo_model
+from indirect.pbar.core import FitConfig, FluxTable, Likelihood
 
 SOURCE = ROOT/'maddm_run_interface.py'
 TREE = ast.parse(SOURCE.read_text())
@@ -106,7 +106,7 @@ class CardAccessTests(unittest.TestCase):
         self.assertEqual(adapter.card_value({'plain':0.},'plain',1.),0.)
 
     def test_no_dict_style_card_get_in_antiproton_code(self):
-        nodes=ast.parse((ROOT/'pbar_interface.py').read_text())
+        nodes=ast.parse((ROOT/'indirect/pbar_interface.py').read_text())
         bad=[n for n in ast.walk(nodes) if isinstance(n,ast.Call) and isinstance(n.func,ast.Attribute)
              and isinstance(n.func.value,ast.Name) and n.func.value.id=='card' and n.func.attr=='get']
         self.assertEqual(bad,[])
@@ -270,7 +270,7 @@ class RunHookTests(unittest.TestCase):
             self.assertEqual(len(h._pbar_engine.limits), 1)
 
 
-class UploadedRuntimeTests(unittest.TestCase):
+class GeneratedRuntimeTests(unittest.TestCase):
     @unittest.skipUnless(os.environ.get('MADDM_PBAR_TEST_RUN'), 'set MADDM_PBAR_TEST_RUN to a generated run with bundled internal/banner.py')
     def test_real_card_class_and_run_hook(self):
         run=Path(os.environ['MADDM_PBAR_TEST_RUN']).resolve()

@@ -12,10 +12,10 @@ StringIO = six
 import re
 
 try:
-    from . import indirect_compat
+    from .indirect import indirect_compat
     from . import maddm_run_interface
 except ImportError:
-    import indirect_compat
+    from indirect import indirect_compat
     import maddm_run_interface
     
 # python routines from MadGraph
@@ -909,7 +909,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         makefile_lines = makefile_template.readlines()
         for line in makefile_lines:
             if __flag in line:
-                new_line = '\t-cd src/ && make '+suffix
+                new_line = '\t$(MAKE) -C src '+suffix
                 new_line = new_line + '\n'
                 makefile.write(new_line)
             else:

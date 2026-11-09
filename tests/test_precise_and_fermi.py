@@ -1,6 +1,6 @@
 """Regressions for MG5 plugin reweighting, shower cards and combined dwarfs.
 
-Most checks are offline and execute the uploaded MG5 parser or the bundled
+Most checks are offline and execute the generated MG5 parser or the bundled
 55-dwarf likelihoods with an analytic photon fixture. An optional live test
 showers the supplied existing events with the compiled C++ executable and
 executes the actual Python shower/reader/Fermi dispatch. It generates no new
@@ -29,13 +29,13 @@ from scipy.optimize import minimize_scalar
 from scipy.special import gammainc
 
 from test_sigmav_channel_limits import ROOT, TREE, RUN, ENV, Harness
-import indirect_compat
-import fermi_profile
+from indirect import indirect_compat
+from indirect import fermi_profile
 ENV.update(indirect_compat=indirect_compat, fermi_profile=fermi_profile)
 
 
 class ReweightTests(unittest.TestCase):
-    @unittest.skipUnless(os.environ.get('MADDM_PBAR_TEST_RUN'), 'requires uploaded MG5 parser')
+    @unittest.skipUnless(os.environ.get('MADDM_PBAR_TEST_RUN'), 'requires a generated MG5 parser')
     def test_reported_failure_and_plugin_command_fix_on_actual_parser(self):
         run = Path(os.environ['MADDM_PBAR_TEST_RUN'])
         source = run/'Indirect_tree_cont/bin/internal/common_run_interface.py'
@@ -138,7 +138,7 @@ class ShowerTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'finite nonnegative'):
             indirect_compat.validate_spectrum([.1, .2], [np.nan, np.nan])
 
-    @unittest.skipUnless(os.environ.get('MADDM_PBAR_TEST_RUN'), 'requires uploaded MG5 card runtime')
+    @unittest.skipUnless(os.environ.get('MADDM_PBAR_TEST_RUN'), 'requires a generated MG5 card runtime')
     def test_actual_generated_shower_card_preserves_tune_and_event_file(self):
         run = Path(os.environ['MADDM_PBAR_TEST_RUN']).resolve()
         sys.path.insert(0, str(run/'Indirect_tree_cont/bin'))
@@ -268,12 +268,15 @@ class CombinedDwarfTests(unittest.TestCase):
 
     @unittest.skipUnless(os.environ.get('MADDM_PYTHIA_EXECUTABLE') and
                          os.environ.get('MADDM_PYTHIA_DATA') and os.environ.get('MADDM_PBAR_TEST_RUN'),
-                         'requires a compiled updated main101, matching XML and supplied run')
+                         'requires compiled main101, matching Pythia data and a generated run')
     def test_actual_shower_reader_and_combined_fermi_dispatch(self):
-        """Run actual hook bodies and C++ shower on the supplied 10000 events."""
+        """Run the flux hooks and C++ shower on an external event sample."""
         run = Path(os.environ['MADDM_PBAR_TEST_RUN']).resolve()
-        original = run/'Indirect_tree_cont/Events/run_04/unweighted_events.lhe.gz'
-        if not original.exists(): self.skipTest('requires supplied run_04 sample')
+        event_name = os.environ.get('MADDM_PBAR_TEST_EVENT_RUN', 'run_01')
+        try:
+            original = indirect_compat.event_file(run/'Indirect_tree_cont/Events'/event_name)
+        except (OSError, ValueError) as error:
+            self.skipTest(str(error))
         sys.path.insert(0, str(run/'Indirect_tree_cont/bin'))
         from internal import banner
         scope = dict(ENV, stat=stat, subprocess=subprocess,
@@ -304,7 +307,10 @@ class CombinedDwarfTests(unittest.TestCase):
             event = Path(directory)/'Indirect_tree_cont/Events/run_01'
             event.mkdir(parents=True)
             (Path(directory)/'Indirect_tree_cont/Source').mkdir()
-            shutil.copyfile(original, event/'unweighted_events.lhe.gz')
+            event_filename = 'unweighted_events.lhe.gz' if original.suffix == '.gz' else 'unweighted_events.lhe'
+            shutil.copyfile(original, event/event_filename)
+            expected_events = indirect_compat.prepare_lhe(original, event/'count_sample.lhe')['events']
+            (event/'count_sample.lhe').unlink()
             for name in ('pythia8_card.dat', 'pythia8_card_default.dat'):
                 shutil.copyfile(run/'Cards'/name, Path(directory)/'Cards'/name)
             binary_dir = Path(directory)/'bin/internal'; binary_dir.mkdir(parents=True)
@@ -312,8 +318,8 @@ class CombinedDwarfTests(unittest.TestCase):
             source.write_bytes((ROOT/'Templates/bin/internal/main101.cc').read_bytes())
             shutil.copyfile(os.environ['MADDM_PYTHIA_EXECUTABLE'], binary_dir/'main101')
             (binary_dir/'main101').chmod(0o755)
-            _, stamp, identity, _ = indirect_compat.sync_shower_source(
-                directory, ROOT/'Templates/bin/internal/main101.cc', h.mg5.options['pythia8_path'])
+            _, stamp, identity, _ = indirect_compat.shower_build_state(
+                directory, h.mg5.options['pythia8_path'])
             stamp.write_text(json.dumps(identity))
             h.neu_oscillations = lambda: None
             h.calculate_fluxes = lambda: None
@@ -323,8 +329,8 @@ class CombinedDwarfTests(unittest.TestCase):
             self.assertEqual(h.last_results['Fermi_status'], 'ok')
             self.assertGreater(h.last_results['Fermi_sigmav'], 0.)
             self.assertTrue(np.isfinite(h.Spectra.spectra['gammas']).all())
-            self.assertIn('MADDM_SHOWER_ACCEPTED 10000', (event/'pythia8.log').read_text())
-            self.assertEqual(json.loads((event/'shower_input.json').read_text())['events'], 10000)
+            self.assertIn(f'MADDM_SHOWER_ACCEPTED {expected_events}', (event/'pythia8.log').read_text())
+            self.assertEqual(json.loads((event/'shower_input.json').read_text())['events'], expected_events)
             self.assertIn('maddm_shower_events.lhe', (Path(directory)/'Indirect_tree_cont/Source/spectrum.cmnd').read_text())
 
 

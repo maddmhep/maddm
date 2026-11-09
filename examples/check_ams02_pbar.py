@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Evaluate user-supplied MW partial rates without importing MadGraph.
+"""
+Antiproton likelihood from partial rates
+========================================
+
+Evaluate model partial rates without importing MadGraph.
 
 This is a likelihood/adapter demonstration. It does not generate a model or
 compute any matrix elements. A normal MadDM launch computes its own rates.
@@ -9,7 +13,7 @@ import json
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from pbar_interface import AntiprotonLimits, PDG_CHANNELS, write_outputs
+from indirect.pbar_interface import AntiprotonLimits, PDG_CHANNELS, write_outputs
 
 
 def main():

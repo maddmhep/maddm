@@ -146,5 +146,8 @@ If you are using this tool or the results obtained with it in a published work, 
    :hidden:
 
    tutorial_and_examples/index
+   indirect_detection
+   galactic_halo
+   plotting
    contribute
 

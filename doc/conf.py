@@ -6,9 +6,18 @@
 import os
 import re
 from datetime import datetime
-from pygit2 import Repository
+from pathlib import Path
+import subprocess
 
-branch = Repository(".").head.shorthand 
+root = Path(__file__).resolve().parent.parent
+try:
+    branch = subprocess.run(
+        ["git", "-C", str(root), "branch", "--show-current"],
+        check=True, capture_output=True, text=True,
+    ).stdout.strip()
+except (OSError, subprocess.CalledProcessError):
+    branch = ""
+
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information

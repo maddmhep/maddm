@@ -11,9 +11,9 @@ import unittest
 from unittest.mock import patch
 
 import numpy as np
-import dbar_interface as dbar
-import pbar_interface
-import pbar_plot
+from indirect import dbar_interface as dbar
+from indirect import pbar_interface
+from plotting import plot_ams02_pbar_fluxes as pbar_plot
 from test_pbar_integration import Harness, record, ROOT
 
 
@@ -153,7 +153,7 @@ class HookTests(unittest.TestCase):
             return original(fig,*args,**options)
         with tempfile.TemporaryDirectory() as directory:
             out = Path(directory)
-            shutil.copy2(ROOT/'validation/AMS02_pbar/bb_majorana_100/AMS02_pbar_fluxes.dat',out)
+            shutil.copy2(ROOT/'tests/fixtures/pbar/AMS02_pbar_fluxes.dat',out)
             with patch.object(matplotlib.figure.Figure,'savefig',capture):
                 saved = pbar_interface.save_plot(out)
             self.assertTrue(Path(saved).read_bytes().startswith(b'%PDF'))
