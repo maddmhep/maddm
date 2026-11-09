@@ -61,7 +61,7 @@
    %(vSun_phi)s    = vSun_phi
    %(vSun_theta)s  = vSun_theta
    %(vescape)s     = vescape  ! The escape velocity of WIMPS in the Halo (km/s)
-   %(rhodm)s       = rhoDM   ! The density of WIMPs in our local Universe (GeV/c^2/cm^-3)
+   %(rhodm)s       = rhoDM   ! The density of WIMPs in our local Universe (GeV/c^2/cm^-3); the direct detection limits (at 0.3) are rescaled by 0.3/rhoDM
 
 # Annual modulation of the direct detection rates (DM-nucleus and DM-electron): the year
 # (365.24 days) is divided in day_bins bins, the rates are computed at the bin centers

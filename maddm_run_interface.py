@@ -112,8 +112,21 @@ class ExpConstraints:
             'si'        : pjoin(rapidd_exp_dir, 'lz2024', 'LZ2024_SI.dat'),
             'sd_proton' : pjoin(rapidd_exp_dir, 'PICO60', 'Pico60_sd_proton_2019.dat'),
             'sd_neutron': pjoin(rapidd_exp_dir, 'lz2024', 'LZ2024_SDn.dat'),
-            'electron'  : pjoin(rapidd_exp_dir, 'XENONnT', 'XENONnT_DMe_SI.dat')
+            'electron'  : pjoin(rapidd_exp_dir, 'XENONnT', 'XENONnT_DMe_SI.dat'),
+            # the same limit rescaled to the RAPIDD atomic responses (XENONnT uses the ionization form factors of
+            # Essig et al.): published limit x S_wimprates/S_RAPIDD in its region of interest, an estimate
+            # (vendor/RAPIDD_for_DM/examples/xenonnt_dme_limit_rapidd_ff.py)
+            'electron_rescaled': pjoin(rapidd_exp_dir, 'XENONnT', 'XENONnT_DMe_SI_RAPIDD_FF.dat')
         }
+
+        # local DM density [GeV/cm^3] assumed by each limit: the limits on the cross sections scale as 1/rho,
+        # so they are rescaled by rho_limit/rhoDM (rhoDM of the maddm_card, set_rhoDM). All of them use
+        # 0.3 GeV/cm^3: PICO-60 (arXiv:1902.04031, stated), XENONnT S2-only (arXiv:2601.11296: wimprates with
+        # the conventions of arXiv:2105.00599), LZ 2024 (arXiv:2410.17036: standard halo model with the
+        # conventions of arXiv:2105.00599, which LZ follows; the value is not repeated in the paper).
+        # The limits set by the user (set dd_si_limits / dd_sd_limits) are also assumed at 0.3 GeV/cm^3.
+        self._dd_limit_rho = {'si': 0.3, 'sd_proton': 0.3, 'sd_neutron': 0.3, 'electron': 0.3, 'electron_rescaled': 0.3}
+        self._rhoDM = 0.3
 
         self._dd_limit_mdm = dict()
         self._dd_limit_sigma = dict()
@@ -211,6 +224,7 @@ class ExpConstraints:
             logger.info('Spin Dependent cross section (p): %s' % self._dd_limit_file['sd_proton'])
             logger.info('Spin Dependent cross section (n): %s' % self._dd_limit_file['sd_neutron'])
             logger.info('DM-electron cross section: %s' % self._dd_limit_file['electron'])
+            logger.info('DM-electron cross section (rescaled to the RAPIDD atomic responses): %s' % self._dd_limit_file['electron_rescaled'])
         else:
             logger.info('Spin (in)dependent not available due to the missing python module: numpy')
 #        for chan in self._allowed_final_states:
@@ -237,6 +251,21 @@ class ExpConstraints:
         for channel, limit_file in six.iteritems(self._id_limit_file_flux):
             self.safe_load_file(filename = limit_file, variables = ['_id_limit_mdm', '_id_limit_flux'], key = channel, usecols = (0,2))
 
+    def set_rhoDM(self, rhoDM):
+        ''' local DM density [GeV/cm^3] of the run (maddm_card rhoDM): the direct detection limits are rescaled by
+        rho_limit/rhoDM '''
+        rhoDM = float(rhoDM)
+        if rhoDM <= 0:
+            logger.warning('rhoDM = %s: the direct detection limits are not rescaled' % rhoDM)
+            rhoDM = 0.3
+        self._rhoDM = rhoDM
+
+    def _rho_rescale(self, key, limit):
+        ''' limit [cm^2] of the experiment key at the local DM density of the run (-1 is kept) '''
+        if limit < 0:
+            return limit
+        return limit * self._dd_limit_rho.get(key, 0.3) / self._rhoDM
+
     #Returns a value in cm^2
     def SI_max(self, mdm):
         if not HAS_NUMPY:
@@ -247,7 +276,7 @@ class ExpConstraints:
             logger.warning('Dark matter mass value '+str(mdm)+' is outside the range of SI limit')
             return -1
         else:
-            return np.interp(mdm, self._dd_limit_mdm['si'], self._dd_limit_sigma['si'])
+            return self._rho_rescale('si', np.interp(mdm, self._dd_limit_mdm['si'], self._dd_limit_sigma['si']))
 
     #Returns a value in cm^2
     def SD_max(self, mdm, nucleon):
@@ -264,30 +293,32 @@ class ExpConstraints:
                     logger.warning('Dark matter mass value '+str(mdm)+' is outside the range of SD limit')
                     return -1
                 else:
-                    return np.interp(mdm, self._dd_limit_mdm['sd_proton'], self._dd_limit_sigma['sd_proton'])
+                    return self._rho_rescale('sd_proton', np.interp(mdm, self._dd_limit_mdm['sd_proton'], self._dd_limit_sigma['sd_proton']))
             elif nucleon=='n':
                 if (mdm < np.min(self._dd_limit_mdm['sd_neutron']) or mdm > np.max(self._dd_limit_mdm['sd_neutron'])):
                     logger.warning('Dark matter mass value '+str(mdm)+' is outside the range of SD limit')
                     return -1
                 else:
-                    return np.interp(mdm, self._dd_limit_mdm['sd_neutron'], self._dd_limit_sigma['sd_neutron'])
+                    return self._rho_rescale('sd_neutron', np.interp(mdm, self._dd_limit_mdm['sd_neutron'], self._dd_limit_sigma['sd_neutron']))
 
     #Returns a value in cm^2
-    def DMe_max(self, mdm):
-        ''' upper limit on the DM-electron reference cross section sigma_e (heavy mediator) '''
+    def DMe_max(self, mdm, rescaled=False):
+        ''' upper limit on the DM-electron reference cross section sigma_e (heavy mediator): the published XENONnT
+        limit, or (rescaled = True) the same limit rescaled to the RAPIDD atomic responses '''
+        key = 'electron_rescaled' if rescaled else 'electron'
         if not HAS_NUMPY:
             logger.warning("missing numpy module for DM-electron limit")
             return -1
 
-        if 'electron' not in self._dd_limit_mdm:
+        if key not in self._dd_limit_mdm:
             return -1
 
-        if (mdm < np.min(self._dd_limit_mdm['electron']) or mdm > np.max(self._dd_limit_mdm['electron'])):
+        if (mdm < np.min(self._dd_limit_mdm[key]) or mdm > np.max(self._dd_limit_mdm[key])):
             logger.warning('Dark matter mass value '+str(mdm)+' is outside the range of DM-electron limit')
             return -1
         else:
             # the limit spans several decades with few points: interpolate in log-log
-            return np.power(10., np.interp(np.log10(mdm), np.log10(self._dd_limit_mdm['electron']), np.log10(self._dd_limit_sigma['electron'])))
+            return self._rho_rescale(key, np.power(10., np.interp(np.log10(mdm), np.log10(self._dd_limit_mdm[key]), np.log10(self._dd_limit_sigma[key]))))
 
     # Returns a value in cm^3/s
     def ID_max(self, mdm, channel, sigmav = True):
@@ -1903,6 +1934,8 @@ class MADDMRunCmd(cmd.CmdShell):
             if RP_parent not in sys.path:
                 sys.path.insert(0, RP_parent)
             from rapidd.alpha_map import sigmaSI_nucleon_mdm, sigmaSD_nucleon_mdm, nucleon_alphas_valid
+            # limits at the local DM density of the card
+            self.limits.set_rhoDM(self.maddm_card['rhoDM'])
             result['lim_sigmaN_SI_n'] = self.limits.SI_max(mdm)
             result['lim_sigmaN_SI_p'] = self.limits.SI_max(mdm)
             result['lim_sigmaN_SD_p'] = self.limits.SD_max(mdm, 'p')
@@ -1955,7 +1988,9 @@ class MADDMRunCmd(cmd.CmdShell):
         # if self.mode['direct_nucleon'] == 'p-value':
             
         if self.mode['direct_electron'] and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
+            self.limits.set_rhoDM(self.maddm_card['rhoDM'])  # limit at the local DM density of the card
             self.last_results['lim_sigma_e'] = self.limits.DMe_max(mdm)
+            self.last_results['lim_sigma_e_rescaled'] = self.limits.DMe_max(mdm, rescaled=True)
             self.launch_direct_electron()
 
 #        if self.mode['indirect'] and not self._two2twoLO:
@@ -2061,7 +2096,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
 
             if self.mode['direct_electron'] and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
-                order += ['sigma_e', 'lim_sigma_e']
+                order += ['sigma_e', 'lim_sigma_e', 'lim_sigma_e_rescaled']
                 if __dme_use_xenon_pvalue__:
                     order += ['pvalue_Xenon10','pvalue_Xenon1T']
 
@@ -3239,6 +3274,8 @@ class MADDMRunCmd(cmd.CmdShell):
                     logger.info(self.form_s('Sigma_e') + self.form_s('All DM = ' + self.form_n(-1)) + '   No Theory Prediction')
                 else:
                     self.print_ind('Sigma_e', sigma_e * xsi, sigma_e, self.last_results['lim_sigma_e'], thermal=dm_scen, direc=False, exp='XENONnT')
+                    # XENONnT limit rescaled to the RAPIDD atomic responses (estimate)
+                    self.print_ind('Sigma_e (rescaled)', sigma_e * xsi, sigma_e, self.last_results['lim_sigma_e_rescaled'], thermal=dm_scen, direc=False, exp='XENONnT')
             elif pval_Xenon10==-1 and pval_Xenon1T==-1:
                 logger.info( self.form_s('Sigma_e             All DM = ') + self.form_n(-1) + self.form_s('      ' + det_message_screen(0.05,pval_Xenon10)) + self.form_s('     Xenon10 p_val    = ') + self.form_n(pval_Xenon10))
                 logger.info( self.form_s('Sigma_e             All DM = ') + self.form_n(-1) + self.form_s('      ' + det_message_screen(0.05,pval_Xenon1T)) + self.form_s('     Xenon1ton p_val  = ') + self.form_n(pval_Xenon1T))
@@ -3694,6 +3731,8 @@ class MADDMRunCmd(cmd.CmdShell):
             if not __dme_use_xenon_pvalue__:
                 ul_DMe = self.last_results['lim_sigma_e']
                 out.write(form_s('Sigma_e ref.') + '= ' + form_s('['+ form_n(cross_DMe) + ',' + form_n(ul_DMe) + ']') + '# XENONnT\n')
+                ul_DMe_rescaled = self.last_results['lim_sigma_e_rescaled']
+                out.write(form_s('Sigma_e ref. (rescaled)') + '= ' + form_s('['+ form_n(cross_DMe) + ',' + form_n(ul_DMe_rescaled) + ']') + '# XENONnT rescaled to the RAPIDD atomic responses\n')
             else:
                 out.write(form_s('Sigma_e ref.') + '= ' + form_s(form_n(cross_DMe)) + '\n')
                 out.write(form_s('Xenon10_pvalue') + '= ' + form_s(form_n(pval10)) + '\n')

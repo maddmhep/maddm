@@ -41,7 +41,9 @@ The Direct Detection module of MadDM computes spin-independent and spin-dependen
 
 For dark matter–nucleon scattering, the RAPIDD code is used to calculate the differential recoil rates for xenon, argon, and germanium targets. Subsequently, it computes the expected signal in xenon and determines the p-value of the input model by employing the likelihood function derived from the 2024 LZ results.
 
-For dark matter–electron scattering, the module evaluates both the differential recoil spectrum and the event rate as a function of the scintillation signal in xenon. The p-value is then calculated using the likelihood functions obtained from the XENON10 and XENON1T S2-only analyses.
+For dark matter–electron scattering, the module evaluates both the differential recoil spectrum and the event rate as a function of the ionization (S2) signal in xenon for XENON10 and XENON1T, and compares the reference cross section $\bar\sigma_e$ with the XENONnT S2-only limit (heavy mediator, [arXiv:2601.11296](https://arxiv.org/abs/2601.11296)). That limit is computed by XENONnT with the ionization form factors of Essig et al.; with the atomic responses used by RAPIDD it would be about 2 times weaker. MadDM shows both: `Sigma_e` with the published limit and `Sigma_e (rescaled)` with the limit rescaled to the RAPIDD atomic responses (an estimate, `vendor/RAPIDD_for_DM/lib/experiments/XENONnT/XENONnT_DMe_SI_RAPIDD_FF.dat`; `lim_sigma_e_rescaled` in the scan output).
+
+The upper limits on the cross sections (LZ 2024 SI and SD-neutron, PICO-60 SD-proton, XENONnT DM-electron) assume a local dark matter density of 0.3 GeV/cm$^3$: they are rescaled by 0.3/`rhoDM`, with `rhoDM` the density of the `maddm_card`.
 
 ### Indirect Detection Module
 
