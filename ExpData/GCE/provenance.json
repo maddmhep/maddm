@@ -1,0 +1,16 @@
+{
+  "gamma_source": "https://github.com/ajueid/CosmiXs/blob/main/Data/AtProduction-Gamma.dat",
+  "git_commit": "d865f6b31c87455bbc2a2b11fdd7b358868bf90d",
+  "upstream_gamma_sha256": "b782a98149baa3f88ce9901d7a112af601a4f5c3a463f20d8c8fc3d802c4271f",
+  "processing": "Selected 19 unpolarized channel columns, lossless compressed NPZ; numeric values unchanged",
+  "masses": 64,
+  "energy_nodes": 180,
+  "yield": "dN_gamma/dlog10(x), x=E/mDM",
+  "data_source": "arXiv:2605.22913, standard 40 x 40 degree region, 0.5 to 1000 GeV",
+  "data_sha256": "1a64b38adab92540043d137d4a81515ab2bab4a33a9e15cb01c6bf7775b7fbc7",
+  "geometry_source": "https://arxiv.org/pdf/2508.02775",
+  "reference_jbar": 209,
+  "rho_sun_GeV_cm3": 0.345,
+  "rsun_kpc": 8.122,
+  "solid_angle_sr": 0.4775494185
+}

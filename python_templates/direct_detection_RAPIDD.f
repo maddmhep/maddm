@@ -79,6 +79,8 @@ c           DM-e- / DM-e+ for electrons
             if (target_type.eq.'e') then
                   dm_t_process_name = trim(DM_NAMES(1)) // 'em_' // trim(DM_NAMES(1)) // 'em'
                   dm_tx_process_name = trim(DM_NAMES(1)) // 'ep_' // trim(DM_NAMES(1)) // 'ep'
+                  call replace_tilde(dm_t_process_name)
+                  call replace_tilde(dm_tx_process_name)
                   m_target = M_e
             else
                   initial_process_name = trim(DM_NAMES(1)) // trim(quark_names(idx))
@@ -147,6 +149,7 @@ c found is .false. (and the alphas are not computed) if one of the full,  c
 c effective or full+effective processes is missing.                       c
 c                                                                         c
 c-------------------------------------------------------------------------c
+            use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
             implicit none
 
             integer j, k, dm_spin
@@ -301,6 +304,9 @@ c-------------------------------------------------------------------------------
                   alpha_SD_even = 0.5d0 * (Minterf_SD_t + Minterf_SD_tx)
                   alpha_SD_odd  = 0.5d0 * (Minterf_SD_t - Minterf_SD_tx)
             endif
+
+            if (.not.all(ieee_is_finite((/alpha_SI_even, alpha_SI_odd, alpha_SD_even, alpha_SD_odd/)))) return
+            found = .true.
 
       end subroutine get_dm_target_alpha
 

@@ -29,6 +29,12 @@ c indirect_detection.f
       character(20) halo_profile
       common/idstuff/ vave_glob, channel_glob, vave_indirect, halo_profile, vave_indirect_line
 
+c AMS-02 pbar rates use a distinct Milky Way velocity.
+      double precision vave_indirect_pbar
+      logical do_pbar_limits
+      common/pbar_velocity/ vave_indirect_pbar
+      common/pbar_switch/ do_pbar_limits
+
 c random seed
       integer idum
       common/randint/ idum

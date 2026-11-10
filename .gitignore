@@ -201,3 +201,7 @@ Session.vim
 
 # MacOS
 .DS_Store
+._*
+
+# CosmiXs propagated flux tables, downloaded by `install cosmixs_flux`
+ExpData/CR_flux/
