@@ -201,13 +201,7 @@ Session.vim
 
 # MacOS
 .DS_Store
-
-# Local run and test products
-/validation/
-/SHA256SUMS
-__MACOSX/
 ._*
-*.before_ams02_pbar
-*.before_maddm_build_fix
-*.before_shared_halo
-*.before_shower_fix
+
+# CosmiXs propagated flux tables, downloaded by `install cosmixs_flux`
+ExpData/CR_flux/

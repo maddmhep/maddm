@@ -80,7 +80,9 @@ class BuildTests(unittest.TestCase):
                 (root/name).mkdir(parents=True, exist_ok=True)
             for name in ('Source/DHELAS', 'Source/MODEL'):
                 (root/name/'makefile').write_text('all:\n\ttrue\n')
-            (root/'matrix_elements/makefile').write_text('all:\n\tar cr libmatrix_elements.a\n')
+            # BSD ar (macOS) rejects an archive without members.
+            (root/'matrix_elements/makefile').write_text(
+                'all:\n\techo stub > stub.txt\n\tar cr libmatrix_elements.a stub.txt\n')
             (root/'src/makefile').write_text('all:\n\tfalse\n')
             (root/'src/maddm.x').write_text('old binary')
             result = subprocess.run(['make', 'all'], cwd=root, capture_output=True, text=True)
