@@ -11,7 +11,11 @@ from plotting import plot_ams02_pbar_fluxes as pbar_plot
 from plotting import signal_plots
 from test_pbar_integration import record,Harness
 
+from flux_test_data import requires_dbar
+
+
 class ConsistencyTests(unittest.TestCase):
+    @requires_dbar
     def test_common_density_controls_gce_dbar_and_channel_bound(self):
         rows=[record([5,-5],3.e-26)]
         engine=gce_interface.GCEFit();db=dbar_interface.AntideuteronEvents()

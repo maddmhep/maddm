@@ -22,6 +22,9 @@ exec(compile(ast.Module(body=[node],type_ignores=[]),str(SOURCE),'exec'),ENV)
 Harness.calculate_gce_fit=ENV['calculate_gce_fit']
 
 
+from flux_test_data import requires_both, requires_dbar
+
+
 class GCETests(unittest.TestCase):
     def test_first_block_selection_units_and_upper_limit_sentinels(self):
         energy,flux,used=gce_interface.read_data()
@@ -89,6 +92,7 @@ class GCETests(unittest.TestCase):
 
 
 class CRTests(unittest.TestCase):
+    @requires_both
     def test_all_54_tables_and_metadata_are_resolved(self):
         for scheme,setup,halo,sp in itertools.product(['QUAINT','BIG','SLIM'],['MIN','MED','MAX'],['NFW','Einasto','Burkert'],['pbar','dbar']):
             card=dict(cr_propagation_scheme=scheme,cr_propagation_set=setup,cr_halo_profile=halo)
@@ -112,6 +116,7 @@ class CRTests(unittest.TestCase):
                      {'cr_propagation_scheme':'BIG'},{'pbar_phi_max':1.}]:
             self.assertFalse(cr_config.native_channel_limits(card))
 
+    @requires_dbar
     def test_dbar_forecast_and_metadata_follow_changed_settings(self):
         engine=dbar_interface.AntideuteronEvents();rows=[record([5,-5],3.e-26)]
         default=engine.evaluate(100.,rows,1000022,4,1.,{})

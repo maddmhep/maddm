@@ -17,12 +17,20 @@ from plotting import plot_ams02_pbar_fluxes as pbar_plot
 from test_pbar_integration import Harness, record, ROOT
 
 
+from flux_test_data import requires_dbar
+
+
 class ForecastTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.engine = dbar.AntideuteronEvents()
 
     def evaluate(self, records=None, card=None, xsi=1., md=4, pbar=None):
+        from indirect import cr_config
+        try:
+            cr_config.table_path('dbar', card or {})
+        except ValueError as error:
+            self.skipTest(str(error))
         rows = records if records is not None else [record([5, -5], 3.e-26)]
         return self.engine.evaluate(100., rows, 1000022, md, xsi, card or {}, pbar)
 
@@ -121,6 +129,7 @@ class ForecastTests(unittest.TestCase):
 
 
 class HookTests(unittest.TestCase):
+    @requires_dbar
     def test_dbar_reuses_pbar_rates_and_does_not_fit_a_sigmav_flux(self):
         with tempfile.TemporaryDirectory() as directory:
             h = Harness(directory)
@@ -132,6 +141,7 @@ class HookTests(unittest.TestCase):
             self.assertEqual(h.last_results['AMS02_dbar_phi'],.7)
             self.assertTrue((Path(directory)/'output/run_01/AMS02_dbar_events.json').exists())
 
+    @requires_dbar
     def test_dbar_works_with_pbar_limits_disabled(self):
         with tempfile.TemporaryDirectory() as directory:
             h = Harness(directory)

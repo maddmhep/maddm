@@ -1272,6 +1272,50 @@ c     Use the same laboratory motion as the electron recoil calculation.
       V_E = get_vEarth(days)
       end
 
+        Real*8 Function get_vEarth(days)
+!-----------------------------------------------------------------------------------------!
+!       This function calculates the time-dependent Earth`s velocity in the Galactic      !
+!       frame, taking into account the Earth`s orbit around the Sun and the Sun`s         !
+!       peculiar velocity relative to the Galactic centre.                                !
+!       This function returns the velocity module given the number of days passed from    !
+!       March 22, 2018. Based on Eur. Phys. J. C (2021) 81: 907.                          !
+!-----------------------------------------------------------------------------------------!
+        Implicit none
+
+        include '../include/maddm.inc'
+
+        Real*8    omega, cosdt, sindt, u_E
+        Real*8    V_E1(3), days, vuGal(3), vuSun(3), vu_E(3)
+
+        include '../include/maddm_card.inc'
+
+c       Constants
+        vuGal = (/ 0.d0, vMP, 0.d0 /)       ! Galactic rotation velocity
+        vuSun = (/vSun_r, vSun_phi, vSun_theta/) ! Sun`s peculiar velocity relative to nearby stars [km/s]
+        u_E = vEarth_mod                    ! [km/s] average orbital speed of the Earth
+        omega = 0.0172d0                    ! [1/day] orbital frequency
+
+c       Precompute sine and cosine of omega * days
+        cosdt = cos(omega * days)
+        sindt = sin(omega * days)
+
+c       Time-dependent Earth orbital velocity in galactic coordinates
+        vu_E(1) = u_E * (0.9941d0 * cosdt - 0.0504d0 * sindt)
+        vu_E(2) = u_E * (0.1088d0 * cosdt + 0.4946d0 * sindt)
+        vu_E(3) = u_E * (0.0042d0 * cosdt - 0.8677d0 * sindt)
+
+c       Total velocity in Galactic frame
+        V_E1(1) = vuGal(1) + vuSun(1) + vu_E(1)
+        V_E1(2) = vuGal(2) + vuSun(2) + vu_E(2)
+        V_E1(3) = vuGal(3) + vuSun(3) + vu_E(3)
+
+c       Magnitude of the total velocity vector
+        get_vEarth = sqrt(V_E1(1)**2 + V_E1(2)**2 + V_E1(3)**2)
+
+        return
+        end
+
+
 !-----------------------------------------------------------------------------------------!
       Real*8 Function FHelm(ER, A)
 !-----------------------------------------------------------------------------------------!

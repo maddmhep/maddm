@@ -45,6 +45,9 @@ for node in RUN.body:
         exec(compile(ast.Module(body=[node], type_ignores=[]), str(SOURCE), 'exec'), ENV)
 
 
+from flux_test_data import requires_pbar
+
+
 class ConfigFileContract(dict):
     """MG5 ConfigFile get is an alias of __getitem__, not dict.get."""
     def __getitem__(self, name):
@@ -216,6 +219,7 @@ class RunHookTests(unittest.TestCase):
             payload = json.loads((Path(path)/'output/run_01/AMS02_pbar_limits.json').read_text())
             self.assertEqual(payload['status'], 'calculation_error')
 
+    @requires_pbar
     def test_real_fit_through_actual_run_hook_and_output(self):
         with tempfile.TemporaryDirectory() as path:
             h = Harness(path)
@@ -272,6 +276,7 @@ class RunHookTests(unittest.TestCase):
 
 class GeneratedRuntimeTests(unittest.TestCase):
     @unittest.skipUnless(os.environ.get('MADDM_PBAR_TEST_RUN'), 'set MADDM_PBAR_TEST_RUN to a generated run with bundled internal/banner.py')
+    @requires_pbar
     def test_real_card_class_and_run_hook(self):
         run=Path(os.environ['MADDM_PBAR_TEST_RUN']).resolve()
         sys.path.insert(0,str(run/'Indirect_tree_cont/bin'))

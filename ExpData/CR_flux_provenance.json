@@ -381,6 +381,8 @@
       "upstream_file": "pbar_flux_SLIM_MIN_NFW.dat"
     }
   ],
-  "secondary_scope": "Supplied zero-potential USINE pbar/Dbar inputs for BIG, QUAINT and SLIM; one per scheme shared across MIN/MED/MAX by user instruction. See secondary_provenance.json.",
-  "compression": "gzip; sha256 and bytes refer to the decompressed upstream tables"
+  "secondary_scope": "Supplied zero-potential USINE pbar/Dbar inputs for BIG, QUAINT and SLIM; one per scheme shared across MIN/MED/MAX by user instruction. See CR_flux_secondary_provenance.json.",
+  "compression": "gzip; sha256 and bytes refer to the decompressed upstream tables",
+  "repository": "https://github.com/CosmiXsPPPC/CosmicRay-flux",
+  "revision": "018ce634fc7711c2414873c35b39a0f6f428e779"
 }

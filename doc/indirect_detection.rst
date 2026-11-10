@@ -30,7 +30,7 @@ rates. With source spectra enabled, Pythia 8 or its VINCIA shower can
 shower the generated final states, including explicit multibody or cascade
 channels. Pythia's source antideuteron calculation uses the Argonne
 wave-function prescription by default (``Main:methodDbar = 4``); it does
-not change the bundled antideuteron propagation tables. The VINCIA settings follow the CosmiXs shower and hadronization
+not change the antideuteron propagation tables. The VINCIA settings follow the CosmiXs shower and hadronization
 setup. The source spectra are particle yields per annihilation before
 Galactic transport or solar modulation. Install the source spectra with
 ``install PPPC4DMID`` and Pythia with ``install pythia8`` in MadDM as needed.
@@ -39,7 +39,7 @@ launches MadDM. On Python 3.12 and later, install Meson and Ninja for this
 build.
 
 ``flux_earth`` also writes the charged interstellar and top-of-atmosphere
-fluxes at the model rate using the bundled CosmiXsPPPC propagation
+fluxes at the model rate using the CosmiXsPPPC propagation
 tables. This does not require a separate transport solver. The charged
 tables cover supported two-body annihilations only. Generating a
 multibody source spectrum in precise mode does not supply a corresponding
@@ -66,12 +66,17 @@ Propagated antiprotons and antideuterons
 Choose ``cr_propagation_scheme`` from ``BIG``, ``SLIM``, and ``QUAINT``,
 ``cr_propagation_set`` from ``MIN``, ``MED``, and ``MAX``, and
 ``cr_halo_profile`` from ``NFW``, ``Einasto``, and ``Burkert``. Defaults
-are QUAINT, MED, and NFW. The 54 annihilation tables in ``ExpData/CR_flux``
-contain the original data from
+are QUAINT, MED, and NFW. On first continuum process generation
+(``generate indirect_detection`` or ``add process indirect_detection``),
+MadDM downloads the two annihilation archives from
 `CosmiXsPPPC <https://github.com/CosmiXsPPPC/CosmicRay-flux>`__
-(`arXiv:2606.10017 <https://arxiv.org/abs/2606.10017>`__), stored as
-gzip-compressed text. Their metadata records the upstream files and
-checksums of the decompressed contents.
+(`arXiv:2606.10017 <https://arxiv.org/abs/2606.10017>`__).
+It verifies the decompressed contents against the checksums in
+``ExpData/CR_flux_provenance.json`` and caches all 54 tables as
+gzip-compressed text in ``ExpData/CR_flux``. The same tables are reused
+for subsequent commands and launches. For an existing process directory,
+or to retry a failed download, run ``install cosmixs_flux`` at the
+main MadDM prompt.
 
 At a fixed mass, MadDM interpolates the table in mass at fixed energy
 nodes, forms the sum weighted by model branching fractions :math:`B_f`,
@@ -222,6 +227,9 @@ Run the offline regression suite from the MadDM source directory:
    python tests/tools/run_benchmarks.py --output /tmp/maddm-benchmarks
 
 The suite uses small reference files in ``tests/fixtures/``.
+Propagation checks that require the full tables are skipped if the cache
+is empty. Run ``install cosmixs_flux`` first to include these checks and
+to run the benchmark script.
 Optional integration checks require a generated MadGraph run or a
 locally built Pythia or RAPIDD library. See the test skip messages and
 ``python tests/tools/run_shower_regressions.py --help`` for the inputs.

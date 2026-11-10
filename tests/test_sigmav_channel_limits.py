@@ -29,6 +29,7 @@ from indirect import dbar_interface
 from indirect import gce_interface
 from indirect import cr_earth
 from indirect import halo_model
+from flux_test_data import requires_pbar
 
 SOURCE = ROOT/'maddm_run_interface.py'
 TREE = ast.parse(SOURCE.read_text())
@@ -271,6 +272,7 @@ class RunTests(unittest.TestCase):
             self.assertIsNone(result['channels'][0]['excluded'])
             self.assertEqual(adapter.observables(result, .00075)['AMS02_pbar_excluded#nu_e_nu_e'], -1.)
 
+    @requires_pbar
     def test_custom_nuisance_range_profiles_instead_of_reusing_fixed_tables(self):
         with tempfile.TemporaryDirectory() as directory:
             h = Harness(directory)

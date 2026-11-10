@@ -26,7 +26,10 @@ def table_path(species, card):
     if species not in SPECIES: raise ValueError('Unknown propagated species')
     s = selection(card)
     path = ROOT/'ExpData/CR_flux'/(species+'_flux_'+s['scheme']+'_'+s['setup']+'_'+s['halo']+'.dat.gz')
-    if not path.is_file(): raise ValueError('Missing propagated table: '+str(path))
+    if not path.is_file():
+        hint = (' Run `install cosmixs_flux` at the main MadDM prompt.'
+                if species in ('pbar', 'dbar') else '')
+        raise ValueError('Missing propagated table: ' + str(path) + '.' + hint)
     return path
 
 

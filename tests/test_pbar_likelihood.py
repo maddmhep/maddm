@@ -14,11 +14,22 @@ from indirect.pbar.core import (DMTemplate, FitConfig, FluxTable, Likelihood, SI
 from indirect.pbar.core import MP
 
 
+from flux_test_data import requires_pbar
+
+
 class PhysicsTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.table = FluxTable()
         cls.likelihood = Likelihood()
+
+    @property
+    def table(self):
+        from indirect import cr_config
+        try:
+            path = cr_config.table_path('pbar', {})
+        except ValueError as error:
+            self.skipTest(str(error))
+        return FluxTable(path)
 
     def test_force_field_identity_and_charge(self):
         f = lambda t: np.asarray(t)**-2
@@ -128,6 +139,7 @@ class PhysicsTests(unittest.TestCase):
 
 
 class LimitTests(unittest.TestCase):
+    @requires_pbar
     def test_asimov_upper_against_known_gaussian_answer(self):
         # Fix nuisance freedom to a negligible interval. An Asimov Gaussian
         # upper limit then has a closed-form answer sqrt(q)/||signal/error||.

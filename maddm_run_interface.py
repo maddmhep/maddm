@@ -19,7 +19,7 @@ from .indirect import cr_earth
 from .indirect import halo_model
 from .indirect import indirect_compat
 from .indirect import fermi_profile
-from . import rapidd_install
+from . import direct_recoil, rapidd_install
 import stat
 import shutil
 from copy import copy, deepcopy
@@ -1726,22 +1726,34 @@ class MADDMRunCmd(cmd.CmdShell):
         self.ask_run_configuration(mode=[], force=force)
         self._output_level = (self.maddm_card['save_output']
                               if self.in_scan_mode or self.param_card_iterator else 'all')
-        if self.mode['direct'] and not hasattr(self, '_rapidd_modules'):
-            try:
-                self._rapidd_modules = rapidd_install.load()
-            except rapidd_install.RAPIDDError as error:
-                raise self.InvalidCmd('DM-nucleon direct detection requires RAPIDD. %s' % error) from None
-
         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
         use_electron_recoils = self.mode['direct_electron'] and (
             mdm <= self.maddm_card['direct_electron_dm_mass_max'] or
             self.maddm_card['direct_electron_mode'] == 'always')
+        nuclear_choice = self.maddm_card['direct_nuclear_backend']
+        use_rapidd_nuclear = self.mode['direct'] and nuclear_choice != 'native'
+        if use_rapidd_nuclear or use_electron_recoils:
+            try:
+                if not hasattr(self, '_rapidd_modules'):
+                    self._rapidd_modules = rapidd_install.load()
+            except rapidd_install.RAPIDDError as error:
+                if use_electron_recoils or nuclear_choice == 'rapidd':
+                    raise self.InvalidCmd(
+                        'This recoil mode requires the electron-capable RAPIDD installation. %s '
+                        'Run `install RAPIDD` at the main MadDM prompt.' % error) from None
+                use_rapidd_nuclear = False
+
+        if self.mode['direct'] or use_electron_recoils:
+            with open(pjoin(self.dir_path, 'src', 'maddm.f')) as driver:
+                if 'MadDM recoil coefficients v2' not in driver.read():
+                    raise self.InvalidCmd('This output uses the old recoil driver. Generate the '
+                                          'processes again and export with `output NEW_NAME`.')
+
         self._mw_shm_rule = None
         try:
             velocity_profile = halo_model.velocity_profile(self.maddm_card)
-            if not velocity_profile.is_shm and (use_electron_recoils or self.maddm_card['do_directional_detection']):
-                raise ValueError('Native electron and directional recoils require SHM. '
-                                 'Disable those recoil modes to use a nonstandard RAPIDD velocity profile.')
+            if not velocity_profile.is_shm and self.maddm_card['do_directional_detection']:
+                raise ValueError('Native directional recoils require SHM.')
             if self.maddm_card['mw_velocity_model'] == 'shm' and (self.mode['indirect'] or self.mode['spectral']):
                 self._mw_shm_rule = halo_model.galactic_rule(velocity_profile, self.maddm_card['mw_shm_npts'])
         except ValueError as error:
@@ -1788,76 +1800,30 @@ class MADDMRunCmd(cmd.CmdShell):
         # result['GeV2pb*pb2cm2']   = GeV2pb*pb2cm2 # conversion factor                                                                                                           
 
         result['tot_SM_xsec'] = -1
-        alphaq_values = {"alpha_d": [], "alpha_u": [], "alpha_s": [], "alpha_c": [], "alpha_b": [], "alpha_t": [] }
+        alphaq_values = {key: () for key in ('alpha_d', 'alpha_u', 'alpha_s', 'alpha_c',
+                                             'alpha_b', 'alpha_t', 'alpha_e')}
 
-        for line in open(pjoin(self.dir_path, output)):
+        with open(pjoin(self.dir_path, output)) as records:
+            for line in records:
                 if self._read_fortran_indirect_record(line, mdm, result):
                     continue
-      
-                splitline = line.split()
-                #If capture rate is calculated.
-                if 'ccap' in line:
-                    oname = splitline[0].strip(':')+'_'+splitline[1]
-                    val = splitline[2]
-                    result[oname.split(':')[0] ] = val
+                fields = line.split()
+                if len(fields) < 2:
+                    continue
+                parts = line.split(':')
+                key = parts[0].strip()
+                if key in alphaq_values:
+                    alphaq_values[key] = tuple(secure_float_f77(value) for value in parts[1:5])
+                elif fields[0] == 'ccap':
+                    result['ccap_' + fields[1].strip(':')] = fields[2]
+                elif '%' in fields[0]:
+                    oname = '_'.join(fields[0].split(':', 1)[1].split('_')[:2])
+                    self.str_processes[oname] = StrProcess(oname, self.processes_names_map)
+                    result['%%_relic_%s' % oname] = secure_float_f77(fields[1])
+                elif not fields[0].startswith('Xenon'):
+                    # Older generated indirect-only outputs can still be launched.
+                    result[fields[0].split(':')[0]] = secure_float_f77(fields[1])
 
-                ##### explicitly tell the code how to read alphas here 
-
-
-                parts = line.split(":")
-                #print(parts)
-                if parts[0].strip() in alphaq_values.keys():
-                    values = list(map(float, parts[1:5]))
-                    alphaq_values[parts[0].strip()] = np.array(values)  # Store as NumPy array
-
-    
-
-
-                #####
-
-                else:
-                    if '%' in line:
-                        oname = splitline[0].split(':',1)[1].split('_')
-                        oname = oname[0] + '_' + oname[1]
-                        str_proc = StrProcess(oname, self.processes_names_map)
-                        self.str_processes[oname] = str_proc
-                        result["%%_relic_%s" % oname] = secure_float_f77(splitline[1])
-
-
-                        
-                    if 'Xenon10_bins' in line:
-                        Xenon10_bins = []
-                        for i in range(1,9):
-                            Xenon10_bins.append(secure_float_f77(splitline[i]))
-                        result['Xenon10_bins'] = Xenon10_bins
-
-                    elif 'Xenon10_signal' in line:
-                        Xenon10_signal = []
-                        for i in range(1,8):
-                            Xenon10_signal.append(secure_float_f77(splitline[i]))
-                        result['Xenon10_signal'] = Xenon10_signal
-
-                    elif 'Xenon10_obs' in line:
-                        Xenon10_obs = []
-                        for i in range(1,8):
-                            Xenon10_obs.append(secure_float_f77(splitline[i]))
-                        result['Xenon10_obs'] = Xenon10_obs
-
-                    elif 'Xenon1T_signal' in line:
-                        result['Xenon1T_signal'] = secure_float_f77(splitline[1])
-
-                    elif 'Xenon1T_bkg' in line:
-                        result['Xenon1T_bkg'] = secure_float_f77(splitline[1])
-
-                    elif 'Xenon1T_obs' in line:
-                        result['Xenon1T_obs'] = secure_float_f77(splitline[1])
-
-                    elif 'sigma_e' in line:
-                        result['sigma_e'] = secure_float_f77(splitline[1])
-
-                    else:
-                        result[splitline[0].split(':')[0]] = secure_float_f77(splitline[1])
-                            
         np_names = ['g','nue','numu','nutau']
         
         if result['sigmav(xf)']!=-1:
@@ -1878,25 +1844,45 @@ class MADDMRunCmd(cmd.CmdShell):
         else: result['xsi'] = 1.0
 
         recoil_halo_file = None
-        if self.mode['direct']:
+        recoil_path = pjoin(self.dir_path, 'output', self.run_name)
+        if use_rapidd_nuclear or use_electron_recoils:
             alpha_map, recoil_rates, rapidd_core = self._rapidd_modules
-            result['sigmaN_SI_p'], result['sigmaN_SI_n'] = alpha_map.sigmaSI_nucleon_mdm(self.maddm_card, alphaq_values, mdm)
-            result['sigmaN_SD_p'], result['sigmaN_SD_n'] = alpha_map.sigmaSD_nucleon_mdm(self.maddm_card, alphaq_values, mdm)
-            result['sigmaN_SI_n']    *= GeV2pb*pb2cm2
-            result['sigmaN_SI_p']    *= GeV2pb*pb2cm2
-            result['sigmaN_SD_p']    *= GeV2pb*pb2cm2
-            result['sigmaN_SD_n']    *= GeV2pb*pb2cm2
+        if use_electron_recoils or (use_rapidd_nuclear and self._output_level == 'all'):
+            recoil_halo_file = 'SHM.dat' if velocity_profile.is_shm else 'DD_halo.dat'
+            halo_path = pjoin(recoil_path, recoil_halo_file)
+            halo_model.write_recoil_halo(halo_path, self.maddm_card, rapidd_core.halo_path, velocity_profile)
+
+        if self.mode['direct']:
+            result['nuclear_recoil_backend'] = 'RAPIDD' if use_rapidd_nuclear else 'MadDM native'
+            if use_rapidd_nuclear:
+                if alpha_map.nucleon_alphas_valid(alphaq_values):
+                    # The electron-port RAPIDD API returns cm^2 already.
+                    result['sigmaN_SI_p'], result['sigmaN_SI_n'] = alpha_map.sigmaSI_nucleon_mdm(
+                        self.maddm_card, alphaq_values, mdm)
+                    result['sigmaN_SD_p'], result['sigmaN_SD_n'] = alpha_map.sigmaSD_nucleon_mdm(
+                        self.maddm_card, alphaq_values, mdm)
+                    if self._output_level == 'all':
+                        recoil_rates.DDrate_save(self.maddm_card, alphaq_values, mdm, recoil_path,
+                                                halo_path=halo_path)
+                else:
+                    result.update(dict.fromkeys(('sigmaN_SI_p', 'sigmaN_SI_n', 'sigmaN_SD_p', 'sigmaN_SD_n'), -1.))
+            else:
+                result.update(direct_recoil.native_nucleon_cross_sections(self.maddm_card, alphaq_values, mdm))
             result['lim_sigmaN_SI_n'] = self.limits.SI_max(mdm)
             result['lim_sigmaN_SI_p'] = self.limits.SI_max(mdm)
             result['lim_sigmaN_SD_p'] = self.limits.SD_max(mdm, 'p')
             result['lim_sigmaN_SD_n'] = self.limits.SD_max(mdm, 'n')
+            if all(result[key] < 0. for key in ('sigmaN_SI_p', 'sigmaN_SI_n', 'sigmaN_SD_p', 'sigmaN_SD_n')):
+                logger.warning('No supported quark projections were found for this nuclear recoil calculation.')
 
-            if self._output_level == 'all':
-                rapidd_out_path = pjoin(self.dir_path, 'output', self.run_name)
-                recoil_halo_file = 'SHM.dat' if velocity_profile.is_shm else 'DD_halo.dat'
-                halo_path = pjoin(rapidd_out_path, recoil_halo_file)
-                halo_model.write_recoil_halo(halo_path, self.maddm_card, rapidd_core.halo_path, velocity_profile)
-                recoil_rates.DDrate_save(self.maddm_card, alphaq_values, mdm, rapidd_out_path, halo_path=halo_path)
+        if use_electron_recoils:
+            result.update(DM_response=-1., sigma_e=-1.)
+            if direct_recoil.has_projection(alphaq_values['alpha_e']):
+                result.update(recoil_rates.DDrate_electron_save(
+                    self.maddm_card, alphaq_values, int(result['dm_spin']), result['M_e'],
+                    mdm, recoil_path, halo_path=halo_path))
+            else:
+                logger.warning('No supported electron projection was found for this model.')
 
         if self.mode['direct'] or use_electron_recoils or self.mode['indirect'] or self.mode['spectral']:
             halo_model.write_velocity_diagnostics(pjoin(self.dir_path, 'output', self.run_name),
@@ -1914,7 +1900,7 @@ class MADDMRunCmd(cmd.CmdShell):
             self.launch_direct_electron()
         elif self.mode['direct_electron']:
             # A mass scan may cross the threshold for the electron calculation.
-            self.last_results.update(pvalue_Xenon10=-1., pvalue_Xenon1T=-1.)
+            self.last_results.update(sigma_e=-1., pvalue_Xenon10=-1., pvalue_Xenon1T=-1.)
                           
 #        if self.mode['indirect'] and not self._two2twoLO:
 #            with misc.MuteLogger(names=['madevent','madgraph'],levels=[50,50]):
@@ -2158,75 +2144,15 @@ class MADDMRunCmd(cmd.CmdShell):
             param_card_iterator.write(pjoin(self.dir_path,'Cards','param_card.dat'))
 
     def launch_direct_electron(self):
-
-        def get_pvalue_min(n_obs,expected_val):
-            pvalues = []
-            for obs,exp in zip(n_obs,expected_val):
-                pvalues.append(poisson.cdf(obs,exp))
-            return min(pvalues)
-
-        def get_pvalue(obs,sig,bkg):
-            pvalue = poisson.cdf(obs,sig+bkg)
-            return pvalue
-        
-        self.last_results['pvalue_Xenon10'] = -1
-        self.last_results['pvalue_Xenon1T'] = -1
-        
-        if ("Xenon10_signal" not in self.last_results) and ("Xenon1T_signal" not in self.last_results):
-            logger.warning("XENON10 or XENON1T signal not found, exclusion limits computation for electronic recoil is disabled.")
+        result = self.last_results
+        result.update(pvalue_Xenon10=-1., pvalue_Xenon1T=-1.)
+        if result.get('DM_response', -1.) < 0.:
             return
-        else:
-            if HAS_NUMPY is False:
-                logger.warning("numpy module not available, exclusion limits computation is disabled.")
-                return
-            elif HAS_SCIPY is False:
-                logger.warning("scipy module not available, exclusion limits computation is disabled.")
-                return
-            elif self.last_results['DM_response']!=-1:
-                Xenon10_sig = self.last_results['Xenon10_signal']
-                Xenon10_obs = self.last_results['Xenon10_obs']
-                Xenon1T_sig = self.last_results['Xenon1T_signal']
-                Xenon1T_bkg = self.last_results['Xenon1T_bkg']
-                Xenon1T_obs = self.last_results['Xenon1T_obs']
-
-                self.last_results['pvalue_Xenon10'] = get_pvalue_min(Xenon10_obs,Xenon10_sig)
-                self.last_results['pvalue_Xenon1T'] = get_pvalue(Xenon1T_obs,Xenon1T_sig,Xenon1T_bkg)
-
-
-    def launch_direct_electron(self):
-
-        def get_pvalue_min(n_obs,expected_val):
-            pvalues = []
-            for obs,exp in zip(n_obs,expected_val):
-                pvalues.append(poisson.cdf(obs,exp))
-            return min(pvalues)
-
-        def get_pvalue(obs,sig,bkg):
-            pvalue = poisson.cdf(obs,sig+bkg)
-            return pvalue
-        
-        self.last_results['pvalue_Xenon10'] = -1
-        self.last_results['pvalue_Xenon1T'] = -1
-        
-        if ("Xenon10_signal" not in self.last_results) and ("Xenon1T_signal" not in self.last_results):
-            logger.warning("XENON10 or XENON1T signal not found, exclusion limits computation for electronic recoil is disabled.")
-            return
-        else:
-            if HAS_NUMPY is False:
-                logger.warning("numpy module not available, exclusion limits computation is disabled.")
-                return
-            elif HAS_SCIPY is False:
-                logger.warning("scipy module not available, exclusion limits computation is disabled.")
-                return
-            elif self.last_results['DM_response']!=-1:
-                Xenon10_sig = self.last_results['Xenon10_signal']
-                Xenon10_obs = self.last_results['Xenon10_obs']
-                Xenon1T_sig = self.last_results['Xenon1T_signal']
-                Xenon1T_bkg = self.last_results['Xenon1T_bkg']
-                Xenon1T_obs = self.last_results['Xenon1T_obs']
-
-                self.last_results['pvalue_Xenon10'] = get_pvalue_min(Xenon10_obs,Xenon10_sig)
-                self.last_results['pvalue_Xenon1T'] = get_pvalue(Xenon1T_obs,Xenon1T_sig,Xenon1T_bkg)
+        if 'Xenon10_signal' in result:
+            result['pvalue_Xenon10'] = min(poisson.cdf(result['Xenon10_obs'], result['Xenon10_signal']))
+        if result.get('Xenon1T_obs', -1) >= 0:
+            result['pvalue_Xenon1T'] = poisson.cdf(
+                result['Xenon1T_obs'], result['Xenon1T_signal'] + result['Xenon1T_bkg'])
 
 
     def launch_multinest(self):
@@ -3595,8 +3521,12 @@ class MADDMRunCmd(cmd.CmdShell):
 
         if self.mode['direct']:
             logger.info('\n****** Direct detection [cm^2]: ')
-            logger.info('Published nucleon limits use the experiments’ reference halos; recoil rates use the card halo.')
+            logger.info('Nuclear recoil backend: %s', self.last_results.get('nuclear_recoil_backend', 'MadDM'))
+            logger.info('Published nucleon limits use the experiments’ reference halos.')
             for D in self.direct_detection_rows():
+                    if D['sig'] < 0.:
+                        logger.info('%s: no theory prediction', D['n'])
+                        continue
                     th_cross = D['sig']* xsi 
                     ul = D['lim']
                     mess_th       = self.det_message_screen(th_cross, D['lim'] )
@@ -4121,6 +4051,7 @@ class MADDMRunCmd(cmd.CmdShell):
             out.write('# Direct Detection [cm^2]                      #\n')
             out.write('################################################\n\n')
 
+            out.write('# Nuclear recoil backend: %s\n' % self.last_results.get('nuclear_recoil_backend', 'MadDM'))
             out.write('# Published limits retain the experimental reference halos.\n')
             for D in self.direct_detection_rows():
                 cross = D['sig']
@@ -4572,6 +4503,8 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
 
     def _unavailable_switch(self, key):
         """Distinguish missing output processes from a missing dependency."""
+        if key == 'direct_electron' and self.availmode['has_direct_electron'] and not self._rapidd_ready:
+            return ('Requires RAPIDD', 'run `install RAPIDD` at the main MadDM prompt.')
         if key in self._generated_switches:
             flag, process = self._generated_switches[key]
             if not self.availmode[flag]:
@@ -4685,27 +4618,15 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
     # everything related to direct_electron option
     ####################################################################    
     def set_default_direct_electron(self):
-        """set the default value for direct_electron="""
-        
-        if not HAS_NUMPY:
-            self.switch['spectral'] = 'Not Avail. (numpy missing)'
-        elif not HAS_SCIPY:
-            self.switch['spectral'] = 'Not Avail. (scipy missing)'
-        elif self.availmode['has_direct_electron']:
-            self.switch['direct_electron'] = 'ON'
-        else:
-            self.switch['direct_electron'] = 'Not Avail.'
+        self.switch['direct_electron'] = 'ON' if self.get_allowed_direct_electron() else 'Not Avail.'
 
     def get_allowed_direct_electron(self):
-        """Specify which parameter are allowed for direct_electron="""
-        
-        if hasattr(self, 'allowed_direct_electron'):
-            return getattr(self, 'allowed_direct_electron')
+        if self.availmode['has_direct_electron'] and self._rapidd_ready:
+            return ['ON', 'OFF']
+        return []
 
-        if self.availmode['has_direct_electron']:
-            self.allowed_direct_electron = ['ON', 'OFF']
-        else:
-            return []
+    def print_options_direct_electron(self):
+        return self._print_generated_options('direct_electron')
 
     ####################################################################
     # everything related to indirect option
@@ -4811,6 +4732,13 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
 
         self.me_dir = opts['mother_interface'].dir_path
         self.availmode = opts.pop('data', collections.defaultdict(bool))
+        self._rapidd_ready = False
+        if self.availmode['has_direct_electron']:
+            try:
+                rapidd_install.verify()
+                self._rapidd_ready = True
+            except rapidd_install.RAPIDDError:
+                pass
         # call the initialisation of the ControlSwith part
         
         # if os.path.exists(pjoin(self.me_dir, 'Cards', '.lastrun')):
@@ -5167,7 +5095,7 @@ When you are done with such edition, just press enter (or write 'done' or '0')
         logger.info("     computation of the energy spectra before any propagation.")
         logger.info("")
         logger.info("  flux_earth:", "$MG:BOLD")
-        logger.info("     Uses the bundled CosmiXsPPPC antiproton and antideuteron fluxes at Earth.")
+        logger.info("     Uses the cached CosmiXsPPPC antiproton and antideuteron fluxes at Earth.")
                 
     def help_direct(self):
         
@@ -5645,6 +5573,9 @@ class MadDMCard(banner_mod.RunCard):
         self.add_param('day_bins', 10)
         self.add_param('smearing', False)
         
+        self.add_param('direct_nuclear_backend', 'auto', allowed=['auto', 'native', 'rapidd'],
+                       include=False, comment='Nuclear recoil backend (auto prefers RAPIDD)')
+
         # For electronic recoil
         self.add_param('direct_electron_mode', 'auto', allowed=['auto', 'always'], include=True)
         self.add_param('direct_electron_dm_mass_max', 1., comment="Max value of DM mass allowed to make the electronic recoil computation in case direct_electron_mode is set to 'auto'", include=True, hidden=True)

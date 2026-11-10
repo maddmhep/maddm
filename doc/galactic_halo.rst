@@ -57,7 +57,7 @@ transverse plane.
 
 For nuclear recoils, MadDM boosts the Galactic law into the lab frame
 and computes its annual mean inverse speed, which it passes as a
-table to RAPIDD. Native electron and directional recoil calculations
+table to RAPIDD. Native directional recoil calculations
 require SHM. For annihilation, MadDM draws two independent velocities
 from the same Galactic distribution and integrates the cross section
 times their relative speed:

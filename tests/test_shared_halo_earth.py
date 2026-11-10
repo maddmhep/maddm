@@ -14,6 +14,9 @@ from indirect import halo_model
 from indirect.pbar.core import FluxTable, Likelihood, SIGMAV_REF
 
 
+from flux_test_data import requires_both, requires_dbar, requires_pbar
+
+
 class HaloTests(unittest.TestCase):
     def test_pair_average_has_correct_p_wave_moment(self):
         for v0, escape in ((238., 544.), (175., 400.), (220., 125.)):
@@ -55,6 +58,7 @@ class EarthFluxTests(unittest.TestCase):
     fitted = dict(status='ok', model_points=dict(all_dm=dict(phi_GV=.5, norm=.83, slope=.07),
                                                thermal=dict(phi_GV=.9, norm=1.05, slope=-.07)))
 
+    @requires_pbar
     def test_pbar_components_agree_with_likelihood_at_measured_points(self):
         engine = cr_earth.EarthFluxes()
         result = engine.evaluate('pbar', 100., self.mixture, 4, .5, {}, self.fitted)
@@ -70,6 +74,7 @@ class EarthFluxTests(unittest.TestCase):
         np.testing.assert_array_equal(total_is, sec_is+dm_is)
         np.testing.assert_array_equal(total_toa, sec_toa+dm_toa)
 
+    @requires_dbar
     def test_dbar_per_nucleon_and_shared_density(self):
         engine = cr_earth.EarthFluxes()
         settings = dict(cr_propagation_scheme='SLIM', cr_propagation_set='MAX', dbar_phi=.7)
@@ -83,6 +88,7 @@ class EarthFluxTests(unittest.TestCase):
         np.testing.assert_allclose(result['_columns'][:, 11], .25*dm_toa)
         self.assertIn('secondary_BIG_IS.txt', result['secondary_table'])
 
+    @requires_both
     def test_missing_positron_tables_do_not_enter_active_outputs(self):
         engine = cr_earth.EarthFluxes()
         with patch.object(cr_config, 'table_path', wraps=cr_config.table_path) as paths:

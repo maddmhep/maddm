@@ -6,7 +6,7 @@ import collections
 
 from . import maddm_run_interface as maddm_run_interface
 from . import dm_tutorial_text as dm_tutorial_text
-from . import rapidd_install
+from . import data_install, rapidd_install
 
 import madgraph.core.base_objects as base_objects
 import madgraph.core.helas_objects as helas_objects
@@ -149,14 +149,23 @@ class MadDM_interface(master_interface.MasterCmd):
     # RAPIDD (direct detection, git submodule vendor/RAPIDD_for_DM)
     #===========================================================================
     rapidd_dir = str(rapidd_install.ROOT)
-    rapidd_url = 'https://github.com/cheekyparticle/RAPIDD_for_DM.git'
 
     def do_install(self, line, *args, **opts):
-        """add 'install RAPIDD' to the MG5_aMC install command"""
+        """Handle MadDM dependencies alongside the standard MG5 installers."""
 
         split = self.split_arg(line)
-        if split and split[0].lower() == 'rapidd':
-            return self.install_rapidd()
+        if split:
+            package = split[0].lower()
+            if package == 'rapidd':
+                self.install_rapidd()
+                return
+            installers = {'cosmixs_flux': data_install.install_cosmixs_flux}
+            if package in installers:
+                try:
+                    installers[package]()
+                except data_install.DataInstallError as error:
+                    raise self.InvalidCmd(str(error)) from None
+                return
         return super(MadDM_interface, self).do_install(line, *args, **opts)
 
     @classmethod
@@ -169,56 +178,13 @@ class MadDM_interface(master_interface.MasterCmd):
         return rapidd_install.has_source(cls.rapidd_dir)
 
     def install_rapidd(self):
-        """download (if needed) and compile RAPIDD. Return True on success"""
-
-        import shutil
-        import subprocess
-
-        if not self.is_rapidd_downloaded():
-            if not shutil.which('git'):
-                logger.error("git is required to download RAPIDD. Please install git, or run:\n"
-                             "  git clone %s %s" % (self.rapidd_url, self.rapidd_dir))
-                return False
-            logger.info("Downloading RAPIDD in %s" % self.rapidd_dir, '$MG:BOLD')
-            try:
-                if os.path.exists(pjoin(MDMDIR, '.git')):
-                    # maddm is a git checkout: RAPIDD is a submodule
-                    subprocess.run(['git', 'submodule', 'update', '--init', '--recursive',
-                                    pjoin('vendor', 'RAPIDD_for_DM')],
-                                   check=True, cwd=MDMDIR)
-                else:
-                    # maddm is not a git checkout: clone RAPIDD directly
-                    if os.path.isdir(self.rapidd_dir) and not os.listdir(self.rapidd_dir):
-                        os.rmdir(self.rapidd_dir)
-                    subprocess.run(['git', 'clone', '--recursive', self.rapidd_url, self.rapidd_dir],
-                                   check=True)
-            except (OSError, subprocess.CalledProcessError) as error:
-                logger.error("RAPIDD download failed: %s" % error)
-                return False
-
+        """Prepare RAPIDD if needed. Return True on success."""
         try:
-            rapidd_install.build(self.rapidd_dir)
+            rapidd_install.ensure(self.rapidd_dir)
         except rapidd_install.RAPIDDError as error:
             logger.error("%s", error)
             return False
         return True
-
-    def check_rapidd(self):
-        """Ensure the local RAPIDD library works before generating nucleon recoils."""
-        if self.is_rapidd_downloaded():
-            try:
-                rapidd_install.ensure(self.rapidd_dir)
-                return True
-            except rapidd_install.RAPIDDError as error:
-                logger.error("Cannot generate DM-nucleon direct detection: %s", error)
-                return False
-        question = "RAPIDD source is missing. Do you want to download and compile it for direct detection?"
-        ans = self.ask(question, 'y', ['y', 'n'])
-        if ans == 'n':
-            logger.warning("RAPIDD not installed: skipping DM-nucleon direct detection. "
-                           "You can install it later with 'install RAPIDD'.")
-            return False
-        return self.install_rapidd()
 
     def set_configuration(self, config_path=None, final=True, **opts):
 
@@ -1518,12 +1484,19 @@ class MadDM_interface(master_interface.MasterCmd):
             logger.warning("More than one DM candidate. Can not run Direct Detection.")
             return 
 
-        ### Check that RAPIDD is installed (ask to download/compile it if not)
-        if self.check_rapidd():
-            self._has_direct_nucleon = self.generate_direct_nucleon(excluded_particles)
+        # Generate matrix elements independently of the optional recoil library.
+        try:
+            rapidd_install.verify(self.rapidd_dir)
+        except rapidd_install.RAPIDDError:
+            logger.info('RAPIDD adds electron recoils and nuclear recoil spectra. '
+                        'Nuclear cross sections also work without RAPIDD.')
+            answer = self.ask('Install RAPIDD now?', 'n', ['y', 'n'])
+            if answer.strip().lower().rstrip(';') == 'y' and not self.install_rapidd():
+                logger.warning('RAPIDD setup failed. Native nuclear cross sections are still available.')
 
-        
-        self._has_direct_electron = self.generate_direct_electron(excluded_particles)
+        self._has_direct_nucleon = self.generate_direct_nucleon(excluded_particles)
+        self._has_direct_electron = (self._dm_candidate[0]['spin'] in (1, 2)
+                                     and self.generate_direct_electron(excluded_particles))
 
     def generate_direct_electron(self, excluded_particles=[]):
         """User level function which performs direct detection functions        
@@ -1819,7 +1792,14 @@ class MadDM_interface(master_interface.MasterCmd):
             logger.error("Processes with at least one photon in the final state must be generated through 'indirect_spectral_features' command.")
             self._has_indirect = False
             return
-        
+
+        try:
+            data_install.install_cosmixs_flux()
+        except data_install.DataInstallError as error:
+            logger.warning('%s. Other indirect detection calculations can still run. '
+                           'Retry with `install cosmixs_flux` before evaluating the propagated fluxes.',
+                           error)
+
         # Generates events for all the DM annihilation channels (also BSM)
         # it uses the '--noloop' option
         backup_amps = [amp for amp in self._ID_cont_amps[0] + self._ID_cont_amps[1]]

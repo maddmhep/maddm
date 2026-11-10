@@ -101,6 +101,7 @@
 #  - Sigma(mu,nu): SigPu, SigPd, SigPs // SigNu, SigNd, SigNs
 
 # Electronic recoil
+   auto    = direct_nuclear_backend ! auto, native, rapidd
 # select 'always' if you want to always do this computation independently on the
 # mass threshold, selected in direct_electron_dm_mass_max (hidden parameter),
 # default to 1.0 GeV

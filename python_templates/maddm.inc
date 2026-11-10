@@ -42,16 +42,6 @@ c direct_detection.f
 c directional_detection.f
       double precision d2RdEdcostheta, Fhelm, V_E, Gaussian
 
-c dm_response_direct_e.f
-      double precision dm_resp, dm_response, sigma_e
-
-c electron_recoil_signal.f
-      double precision sig_Xenon10(7),tot_sig_Xenon1T,tot_bkg_Xenon1T
-      integer bin_Xenon10(8), n_obs_Xenon10(7), n_obs_Xenon1T
-
-c direct_detection_RAPIDD.f
-      
-
 c random seed
       integer idum
       common/randint/ idum
