@@ -218,52 +218,38 @@ c    j is the index that identifies the matrix element of the FULL Lagrangian
                   endif
             enddo
 
-            do k=1, 2*dd_num_processes
-
-c                 j_eff is the index of the matrix_element in the EFF case for the
-c                 SI/SD case, and dark matter - target/antitarget process.
-c                 JTOT same as JEFF but for the EFF+FULL
-
+c           j_eff / j_tot are the indices of the matrix element in the EFF and EFF+FULL
+c           cases for the SI/SD dark matter - target/antitarget processes. Each array is
+c           scanned up to its own size (nb_me_dd_eff, nb_me_dd_tot in maddm.inc).
+            do k=1, size(DD_EFF_PROCESS_NAMES)
                   process_name = 'EFT_SI_' // proc_name
-                  if (DD_EFF_PROCESS_NAMES(k).eq.process_name) then
-                        j_eff_SI_dm_t = k
-                  endif
+                  if (DD_EFF_PROCESS_NAMES(k).eq.process_name) j_eff_SI_dm_t = k
 
                   process_name = 'EFT_SI_' // antiproc_name
-                  if (DD_EFF_PROCESS_NAMES(k).eq.process_name) then
-                        j_eff_SI_dm_tx = k
-                  endif
-
-                  process_name = 'TOT_SI_' // proc_name
-                  if (DD_TOT_PROCESS_NAMES(k).eq.process_name) then
-                        j_tot_SI_dm_t = k
-                  endif
-
-                  process_name = 'TOT_SI_' // antiproc_name
-                  if (DD_TOT_PROCESS_NAMES(k).eq.process_name) then
-                        j_tot_SI_dm_tx = k
-                  endif
+                  if (DD_EFF_PROCESS_NAMES(k).eq.process_name) j_eff_SI_dm_tx = k
 
                   if(dm_spin.ne.1) then
                         process_name = 'EFT_SD_' // proc_name
-                        if (DD_EFF_PROCESS_NAMES(k).eq.process_name) then
-                              j_eff_SD_dm_t = k
-                        endif
+                        if (DD_EFF_PROCESS_NAMES(k).eq.process_name) j_eff_SD_dm_t = k
 
                         process_name = 'EFT_SD_' // antiproc_name
-                        if (DD_EFF_PROCESS_NAMES(k).eq.process_name) then
-                              j_eff_SD_dm_tx = k
-                        endif
+                        if (DD_EFF_PROCESS_NAMES(k).eq.process_name) j_eff_SD_dm_tx = k
+                  endif
+            enddo
 
+            do k=1, size(DD_TOT_PROCESS_NAMES)
+                  process_name = 'TOT_SI_' // proc_name
+                  if (DD_TOT_PROCESS_NAMES(k).eq.process_name) j_tot_SI_dm_t = k
+
+                  process_name = 'TOT_SI_' // antiproc_name
+                  if (DD_TOT_PROCESS_NAMES(k).eq.process_name) j_tot_SI_dm_tx = k
+
+                  if(dm_spin.ne.1) then
                         process_name = 'TOT_SD_' // proc_name
-                        if (DD_TOT_PROCESS_NAMES(k).eq.process_name) then
-                              j_tot_SD_dm_t = k
-                        endif
+                        if (DD_TOT_PROCESS_NAMES(k).eq.process_name) j_tot_SD_dm_t = k
 
                         process_name = 'TOT_SD_' // antiproc_name
-                        if (DD_TOT_PROCESS_NAMES(k).eq.process_name) then
-                              j_tot_SD_dm_tx = k
-                        endif
+                        if (DD_TOT_PROCESS_NAMES(k).eq.process_name) j_tot_SD_dm_tx = k
                   endif
             enddo
 
@@ -271,7 +257,6 @@ c           If one of the full, effective or full+effective processes is missing
 c           (e.g. no effective operator for this DM type) the alphas cannot be computed
             if ((j_dm_t*j_dm_tx*j_eff_SI_dm_t*j_eff_SI_dm_tx*j_tot_SI_dm_t*j_tot_SI_dm_tx).eq.0) return
             if ((dm_spin.ne.1).and.((j_eff_SD_dm_t*j_eff_SD_dm_tx*j_tot_SD_dm_t*j_tot_SD_dm_tx).eq.0)) return
-            found = .true.
 
 c--------------------------------------------------------------------------------
 c           Compute the interference terms and use them to get the even and odd effective
@@ -305,6 +290,7 @@ c-------------------------------------------------------------------------------
                   alpha_SD_odd  = 0.5d0 * (Minterf_SD_t - Minterf_SD_tx)
             endif
 
+c           found stays .false. if the alphas are not finite (e.g. smatrix_dd_eff = 0)
             if (.not.all(ieee_is_finite((/alpha_SI_even, alpha_SI_odd, alpha_SD_even, alpha_SD_odd/)))) return
             found = .true.
 
