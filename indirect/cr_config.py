@@ -4,6 +4,9 @@ import math
 
 ROOT = Path(__file__).resolve().parents[1]
 SPECIES = ('pbar', 'dbar', 'positron')
+# Local DM density [GeV/cm^3] of the CosmiXs/PPPC propagated tables and of the
+# precomputed AMS-02 antiproton limits; they are rescaled as (rhoDM/TABLE_RHO_GEVCM3)^2.
+TABLE_RHO_GEVCM3 = 0.4
 
 
 def value(card, name, default):

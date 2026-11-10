@@ -50,7 +50,7 @@ class PhysicsTests(unittest.TestCase):
     def test_interpolation_nodes_and_zero_handling(self):
         a = np.loadtxt(self.table.path)
         node = a[a[:, 0] == 100.]
-        f = self.table.template(100., {'bb': 1.})
+        f = self.table.template(100., {'bb': 1.}, rho_local_GeVcm3=.4)
         np.testing.assert_allclose(f(10.**node[:, 1]), node[:, 12], rtol=5.e-13)
         zero = Spectrum([1., 2., 4., 8.], [0., 0., 1., 2.])
         self.assertEqual(float(zero(1.5)), 0.)
@@ -59,7 +59,15 @@ class PhysicsTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             zero(.9)
         with self.assertRaises(ValueError):
-            self.table.template(1.e6)
+            self.table.template(1.e6, rho_local_GeVcm3=.4)
+
+    def test_local_density_is_required(self):
+        # No silent fallback to the table density: the caller passes rhoDM.
+        with self.assertRaises(TypeError):
+            self.table.template(100., {'bb': 1.})
+        from indirect import pbar_interface
+        with self.assertRaises(TypeError):
+            pbar_interface.SingleChannelLimits().upper_limit(100., 'bb')
 
     def test_interpolation_derivative_and_interval_lower_bound(self):
         f = Spectrum([1., 2., 4., 8., 16.], [0., 0., 1., .3, .1])
@@ -72,19 +80,19 @@ class PhysicsTests(unittest.TestCase):
             self.assertLessEqual(float(envelope), float(np.min(f(np.geomspace(low, high, 1000))))+1.e-13)
 
     def test_linear_mass_and_branching_and_density(self):
-        low = self.table.template(100., {'bb': 1.})
-        high = self.table.template(110., {'bb': 1.})
-        mid = self.table.template(105., {'bb': 1.})
+        low = self.table.template(100., {'bb': 1.}, rho_local_GeVcm3=.4)
+        high = self.table.template(110., {'bb': 1.}, rho_local_GeVcm3=.4)
+        mid = self.table.template(105., {'bb': 1.}, rho_local_GeVcm3=.4)
         e = self.table.energy
         np.testing.assert_allclose(mid(e), .5*(low(e)+high(e)), rtol=5.e-13)
-        mixed = self.table.template(100., {'bb': .7, 'WW': .3})
-        ww = self.table.template(100., {'WW': 1.})
+        mixed = self.table.template(100., {'bb': .7, 'WW': .3}, rho_local_GeVcm3=.4)
+        ww = self.table.template(100., {'WW': 1.}, rho_local_GeVcm3=.4)
         x = np.geomspace(.2, 500., 37)
         np.testing.assert_allclose(mixed(x), .7*low(x)+.3*ww(x), rtol=1.e-14)
         denser = self.table.template(100., {'bb': 1.}, rho_local_GeVcm3=.8, source_factor=.5)
         np.testing.assert_allclose(denser(x), 2*low(x), rtol=1.e-14)
         with self.assertRaises(ValueError):
-            self.table.template(100., {'bb': .5})
+            self.table.template(100., {'bb': .5}, rho_local_GeVcm3=.4)
 
     def test_custom_template_normalization(self):
         x = np.geomspace(.1, 1.e4, 100)
@@ -93,14 +101,14 @@ class PhysicsTests(unittest.TestCase):
         np.testing.assert_allclose(a(x), b(x), rtol=1.e-14)
 
     def test_no_spurious_limit_from_empty_channel(self):
-        empty = self.table.template(10., {'nu_e_nu_e': 1.})
+        empty = self.table.template(10., {'nu_e_nu_e': 1.}, rho_local_GeVcm3=.4)
         self.assertTrue(np.all(empty([1., 10., 100.]) == 0.))
         result = self.likelihood.upper_limit(empty)
         self.assertEqual(result['status'], 'no_signal_in_table')
         self.assertIsNone(result['sigmav95_cm3s'])
 
     def test_profile_against_independent_full_optimizer(self):
-        f = self.table.template(100., {'bb': 1.})
+        f = self.table.template(100., {'bb': 1.}, rho_local_GeVcm3=.4)
         for rate in [0., 3.e-26, 1.e-25]:
             ours = self.likelihood.profile(f, rate)
             def full(x):
@@ -122,7 +130,7 @@ class PhysicsTests(unittest.TestCase):
         self.assertTrue(np.all(dm == 0))
 
     def test_solar_modulation_recomputed_for_dm(self):
-        f = self.table.template(100., {'bb': 1.})
+        f = self.table.template(100., {'bb': 1.}, rho_local_GeVcm3=.4)
         l = self.likelihood
         for phi in [.2, 1.2]:
             _, dm = l.components(f, SIGMAV_REF, 1., 0., phi)
@@ -146,7 +154,7 @@ class LimitTests(unittest.TestCase):
         c = FitConfig(norm_bounds=(1.-1.e-9, 1.+1.e-9), slope_bounds=(-1.e-10, 1.e-10),
                       phi_bounds_GV=(.7-1.e-9, .7+1.e-9))
         l0 = Likelihood(c)
-        template = FluxTable().template(100., {'bb': 1.})
+        template = FluxTable().template(100., {'bb': 1.}, rho_local_GeVcm3=.4)
         secondary, signal = l0.components(template, SIGMAV_REF, 1., 0., .7)
         l = Likelihood(c, observed_flux=secondary)
         expected = SIGMAV_REF*np.sqrt(c.delta_chi2)/np.linalg.norm(signal/l.errors)

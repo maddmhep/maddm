@@ -155,8 +155,12 @@ class FluxTable:
         # Upstream 1e-100 marks unpopulated channels; do not turn it into a bound.
         self.flux[self.flux <= 1.e-90] = 0.
 
-    def template(self, mass_GeV, branching=None, *, rho_local_GeVcm3=0.4, source_factor=1.):
+    def template(self, mass_GeV, branching=None, *, rho_local_GeVcm3, source_factor=1.):
         """Fixed spectral mixture. Missing channels have zero branching fraction.
+
+        rho_local_GeVcm3 (required) is the local DM density of the run, normally
+        cr_config.local_density(card): the tables, computed at
+        cr_config.TABLE_RHO_GEVCM3, are rescaled as (rho/TABLE_RHO_GEVCM3)^2.
 
         Linear interpolation in mass of the tabulated flux at fixed energies,
         matching the supplied upstream script. No mass extrapolation.
@@ -177,7 +181,7 @@ class FluxTable:
         j = int(np.clip(np.searchsorted(self.masses, m, side='right')-1, 0, len(self.masses)-2))
         w = (m-self.masses[j])/(self.masses[j+1]-self.masses[j])
         flux = (1-w)*self.flux[j] + w*self.flux[j+1]
-        scale = (rho_local_GeVcm3/0.4)**2 * source_factor
+        scale = (rho_local_GeVcm3/cr_config.TABLE_RHO_GEVCM3)**2 * source_factor
         components = [(float(v)*scale, Spectrum(self.energy, flux[:, CHANNELS.index(ch)]))
                       for ch, v in br.items() if v > 0]
         return DMTemplate(components, {'mass_GeV': m, 'branching': br,

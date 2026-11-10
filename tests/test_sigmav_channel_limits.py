@@ -148,30 +148,30 @@ class LookupTests(unittest.TestCase):
         count, empty = 0, 0
         for channel, filename in adapter.CHANNEL_FILES.items():
             for mass, upper in np.loadtxt(ROOT/'ExpData'/filename):
-                self.assertEqual(limits.upper_limit(mass, channel), upper)
+                self.assertEqual(limits.upper_limit(mass, channel, rho=.4), upper)
                 count += 1
                 empty += upper == -1
-            self.assertEqual(limits.upper_limit(4.99, channel), -1.)
-            self.assertEqual(limits.upper_limit(100001., channel), -1.)
+            self.assertEqual(limits.upper_limit(4.99, channel, rho=.4), -1.)
+            self.assertEqual(limits.upper_limit(100001., channel, rho=.4), -1.)
         self.assertEqual(count, 1216)
         self.assertEqual(empty, 84)
-        self.assertEqual(limits.upper_limit(100., [5, -5]), limits.upper_limit(100., 'bb'))
+        self.assertEqual(limits.upper_limit(100., [5, -5], rho=.4), limits.upper_limit(100., 'bb', rho=.4))
 
     def test_log_interpolation_and_absent_neighbor(self):
         limits = adapter.SingleChannelLimits()
         mass = math.sqrt(100.*110.)
-        expected = math.sqrt(limits.upper_limit(100., 'bb')*limits.upper_limit(110., 'bb'))
-        self.assertAlmostEqual(limits.upper_limit(mass, 'bb')/expected, 1., places=12)
-        self.assertEqual(limits.upper_limit(45., 'nu_e_nu_e'), -1.)
-        self.assertEqual(limits.upper_limit(50., 'nu_e_nu_e') > 0, True)
+        expected = math.sqrt(limits.upper_limit(100., 'bb', rho=.4)*limits.upper_limit(110., 'bb', rho=.4))
+        self.assertAlmostEqual(limits.upper_limit(mass, 'bb', rho=.4)/expected, 1., places=12)
+        self.assertEqual(limits.upper_limit(45., 'nu_e_nu_e', rho=.4), -1.)
+        self.assertEqual(limits.upper_limit(50., 'nu_e_nu_e', rho=.4) > 0, True)
 
     def test_density_dirac_and_expdata_api(self):
         constraints = ENV['ExpConstraints']()
-        raw = constraints.PBAR_max(100., '5.-5')
+        raw = constraints.PBAR_max(100., '5.-5', rho=.4)
         self.assertAlmostEqual(raw/1.776087755903e-26, 1., places=12)
-        self.assertEqual(constraints.PBAR_max(100., [-5, 5], source_factor=.5), 2.*raw)
+        self.assertEqual(constraints.PBAR_max(100., [-5, 5], source_factor=.5, rho=.4), 2.*raw)
         self.assertEqual(constraints.PBAR_max(100., '5.-5', rho=.8), raw/4.)
-        self.assertEqual(constraints.PBAR_max(100., '22.25'), -1.)
+        self.assertEqual(constraints.PBAR_max(100., '22.25', rho=.4), -1.)
 
 
 class RunTests(unittest.TestCase):

@@ -32,7 +32,9 @@ class ForecastTests(unittest.TestCase):
         except ValueError as error:
             self.skipTest(str(error))
         rows = records if records is not None else [record([5, -5], 3.e-26)]
-        return self.engine.evaluate(100., rows, 1000022, md, xsi, card or {}, pbar)
+        # reference checks at the table normalization density (0.4 GeV/cm^3)
+        card = dict({'rhoDM': .4}, **(card or {}))
+        return self.engine.evaluate(100., rows, 1000022, md, xsi, card, pbar)
 
     def test_constant_sensitivity_flux_produces_two_events_in_each_window(self):
         for bounds in dbar.WINDOWS.values():
@@ -60,7 +62,7 @@ class ForecastTests(unittest.TestCase):
         self.assertEqual((len(table.masses), table.flux.shape[2]), (64, 19))
         provenance = json.loads((dbar.DATA_DIR/'provenance.json').read_text())
         self.assertIn('total kinetic', provenance['energy'])
-        template = table.template(100., {'bb': 1.})
+        template = table.template(100., {'bb': 1.}, rho_local_GeVcm3=.4)
         for name, (low, high, sensitivity) in dbar.WINDOWS.items():
             grid = np.linspace(low, high, 20001)
             flux = dbar.flux_per_nucleon(template, grid, 3.e-26, .7)

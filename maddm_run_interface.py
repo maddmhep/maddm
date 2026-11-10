@@ -354,11 +354,11 @@ class ExpConstraints:
             logger.debug("Channel '%s' not found." % channel)
             return -1
 
-    def PBAR_max(self, mdm, channel, source_factor=1., rho=.4):
-        """BR=1 AMS-02 limit from ExpData, in the caller's source convention."""
+    def PBAR_max(self, mdm, channel, source_factor=1., *, rho):
+        """BR=1 AMS-02 limit from ExpData, in the caller's source convention, at the local DM density rho."""
         if not hasattr(self, '_pbar_channel_tables'):
             self._pbar_channel_tables = pbar_interface.SingleChannelLimits(pjoin(MDMDIR, 'ExpData'))
-        return self._pbar_channel_tables.upper_limit(mdm, channel, source_factor, rho)
+        return self._pbar_channel_tables.upper_limit(mdm, channel, source_factor, rho=rho)
 
 ################################################################################
 ##    Spectra

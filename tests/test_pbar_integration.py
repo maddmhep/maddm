@@ -63,7 +63,7 @@ class Harness:
         self.maddm_card = ConfigFileContract(pbar_limits=True, pbar_plot=False, vave_indirect_pbar=.00075,
                               vave_indirect_cont=2.e-5, vave_indirect_line=.00075,
                               pbar_phi_min=0., pbar_phi_max=2., pbar_pivot=10.,
-                              pbar_table_convention='self_conjugate', rhoDM=.4)
+                              pbar_table_convention='self_conjugate', rhodm=.4)
         self.proc_characteristics = {'dm_candidate': [1000022],
                                     'indirect_detection_asked_processes': ['xx_bbx']}
         self.processes_names_map = {'xx_bbx': '1000022 1000022 > 5 -5'}

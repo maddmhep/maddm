@@ -118,7 +118,8 @@ class SingleChannelLimits:
         self.directory = Path(directory) if directory else Path(__file__).resolve().parents[1]/'ExpData'
         self.tables = {}
 
-    def upper_limit(self, mass, channel, source_factor=1., rho=.4):
+    def upper_limit(self, mass, channel, source_factor=1., *, rho):
+        """rho (required): local DM density of the run, GeV/cm^3."""
         import numpy as np
         if not isinstance(channel, str) or channel not in CHANNEL_FILES:
             try:
@@ -146,7 +147,7 @@ class SingleChannelLimits:
         else:
             value = float(np.exp(np.interp(np.log(mass), np.log(data[i-1:i+1, 0]),
                                           np.log(data[i-1:i+1, 1]))))
-        return value/(source_factor*(rho/.4)**2) if value > 0 else -1.
+        return value/(source_factor*(rho/cr_config.TABLE_RHO_GEVCM3)**2) if value > 0 else -1.
 
 
 def evaluate_channel_limits(mass, records, dm_pdg, majorana_dirac_factor, xsi, card, lookup, *, profiled=False):

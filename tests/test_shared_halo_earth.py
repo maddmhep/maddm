@@ -61,11 +61,12 @@ class EarthFluxTests(unittest.TestCase):
     @requires_pbar
     def test_pbar_components_agree_with_likelihood_at_measured_points(self):
         engine = cr_earth.EarthFluxes()
-        result = engine.evaluate('pbar', 100., self.mixture, 4, .5, {}, self.fitted)
+        # reference checks at the table normalization density (0.4 GeV/cm^3)
+        result = engine.evaluate('pbar', 100., self.mixture, 4, .5, {'rhoDM': .4}, self.fitted)
         grid, sec_is, dm_is, total_is, sec_toa, dm_toa, total_toa = result['_columns'][:, :7].T
         table = FluxTable(cr_config.table_path('pbar', {}))
         likelihood = Likelihood(secondary_path=cr_config.secondary_path({}))
-        sec, dm = likelihood.components(table.template(100.), SIGMAV_REF, .83, .07, .5)
+        sec, dm = likelihood.components(table.template(100., rho_local_GeVcm3=.4), SIGMAV_REF, .83, .07, .5)
         # The Earth file is per energy; the likelihood uses per rigidity.
         for expected, actual in ((sec, sec_toa), (dm, dm_toa)):
             select = (likelihood.t > grid[0]) & (likelihood.t < min(grid[-1], 30.))
@@ -77,10 +78,10 @@ class EarthFluxTests(unittest.TestCase):
     @requires_dbar
     def test_dbar_per_nucleon_and_shared_density(self):
         engine = cr_earth.EarthFluxes()
-        settings = dict(cr_propagation_scheme='SLIM', cr_propagation_set='MAX', dbar_phi=.7)
+        settings = dict(cr_propagation_scheme='SLIM', cr_propagation_set='MAX', dbar_phi=.7, rhoDM=.4)
         result = engine.evaluate('dbar', 100., self.mixture, 4, .5, settings)
         grid, dm_is, dm_toa = result['_columns'][:, [0, 2, 5]].T
-        template = FluxTable(cr_config.table_path('dbar', settings)).template(100.)
+        template = FluxTable(cr_config.table_path('dbar', settings)).template(100., rho_local_GeVcm3=.4)
         np.testing.assert_allclose(dm_is, dbar_interface.flux_per_nucleon(template, grid, SIGMAV_REF, 0.))
         np.testing.assert_allclose(dm_toa, dbar_interface.flux_per_nucleon(template, grid, SIGMAV_REF, .7))
         scaled = engine.evaluate('dbar', 100., self.mixture, 8, .5, dict(settings, rhoDM=.8))
