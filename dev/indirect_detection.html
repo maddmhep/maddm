@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Indirect detection &#8212; MadDM 3.3.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=75c7c72ae941e8b558d8" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=75c7c72ae941e8b558d8" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=3ee1c6c6" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery.css?v=c83e6b79" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="_static/scripts/fontawesome.js?digest=75c7c72ae941e8b558d8"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=75c7c72ae941e8b558d8" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=75c7c72ae941e8b558d8" />
+
+    <script src="_static/documentation_options.js?v=3eb8911e"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/sg-tags.js?v=d80f6fa4"></script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'indirect_detection';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.24.0';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://maddmhep.github.io/maddm/dev/_static/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="icon" href="_static/favicon.ico"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Shared Galactic halo" href="galactic_halo.html" />
+    <link rel="prev" title="Direct Detection Tutorial" href="tutorial_and_examples/plot_direct_detection.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="color-scheme" content="light dark"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="3.3.0" />
+  
+    
+    <script src="_static/searchtools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <script src="searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button type="button" class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation" aria-expanded="false" aria-controls="pst-primary-sidebar-modal">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="_static/logo.png" class="logo__image only-light" alt=""/>
+    <img src="_static/logo.png" class="logo__image only-dark pst-js-only" alt=""/>
+  
+  
+    <p class="title logo__title">MadDM</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorial_and_examples/index.html">
+    Tutorial and examples
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="#" aria-current="page">
+    Indirect detection
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="galactic_halo.html">
+    Shared Galactic halo
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="plotting.html">
+    Run outputs and scan plots
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="contribute.html">
+    Contributing to the documentation
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/maddmhep/maddm" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button type="button" class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page" aria-expanded="false" aria-controls="pst-secondary-sidebar-modal">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal" tabindex="-1"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorial_and_examples/index.html">
+    Tutorial and examples
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="#" aria-current="page">
+    Indirect detection
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="galactic_halo.html">
+    Shared Galactic halo
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="plotting.html">
+    Run outputs and scan plots
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="contribute.html">
+    Contributing to the documentation
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/maddmhep/maddm" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item pst-sidebar-collapse"><button type="button" id="pst-collapse-sidebar-button" aria-expanded="true" aria-controls="pst-primary-sidebar">
+  <svg class="pst-icon" role="img" aria-hidden="true" focusable="false" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+    <path fill="currentColor" d="M3 15.5C2.36232 15.5 1.74874 15.2564 1.28478 14.8189C0.820828 14.3815 0.541576 13.7832 0.504167 13.1467L0.5 13L0.5 3C0.499965 2.36232 0.743605 1.74874 1.18107 1.28478C1.61854 0.820828 2.21676 0.541576 2.85333 0.504167L3 0.5L13 0.5C13.6377 0.499965 14.2513 0.743605 14.7152 1.18107C15.1792 1.61854 15.4584 2.21676 15.4958 2.85333L15.5 3L15.5 13C15.5 13.6377 15.2564 14.2513 14.8189 14.7152C14.3815 15.1792 13.7832 15.4584 13.1467 15.4958L13 15.5L3 15.5ZM3 13.8333L10.5 13.8333L10.5 2.16667L3 2.16667C2.79589 2.16669 2.59889 2.24163 2.44636 2.37726C2.29383 2.5129 2.19638 2.69979 2.1725 2.9025L2.16667 3L2.16667 13C2.16669 13.2041 2.24163 13.4011 2.37726 13.5536C2.5129 13.7062 2.69979 13.8036 2.9025 13.8275L3 13.8333ZM6.65583 10.325L6.5775 10.2558L4.91083 8.58917C4.76735 8.44567 4.68116 8.25476 4.66843 8.05223C4.65569 7.84971 4.71729 7.6495 4.84167 7.48917L4.91083 7.41083L6.5775 5.74417C6.72747 5.59471 6.9287 5.50794 7.14032 5.50148C7.35194 5.49502 7.55809 5.56935 7.7169 5.70937C7.8757 5.8494 7.97525 6.04463 7.99533 6.25539C8.01541 6.46616 7.95451 6.67667 7.825 6.84417L7.75583 6.9225L6.67917 8L7.75583 9.0775C7.89931 9.22099 7.98551 9.41191 7.99824 9.61443C8.01097 9.81695 7.94938 10.0172 7.825 10.1775L7.75583 10.2558C7.61234 10.3993 7.42142 10.4855 7.2189 10.4982C7.01638 10.511 6.81617 10.4494 6.65583 10.325Z"/>
+  </svg>
+  <span class="pst-collapse-sidebar-label">Collapse Sidebar</span>
+  <span class="pst-expand-sidebar-label">Expand Sidebar</span>
+</button></div>
+        <div class="sidebar-primary-item">
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"></div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-house"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Indirect detection</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="indirect-detection">
+<span id="id1"></span><h1>Indirect detection<a class="headerlink" href="#indirect-detection" title="Link to this heading">#</a></h1>
+<p>MadDM uses the annihilation channels generated for the selected UFO model.
+The same launch can also compute relic density and direct detection if the
+corresponding processes were generated. See the
+<a class="reference internal" href="tutorial_and_examples/plot_indirect_detection.html"><span class="doc">indirect detection tutorial</span></a>
+for a complete worked setup.</p>
+<section id="run-modes-and-source-spectra">
+<h2>Run modes and source spectra<a class="headerlink" href="#run-modes-and-source-spectra" title="Link to this heading">#</a></h2>
+<p>In the launch menu, choose <code class="docutils literal notranslate"><span class="pre">indirect</span> <span class="pre">=</span> <span class="pre">sigmav</span></code>, <code class="docutils literal notranslate"><span class="pre">flux_source</span></code>, or
+<code class="docutils literal notranslate"><span class="pre">flux_earth</span></code>. The first mode reports partial annihilation rates and
+compares supported channels with pure-channel dwarf and antiproton
+limits. The comparison tests each theoretical partial rate against its
+own limit. A collection of those comparisons does not define a combined
+limit on the model’s branching mixture. For configurations that differ
+from the precomputed antiproton reference, MadDM profiles the selected
+pure-channel table instead. The GCE fit and antideuteron forecasts can
+use their own tabulated spectra even in rate-only mode.</p>
+<p><code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">fast</span></code> selects inclusive two-body rates. When source spectra are
+requested, MadDM interpolates the CosmiXs yields and combines them with
+the partial rates. The published yields include the table’s treatment of
+off-shell weak-boson pairs. <code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">precise</span></code> uses MadEvent to calculate the
+rates. With source spectra enabled, Pythia 8 or its VINCIA shower can
+shower the generated final states, including explicit multibody or cascade
+channels. Pythia’s source antideuteron calculation uses the Argonne
+wave-function prescription by default (<code class="docutils literal notranslate"><span class="pre">Main:methodDbar</span> <span class="pre">=</span> <span class="pre">4</span></code>); it does
+not change the antideuteron propagation tables. The VINCIA settings follow the CosmiXs shower and hadronization
+setup. The source spectra are particle yields per annihilation before
+Galactic transport or solar modulation. Install the source spectra with
+<code class="docutils literal notranslate"><span class="pre">install</span> <span class="pre">PPPC4DMID</span></code> and Pythia with <code class="docutils literal notranslate"><span class="pre">install</span> <span class="pre">pythia8</span></code> in MadDM as needed.
+Numerical velocity reweighting uses F2PY with the Python environment that
+launches MadDM. On Python 3.12 and later, install Meson and Ninja for this
+build.</p>
+<p><code class="docutils literal notranslate"><span class="pre">flux_earth</span></code> also writes the charged interstellar and top-of-atmosphere
+fluxes at the model rate using the CosmiXsPPPC propagation
+tables. This does not require a separate transport solver. The charged
+tables cover supported two-body annihilations only. Generating a
+multibody source spectrum in precise mode does not supply a corresponding
+propagated template. Positron yields can be produced at the source; the
+Earth flux awaits the positron transport and secondary tables.</p>
+</section>
+<section id="dwarf-spheroidal-galaxies">
+<h2>Dwarf spheroidal galaxies<a class="headerlink" href="#dwarf-spheroidal-galaxies" title="Link to this heading">#</a></h2>
+<p>When a photon source spectrum is available, MadDM constructs a combined
+Fermi-LAT likelihood using the released dwarf likelihoods from
+<a class="reference external" href="https://arxiv.org/abs/2311.04982">arXiv:2311.04982</a>. The combined
+limit and the two model likelihoods use the same dwarf sample. In
+inclusive mode, <code class="docutils literal notranslate"><span class="pre">fermi_fast_dwarfs</span> <span class="pre">=</span> <span class="pre">top10</span></code> (the default) selects the
+ten largest nominal J factors. Set <code class="docutils literal notranslate"><span class="pre">fermi_fast_dwarfs</span> <span class="pre">=</span> <span class="pre">all</span></code> for the
+full sample. Precise mode uses the full sample. The selected dwarf names
+and result are saved to <code class="docutils literal notranslate"><span class="pre">Fermi_dSph_limits.json</span></code>. The continuum dwarf
+velocity (<code class="docutils literal notranslate"><span class="pre">vave_indirect_cont</span></code>, default <span class="math notranslate nohighlight">\(2\times10^{-5}c\)</span>) and
+the dwarf J factors are independent of the Milky Way halo settings.</p>
+</section>
+<section id="propagated-antiprotons-and-antideuterons">
+<h2>Propagated antiprotons and antideuterons<a class="headerlink" href="#propagated-antiprotons-and-antideuterons" title="Link to this heading">#</a></h2>
+<p>Choose <code class="docutils literal notranslate"><span class="pre">cr_propagation_scheme</span></code> from <code class="docutils literal notranslate"><span class="pre">BIG</span></code>, <code class="docutils literal notranslate"><span class="pre">SLIM</span></code>, and <code class="docutils literal notranslate"><span class="pre">QUAINT</span></code>,
+<code class="docutils literal notranslate"><span class="pre">cr_propagation_set</span></code> from <code class="docutils literal notranslate"><span class="pre">MIN</span></code>, <code class="docutils literal notranslate"><span class="pre">MED</span></code>, and <code class="docutils literal notranslate"><span class="pre">MAX</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">cr_halo_profile</span></code> from <code class="docutils literal notranslate"><span class="pre">NFW</span></code>, <code class="docutils literal notranslate"><span class="pre">Einasto</span></code>, and <code class="docutils literal notranslate"><span class="pre">Burkert</span></code>. Defaults
+are QUAINT, MED, and NFW. On first continuum process generation
+(<code class="docutils literal notranslate"><span class="pre">generate</span> <span class="pre">indirect_detection</span></code> or <code class="docutils literal notranslate"><span class="pre">add</span> <span class="pre">process</span> <span class="pre">indirect_detection</span></code>),
+MadDM downloads the two annihilation archives from
+<a class="reference external" href="https://github.com/CosmiXsPPPC/CosmicRay-flux">CosmiXsPPPC</a>
+(<a class="reference external" href="https://arxiv.org/abs/2606.10017">arXiv:2606.10017</a>).
+It verifies the decompressed contents against the checksums in
+<code class="docutils literal notranslate"><span class="pre">ExpData/CR_flux_provenance.json</span></code> and caches all 54 tables as
+gzip-compressed text in <code class="docutils literal notranslate"><span class="pre">ExpData/CR_flux</span></code>. The same tables are reused
+for subsequent commands and launches. For an existing process directory,
+or to retry a failed download, run <code class="docutils literal notranslate"><span class="pre">install</span> <span class="pre">cosmixs_flux</span></code> at the
+main MadDM prompt.</p>
+<p>At a fixed mass, MadDM interpolates the table in mass at fixed energy
+nodes, forms the sum weighted by model branching fractions <span class="math notranslate nohighlight">\(B_f\)</span>,
+and rescales by <span class="math notranslate nohighlight">\(\langle\sigma v\rangle/\langle\sigma v\rangle_{\rm ref}\)</span>
+and <span class="math notranslate nohighlight">\([\rho_{\rm local}/\rho_{\rm ref}]^2\)</span>. The reference rate is
+<span class="math notranslate nohighlight">\(3\times10^{-26}\,\mathrm{cm^3\,s^{-1}}\)</span> and the reference local
+density is <span class="math notranslate nohighlight">\(0.4\,\mathrm{GeV\,cm^{-3}}\)</span>. The native tables
+already contain the mass-squared and propagation dependence. The
+<code class="docutils literal notranslate"><span class="pre">pbar_table_convention</span></code> card setting states the reference source
+normalization explicitly. For the default self-conjugate convention, a
+symmetric particle/antiparticle model has half the flux at fixed total
+density and rate. The model fractions include all positive channels;
+unsupported channels are reported instead of being dropped and
+renormalized. The table does not distinguish polarizations or
+extrapolate outside its mass range.</p>
+<p>The bundled interstellar secondary spectra are held fixed across
+MIN/MED/MAX within each propagation family. The archived BIG and SLIM
+secondary inputs were byte-identical for each species. The bundled
+configuration therefore uses the same stored secondary for both; the
+SLIM secondary provenance has not been independently verified. A
+separate <code class="docutils literal notranslate"><span class="pre">secondary_SLIM_IS.txt</span></code> in the corresponding species data
+directory takes precedence when present. For antiprotons,
+<code class="docutils literal notranslate"><span class="pre">pbar_secondary_file</span></code> can also select an explicit secondary file.
+The primary dark matter tables for BIG and SLIM remain distinct.</p>
+<section id="ams-02-antiproton-likelihood">
+<h3>AMS-02 antiproton likelihood<a class="headerlink" href="#ams-02-antiproton-likelihood" title="Link to this heading">#</a></h3>
+<p>The fit uses the absolute antiproton flux from
+<a class="reference external" href="https://ams02.space/publications/202102">AMS-02</a> and evaluates the
+model at the tabulated rigidity values. It uses the reported vertical
+errors as diagonal Gaussian uncertainties. It does not incorporate
+experimental covariance or propagate secondary-production cross-section
+uncertainties. For examples of their effect, see
+<a class="reference external" href="https://arxiv.org/abs/2005.04237">Heisig, Korsmeier and Winkler</a> and
+<a class="reference external" href="https://arxiv.org/abs/1802.03030">Korsmeier, Donato and Di Mauro</a>.</p>
+<p>The secondary interstellar flux has a free multiplicative factor in
+<span class="math notranslate nohighlight">\([0.8,1.2]\)</span> and a kinetic-energy tilt
+<span class="math notranslate nohighlight">\([T/T_{\rm pivot}]^{\delta}\)</span> with
+<span class="math notranslate nohighlight">\(-0.1\leq\delta\leq0.1\)</span>. The default pivot is 10 GeV.
+A force-field modulation potential is profiled jointly with these
+parameters (default range 0–2 GV). The code applies the same potential to
+the dark matter and secondary terms and uses the kinetic-energy to
+rigidity Jacobian before comparison with the data. At each fixed
+nonnegative signal rate it minimizes the chi-square over the nuisance
+parameters. The one-sided 95% upper endpoint uses
+<span class="math notranslate nohighlight">\(\Delta\chi^2=2.7055\)</span> relative to the physical best fit. The
+one-sided test statistic is zero below the best fit.</p>
+<p><code class="docutils literal notranslate"><span class="pre">AMS02_pbar_sigmav_UL95</span></code> is the bound for the model’s fixed mixture,
+<code class="docutils literal notranslate"><span class="pre">AMS02_pbar_sigmav_best_fit</span></code> is the data-preferred rate, and
+<code class="docutils literal notranslate"><span class="pre">AMS02_pbar_sigmav_model</span></code> is the rate from the UFO parameters. The
+<code class="docutils literal notranslate"><span class="pre">q_upper_model</span></code> and <code class="docutils literal notranslate"><span class="pre">q_upper_model_thermal</span></code> fields test the model
+rate and the rate scaled by the square of its relic fraction,
+respectively. They are test statistics, not p-values. When no fit can be
+evaluated, the result carries an explicit status. The default
+QUAINT-MED/NFW BR=1 limit curves in <code class="docutils literal notranslate"><span class="pre">ExpData</span></code> may be used in
+<code class="docutils literal notranslate"><span class="pre">sigmav</span></code> mode for their matching likelihood settings; masses outside
+the tabulated range or between unavailable table rows are not extrapolated.</p>
+</section>
+<section id="antideuteron-forecasts">
+<h3>Antideuteron forecasts<a class="headerlink" href="#antideuteron-forecasts" title="Link to this heading">#</a></h3>
+<p>MadDM converts the propagated spectrum to kinetic energy per nucleon
+and applies force-field modulation. It uses the corresponding
+antiproton model-point fit for the solar potential where available,
+otherwise <code class="docutils literal notranslate"><span class="pre">dbar_phi</span></code> (default 0.7 GV). Following
+<a class="reference external" href="https://arxiv.org/abs/2602.15132">arXiv:2602.15132</a>, the estimated
+dark matter signal count in a window is</p>
+<div class="math notranslate nohighlight">
+\[N = \frac{2}{\Phi_{\rm sens}\,[T_2-T_1]}
+    \int_{T_1}^{T_2}\mathrm{d}T\,\Phi_{\bar d}^{\rm DM}[T].\]</div>
+<p>The factor two reflects the two-event reference sensitivity. These are
+sensitivity-based estimates; they do not fold the spectrum with a
+detector response. The comparison shows the modulated secondary flux
+separately; it is not added to the dark matter count.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Window</p></th>
+<th class="head"><p>Kinetic energy [GeV/n]</p></th>
+<th class="head"><p>Two-event flux sensitivity [m⁻² s⁻¹ sr⁻¹ (GeV/n)⁻¹]</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>GAPS</p></td>
+<td><p>0.10–0.30</p></td>
+<td><p><span class="math notranslate nohighlight">\(2\times10^{-6}\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p>AMS-02 low</p></td>
+<td><p>0.18–0.70</p></td>
+<td><p><span class="math notranslate nohighlight">\(8\times10^{-7}\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p>AMS-02 high</p></td>
+<td><p>2.0–4.2</p></td>
+<td><p><span class="math notranslate nohighlight">\(2\times10^{-7}\)</span></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The total AMS-02 count is the sum of its two windows.</p>
+</section>
+</section>
+<section id="galactic-centre-excess">
+<h2>Galactic Centre excess<a class="headerlink" href="#galactic-centre-excess" title="Link to this heading">#</a></h2>
+<p>The prompt fit uses the standard 40° by 40° region and 0.5–1000 GeV
+range of <a class="reference external" href="https://arxiv.org/abs/2605.22913">arXiv:2605.22913</a>. The
+ROI-integrated SED is converted from MeV to GeV and divided by the
+solid angle (about 0.478 sr) to obtain an ROI-mean intensity. For an
+ROI-integrated model prediction, multiply the mean intensity by this
+same solid angle. The geometry follows Eqs. 37–39 of
+<a class="reference external" href="https://arxiv.org/abs/2508.02775">arXiv:2508.02775</a>:</p>
+<div class="math notranslate nohighlight">
+\[\frac{\mathrm{d}\Phi_\gamma}{\mathrm{d}E} =
+\frac{r_\odot\rho_{\rm local}^2\overline J}{2\pi d_{\rm MD} m_\chi^2}
+\langle\sigma v\rangle
+\sum_f B_f\frac{\mathrm{d}N_{\gamma,f}}{\mathrm{d}E}.\]</div>
+<p>The denominator uses <span class="math notranslate nohighlight">\(d_{\rm MD}=4\)</span> for self-conjugate dark matter
+and <span class="math notranslate nohighlight">\(d_{\rm MD}=8\)</span> for symmetric particle/antiparticle dark matter.
+<code class="docutils literal notranslate"><span class="pre">gce_jbar</span></code> is a dimensionless ROI average and defaults to 120;
+<code class="docutils literal notranslate"><span class="pre">gce_rsun_kpc</span></code> defaults to 8.122 kpc. The charged-particle halo
+selector does not change the GCE geometry automatically.</p>
+<p>The fit varies a single nonnegative rate at fixed mass and branching
+shape. For detected bins, the widths from the lower and upper
+systematic envelopes are used as asymmetric diagonal errors.
+Statistical errors are plotted separately. Upper-limit bins are shown
+and checked in the output, but are not fit as Gaussian detections.
+MadDM reports the best-fit rate, asymmetric
+<span class="math notranslate nohighlight">\(\Delta\chi^2=1\)</span> errors, and chi-square. The prompt calculation
+does not include inverse-Compton or bremsstrahlung emission. A
+generated prompt spectrum outside the table channels is usable only
+when the run provides it at the requested fixed Galactic velocity and
+it includes the relevant photon contribution.</p>
+</section>
+<section id="implementation-and-checks">
+<h2>Implementation and checks<a class="headerlink" href="#implementation-and-checks" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">maddm_run_interface.py</span></code> dispatches the run modes. The
+<code class="docutils literal notranslate"><span class="pre">indirect/</span></code> package contains the dwarf profiling, propagated-flux
+selection, antiproton likelihood, antideuteron forecasts and GCE fit.
+Run the offline regression suite from the MadDM source directory:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>unittest<span class="w"> </span>discover<span class="w"> </span>-s<span class="w"> </span>tests<span class="w"> </span>-v
+python<span class="w"> </span>tests/tools/run_benchmarks.py<span class="w"> </span>--output<span class="w"> </span>/tmp/maddm-benchmarks
+</pre></div>
+</div>
+<p>The suite uses small reference files in <code class="docutils literal notranslate"><span class="pre">tests/fixtures/</span></code>.
+Propagation checks that require the full tables are skipped if the cache
+is empty. Run <code class="docutils literal notranslate"><span class="pre">install</span> <span class="pre">cosmixs_flux</span></code> first to include these checks and
+to run the benchmark script.
+Optional integration checks require a generated MadGraph run or a
+locally built Pythia or RAPIDD library. See the test skip messages and
+<code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">tests/tools/run_shower_regressions.py</span> <span class="pre">--help</span></code> for the inputs.</p>
+</section>
+<section id="process-directories-created-by-older-versions">
+<h2>Process directories created by older versions<a class="headerlink" href="#process-directories-created-by-older-versions" title="Link to this heading">#</a></h2>
+<p>If an old process directory lacks the current Galactic rate driver, repeat
+the model and process generation commands in the updated MadDM installation
+and use <code class="docutils literal notranslate"><span class="pre">output</span> <span class="pre">new_process</span></code>. Copy your input cards from the old
+directory’s <code class="docutils literal notranslate"><span class="pre">Cards/</span></code> directory before launching the new process. Current
+exports include the required Fortran sources, makefiles and shower code;
+launch does not rewrite those files in old process directories.</p>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="tutorial_and_examples/plot_direct_detection.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Direct Detection Tutorial</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="galactic_halo.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Shared Galactic halo</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal" tabindex="-1"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#run-modes-and-source-spectra">Run modes and source spectra</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#dwarf-spheroidal-galaxies">Dwarf spheroidal galaxies</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#propagated-antiprotons-and-antideuterons">Propagated antiprotons and antideuterons</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#ams-02-antiproton-likelihood">AMS-02 antiproton likelihood</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#antideuteron-forecasts">Antideuteron forecasts</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#galactic-centre-excess">Galactic Centre excess</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#implementation-and-checks">Implementation and checks</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#process-directories-created-by-older-versions">Process directories created by older versions</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=75c7c72ae941e8b558d8"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=75c7c72ae941e8b558d8"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2026, MadDM developers.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 9.2.0.
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.24.0.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

@@ -49,8 +49,8 @@ To save the full energy spectra you can set:
 
     MadDM> set save_output spectra
 
-You can enable the ``precise`` mode for a full integration over the DM velocity distribution. For a faster evaluation
-you can use the ``fast`` mode, where the thermally averaged annihilation cross section is computed at a fixed velocity.
+Use ``fast`` for inclusive rates and tabulated source spectra, or ``precise`` for numerical rates and source showering.
+The Galactic analyses average the model rates over the shared SHM in either mode; dwarfs retain their own velocity setting.
 
 .. code-block:: text
 
@@ -90,11 +90,7 @@ You will see the following output:
     INFO: Using generic Fermi dSph limits for light quarks (u,d,s) 
     INFO: DM DM > SM SM       All DM = 1.73e-28       ALLOWED   	Fermi dSph ul    = 2.96e-27 
     INFO:  
-    INFO: *** Fluxes at earth [particle cm^-2 sr^-1]: 
-    INFO: gammas Flux         =	5.67e-12             
-    INFO: neutrinos_e Flux    =	2.71e-12             
-    INFO: neutrinos_mu Flux   =	5.00e-12             
-    INFO: neutrinos_tau Flux  =	4.26e-15             
+    INFO: Positron results will come soon.
     INFO:  
     INFO:  
     INFO: Results written in: /Users/yourname/yourprocessfolder/ID_spin1/output/run_01/MadDM_results.txt

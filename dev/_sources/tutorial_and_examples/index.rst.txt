@@ -6,6 +6,10 @@ Tutorial and examples
 Below is a gallery of various examples on the usage of MadDM and its features.
 
 
+.. raw:: html
+
+  <div id='sg-tag-list' class='sphx-glr-tag-list'></div>
+
 
 .. raw:: html
 
@@ -100,6 +104,23 @@ Below is a gallery of various examples on the usage of MadDM and its features.
 
 .. raw:: html
 
+    <div class="sphx-glr-thumbcontainer" tooltip="Evaluate model partial rates without importing MadGraph.">
+
+.. only:: html
+
+  .. image:: /tutorial_and_examples/images/thumb/sphx_glr_check_ams02_pbar_thumb.png
+    :alt:
+
+  :doc:`/tutorial_and_examples/check_ams02_pbar`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Antiproton likelihood from partial rates</div>
+    </div>
+
+
+.. raw:: html
+
     <div class="sphx-glr-thumbcontainer" tooltip="Compute direct detection signal and limits for both nuclear and electronic recoils.">
 
 .. only:: html
@@ -130,6 +151,7 @@ Below is a gallery of various examples on the usage of MadDM and its features.
    /tutorial_and_examples/relic_density
    /tutorial_and_examples/getting_started
    /tutorial_and_examples/plot_indirect_detection
+   /tutorial_and_examples/check_ams02_pbar
    /tutorial_and_examples/plot_direct_detection
 
 
