@@ -102,9 +102,12 @@ if hasattr(me5_interface.AskRun, 'get_cardcmd_for_reweight'):
 __infty__ = float('inf')
 __mnestlog0__ = -1.0E90
 
-# DM-electron scattering: the ALLOWED/EXCLUDED verdict uses the XENONnT upper limit on sigma_e.
-# The XENON10/XENON1T p-value analysis is kept in the code but switched off; set to True to restore it.
-__dme_use_xenon_pvalue__ = False
+# DM-electron scattering: sigma_e is compared with the XENONnT upper limit and with the XENON10 S2-only
+# data (arXiv:1703.00910: p-value of the most constraining S2 bin and the equivalent upper limit on sigma_e).
+# The XENON1T S2-only p-value is kept in the code but switched off; set to True to restore it.
+__dme_use_xenon10_pvalue__ = True
+__dme_use_xenon1t_pvalue__ = False
+__dme_xenon10_cl__ = 0.9  # confidence level of the XENON10 limit (excluded if p-value < 1 - CL)
 
 
 def rapidd_library_ready():
@@ -2104,8 +2107,10 @@ class MADDMRunCmd(cmd.CmdShell):
 
             if electron_recoil:
                 order += ['sigma_e', 'lim_sigma_e', 'lim_sigma_e_rescaled']
-                if __dme_use_xenon_pvalue__:
-                    order += ['pvalue_Xenon10','pvalue_Xenon1T']
+                if __dme_use_xenon10_pvalue__:
+                    order += ['lim_sigma_e_Xenon10', 'pvalue_Xenon10']
+                if __dme_use_xenon1t_pvalue__:
+                    order += ['pvalue_Xenon1T']
 
 
             # *** Indirect detection
@@ -2210,34 +2215,47 @@ class MADDMRunCmd(cmd.CmdShell):
     def launch_direct_electron(self):
 
         self.last_results['pvalue_Xenon10'] = -1
+        self.last_results['lim_sigma_e_Xenon10'] = -1
         self.last_results['pvalue_Xenon1T'] = -1
 
-        # p-values switched off: the verdict comes from the XENONnT limit on sigma_e (see DMe_max)
-        if not __dme_use_xenon_pvalue__:
+        if not (__dme_use_xenon10_pvalue__ or __dme_use_xenon1t_pvalue__):
             return
 
         if ("Xenon10_signal" not in self.last_results) and ("Xenon1T_signal" not in self.last_results):
             logger.warning("XENON10 or XENON1T signal not found, exclusion limits computation for electronic recoil is disabled.")
             return
-        else:
-            if HAS_NUMPY is False:
-                logger.warning("numpy module not available, exclusion limits computation is disabled.")
-                return
-            elif HAS_SCIPY is False:
-                logger.warning("scipy module not available, exclusion limits computation is disabled.")
-                return
-            elif self.last_results['DM_response']!=-1:
-                from rapidd.stats import poisson_pvalue, binned_poisson_pvalue_min
-                Xenon10_sig = self.last_results['Xenon10_signal']
-                Xenon10_obs = self.last_results['Xenon10_obs']
-                Xenon1T_sig = self.last_results['Xenon1T_signal']
-                Xenon1T_bkg = self.last_results['Xenon1T_bkg']
-                Xenon1T_obs = self.last_results['Xenon1T_obs']
+        if HAS_NUMPY is False:
+            logger.warning("numpy module not available, exclusion limits computation is disabled.")
+            return
+        if HAS_SCIPY is False:
+            logger.warning("scipy module not available, exclusion limits computation is disabled.")
+            return
+        if self.last_results['DM_response'] == -1:
+            return
 
-                self.last_results['pvalue_Xenon10'] = binned_poisson_pvalue_min(Xenon10_obs,Xenon10_sig)
-                # XENON1T results are -1 when the DM mass is outside the XENON1T table
-                if Xenon1T_obs != -1:
-                    self.last_results['pvalue_Xenon1T'] = poisson_pvalue(Xenon1T_obs,Xenon1T_sig+Xenon1T_bkg)
+        from rapidd.stats import poisson_pvalue, binned_poisson_pvalue_min, poisson_upper_limit
+
+        if __dme_use_xenon10_pvalue__ and 'Xenon10_signal' in self.last_results:
+            # XENON10 S2-only (arXiv:1703.00910), no background subtraction: p-value P(n <= n_obs | s)
+            # of the most constraining of the 7 S2 bins, at the local DM density of the card
+            Xenon10_sig = np.asarray(self.last_results['Xenon10_signal'], dtype=float)
+            Xenon10_obs = np.asarray(self.last_results['Xenon10_obs'])
+            self.last_results['pvalue_Xenon10'] = float(binned_poisson_pvalue_min(Xenon10_obs, Xenon10_sig))
+            # equivalent upper limit on sigma_e: the signal scales as sigma_e at fixed couplings ratios, and
+            # sigma_e > lim  <=>  pvalue_Xenon10 < 1 - CL
+            sigma_e = self.last_results.get('sigma_e', -1)
+            has_sig = Xenon10_sig > 0
+            if sigma_e > 0 and has_sig.any():
+                mu_up = poisson_upper_limit(Xenon10_obs, __dme_xenon10_cl__)
+                self.last_results['lim_sigma_e_Xenon10'] = float(sigma_e * np.min(mu_up[has_sig] / Xenon10_sig[has_sig]))
+
+        if __dme_use_xenon1t_pvalue__ and 'Xenon1T_signal' in self.last_results:
+            Xenon1T_sig = self.last_results['Xenon1T_signal']
+            Xenon1T_bkg = self.last_results['Xenon1T_bkg']
+            Xenon1T_obs = self.last_results['Xenon1T_obs']
+            # XENON1T results are -1 when the DM mass is outside the XENON1T table
+            if Xenon1T_obs != -1:
+                self.last_results['pvalue_Xenon1T'] = poisson_pvalue(Xenon1T_obs,Xenon1T_sig+Xenon1T_bkg)
 
 
     def launch_multinest(self):
@@ -3592,6 +3610,13 @@ class MADDMRunCmd(cmd.CmdShell):
               logger.info("Define xsi = Relic density/Planck measurement for thermal scenarios.")
               logger.info("Rescaling theory prediction for xsi(direct det.) and xsi^2(indirect det.) for thermal scenarios.\n")
 
+        # halo used by the direct and indirect detection results below
+        if any(self.mode[key] for key in ('direct_nucleon', 'direct_electron', 'indirect', 'spectral')):
+            rho = pbar_interface.cr_config.local_density(self.maddm_card)
+            profile = halo_model.velocity_profile(self.maddm_card)
+            logger.info('Local Galactic halo (%s): rho = %.4g GeV/cm^3, vMP = %.4g km/s, vescape = %.4g km/s',
+                        profile.name, rho, profile.primary.scale, profile.primary.cutoff)
+
         if self.mode['relic']:
             logger.info("\n****** Relic Density\nOMEGA IS %f" % omega)
             logger.info( self.form_s('Relic Density') + '= ' + self.form_n(omega)   + '      '  +  pass_relic )
@@ -3634,28 +3659,23 @@ class MADDMRunCmd(cmd.CmdShell):
                 elif   n2 > n1            : return '%s ALLOWED  %s'  % (bcolors.OKGREEN, bcolors.ENDC) 
                 elif   n1 <= 0            : return 'No Theory Prediction'
 
-            pval_Xenon10 = self.last_results['pvalue_Xenon10']
-            pval_Xenon1T = self.last_results['pvalue_Xenon1T']
+            pval_Xenon10 = self.last_results.get('pvalue_Xenon10', -1)
+            pval_Xenon1T = self.last_results.get('pvalue_Xenon1T', -1)
             sigma_e = self.last_results['sigma_e']
-            if not __dme_use_xenon_pvalue__:
-                logger.info('\n****** Direct detection - electron recoil [cm^2]: ')
-                if sigma_e < 0:
-                    logger.info(self.form_s('Sigma_e') + self.form_s('All DM = ' + self.form_n(-1)) + '   No Theory Prediction')
-                else:
-                    self.print_ind('Sigma_e', sigma_e * xsi, sigma_e, self.last_results['lim_sigma_e'], thermal=dm_scen, direc=False, exp='XENONnT')
-                    # XENONnT limit rescaled to the RAPIDD atomic responses (estimate)
-                    self.print_ind('Sigma_e (rescaled)', sigma_e * xsi, sigma_e, self.last_results['lim_sigma_e_rescaled'], thermal=dm_scen, direc=False, exp='XENONnT')
-            elif pval_Xenon10==-1 and pval_Xenon1T==-1:
-                logger.info( self.form_s('Sigma_e             All DM = ') + self.form_n(-1) + self.form_s('      ' + det_message_screen(0.05,pval_Xenon10)) + self.form_s('     Xenon10 p_val    = ') + self.form_n(pval_Xenon10))
-                logger.info( self.form_s('Sigma_e             All DM = ') + self.form_n(-1) + self.form_s('      ' + det_message_screen(0.05,pval_Xenon1T)) + self.form_s('     Xenon1ton p_val  = ') + self.form_n(pval_Xenon1T))
+            logger.info('\n****** Direct detection - electron recoil [cm^2]: ')
+            if sigma_e < 0:
+                logger.info(self.form_s('Sigma_e') + self.form_s('All DM = ' + self.form_n(-1)) + '   No Theory Prediction')
             else:
-                tot_sig_Xenon10 = 0
-                for sig in self.last_results['Xenon10_signal']:
-                    tot_sig_Xenon10 += sig
-                tot_sig_Xenon1T = self.last_results['Xenon1T_signal']
-                    
-                logger.info( self.form_s('Sigma_e             All DM = ') + self.form_n(sigma_e) + self.form_s('      ' + det_message_screen(0.05,pval_Xenon10)) + self.form_s('     Xenon10 p_val    = ') + self.form_n(pval_Xenon10))
-                logger.info( self.form_s('Sigma_e             All DM = ') + self.form_n(sigma_e) + self.form_s('      ' + det_message_screen(0.05,pval_Xenon1T)) + self.form_s('     Xenon1ton p_val  = ') + self.form_n(pval_Xenon1T))
+                self.print_ind('Sigma_e', sigma_e * xsi, sigma_e, self.last_results['lim_sigma_e'], thermal=dm_scen, direc=False, exp='XENONnT')
+                # XENONnT limit rescaled to the RAPIDD atomic responses (estimate)
+                self.print_ind('Sigma_e (rescaled)', sigma_e * xsi, sigma_e, self.last_results['lim_sigma_e_rescaled'], thermal=dm_scen, direc=False, exp='XENONnT')
+                if __dme_use_xenon10_pvalue__:
+                    # XENON10 S2-only: limit on sigma_e equivalent to p-value < 1 - CL
+                    self.print_ind('Sigma_e', sigma_e * xsi, sigma_e, self.last_results.get('lim_sigma_e_Xenon10', -1),
+                                   thermal=dm_scen, direc=False, exp='XENON10')
+            if __dme_use_xenon1t_pvalue__:
+                sig_1T = sigma_e if pval_Xenon1T != -1 else -1
+                logger.info( self.form_s('Sigma_e             All DM = ') + self.form_n(sig_1T) + self.form_s('      ' + det_message_screen(0.05,pval_Xenon1T)) + self.form_s('     Xenon1ton p_val  = ') + self.form_n(pval_Xenon1T))
 
         # INDIRECT DETECTION
         detailled_keys = [k for k in self.last_results.keys() if k.startswith('taacsID#')]
@@ -3685,12 +3705,7 @@ class MADDMRunCmd(cmd.CmdShell):
             if len(skip) >= 1:        
                 logger.info('Skipping zero cross section processes for: %s', ', '.join(skip))
             return light_s
-        
-        if any(self.mode[key] for key in ('direct_nucleon', 'direct_electron', 'indirect', 'spectral')):
-            rho = pbar_interface.cr_config.local_density(self.maddm_card)
-            profile = halo_model.velocity_profile(self.maddm_card)
-            logger.info('Local Galactic halo (%s): rho = %.4g GeV/cm^3, vMP = %.4g km/s, vescape = %.4g km/s',
-                        profile.name, rho, profile.primary.scale, profile.primary.cutoff)
+
         if self.mode['indirect'] or self.mode['spectral']:
             logger.info('\n****** Indirect detection:')
             rule = self._mw_shm_rule
@@ -4132,16 +4147,17 @@ class MADDMRunCmd(cmd.CmdShell):
             out.write('################################################\n\n')
 
             cross_DMe = self.last_results['sigma_e']
-            pval10 = self.last_results['pvalue_Xenon10']
-            pval1T = self.last_results['pvalue_Xenon1T']
-            if not __dme_use_xenon_pvalue__:
-                ul_DMe = self.last_results['lim_sigma_e']
-                out.write(form_s('Sigma_e ref.') + '= ' + form_s('['+ form_n(cross_DMe) + ',' + form_n(ul_DMe) + ']') + '# XENONnT\n')
-                ul_DMe_rescaled = self.last_results['lim_sigma_e_rescaled']
-                out.write(form_s('Sigma_e ref. (rescaled)') + '= ' + form_s('['+ form_n(cross_DMe) + ',' + form_n(ul_DMe_rescaled) + ']') + '# XENONnT rescaled to the RAPIDD atomic responses\n')
-            else:
-                out.write(form_s('Sigma_e ref.') + '= ' + form_s(form_n(cross_DMe)) + '\n')
-                out.write(form_s('Xenon10_pvalue') + '= ' + form_s(form_n(pval10)) + '\n')
+            pval10 = self.last_results.get('pvalue_Xenon10', -1)
+            pval1T = self.last_results.get('pvalue_Xenon1T', -1)
+            ul_DMe = self.last_results['lim_sigma_e']
+            out.write(form_s('Sigma_e ref.') + '= ' + form_s('['+ form_n(cross_DMe) + ',' + form_n(ul_DMe) + ']') + '# XENONnT\n')
+            ul_DMe_rescaled = self.last_results['lim_sigma_e_rescaled']
+            out.write(form_s('Sigma_e ref. (rescaled)') + '= ' + form_s('['+ form_n(cross_DMe) + ',' + form_n(ul_DMe_rescaled) + ']') + '# XENONnT rescaled to the RAPIDD atomic responses\n')
+            if __dme_use_xenon10_pvalue__:
+                ul_DMe_10 = self.last_results.get('lim_sigma_e_Xenon10', -1)
+                out.write(form_s('Sigma_e ref. (XENON10)') + '= ' + form_s('['+ form_n(cross_DMe) + ',' + form_n(ul_DMe_10) + ']') + '# XENON10 S2-only (arXiv:1703.00910), %d%% CL\n' % round(100*__dme_xenon10_cl__))
+                out.write(form_s('Xenon10_pvalue') + '= ' + form_s(form_n(pval10)) + '# all DM, most constraining S2 bin\n')
+            if __dme_use_xenon1t_pvalue__:
                 out.write(form_s('Xenon1T_pvalue') + '= ' + form_s(form_n(pval1T)) + '\n')
         
 
