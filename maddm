@@ -1,11 +1,12 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 import os
+from pathlib import Path
 import sys
-root_path = os.path.split(os.path.dirname(os.path.realpath( __file__ )))[0]
-exe_path = os.path.join(root_path,'bin','mg5_aMC')
-sys.argv.pop(0)
-os.system('%s %s -tt %s %s --mode=maddm' %
-          (sys.executable, 
-           '' if __debug__ else '-O',
-           str(exe_path) , 
-           ' '.join(sys.argv) ))
+
+for directory in Path(__file__).absolute().parents:
+    executable = directory / 'bin' / 'mg5_aMC'
+    if executable.is_file():
+        flags = ['-' + 'O' * sys.flags.optimize] if sys.flags.optimize else []
+        os.execv(sys.executable, [sys.executable, *flags, str(executable),
+                                  *sys.argv[1:], '--mode=maddm'])
+raise SystemExit('MadDM launcher could not locate bin/mg5_aMC.')

@@ -17,37 +17,45 @@ def quiet_plot_logging():
                 logger.setLevel(logging.WARNING)
 
 
-def axes():
+def axes(*, xscale='log'):
     quiet_plot_logging()
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
     plt.rcParams.update({'font.family':'DejaVu Sans','font.size':11,'pdf.fonttype':42,'savefig.dpi':600})
     fig,ax=plt.subplots(figsize=(8.,6.),constrained_layout=True)
-    ax.set_xscale('log');ax.set_yscale('log')
+    ax.set_xscale(xscale);ax.set_yscale('log')
     ax.grid(which='major',alpha=.35);ax.grid(which='minor',alpha=.12)
     ax.tick_params(which='both',direction='in',top=True,right=True)
     return plt,fig,ax
 
 
-def _plot_yields(curves, output, *, xlabel, ylabel, title):
+def _plot_yields(curves, output, *, xlabel, ylabel, title, xscale='log', empty_message=None):
     """Use gaps for zero yields rather than drawing across them on log axes."""
     valid = []
     for x, y, label, color, style in curves:
-        mask = np.isfinite(x) & np.isfinite(y) & (x > 0) & (y > 0)
+        mask = np.isfinite(x) & np.isfinite(y) & (y > 0)
+        if xscale == 'log':
+            mask &= x > 0
         if np.any(mask):
             isolated = np.flatnonzero(mask & ~np.r_[False, mask[:-1]] & ~np.r_[mask[1:], False]).tolist()
             valid.append((np.where(mask, x, np.nan), np.where(mask, y, np.nan),
                           label, color, style, isolated))
-    if not valid:
+    if not valid and empty_message is None:
         return False
-    plt, fig, ax = axes()
+    plt, fig, ax = axes(xscale=xscale)
     try:
         for x, y, label, color, style, isolated in valid:
             ax.plot(x, y, label=label, color=color, ls=style, lw=1.9,
                     marker='o' if isolated else None, markersize=3.5, markevery=isolated)
         ax.set(xlabel=xlabel, ylabel=ylabel, title=title)
-        ax.legend(loc='best', frameon=False)
+        if valid:
+            ax.legend(loc='best', frameon=False)
+        else:
+            energy = curves[0][0][np.isfinite(curves[0][0])]
+            if energy.size and energy.min() < energy.max():
+                ax.set_xlim(energy.min(), energy.max())
+            ax.text(.5, .5, empty_message, ha='center', va='center', transform=ax.transAxes)
         fig.savefig(output, format='pdf', dpi=600)
     finally:
         plt.close(fig)
@@ -62,7 +70,17 @@ def recoil_rates_plot(data, output):
                          (energy, ge, 'Germanium', '#27824d', '-.')], output,
                         xlabel=r'Recoil energy $E_R$ [keV]',
                         ylabel=r'$dR/dE_R$ [events kg$^{-1}$ day$^{-1}$ keV$^{-1}$]',
-                        title='Nuclear recoil spectra')
+                        title='Nuclear recoil spectra', xscale='linear')
+
+
+def electron_recoil_rates_plot(data, output):
+    """Plot the total xenon ionization spectrum as a function of recoil energy."""
+    energy, total = np.loadtxt(data, ndmin=2, usecols=(1, 2)).T
+    return _plot_yields([(energy, total, 'Xenon, all shells', '#1c6ba0', '-')],
+                        output, xlabel=r'Electron recoil energy $E_e$ [keV]',
+                        ylabel=r'$dR/dE_e$ [events kg$^{-1}$ day$^{-1}$ keV$^{-1}$]',
+                        title='Electron recoil spectrum', xscale='linear',
+                        empty_message='No positive rates on the recoil energy grid')
 
 
 def source_spectra_plot(directory, method, output):

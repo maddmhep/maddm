@@ -3,6 +3,10 @@ from __future__ import print_function
 import logging
 import os
 import collections
+from pathlib import Path
+import shutil
+import subprocess
+import tempfile
 
 from . import maddm_run_interface as maddm_run_interface
 from . import dm_tutorial_text as dm_tutorial_text
@@ -19,7 +23,7 @@ import madgraph.iolibs.files as files
 import madgraph.interface.common_run_interface as common_run
 import models.check_param_card as check_param_card
 import models.model_reader as model_reader
-from madgraph import MG5DIR
+from madgraph import MG5DIR, MadGraph5Error
 
 import re
 import six
@@ -115,8 +119,7 @@ class MadDM_interface(master_interface.MasterCmd):
     
     # for install command:
     _install_opts = list(master_interface.MasterCmd._install_opts)
-    _install_opts.append('PPPC4DMID')
-    _install_opts.append('RAPIDD')
+    _install_opts += ['PPPC4DMID', 'RAPIDD', 'cosmixs', 'cosmixs_flux', 'reweight_tools']
     _advanced_install_opts = list(master_interface.MasterCmd._advanced_install_opts)
     _advanced_install_opts += ['gsl', 'fitsio']
     
@@ -150,8 +153,10 @@ class MadDM_interface(master_interface.MasterCmd):
     #===========================================================================
     rapidd_dir = pjoin(MDMDIR, 'vendor', 'RAPIDD_for_DM')
     rapidd_url = 'https://github.com/cheekyparticle/RAPIDD_for_DM.git'
+    # Match the dev branch's gitlink when installing from a source ZIP.
+    rapidd_revision = '0b781fce8069e22bae01a2bdfd4356f9beb4857a'
 
-    def do_install(self, line, *args, **opts):
+    def do_install(self, line, paths=None, additional_options=()):
         """Handle MadDM dependencies alongside the standard MG5 installers."""
 
         split = self.split_arg(line)
@@ -159,14 +164,37 @@ class MadDM_interface(master_interface.MasterCmd):
             package = split[0].lower()
             if package == 'rapidd':
                 return self.install_rapidd()
-            installers = {'cosmixs_flux': data_install.install_cosmixs_flux}
-            if package in installers:
-                try:
-                    installers[package]()
-                except data_install.DataInstallError as error:
-                    raise self.InvalidCmd(str(error)) from None
-                return
-        return super(MadDM_interface, self).do_install(line, *args, **opts)
+            heptools = data_install.heptools_dir(MG5DIR, self.options.get('heptools_install_dir'))
+            try:
+                if package == 'cosmixs_flux':
+                    return data_install.install_cosmixs_flux()
+                if package == 'cosmixs':
+                    path = Path(MG5DIR) / Path(self.options.get('pppc4dmid_path') or 'PPPC4DMID').expanduser()
+                    data_install.install_cosmixs_source(path, heptools)
+                    self.options['pppc4dmid_path'] = str(path)
+                    self.exec_cmd('save options pppc4dmid_path')
+                    return
+                if package == 'reweight_tools':
+                    return data_install.install_reweight_tools(heptools)
+                if package == 'pythia8':
+                    if not shutil.which('rsync'):
+                        raise self.InvalidCmd('The Pythia8 installer requires rsync. Install rsync and retry.')
+                    options = list(additional_options)
+                    zlib = heptools / 'zlib'
+                    has_local_zlib = ((zlib / 'include/zlib.h').is_file()
+                                      and any(zlib.glob('lib*/libz.*')))
+                    if not has_local_zlib and not any(
+                            arg.startswith(('--zlib_tarball=', '--with_zlib='))
+                            for arg in split[1:] + options):
+                        archive = data_install.verified_archive(
+                            heptools / 'maddm_cache', *data_install.ZLIB_ARCHIVE)
+                        logger.info('Using verified zlib archive: %s', archive)
+                        options.append('--zlib_tarball=' + str(archive))
+                        additional_options = options
+            except data_install.DataInstallError as error:
+                raise self.InvalidCmd(str(error)) from error
+        return super(MadDM_interface, self).do_install(
+            line, paths=paths, additional_options=additional_options)
 
     @classmethod
     def get_rapidd_lib(cls):
@@ -187,9 +215,6 @@ class MadDM_interface(master_interface.MasterCmd):
     def install_rapidd(self):
         """download (if needed) and compile RAPIDD. Return True on success"""
 
-        import shutil
-        import subprocess
-
         if not self.is_rapidd_downloaded():
             if not shutil.which('git'):
                 logger.error("git is required to download RAPIDD. Please install git, or run:\n"
@@ -203,12 +228,19 @@ class MadDM_interface(master_interface.MasterCmd):
                                     pjoin('vendor', 'RAPIDD_for_DM')],
                                    check=True, cwd=MDMDIR)
                 else:
-                    # maddm is not a git checkout: clone RAPIDD directly
-                    if os.path.isdir(self.rapidd_dir) and not os.listdir(self.rapidd_dir):
-                        os.rmdir(self.rapidd_dir)
-                    subprocess.run(['git', 'clone', '--recursive', self.rapidd_url, self.rapidd_dir],
-                                   check=True)
-            except subprocess.CalledProcessError as error:
+                    destination = Path(self.rapidd_dir)
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    with tempfile.TemporaryDirectory(prefix='.rapidd-', dir=destination.parent) as work:
+                        source = Path(work) / destination.name
+                        source.mkdir()
+                        subprocess.run(['git', 'init', '-q'], cwd=source, check=True)
+                        subprocess.run(['git', 'fetch', '--depth=1', self.rapidd_url,
+                                        self.rapidd_revision], cwd=source, check=True)
+                        subprocess.run(['git', 'checkout', '--detach', 'FETCH_HEAD'], cwd=source, check=True)
+                        if destination.is_dir() and not any(destination.iterdir()):
+                            destination.rmdir()
+                        source.rename(destination)
+            except (OSError, subprocess.CalledProcessError) as error:
                 logger.error("RAPIDD download failed: %s" % error)
                 return False
 
@@ -216,9 +248,25 @@ class MadDM_interface(master_interface.MasterCmd):
             logger.error("cmake is required to compile RAPIDD. Please install cmake and run 'install RAPIDD'.")
             return False
         logger.info("Compiling RAPIDD...", '$MG:BOLD')
+        heptools = data_install.heptools_dir(MG5DIR, self.options.get('heptools_install_dir'))
+        source = Path(self.rapidd_dir) / 'lib'
+        build = source / 'build'
+        configure = ['cmake', '-S', str(source), '-B', str(build)]
         try:
-            subprocess.run(['sh', 'instructions_cmake.sh'], check=True, cwd=self.rapidd_dir)
-        except subprocess.CalledProcessError as error:
+            gsl = heptools / 'GSL'
+            if (gsl / 'include/gsl/gsl_version.h').is_file():
+                configure.append('-DGSL_ROOT_DIR=' + str(gsl))
+            result = subprocess.run(configure, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                    text=True)
+            if result.returncode and 'Could NOT find GSL' in result.stdout:
+                gsl = data_install.install_gsl(heptools)
+                result = subprocess.run(configure + ['-DGSL_ROOT_DIR=' + str(gsl)],
+                                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+            if result.returncode:
+                logger.error("RAPIDD CMake configuration failed:\n%s", result.stdout)
+                return False
+            subprocess.run(['cmake', '--build', str(build), '--parallel'], check=True)
+        except (OSError, subprocess.CalledProcessError, data_install.DataInstallError) as error:
             logger.error("RAPIDD compilation failed: %s" % error)
             return False
 
@@ -908,9 +956,8 @@ class MadDM_interface(master_interface.MasterCmd):
         
     def check_save(self, args):
         
-        if args[1] == 'maddm_first_indirect':
+        if len(args) > 1 and args[1] == 'maddm_first_indirect':
             args.insert(1, pjoin(MG5DIR, 'input', 'mg5_configuration.txt'))
-            print(args)
             return args
         else:
             return super(MadDM_interface, self).check_save(args)
@@ -2023,29 +2070,26 @@ class MadDM_interface(master_interface.MasterCmd):
         return temp_amps # I return the last amps of all the DM candidates, because this function is called for each final state in turn
 
     def install_indirect(self):
-        """Offer optional source-spectrum tools at the first indirect generation."""
-        
-        opt = self.options
-        
-        # Check if first time:
-        if not opt['maddm_first_indirect']:
-            return
-        
-        logger.info('Optional tools for indirect-detection source spectra:', '$MG:BOLD')
-        to_install = self.ask('install', '0',  ask_class=AskMadDMInstaller, timeout=300, 
-                              path_msg=' ')
-        
-        key_to_opts = {'PPPC4DMID': 'pppc4dmid_path', 'pythia8': 'pythia8_path'}
+        """Prepare reshuffling tools and offer source spectra on first use."""
+        first = self.options['maddm_first_indirect']
+        to_install = self.ask('install', '0', ask_class=AskMadDMInstaller,
+                              timeout=300, path_msg=' ') if first else {}
+        key_to_opts = {'cosmixs': 'pppc4dmid_path', 'pythia8': 'pythia8_path'}
 
-        for key, value in to_install.items():
-            if value == 'install':
-                self.exec_cmd('install %s' % key)
-            elif value != 'off':
-                key = key_to_opts[key]
-                self.exec_cmd('set %s %s' % (key, value))
-                self.exec_cmd('save options %s' % key) 
-        self.exec_cmd('set maddm_first_indirect False')
-        self.exec_cmd('save options maddm_first_indirect')
+        for key, value in [('reweight_tools', 'install'), *to_install.items()]:
+            try:
+                if value == 'install':
+                    self.do_install(key)
+                elif value != 'off':
+                    option = key_to_opts[key]
+                    self.options[option] = value
+                    self.exec_cmd('save options %s' % option)
+            except (self.InvalidCmd, MadGraph5Error, OSError) as error:
+                logger.warning('%s installation failed: %s. Retry with `install %s`.',
+                               key, error, key)
+        if first:
+            self.exec_cmd('set maddm_first_indirect False')
+            self.exec_cmd('save options maddm_first_indirect')
                 
             
   
@@ -2161,23 +2205,27 @@ class AskMadDMInstaller(loop_interface.AskLoopInstaller):
     
     local_installer = []
     required = []
-    order = ['pythia8', 'PPPC4DMID']
+    order = ['pythia8', 'cosmixs']
     bypassed = []
     
    
     def __init__(self, question, *args, **opts):
         
-        self.code = dict.fromkeys(self.order, 'off')
+        self.code = dict.fromkeys(self.order, 'install')
         self.online=True
         #check if some partial installation is already done.  
         if 'mother_interface' in opts:
             mother = opts['mother_interface']
-            install_dir = mother.options.get('heptools_install_dir') or pjoin(MG5DIR, 'HEPTools')
-            for name, option, default in [('pythia8', 'pythia8_path', pjoin(install_dir, 'pythia8')),
-                                          ('PPPC4DMID', 'pppc4dmid_path', pjoin(MG5DIR, 'PPPC4DMID'))]:
-                path = mother.options.get(option) or default
-                if os.path.isdir(path):
-                    self.code[name] = path
+            install_dir = data_install.heptools_dir(MG5DIR, mother.options.get('heptools_install_dir'))
+            for name, option, default, marker in [
+                    ('pythia8', 'pythia8_path', install_dir / 'pythia8', 'include/Pythia8/Pythia.h'),
+                    ('cosmixs', 'pppc4dmid_path', Path(MG5DIR) / 'PPPC4DMID', 'CosmiXs.npy')]:
+                for candidate in (mother.options.get(option), default):
+                    if candidate:
+                        path = Path(MG5DIR) / Path(candidate).expanduser()
+                        if (path / marker).is_file():
+                            self.code[name] = str(path)
+                            break
 
         
         # 1. create the question
@@ -2190,8 +2238,12 @@ class AskMadDMInstaller(loop_interface.AskLoopInstaller):
     def create_question(self, first = False):
         """ """
 
-        question = ("CosmiXsPPPC antiproton and antideuteron Earth flux tables and secondaries "
-                    "are bundled with MadDM.\nOptional tools for source spectra:\n")
+        question = ("Indirect-detection setup\n"
+                    "CosmiXsPPPC antiproton and antideuteron flux tables at Earth "
+                    "are downloaded as needed. Option 2 controls the CosmiXs source tables.\n"
+                    "Secondary flux tables come with MadDM. Meson and Ninja are prepared "
+                    "for reshuffling on Python 3.12 and later.\n"
+                    "Source spectra options:\n")
         allowed_answer = {'0', 'done'}
 
         status = {'off': '%(start_red)sdo not install%(stop)s',
@@ -2199,8 +2251,10 @@ class AskMadDMInstaller(loop_interface.AskLoopInstaller):
                   'local': '%(start_green)swill be installed %(stop)s(offline installation from local repository)',
                   }
         
-        descript = {'pythia8': ['pythia8', 'source shower (precise)', '[1410.3012]'],
-                    'PPPC4DMID': ['PPPC4DMID', 'tabulated source spectra (fast)', '[1012.4515]']}
+        descript = {'pythia8': ['Pythia8', 'source shower (precise)', '[arXiv:1410.3012]'],
+                    'cosmixs': ['CosmiXs and CosmiXsPPPC',
+                                'tabulated source spectra (fast) and propagated fluxes at Earth',
+                                '[arXiv:2312.01153, 2411.04815, 2606.10017]']}
 
         for i,key in enumerate(self.order,1):
             if key in self.bypassed and self.code[key] == 'off':
@@ -2233,10 +2287,10 @@ class AskMadDMInstaller(loop_interface.AskLoopInstaller):
         return question, allowed_answer
     
     do_pythia8 = lambda self,line : self.apply_name('pythia8', line)
-    do_PPPC4DMID = lambda self,line : self.apply_name('PPPC4DMID', line)
+    do_cosmixs = lambda self,line : self.apply_name('cosmixs', line)
     
     complete_pythia8 = loop_interface.AskLoopInstaller.complete_prog
-    complete_PPPC4DMID = loop_interface.AskLoopInstaller.complete_prog
+    complete_cosmixs = loop_interface.AskLoopInstaller.complete_prog
 
     
     

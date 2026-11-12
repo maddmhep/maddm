@@ -24,11 +24,13 @@ import six
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+import data_install
 from indirect import pbar_interface as adapter
 from indirect import dbar_interface
 from indirect import gce_interface
 from indirect import cr_earth
 from indirect import halo_model
+from indirect import indirect_compat
 from flux_test_data import requires_pbar
 
 SOURCE = ROOT/'maddm_run_interface.py'
@@ -74,6 +76,8 @@ class EventBackend:
 
 ENV = dict(halo_model=halo_model, cr_earth=cr_earth, MadGraph5Error=RuntimeError, pbar_interface=adapter, dbar_interface=dbar_interface, gce_interface=gce_interface, pjoin=os.path.join, MDMDIR=str(ROOT), os=os,
            np=np, math=math, re=re, six=six, collections=collections, HAS_NUMPY=True,
+           data_install=data_install, madgraph=types.SimpleNamespace(MG5DIR=ROOT),
+           indirect_compat=indirect_compat,
            logger=Logger(), bcolors=COLORS, pb2cm3=2.99792458e-26,
            banner_mod=types.SimpleNamespace(RunCard=RunCard), Indirect_Cmd=EventBackend,
            Indirect_PY8Card=lambda path: {'Main:NumberOfEvents': -1},
@@ -101,6 +105,7 @@ class ForbiddenSpectra:
 class Harness:
     def __init__(self, directory, method='inclusive'):
         self.dir_path, self.run_name = str(directory), 'run_01'
+        self.options = {}
         self.in_scan_mode, self.param_card_iterator = False, []
         self._mw_shm_rule = self._cr_earth_summary = None
         self._two2twoLO = method == 'inclusive'
@@ -223,7 +228,8 @@ class RunTests(unittest.TestCase):
         for method in ('inclusive', 'reshuffling', 'madevent'):
             with self.subTest(method=method), tempfile.TemporaryDirectory() as directory:
                 h = Harness(directory, method)
-                with patch.object(adapter.AntiprotonLimits, 'evaluate', side_effect=AssertionError('Flux fit called')):
+                with patch.object(indirect_compat, 'require_reweight_build_tools'), \
+                     patch.object(adapter.AntiprotonLimits, 'evaluate', side_effect=AssertionError('Flux fit called')):
                     self.complete(h)
                 self.assertGreater(h.last_results['tot_SM_xsec'], 0.)
                 self.assertGreater(h.last_results['lim_taacsID#xx_bbx'], 0.)

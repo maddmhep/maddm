@@ -90,7 +90,8 @@ class ReweightTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             h = Harness(directory, 'reshuffling')
             (Path(directory)/'Cards/pythia8_card.dat').unlink()
-            h.launch_indirect(False, 'Indirect_tree_cont', .00075)
+            with patch.object(indirect_compat, 'require_reweight_build_tools'):
+                h.launch_indirect(False, 'Indirect_tree_cont', .00075)
             card = json.loads((Path(directory)/'Indirect_tree_cont/Cards/run_card.dat').read_text())
             self.assertGreater(card['ebeam1'], 100.)
             self.assertEqual(card['ebeam1'], card['ebeam2'])

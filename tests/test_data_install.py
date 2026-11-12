@@ -2,14 +2,46 @@
 
 import gzip
 import hashlib
+from io import StringIO
 from pathlib import Path
 import shutil
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 import zipfile
 
 import data_install
+
+
+class PythonDependencyTests(unittest.TestCase):
+    def test_conda_targets_the_python_prefix(self):
+        with tempfile.TemporaryDirectory() as directory:
+            prefix = Path(directory) / 'env with spaces'
+            (prefix / 'conda-meta').mkdir(parents=True)
+            with patch.object(data_install.sys, 'prefix', str(prefix)), \
+                 patch.object(data_install.shutil, 'which', return_value='/tools/conda'):
+                self.assertEqual(data_install.conda_install_command(['matplotlib']),
+                                 ['/tools/conda', 'install', '--prefix', str(prefix),
+                                  '--yes', 'matplotlib'])
+            with patch.object(data_install.sys, 'prefix', directory), \
+                 patch.dict(data_install.os.environ, CONDA_PREFIX=str(prefix)):
+                self.assertIsNone(data_install.conda_install_command(['matplotlib']))
+
+    def test_batch_reports_every_missing_dependency_without_prompting(self):
+        import __main__
+        output = StringIO()
+        options = SimpleNamespace(plugin='maddm', file='commands.txt')
+        with patch.object(__main__, 'options', options, create=True), \
+             patch.object(data_install, 'find_spec', side_effect=lambda name: object() if name == 'six' else None), \
+             patch.object(data_install, 'conda_install_command', return_value=None), \
+             patch.object(data_install.sys, 'stderr', output), \
+             patch('builtins.input', side_effect=AssertionError('batch startup prompted')):
+            with self.assertRaises(SystemExit) as exit_code:
+                data_install.check_python_dependencies('PLUGIN.maddm')
+        self.assertEqual(exit_code.exception.code, 1)
+        self.assertIn('Missing Python packages: numpy, scipy, matplotlib', output.getvalue())
+        self.assertIn('-m pip install numpy scipy matplotlib', output.getvalue())
 
 
 def record(name, content, **details):

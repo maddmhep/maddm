@@ -26,26 +26,38 @@ def is_maddm_process_shortcut(process):
     return bool(tokens and tokens[0].lower() in MADDM_PROCESS_SHORTCUTS and '>' not in process)
 
 
-def require_reweight_build_tools():
+def reweight_search_path(tools_bin=None):
+    paths = [str(Path(sys.executable).parent)]
+    if os.name == 'nt':
+        paths.extend(str(Path(sys.prefix) / name) for name in ('Scripts', 'Library/bin'))
+    if tools_bin is not None:
+        paths.append(str(tools_bin))
+    paths.append(os.environ.get('PATH', ''))
+    return os.pathsep.join(paths)
+
+
+def missing_reweight_build_tools(tools_bin=None):
     """MG5 uses F2PY's Meson backend by default on Python >= 3.12."""
     if sys.version_info[:2] < (3, 12):
-        return
-    search_path = str(Path(sys.executable).parent)+os.pathsep+os.environ.get('PATH', '')
-    missing = [name for name in ('meson', 'ninja') if shutil.which(name, path=search_path) is None]
+        return []
+    search_path = reweight_search_path(tools_bin)
+    return [name for name in ('meson', 'ninja') if shutil.which(name, path=search_path) is None]
+
+
+def require_reweight_build_tools():
+    missing = missing_reweight_build_tools()
     if missing:
         raise RuntimeError('Precise velocity reweighting needs '+', '.join(missing)+
-                           ' on PATH for the F2PY build. In the active MadGraph Python environment run:\n'
-                           +sys.executable+' -m pip install meson ninja\n'
-                           'Then restart MadDM and relaunch. No rate-method fallback was applied.')
+                           ' for the F2PY build. Run `install reweight_tools` at the main MadDM prompt, then relaunch.')
 
 
 @contextmanager
-def reweight_build_environment():
+def reweight_build_environment(tools_bin=None):
     """Bind F2PY and build tools to the Python actually running MadDM."""
-    require_reweight_build_tools()
     previous = {key: os.environ.get(key) for key in ('PATH', 'F2PY')}
     try:
-        os.environ['PATH'] = str(Path(sys.executable).parent)+os.pathsep+os.environ.get('PATH', '')
+        os.environ['PATH'] = reweight_search_path(tools_bin)
+        require_reweight_build_tools()
         os.environ['F2PY'] = shlex.join([sys.executable, str(Path(__file__).with_name('f2py_compat.py'))])
         yield
     finally:

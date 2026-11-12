@@ -12,6 +12,7 @@ import sys
 import subprocess
 
 from . import auxiliary as aux
+from . import data_install
 from .indirect import pbar_interface
 from .indirect import dbar_interface
 from .indirect import gce_interface
@@ -419,7 +420,9 @@ class Spectra:
         if Spectra.PPPC_type == cache_key:
             return Spectra.PPPCdata
         if not os.path.isfile(source):
-            logger.info('Optional source table %s is unavailable (install PPPC4DMID).', os.path.basename(source))
+            installer = 'cosmixs' if kind == 'ew' else 'PPPC4DMID'
+            logger.info('Optional source table %s is unavailable (install %s).',
+                        os.path.basename(source), installer)
             return None
         data = np.load(source, allow_pickle=True, encoding='latin1').item()
         Spectra.PPPCdata = data
@@ -1793,6 +1796,13 @@ class MADDMRunCmd(cmd.CmdShell):
         self._output_level = (self.maddm_card['save_output']
                               if self.in_scan_mode or self.param_card_iterator else 'all')
         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
+        electron_mass_max = self.maddm_card['direct_electron_dm_mass_max']
+        electron_recoil = self.mode['direct_electron'] and (
+            mdm <= electron_mass_max or self.maddm_card['direct_electron_mode'] == 'always')
+        if self.mode['direct_electron'] and not electron_recoil:
+            logger.warning('Dark matter mass value %s GeV exceeds the electron-recoil calculation '
+                           'maximum of %s GeV in auto mode. Set direct_electron_mode = always '
+                           'to evaluate the recoil spectrum.', mdm, electron_mass_max)
         self._mw_shm_rule = None
         try:
             velocity_profile = halo_model.velocity_profile(self.maddm_card)
@@ -1920,7 +1930,7 @@ class MADDMRunCmd(cmd.CmdShell):
                             **self.rapidd_modulation_kwargs())
 
         # DM-electron scattering: alphas from the Fortran, rates and signals from RAPIDD
-        if self.mode['direct_electron'] and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
+        if electron_recoil:
             RP_parent = os.path.abspath(pjoin(MDMDIR, 'vendor', 'RAPIDD_for_DM'))
             if RP_parent not in sys.path:
                 sys.path.insert(0, RP_parent)
@@ -1956,7 +1966,7 @@ class MADDMRunCmd(cmd.CmdShell):
 
         # if self.mode['direct_nucleon'] == 'p-value':
             
-        if self.mode['direct_electron'] and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
+        if electron_recoil:
             self.limits.set_rhoDM(self.maddm_card['rhoDM'])  # limit at the local DM density of the card
             self.last_results['lim_sigma_e'] = self.limits.DMe_max(mdm)
             self.last_results['lim_sigma_e_rescaled'] = self.limits.DMe_max(mdm, rescaled=True)
@@ -2092,7 +2102,7 @@ class MADDMRunCmd(cmd.CmdShell):
                           'sigmaN_SD_n', 'lim_sigmaN_SD_n']
 
 
-            if self.mode['direct_electron'] and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
+            if electron_recoil:
                 order += ['sigma_e', 'lim_sigma_e', 'lim_sigma_e_rescaled']
                 if __dme_use_xenon_pvalue__:
                     order += ['pvalue_Xenon10','pvalue_Xenon1T']
@@ -2381,7 +2391,11 @@ class MADDMRunCmd(cmd.CmdShell):
                             cmd = ['launch %s' % self.run_name,
                                'reweight=indirect',
                                'edit reweight --replace_line="change velocity" --before_line="launch" change velocity %s' % vave_temp]
-                            self.me_cmd.import_command_file(cmd)
+                            heptools = data_install.heptools_dir(
+                                madgraph.MG5DIR, self.options.get('heptools_install_dir'))
+                            with indirect_compat.reweight_build_environment(
+                                    tools_bin=data_install.reweight_tools_bin(heptools)):
+                                self.me_cmd.import_command_file(cmd)
             
             fermi_dsph_vel = self.maddm_card['vave_indirect_cont'] > self.vave_indirect_cont_range[0] and self.maddm_card['vave_indirect_cont'] < self.vave_indirect_cont_range[1] # range of validity of Fermi limits
             line_gc_vel = self.maddm_card['vave_indirect_line'] > self.vave_indirect_line_range[0] and self.maddm_card['vave_indirect_line'] < self.vave_indirect_line_range[1] # range of validity of line limits
@@ -3289,19 +3303,20 @@ class MADDMRunCmd(cmd.CmdShell):
     # This function reads the spectra from the PPPC tables from each annihilation channel, and adds them up according to the BR 
     def read_tabulatedspectra(self):
         mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
+        method = self.maddm_card['indirect_flux_source_method'].lower()
         
         if not self.options.get('pppc4dmid_path'):
-            logger.info('Optional PPPC4DMID/CosmiXs source spectra are unavailable (install PPPC4DMID).')
+            installer = 'cosmixs' if method == 'cosmixs' else 'PPPC4DMID'
+            logger.info('Optional source spectra are unavailable (install %s).', installer)
             return False
 
         if not HAS_SCIPY:
-            logger.error('using PPPC4DMID requires scipy module. Please install it (for example with "pip install scipy")')
+            logger.error('Tabulated source spectra require SciPy (install it with "pip install scipy").')
             return
 
         if not self.Spectra.check_mass(mdm):
             return False
-        kind = {'cosmixs': 'ew', 'pppc4dmid_ew': 'pppc_ew'}.get(
-            self.maddm_card['indirect_flux_source_method'].lower(), 'pppc')
+        kind = {'cosmixs': 'ew', 'pppc4dmid_ew': 'pppc_ew'}.get(method, 'pppc')
         PPPC_source = self.Spectra.load_tabulated_sourcespectra(self.options['pppc4dmid_path'], kind=kind)
         if PPPC_source is None:
             return False

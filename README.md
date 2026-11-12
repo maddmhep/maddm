@@ -25,17 +25,29 @@ For a standard installation from MadGraph's package manager, enter
 
 - At least MadGraph v3.6 is required to run the latest version of MadDM.
 - MadDM is compatible with the LTS version of MadGraph.
-- MadDM requires:
-   -   Python 3.8+
-   -   Fortran
-   -   `numpy`
-   -   `scipy`
-   -   cmake
-- Install Matplotlib for figures and the Sphinx tutorial examples.
-- Preparing nuclear direct detection requires Git and network access on first use
-  to fetch RAPIDD, plus CMake, a C compiler, and GSL to build it.
-- First use of the propagated antinuclei fluxes needs network access
-  to download the corresponding tables.
+- MadDM requires Python 3.8+, `six`, `numpy`, `scipy`, and `matplotlib`.
+  At startup, MadDM reports missing packages and the command to install
+  them in the Python environment running MadGraph. Interactive launches
+  offer to run the command and restart MadDM. Batch launches print the
+  command and exit. MadDM uses Conda when it manages the active Python
+  and its executable is available, or pip with the active interpreter.
+  Generated processes require a Fortran compiler and `make`. Install
+  PyMultiNest with the MultiNest library for optional nested scans.
+- On first indirect generation, MadDM offers to install Pythia8 and the
+  CosmiXs source spectra. Pythia8 uses the MadGraph installer and needs a
+  C++ compiler, `make`, and `rsync`. MadDM supplies a verified
+  zlib archive when needed. CosmiXsPPPC propagated fluxes are downloaded
+  separately, and the secondary flux tables are included with MadDM.
+- With Python 3.12 or later, `sigmav_method = reshuffling` requires Meson
+  and the Ninja build executable for NumPy F2PY. MadDM reuses executables
+  on `PATH`. It installs missing tools with Conda in the active Conda
+  environment, or with pip in an isolated environment under MadGraph's
+  HEPTools directory. To install them separately, run `install
+  reweight_tools` at the MadDM prompt.
+- Nuclear and electron recoil calculations use RAPIDD. Its first build
+  requires Git, CMake 3.13+, a C/C++ toolchain, and GNU GSL. MadDM uses an
+  existing GSL that CMake can find or builds GSL under HEPTools when it is
+  missing. First-time downloads require internet access.
 
 
 ### Running relic density, direct and indirect detection together
@@ -117,9 +129,11 @@ the tutorials, or build them with `make -C doc html`.
 
 Some third-party packages can be installed using the `install` command in the shell. Be sure to cite them as indicated during the install phase if you use them.
 
-DM-nucleon direct detection requires [RAPIDD](https://github.com/cheekyparticle/RAPIDD_for_DM) (needs `git` and `cmake`). If it is missing, MadDM asks to download and compile it the first time you generate `direct_detection`; you can also install it at any time with `MadDM> install RAPIDD`.
+Nuclear and electron recoil rates use [RAPIDD](https://github.com/cheekyparticle/RAPIDD_for_DM). MadDM offers to download and compile it when you first generate `direct_detection`. You can also run `install RAPIDD` at the MadDM prompt.
 On macOS, build RAPIDD and GSL for the same architecture as the Python running MadDM.
 
+To install the tabulated production spectra separately, run `install cosmixs`
+and select `indirect_flux_source_method = CosmiXs` in the run card.
 The first `generate indirect_detection` or `add process indirect_detection`
 downloads the two annihilation archives from
 [CosmiXsPPPC](https://github.com/CosmiXsPPPC/CosmicRay-flux).

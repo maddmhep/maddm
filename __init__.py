@@ -1,6 +1,10 @@
 ## import the required files
 
 from __future__ import absolute_import
+from .data_install import check_python_dependencies
+
+check_python_dependencies(__name__)
+
 from . import maddm_interface as maddm_interface
 from . import MGoutput as MGoutput
 ## Define a typical error for the plugin

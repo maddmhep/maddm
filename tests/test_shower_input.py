@@ -57,7 +57,7 @@ class BuildTests(unittest.TestCase):
     def test_missing_meson_has_actionable_active_environment_diagnostic(self):
         with patch.object(indirect_compat.sys, 'version_info', (3, 13, 0)), \
              patch.object(indirect_compat.shutil, 'which', return_value=None):
-            with self.assertRaisesRegex(RuntimeError, 'pip install meson ninja'):
+            with self.assertRaisesRegex(RuntimeError, 'install reweight_tools'):
                 indirect_compat.require_reweight_build_tools()
         with patch.object(indirect_compat.sys, 'version_info', (3, 13, 0)), \
              patch.object(indirect_compat.shutil, 'which', return_value='/tools/bin/tool'):

@@ -13,9 +13,10 @@ FILE_GUIDE = (
     ('maddm.out', 'Raw output from the MadDM calculation, useful for troubleshooting.'),
     ('DDrates.txt', 'Differential nuclear recoil rates for xenon, argon and germanium versus recoil energy in keV. Rates are in events per kg, day and keV.'),
     ('DDrates.npz', 'Numerical arrays for the nuclear recoil calculation.'),
-    ('DDrates.pdf', 'Log-scale comparison of the three target spectra in `DDrates.txt`.'),
+    ('DDrates.pdf', 'Three nuclear recoil spectra on a linear energy axis and a logarithmic rate axis.'),
     ('DDrates_e.txt', 'Differential xenon electron recoil rates from RAPIDD, summed and per shell.'),
     ('DDrates_e.npz', 'Numerical arrays for the RAPIDD electron recoil and detector signals.'),
+    ('DDrates_e.pdf', 'Total xenon electron recoil spectrum on a linear energy axis and a logarithmic rate axis.'),
     ('dRdS2_Xenon*_e_recoil.dat', 'RAPIDD electron recoil signal as a function of S2.'),
     ('dRdE_e_recoil.dat', 'RAPIDD differential electron recoil rate versus electron energy.'),
     ('signal_e_recoil.dat', 'RAPIDD signal per XENON10 S2 bin.'),
@@ -90,6 +91,8 @@ def write_run_products(directory, *, recoil, source_method=None):
     plots = []
     if recoil and (directory / 'DDrates.txt').is_file():
         plots.append(('DDrates.pdf', 'recoil_rates_plot', (directory / 'DDrates.txt',)))
+    if recoil and (directory / 'DDrates_e.txt').is_file():
+        plots.append(('DDrates_e.pdf', 'electron_recoil_rates_plot', (directory / 'DDrates_e.txt',)))
     if source_method and any(directory.glob('*_spectrum_' + source_method + '.dat')):
         plots.append(('source_spectra.pdf', 'source_spectra_plot', (directory, source_method)))
     for name, plotter, args in plots:
