@@ -6,7 +6,6 @@ import collections
 from pathlib import Path
 import shutil
 import subprocess
-import tempfile
 
 from . import maddm_run_interface as maddm_run_interface
 from . import dm_tutorial_text as dm_tutorial_text
@@ -152,9 +151,6 @@ class MadDM_interface(master_interface.MasterCmd):
     # RAPIDD (direct detection, git submodule vendor/RAPIDD_for_DM)
     #===========================================================================
     rapidd_dir = pjoin(MDMDIR, 'vendor', 'RAPIDD_for_DM')
-    rapidd_url = 'https://github.com/cheekyparticle/RAPIDD_for_DM.git'
-    # Match the dev branch's gitlink when installing from a source ZIP.
-    rapidd_revision = '0b781fce8069e22bae01a2bdfd4356f9beb4857a'
 
     def do_install(self, line, paths=None, additional_options=()):
         """Handle MadDM dependencies alongside the standard MG5 installers."""
@@ -210,38 +206,29 @@ class MadDM_interface(master_interface.MasterCmd):
 
     @classmethod
     def is_rapidd_downloaded(cls):
-        return os.path.exists(pjoin(cls.rapidd_dir, 'instructions_cmake.sh'))
+        """True if the RAPIDD submodule is checked out: MadDM needs both the C
+        library sources and the rapidd Python package."""
+        return all(os.path.isfile(pjoin(cls.rapidd_dir, *path)) for path in
+                   [('lib', 'CMakeLists.txt'), ('rapidd', '__init__.py')])
 
     def install_rapidd(self):
         """download (if needed) and compile RAPIDD. Return True on success"""
 
         if not self.is_rapidd_downloaded():
             if not shutil.which('git'):
-                logger.error("git is required to download RAPIDD. Please install git, or run:\n"
-                             "  git clone %s %s" % (self.rapidd_url, self.rapidd_dir))
+                logger.error("git is required to download RAPIDD (git submodule vendor/RAPIDD_for_DM). "
+                             "Please install git and run 'install RAPIDD'.")
                 return False
             logger.info("Downloading RAPIDD in %s" % self.rapidd_dir, '$MG:BOLD')
             try:
-                if os.path.exists(pjoin(MDMDIR, '.git')):
-                    # maddm is a git checkout: RAPIDD is a submodule
-                    subprocess.run(['git', 'submodule', 'update', '--init', '--recursive',
-                                    pjoin('vendor', 'RAPIDD_for_DM')],
-                                   check=True, cwd=MDMDIR)
-                else:
-                    destination = Path(self.rapidd_dir)
-                    destination.parent.mkdir(parents=True, exist_ok=True)
-                    with tempfile.TemporaryDirectory(prefix='.rapidd-', dir=destination.parent) as work:
-                        source = Path(work) / destination.name
-                        source.mkdir()
-                        subprocess.run(['git', 'init', '-q'], cwd=source, check=True)
-                        subprocess.run(['git', 'fetch', '--depth=1', self.rapidd_url,
-                                        self.rapidd_revision], cwd=source, check=True)
-                        subprocess.run(['git', 'checkout', '--detach', 'FETCH_HEAD'], cwd=source, check=True)
-                        if destination.is_dir() and not any(destination.iterdir()):
-                            destination.rmdir()
-                        source.rename(destination)
+                subprocess.run(['git', 'submodule', 'update', '--init', '--recursive',
+                                pjoin('vendor', 'RAPIDD_for_DM')],
+                               check=True, cwd=MDMDIR)
             except (OSError, subprocess.CalledProcessError) as error:
                 logger.error("RAPIDD download failed: %s" % error)
+                return False
+            if not self.is_rapidd_downloaded():
+                logger.error("RAPIDD download failed: %s is incomplete" % self.rapidd_dir)
                 return False
 
         if not shutil.which('cmake'):
