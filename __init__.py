@@ -21,6 +21,12 @@ new_output = {'maddm': MGoutput.ProcessExporterMadDM,
 new_reweight = {'indirect': MGoutput.Indirect_Reweight}
 
 ## The test/code have been validated up to this version
-latest_validated_version = (2,9,24)
+latest_validated_version = (3,8,1)
 minimal_mg5amcnlo_version = (2,9,18)
-maximal_mg5amcnlo_version = (3,8,0)
+maximal_mg5amcnlo_version = (3,8,1)
+
+## MadGraph7 checks its own version numbering
+## (the v0.3.0 release still reports 'version = 0.2.1' in its VERSION file)
+latest_validated_mg7_version = (0,3,0)
+minimal_mg7_version = (0,2,1)
+maximal_mg7_version = (0,3,0)
