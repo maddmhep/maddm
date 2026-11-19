@@ -3,10 +3,14 @@ import os
 from pathlib import Path
 import sys
 
+# MG5_aMC@NLO starts with bin/mg5_aMC, MadGraph7 with bin/madgraph
+EXECUTABLES = ('mg5_aMC', 'madgraph')
+
 for directory in Path(__file__).absolute().parents:
-    executable = directory / 'bin' / 'mg5_aMC'
-    if executable.is_file():
-        flags = ['-' + 'O' * sys.flags.optimize] if sys.flags.optimize else []
-        os.execv(sys.executable, [sys.executable, *flags, str(executable),
-                                  *sys.argv[1:], '--mode=maddm'])
-raise SystemExit('MadDM launcher could not locate bin/mg5_aMC.')
+    for name in EXECUTABLES:
+        executable = directory / 'bin' / name
+        if executable.is_file():
+            flags = ['-' + 'O' * sys.flags.optimize] if sys.flags.optimize else []
+            os.execv(sys.executable, [sys.executable, *flags, str(executable),
+                                      *sys.argv[1:], '--mode=maddm'])
+raise SystemExit('MadDM launcher could not locate bin/mg5_aMC or bin/madgraph.')

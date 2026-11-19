@@ -4,7 +4,10 @@ fort= $(FC)
 libname = matrix_elements
 incdir = ../include
 
-flags = $(FFLAGS) -I$(incdir)
+# MadGraph7 matrix elements USE the model_object and aloha_object Fortran modules
+moddirs = -I../Source/MODEL -I../Source/DHELAS
+
+flags = $(FFLAGS) -I$(incdir) $(moddirs)
 
 objs = smatrix.o $(patsubst %.f,%.o,$(wildcard *.f))
 

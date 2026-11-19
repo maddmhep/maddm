@@ -20,8 +20,13 @@ import madgraph.various.misc as misc
 import madgraph.iolibs.files as files
 #import darkmatter as darkmatter
 import madgraph.interface.common_run_interface as common_run
-import models.check_param_card as check_param_card
-import models.model_reader as model_reader
+try:
+    # MadGraph7 moved the MG5_aMC top-level 'models' package to 'madgraph.models'
+    import madgraph.models.check_param_card as check_param_card
+    import madgraph.models.model_reader as model_reader
+except ImportError:
+    import models.check_param_card as check_param_card
+    import models.model_reader as model_reader
 from madgraph import MG5DIR, MadGraph5Error
 
 import re
@@ -917,7 +922,14 @@ class MadDM_interface(master_interface.MasterCmd):
             self._dm_candidate = []
             self._coannihilation = []
             self._disconnected_particles = []
-            
+            # MadGraph7 merges identical particles (e.g. the three neutrinos)
+            # at model import. MadDM needs one matrix element per flavour
+            # (relic channels, direct detection per quark, ID spectra).
+            if self.options.get('apply_flavor_grouping'):
+                logger.info('MadDM: disabling the MadGraph7 flavour grouping '
+                            '(apply_flavor_grouping = False).')
+                self.options['apply_flavor_grouping'] = False
+
         return super(MadDM_interface, self).do_import(line, *args, **opts)
 
     def clean_process(self):
@@ -944,7 +956,11 @@ class MadDM_interface(master_interface.MasterCmd):
     def check_save(self, args):
         
         if len(args) > 1 and args[1] == 'maddm_first_indirect':
-            args.insert(1, pjoin(MG5DIR, 'input', 'mg5_configuration.txt'))
+            # MG5_aMC reads input/mg5_configuration.txt, MadGraph7 input/mg7_configuration.txt
+            config = pjoin(MG5DIR, 'input', 'mg7_configuration.txt')
+            if not os.path.exists(config):
+                config = pjoin(MG5DIR, 'input', 'mg5_configuration.txt')
+            args.insert(1, config)
             return args
         else:
             return super(MadDM_interface, self).check_save(args)

@@ -26,7 +26,11 @@ from copy import copy, deepcopy
 
 from . import MGoutput
 from madgraph import MadGraph5Error
-from models import check_param_card
+try:
+    # MadGraph7 moved the MG5_aMC top-level 'models' package to 'madgraph.models'
+    import madgraph.models.check_param_card as check_param_card
+except ImportError:
+    from models import check_param_card
 import six
 from six.moves import map
 from six.moves import range
@@ -43,7 +47,7 @@ import madgraph.various.banner as banner_mod
 import madgraph.interface.common_run_interface as common_run
 import madgraph.interface.madevent_interface as me5_interface
 import madgraph.iolibs.files as files
-import models.check_param_card as param_card_mod
+param_card_mod = check_param_card
 
 #import darkmatter as darkmatter
 

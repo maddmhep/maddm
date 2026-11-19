@@ -95,6 +95,8 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         super(ProcessExporterMadDM, self).__init__(dir_path, opt)
         self.resonances = set() 
         self.proc_characteristic = MADDMProcCharacteristic()
+        # MadGraph7 matrix elements take a flavour index: SMATRIX(P, FLAV_IDX, ANS)
+        self.smatrix_has_flav_idx = False
         
     def convert_model(self, model, wanted_lorentz = [], wanted_couplings = [], **opts):
         """-----------------------------------------------------------------------#  
@@ -311,10 +313,35 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         if replace_dict['nSplitOrders'] !='':
             file = file + '\n' + open(replace_dict['template_file2'])\
                                                             .read()%replace_dict
+        file = self.adapt_mg7_matrix_element(file, matrix_element)
         # Write the file
         writer.writelines(file)
 
         return replace_dict['return_value']
+    
+    def adapt_mg7_matrix_element(self, text, matrix_element):
+        """MadGraph7 standalone matrix elements differ from the MG5_aMC ones:
+          - the helper functions (BROKEN_SYM, GET_FLAVOR_INDEX, ...) include
+            'nexternal.inc', which exists only in the MG SubProcesses/P*
+            directories. MadDM writes all the matrix elements in one directory,
+            so the include is replaced by the NEXTERNAL parameter of the process;
+          - SMATRIX has a flavour index argument, SMATRIX(P, FLAV_IDX, ANS):
+            remember it to write the right calls in smatrix.f.
+        Nothing changes for the MG5_aMC matrix elements."""
+
+        if re.search(r"SUBROUTINE\s+\w*SMATRIX\s*\(\s*P\s*,\s*FLAV_IDX\s*,", text, re.I):
+            self.smatrix_has_flav_idx = True
+        nexternal = matrix_element.get_nexternal_ninitial()[0]
+        return re.sub(r"^\s*include\s+['\"]nexternal\.inc['\"]\s*$",
+                      "      INTEGER NEXTERNAL\n      PARAMETER (NEXTERNAL=%d)" % nexternal,
+                      text, flags=re.I | re.M)
+
+    def smatrix_call(self, process_name):
+        """Fortran call of the SMATRIX of one process. MadDM disables the MG7
+        flavour grouping (one flavour per matrix element), so FLAV_IDX = 1."""
+        if self.smatrix_has_flav_idx:
+            return ' call %s_smatrix(p_ext, 1, smatrix)' % process_name
+        return ' call %s_smatrix(p_ext, smatrix)' % process_name
     
     def add_resonances(self, matrix_element, fortran_model):
         """keep track of all the s-channel resonances in DM DM > SM SM"""
@@ -821,7 +848,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
             tag = p.get('id')
             ids = self.make_ids(p, flag)
             if tag == flag:
-                info = ' call %s_smatrix(p_ext,smatrix)' % p.shell_string(print_id=False)
+                info = self.smatrix_call(p.shell_string(print_id=False))
                 smatrix[ids].append(info)
 
         maxintype = 0 
@@ -851,7 +878,7 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
                 continue
             if self.get_dd_type(p)[0] != efttype:
                 continue
-            info = ' call %s_smatrix(p_ext, smatrix)' % self.get_process_name(me, print_id=False)
+            info = self.smatrix_call(self.get_process_name(me, print_id=False))
             output.append('if (k.eq.%s) then \n %s \n' % ( len(output)+1, info)) 
         
         return '%s \n %s' % (' else'.join(output), ' endif' if output else '')
