@@ -1989,6 +1989,12 @@ class MADDMRunCmd(cmd.CmdShell):
             self.last_results['lim_sigma_e'] = self.limits.DMe_max(mdm)
             self.last_results['lim_sigma_e_rescaled'] = self.limits.DMe_max(mdm, rescaled=True)
             self.launch_direct_electron()
+        elif self.mode['direct_electron']:
+            # electron recoil skipped at this mass (auto mode): -1 placeholders keep the
+            # scan summary columns aligned when a mass scan crosses direct_electron_dm_mass_max
+            for key in ['sigma_e', 'lim_sigma_e', 'lim_sigma_e_rescaled',
+                        'lim_sigma_e_Xenon10', 'pvalue_Xenon10', 'pvalue_Xenon1T']:
+                self.last_results[key] = -1
 #        if self.mode['indirect'] and not self._two2twoLO:
 #            with misc.MuteLogger(names=['madevent','madgraph'],levels=[50,50]):
 #                self.launch_indirect(force)
@@ -2120,7 +2126,7 @@ class MADDMRunCmd(cmd.CmdShell):
                           'sigmaN_SD_n', 'lim_sigmaN_SD_n']
 
 
-            if electron_recoil:
+            if self.mode['direct_electron']:
                 order += ['sigma_e', 'lim_sigma_e', 'lim_sigma_e_rescaled']
                 if __dme_use_xenon10_pvalue__:
                     order += ['lim_sigma_e_Xenon10', 'pvalue_Xenon10']
