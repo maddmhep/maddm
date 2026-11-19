@@ -289,6 +289,9 @@ class GeneratedRuntimeTests(unittest.TestCase):
                  secure_float_f77=lambda s:float(s.replace('D','e').replace('d','e')))
         exec(compile(ast.Module(body=classes,type_ignores=[]),str(SOURCE),'exec'),env)
         card=env['MadDMCard'](str(run/'Cards/maddm_card.dat'))
+        # the reference bound and exclusion below are for rhoDM = 0.4 GeV/cm^3
+        # (the generated card has the default 0.3; the bound scales as rhoDM^-2)
+        card['rhodm']=0.4
         with self.assertRaises(TypeError): card.get('vave_indirect_pbar',.1)
         self.assertEqual(adapter.card_value(card,'vave_indirect_pbar',0.),.00075)
         self.assertEqual(adapter.card_value(card,'missing_test_setting',42),42)
