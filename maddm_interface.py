@@ -194,6 +194,20 @@ class MadDM_interface(master_interface.MasterCmd):
                         additional_options = options
             except data_install.DataInstallError as error:
                 raise self.InvalidCmd(str(error)) from error
+
+        # The MadGraph installers resolve a relative heptools_install_dir (the
+        # default is './HEPTools') against the current directory: when MadDM is
+        # started from another directory, Pythia8 would be installed there while
+        # pythia8_path points to MG5DIR/HEPTools. Install where MadDM looks for it.
+        configured = self.options.get('heptools_install_dir')
+        if configured and not os.path.isabs(os.path.expanduser(configured)):
+            self.options['heptools_install_dir'] = str(
+                data_install.heptools_dir(MG5DIR, configured))
+            try:
+                return super(MadDM_interface, self).do_install(
+                    line, paths=paths, additional_options=additional_options)
+            finally:
+                self.options['heptools_install_dir'] = configured
         return super(MadDM_interface, self).do_install(
             line, paths=paths, additional_options=additional_options)
 
