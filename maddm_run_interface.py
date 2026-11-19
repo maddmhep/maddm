@@ -109,6 +109,11 @@ __dme_use_xenon10_pvalue__ = True
 __dme_use_xenon1t_pvalue__ = False
 __dme_xenon10_cl__ = 0.9  # confidence level of the XENON10 limit (excluded if p-value < 1 - CL)
 
+# Published limits on the DM-nucleon cross sections: (limit key, cross section, experiment). The limit of the row
+# <key> is lim_sigmaN_<key> and is compared with sigmaN_<cross section>.
+DD_ROWS = (('SI_p', 'SI_p', 'LZ2024'), ('SI_n', 'SI_n', 'LZ2024'), ('SD_p', 'SD_p', 'Pico60 (2019)'),
+           ('SD_p_LZ', 'SD_p', 'LZ2024'), ('SD_n', 'SD_n', 'LZ2024'))
+
 
 def rapidd_library_ready():
     """True if the RAPIDD library (git submodule vendor/RAPIDD_for_DM) is compiled."""
@@ -133,6 +138,8 @@ class ExpConstraints:
             'si'        : pjoin(rapidd_exp_dir, 'lz2024', 'LZ2024_SI.dat'),
             'sd_proton' : pjoin(rapidd_exp_dir, 'PICO60', 'Pico60_sd_proton_2019.dat'),
             'sd_neutron': pjoin(rapidd_exp_dir, 'lz2024', 'LZ2024_SDn.dat'),
+            # LZ 2024 SD-p (HEPData ins2841863): stronger than PICO-60 for 17 GeV < mDM < 1 TeV
+            'sd_proton_lz': pjoin(rapidd_exp_dir, 'lz2024', 'LZ2024_SDp.dat'),
             'electron'  : pjoin(rapidd_exp_dir, 'XENONnT', 'XENONnT_DMe_SI.dat'),
             # the same limit rescaled to the RAPIDD atomic responses (XENONnT uses the ionization form factors of
             # Essig et al.): published limit x S_wimprates/S_RAPIDD in its region of interest, an estimate
@@ -146,7 +153,8 @@ class ExpConstraints:
         # the conventions of arXiv:2105.00599), LZ 2024 (arXiv:2410.17036: standard halo model with the
         # conventions of arXiv:2105.00599, which LZ follows; the value is not repeated in the paper).
         # The limits set by the user (set dd_si_limits / dd_sd_limits) are also assumed at 0.3 GeV/cm^3.
-        self._dd_limit_rho = {'si': 0.3, 'sd_proton': 0.3, 'sd_neutron': 0.3, 'electron': 0.3, 'electron_rescaled': 0.3}
+        self._dd_limit_rho = {'si': 0.3, 'sd_proton': 0.3, 'sd_neutron': 0.3, 'sd_proton_lz': 0.3, 'electron': 0.3,
+                              'electron_rescaled': 0.3}
         self._rhoDM = 0.3
 
         self._dd_limit_mdm = dict()
@@ -244,6 +252,7 @@ class ExpConstraints:
             logger.info('Spin Independent cross section: %s' % self._dd_limit_file['si'])
             logger.info('Spin Dependent cross section (p): %s' % self._dd_limit_file['sd_proton'])
             logger.info('Spin Dependent cross section (n): %s' % self._dd_limit_file['sd_neutron'])
+            logger.info('Spin Dependent cross section (p, LZ): %s' % self._dd_limit_file['sd_proton_lz'])
             logger.info('DM-electron cross section: %s' % self._dd_limit_file['electron'])
             logger.info('DM-electron cross section (rescaled to the RAPIDD atomic responses): %s' % self._dd_limit_file['electron_rescaled'])
         else:
@@ -300,7 +309,9 @@ class ExpConstraints:
             return self._rho_rescale('si', np.interp(mdm, self._dd_limit_mdm['si'], self._dd_limit_sigma['si']))
 
     #Returns a value in cm^2
-    def SD_max(self, mdm, nucleon):
+    def SD_max(self, mdm, nucleon, experiment=None):
+        ''' SD limit on the DM-proton (nucleon = 'p': PICO-60, or LZ 2024 with experiment = 'LZ2024') or DM-neutron
+        (nucleon = 'n': LZ 2024) cross section '''
         if not HAS_NUMPY:
             logger.warning("missing numpy module for SD limit")
             return -1
@@ -310,11 +321,14 @@ class ExpConstraints:
             return -1
         else:
             if nucleon=='p':
-                if (mdm < np.min(self._dd_limit_mdm['sd_proton']) or mdm > np.max(self._dd_limit_mdm['sd_proton'])):
+                key = 'sd_proton_lz' if experiment == 'LZ2024' else 'sd_proton'
+                if key not in self._dd_limit_mdm:
+                    return -1
+                if (mdm < np.min(self._dd_limit_mdm[key]) or mdm > np.max(self._dd_limit_mdm[key])):
                     logger.warning('Dark matter mass value '+str(mdm)+' is outside the range of SD limit')
                     return -1
                 else:
-                    return self._rho_rescale('sd_proton', np.interp(mdm, self._dd_limit_mdm['sd_proton'], self._dd_limit_sigma['sd_proton']))
+                    return self._rho_rescale(key, np.interp(mdm, self._dd_limit_mdm[key], self._dd_limit_sigma[key]))
             elif nucleon=='n':
                 if (mdm < np.min(self._dd_limit_mdm['sd_neutron']) or mdm > np.max(self._dd_limit_mdm['sd_neutron'])):
                     logger.warning('Dark matter mass value '+str(mdm)+' is outside the range of SD limit')
@@ -1913,6 +1927,7 @@ class MADDMRunCmd(cmd.CmdShell):
             result['lim_sigmaN_SI_n'] = self.limits.SI_max(mdm)
             result['lim_sigmaN_SI_p'] = self.limits.SI_max(mdm)
             result['lim_sigmaN_SD_p'] = self.limits.SD_max(mdm, 'p')
+            result['lim_sigmaN_SD_p_LZ'] = self.limits.SD_max(mdm, 'p', 'LZ2024')
             result['lim_sigmaN_SD_n'] = self.limits.SD_max(mdm, 'n')
 
             # no DM-quark process (all the quark alphas are -1): skip the nucleon computation
@@ -2099,9 +2114,9 @@ class MADDMRunCmd(cmd.CmdShell):
 
             # *** Direct Detection
             if self.mode['direct_nucleon'] :
-                order += ['sigmaN_SI_p', 'lim_sigmaN_SI_p', 
+                order += ['sigmaN_SI_p', 'lim_sigmaN_SI_p',
                           'sigmaN_SI_n', 'lim_sigmaN_SI_n',
-                          'sigmaN_SD_p', 'lim_sigmaN_SD_p',
+                          'sigmaN_SD_p', 'lim_sigmaN_SD_p', 'lim_sigmaN_SD_p_LZ',
                           'sigmaN_SD_n', 'lim_sigmaN_SD_n']
 
 
@@ -3564,11 +3579,9 @@ class MADDMRunCmd(cmd.CmdShell):
     
     def direct_detection_rows(self):
         """Use the current point's predictions and limits in both reports."""
-        for channel, experiment in (('SI_p', 'LZ2024'), ('SI_n', 'LZ2024'),
-                                    ('SD_p', 'Pico60 (2019)'), ('SD_n', 'LZ2024')):
-            key = 'sigmaN_' + channel
-            yield dict(n='SigmaN_' + channel, sig=self.last_results[key],
-                       lim=self.last_results['lim_' + key], exp=experiment)
+        for key, channel, experiment in DD_ROWS:
+            yield dict(n='SigmaN_' + key, sig=self.last_results['sigmaN_' + channel],
+                       lim=self.last_results.get('lim_sigmaN_' + key, -1), exp=experiment)
 
     def print_results(self):    
         """ print the latest results on screen """
@@ -3636,16 +3649,13 @@ class MADDMRunCmd(cmd.CmdShell):
 
         if self.mode['direct_nucleon']:
             # units = self.last_results['GeV2pb*pb2cm2']
-            direct_names = [ { 'n': 'SigmaN_SI_p', 'sig': self.last_results['sigmaN_SI_p'], 'lim': self.last_results['lim_sigmaN_SI_p'], 'exp': 'LZ2024' },
-                             { 'n': 'SigmaN_SI_n', 'sig': self.last_results['sigmaN_SI_n'], 'lim': self.last_results['lim_sigmaN_SI_n'], 'exp': 'LZ2024' },
-                             { 'n': 'SigmaN_SD_p', 'sig': self.last_results['sigmaN_SD_p'], 'lim': self.last_results['lim_sigmaN_SD_p'], 'exp': 'Pico60 (2019)'    },
-                             { 'n': 'SigmaN_SD_n', 'sig': self.last_results['sigmaN_SD_n'], 'lim': self.last_results['lim_sigmaN_SD_n'], 'exp': 'LZ2024'   } ]
+            direct_names = list(self.direct_detection_rows())
 
             self.last_results['direct_results'] = direct_names
 
             logger.info('\n****** Direct detection [cm^2]: ')  
             for D in direct_names:
-                    th_cross = D['sig']* xsi 
+                    th_cross = D['sig']* xsi
                     ul = D['lim']
                     mess_th       = self.det_message_screen(th_cross, D['lim'] )
                     mess_alldm    = self.det_message_screen(D['sig'], D['lim'] )
