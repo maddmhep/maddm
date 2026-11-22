@@ -30,3 +30,16 @@ maximal_mg5amcnlo_version = (3,8,1)
 latest_validated_mg7_version = (0,3,0)
 minimal_mg7_version = (0,2,1)
 maximal_mg7_version = (0,3,0)
+
+## MadGraph7 compares its own version against the *_mg5amcnlo_* fields:
+## use the MadGraph7 range there when running under MadGraph7
+## (versions 0.x, while MG5_aMC is >= 2)
+try:
+    import madgraph.various.misc as _misc
+    _is_mg7 = int(_misc.get_pkg_info()['version'].split('.')[0]) < 2
+except Exception:
+    _is_mg7 = False
+if _is_mg7:
+    latest_validated_version = latest_validated_mg7_version
+    minimal_mg5amcnlo_version = minimal_mg7_version
+    maximal_mg5amcnlo_version = maximal_mg7_version
