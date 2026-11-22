@@ -33,7 +33,11 @@ wave-function prescription by default (``Main:methodDbar = 4``); it does
 not change the antideuteron propagation tables. The VINCIA settings follow the CosmiXs shower and hadronization
 setup. The source spectra are particle yields per annihilation before
 Galactic transport or solar modulation. Install the source spectra with
-``install PPPC4DMID`` and Pythia with ``install pythia8`` in MadDM as needed.
+``install cosmixs`` and Pythia with ``install pythia8`` in MadDM as needed.
+The Python dependency choice is shown on the main interface before Pythia8,
+with no answer timeout. Choosing manual setup leaves diagram generation
+available and defers the installer. ``install py_requirements`` can be used
+explicitly at any time.
 Numerical velocity reweighting uses F2PY with the Python environment that
 launches MadDM. On Python 3.12 and later, install Meson and Ninja for this
 build.

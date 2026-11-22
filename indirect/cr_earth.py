@@ -100,7 +100,7 @@ class EarthFluxes:
         units += ' m^-2 s^-1 sr^-1'
         names = ['%s_%s_%s' % (case, frame, component) for case in cases for frame in ('IS', 'TOA')
                  for component in ('secondary', 'DM', 'total')]
-        return dict(status='ok', **cr_config.selection(card), model_mass_GeV=float(mass),
+        return dict(**pbar_interface.mixture_metadata(mixture), status='ok', **cr_config.selection(card), model_mass_GeV=float(mass),
                     flux_units=units, energy_column=energy, source_factor=factor,
                     table_convention=convention, rho_local_GeVcm3=rho, xsi=xsi,
                     dm_table=str(path), secondary_table=str(secondary_path), cases=cases,

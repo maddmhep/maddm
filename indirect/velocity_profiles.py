@@ -12,18 +12,7 @@ from scipy.integrate import quad
 from scipy.linalg import eigh_tridiagonal
 
 
-PROFILE_NAMES = ('SHM', 'SHM_numeric', 'SHM_beta', 'SHM_wLMC', 'Lisanti')
-# RAPIDD calc_halo inputs, with beta=1 making SHM_beta the smooth-cutoff choice.
-PROFILE_INPUTS = (
-    ('halo_beta', 1., 'SHM_beta: smooth-cutoff parameter in [0, 1]'),
-    ('halo_lisanti_k', 1.5, 'Lisanti: dimensionless tail-shape parameter'),
-    ('halo_lmc_fraction', .006, 'SHM_wLMC: local LMC density fraction in [0, 1]'),
-    ('halo_lmc_vb', 570., 'SHM_wLMC: Galactic bulk speed [km/s]'),
-    ('halo_lmc_sigb', 100., 'SHM_wLMC: Maxwellian scale about the bulk [km/s]'),
-    ('halo_lmc_vcut', 200., 'SHM_wLMC: cutoff about the bulk [km/s]'),
-    ('halo_lmc_cosb', -.71, 'SHM_wLMC: cosine with the RAPIDD reference lab direction'),
-    ('halo_lmc_azimuth_deg', 0., 'SHM_wLMC: azimuth from the projected Galactic radial axis [deg]'),
-)
+from .cr_config import PROFILE_NAMES, PROFILE_INPUTS
 
 
 @lru_cache(maxsize=12)

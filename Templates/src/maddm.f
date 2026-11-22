@@ -147,7 +147,10 @@ c     Total cross section
             
 c     Write to output
             do i_proc=1, size(cross_sec_relic)
-                  channel_percent = 100*cross_sec_relic(i_proc)/tot_cross_sec
+                  channel_percent = 0d0
+                  if (tot_cross_sec.gt.0d0) then
+                     channel_percent = 100*cross_sec_relic(i_proc)/tot_cross_sec
+                  endif
                   write(33,*) '%:',process_names(process_relic_name_indexes(i_proc)),' ',channel_percent
             enddo
       endif

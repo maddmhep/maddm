@@ -26,6 +26,23 @@ def is_maddm_process_shortcut(process):
     return bool(tokens and tokens[0].lower() in MADDM_PROCESS_SHORTCUTS and '>' not in process)
 
 
+def closed_subprocesses(directory):
+    """Accept only MG's explicit no-phase-space diagnosis for every subprocess.
+
+    MG regenerates these logs during survey. Other ZeroResult failures (zero
+    amplitudes, integration failures, etc.) must retain their original errors.
+    """
+    subproc = Path(directory) / 'SubProcesses'
+    try:
+        names = [s.strip() for s in (subproc / 'subproc.mg').read_text().splitlines() if s.strip()]
+        if names and all('no phase space' in (subproc / name / 'ajob.no_ps.log').read_text().lower()
+                         for name in names):
+            return names
+    except OSError:
+        pass
+    return []
+
+
 def reweight_search_path(tools_bin=None):
     paths = [str(Path(sys.executable).parent)]
     if os.name == 'nt':
@@ -48,7 +65,7 @@ def require_reweight_build_tools():
     missing = missing_reweight_build_tools()
     if missing:
         raise RuntimeError('Precise velocity reweighting needs '+', '.join(missing)+
-                           ' for the F2PY build. Run `install reweight_tools` at the main MadDM prompt, then relaunch.')
+                           ' for the F2PY build. Run `install py_requirements` (or `install reweight_tools`) at the main MadDM prompt, then relaunch.')
 
 
 @contextmanager

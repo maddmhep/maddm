@@ -112,7 +112,7 @@ class AntideuteronEvents:
             spectrum = Spectrum(a[:,0],a[:,1])  # native secondary is already per GeV/n
             u = grid+phi['all_dm']/2.
             secondary_flux = spectrum(u)*grid*(grid+MASS_GEV)/(u*(u+MASS_GEV))
-        return dict(status='ok', mass_GeV=float(mass), propagation=cr_config.selection(card)['propagation'], halo=cr_config.selection(card)['halo'],
+        return dict(**pbar_interface.mixture_metadata(mixture), status='ok', mass_GeV=float(mass), propagation=cr_config.selection(card)['propagation'], halo=cr_config.selection(card)['halo'],
                     total_sigmav_cm3s=rate, branching=mixture.get('branching', {}), rates=records,
                     table=template.metadata, species='antideuteron', mass_number=2, absolute_charge=1,
                     mass_particle_GeV=MASS_GEV, table_convention=convention, source_factor=factor,

@@ -27,7 +27,7 @@ from indirect import pbar_interface as adapter
 from indirect import dbar_interface
 from indirect import gce_interface
 from indirect import cr_earth
-from indirect import halo_model
+from indirect import halo_model, cr_config
 from indirect.pbar.core import FitConfig, FluxTable, Likelihood
 
 SOURCE = ROOT/'maddm_run_interface.py'
@@ -135,8 +135,12 @@ class MappingTests(unittest.TestCase):
 
     def test_unknown_channel_not_discarded_or_renormalized(self):
         result = adapter.channel_mixture([record([5, -5]), record([9000001, 9000001])], 1000022, 4)
-        self.assertEqual(result['status'], 'unsupported_channels')
-        self.assertNotIn('branching', result)
+        self.assertEqual(result['status'], 'ok')
+        self.assertEqual(result['prediction_scope'], 'supported_channels_only')
+        self.assertAlmostEqual(result['total_sigmav_cm3s'], result['partial_rates_cm3s']['bb'])
+        self.assertEqual(result['branching'], {'bb': 1.})
+        self.assertAlmostEqual(result['omitted_fraction'], .5)
+        self.assertTrue(result['warnings'])
         for bad in [record([5, -5], decay=True), record([5, -5, 21]),
                     record([5, -5], initial=('1000022', '1000023')),
                     record([22, 25])]:
@@ -325,7 +329,7 @@ class SourceWiringTests(unittest.TestCase):
     def test_card_defaults_and_both_template_expansions(self):
         card_class = next(n for n in TREE.body if isinstance(n, ast.ClassDef) and n.name == 'MadDMCard')
         setup = next(n for n in card_class.body if isinstance(n, ast.FunctionDef) and n.name == 'default_setup')
-        scope = {"halo_model": halo_model}
+        scope = {"cr_config": cr_config}
         exec(compile(ast.Module(body=[setup], type_ignores=[]), str(SOURCE), 'exec'), scope)
         class Card(dict):
             def __init__(self):

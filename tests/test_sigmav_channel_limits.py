@@ -20,11 +20,11 @@ import unittest
 from unittest.mock import patch
 
 import numpy as np
-import six
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 import data_install
+import direct_references
 from indirect import pbar_interface as adapter
 from indirect import dbar_interface
 from indirect import gce_interface
@@ -74,8 +74,8 @@ class EventBackend:
         self.commands.append(command)
 
 
-ENV = dict(halo_model=halo_model, cr_earth=cr_earth, MadGraph5Error=RuntimeError, pbar_interface=adapter, dbar_interface=dbar_interface, gce_interface=gce_interface, pjoin=os.path.join, MDMDIR=str(ROOT), os=os,
-           np=np, math=math, re=re, six=six, collections=collections, HAS_NUMPY=True,
+ENV = dict(direct_references=direct_references, halo_model=halo_model, cr_earth=cr_earth, MadGraph5Error=RuntimeError, pbar_interface=adapter, dbar_interface=dbar_interface, gce_interface=gce_interface, pjoin=os.path.join, MDMDIR=str(ROOT), os=os,
+           np=np, math=math, re=re, collections=collections, HAS_NUMPY=True,
            data_install=data_install, madgraph=types.SimpleNamespace(MG5DIR=ROOT),
            indirect_compat=indirect_compat,
            logger=Logger(), bcolors=COLORS, pb2cm3=2.99792458e-26,
@@ -261,6 +261,53 @@ class RunTests(unittest.TestCase):
                 self.assertFalse((saved/'AMS02_pbar_fluxes.dat').exists())
                 payload = json.loads((saved/'AMS02_pbar_limits.json').read_text())
                 self.assertFalse(payload['combined_limit_evaluated'])
+
+    def test_all_channels_closed_give_zero_rates(self):
+        """MadEvent ZeroResult with no phase space in every subprocess gives zero
+        rates and lets the run continue; a partial no_ps marker still raises."""
+        class ZeroResult(Exception):
+            pass
+        class ClosedBackend(EventBackend):
+            def import_command_file(self, commands):
+                raise ZeroResult('No Phase Space. Please check particle masses.')
+            do_launch = import_command_file
+        names = ['P1_xx_bbx', 'P1_xx_wpwm']
+        for method, all_closed, genuine in (('reshuffling', True, True), ('madevent', True, True),
+                                             ('reshuffling', False, True), ('madevent', True, False)):
+            with self.subTest(method=method, all_closed=all_closed), tempfile.TemporaryDirectory() as directory, \
+                 patch.dict(ENV, me5_interface=types.SimpleNamespace(ZeroResult=ZeroResult)), \
+                 patch.object(indirect_compat, 'require_reweight_build_tools'):
+                h = Harness(directory, method)
+                h._indirect_no_phase_space = set()
+                h.last_results['sigmaN_SI_p'] = 1.23e-47
+                subproc = Path(directory)/'Indirect_tree_cont/SubProcesses'
+                subproc.mkdir(parents=True)
+                (subproc/'subproc.mg').write_text('\n'.join(names)+'\n')
+                for name in names if all_closed else names[:1]:
+                    (subproc/name).mkdir()
+                    (subproc/name/'ajob.no_ps.log').write_text('No Phase Space.' if genuine else 'Integration failed.')
+                h.me_cmd = ClosedBackend(str(Path(directory)/'Indirect_tree_cont'))
+                if not all_closed or not genuine:
+                    with self.assertRaises(ZeroResult):
+                        h.launch_indirect(False, 'Indirect_tree_cont', h.maddm_card['vave_indirect_cont'])
+                    continue
+                h.launch_indirect(False, 'Indirect_tree_cont', h.maddm_card['vave_indirect_cont'])
+                self.assertEqual(h._indirect_no_phase_space, {'Indirect_tree_cont'})
+                self.assertEqual(h.last_results['taacsID#xx_bbx'], 0.)
+                self.assertEqual(h.last_results['taacsID#xx_wpwm'], 0.)
+                h._update_indirect_totals()
+                self.assertEqual(h.last_results['taacsID'], 0.)
+                h.launch_indirect_computations(100.)
+                self.assertEqual(h.last_results['sigmaN_SI_p'], 1.23e-47)
+                h.mode['indirect'] = 'flux_source'
+                h.Spectra = types.SimpleNamespace(spectra={'x':[], 'gammas':[]})
+                h.run_pythia8_for_flux = lambda *a: self.fail('Closed channels must not be showered')
+                h.launch_indirect_computations(100.)
+                # A later open evaluation must not inherit the closed-directory flag.
+                h.me_cmd = EventBackend(str(Path(directory)/'Indirect_tree_cont'))
+                h.launch_indirect(False, 'Indirect_tree_cont', h.maddm_card['vave_indirect_cont'])
+                self.assertFalse(h._indirect_no_phase_space)
+                self.assertGreater(h.last_results['taacsID#xx_bbx'], 0.)
 
     def test_thermal_allowed_excluded_and_no_limit(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -30,10 +30,6 @@ except ImportError:
 from madgraph import MG5DIR, MadGraph5Error
 
 import re
-import six
-from six.moves import map
-from six.moves import range
-from six.moves import zip
 pjoin = os.path.join
 
 logger = logging.getLogger('madgraph.plugin.maddm')
@@ -51,23 +47,6 @@ class bcolors:
     ENDC = '\033[0m'
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
-
-try:
-    import scipy
-except ImportError:
-    HAS_SCIPY = False 
-else:
-    HAS_SCIPY = True
-
-try:
-    import numpy
-except ImportError:
-    HAS_NUMPY = False
-else:
-    HAS_NUMPY = True
-
-if HAS_NUMPY and HAS_SCIPY:
-    from . import jfactor_gc as jfactor_gc
 
 class DMError(Exception): pass
 
@@ -123,7 +102,7 @@ class MadDM_interface(master_interface.MasterCmd):
     
     # for install command:
     _install_opts = list(master_interface.MasterCmd._install_opts)
-    _install_opts += ['PPPC4DMID', 'RAPIDD', 'cosmixs', 'cosmixs_flux', 'reweight_tools']
+    _install_opts += ['PPPC4DMID', 'RAPIDD', 'cosmixs', 'cosmixs_flux', 'reweight_tools', 'py_requirements', 'neutrino_fog']
     _advanced_install_opts = list(master_interface.MasterCmd._advanced_install_opts)
     _advanced_install_opts += ['gsl', 'fitsio']
     
@@ -144,7 +123,7 @@ class MadDM_interface(master_interface.MasterCmd):
         if os.path.exists(pjoin(MG5DIR, 'PPPC4DMID')):
             self.options['pppc4dmid_path'] = pjoin(MG5DIR, 'PPPC4DMID')
         
-        if not maddm_run_interface.HAS_SCIPY:
+        if data_install.missing_python_requirements():
             logger.critical("Fermi-LAT and HESS limits calculation for indirect detection requires numpy and scipy. Please install the missing modules.")
             logger.info("you can try to use \"pip install scipy\"")
 
@@ -157,12 +136,31 @@ class MadDM_interface(master_interface.MasterCmd):
     #===========================================================================
     rapidd_dir = pjoin(MDMDIR, 'vendor', 'RAPIDD_for_DM')
 
+    def prepare_python_requirements(self, build_tools=False):
+        """Ask on the main interface, before installers or numerical startup."""
+        heptools = data_install.heptools_dir(MG5DIR, self.options.get('heptools_install_dir'))
+        try:
+            data_install.ensure_python_requirements(ask=self.ask, build_tools=build_tools,
+                tools_bin=data_install.reweight_tools_bin(heptools))
+        except data_install.DataInstallError as error:
+            logger.warning('%s', error)
+            return False
+        return True
+
     def do_install(self, line, paths=None, additional_options=()):
         """Handle MadDM dependencies alongside the standard MG5 installers."""
 
         split = self.split_arg(line)
         if split:
             package = split[0].lower()
+            if package == 'neutrino_fog':
+                data_install.install_neutrino_fog()
+                return
+            if package == 'py_requirements':
+                try:
+                    return data_install.install_python_requirements()
+                except data_install.DataInstallError as error:
+                    raise self.InvalidCmd(str(error)) from error
             if package == 'rapidd':
                 return self.install_rapidd()
             heptools = data_install.heptools_dir(MG5DIR, self.options.get('heptools_install_dir'))
@@ -178,6 +176,9 @@ class MadDM_interface(master_interface.MasterCmd):
                 if package == 'reweight_tools':
                     return data_install.install_reweight_tools(heptools)
                 if package == 'pythia8':
+                    if not self.prepare_python_requirements(build_tools=True):
+                        logger.info('Pythia8 installation deferred. Run `install py_requirements` first.')
+                        return
                     if not shutil.which('rsync'):
                         raise self.InvalidCmd('The Pythia8 installer requires rsync. Install rsync and retry.')
                     options = list(additional_options)
@@ -240,10 +241,12 @@ class MadDM_interface(master_interface.MasterCmd):
                 return False
             logger.info("Downloading RAPIDD in %s" % self.rapidd_dir, '$MG:BOLD')
             try:
-                subprocess.run(['git', 'submodule', 'update', '--init', '--recursive',
-                                pjoin('vendor', 'RAPIDD_for_DM')],
-                               check=True, cwd=MDMDIR)
-            except (OSError, subprocess.CalledProcessError) as error:
+                if (Path(MDMDIR) / '.git').exists():
+                    subprocess.run(['git', 'submodule', 'update', '--init', '--recursive',
+                                    pjoin('vendor', 'RAPIDD_for_DM')], check=True, cwd=MDMDIR)
+                else:
+                    data_install.install_rapidd_source(self.rapidd_dir)
+            except (OSError, subprocess.CalledProcessError, data_install.DataInstallError) as error:
                 logger.error("RAPIDD download failed: %s" % error)
                 return False
             if not self.is_rapidd_downloaded():
@@ -478,8 +481,11 @@ class MadDM_interface(master_interface.MasterCmd):
     def do_jfactor(self, *args, **opts):
         ''' compute the J-factor, leveraging the script jfactor_gc.py
         '''
-        if not (HAS_NUMPY and HAS_SCIPY):
-            logger.error("numpy and/or scipy are required to run this command")
+        try:
+            data_install.ensure_python_requirements(ask=self.ask)
+        except data_install.DataInstallError as error:
+            raise self.InvalidCmd(str(error)) from error
+        from . import jfactor_gc
         parser = jfactor_gc.command_parser()
         arguments = self.split_arg(args[0]) #args[0] is the line of the command
         jfactor_value, density_profile = jfactor_gc.parse_cmd_line(parser=parser, cmd_line=arguments)
@@ -508,6 +514,10 @@ class MadDM_interface(master_interface.MasterCmd):
         pass
 
     def help_jfactor(self):
+        logger.info('jfactor: compute a Galactic-center J-factor; requires `install py_requirements`.')
+        if data_install.missing_python_requirements():
+            return
+        from . import jfactor_gc
         parser = jfactor_gc.command_parser()
         logger.info(parser.format_help().replace("usage: %s" % parser.prog, bcolors.BOLD + "Compute the J-Factor for the Galactic Center\n" + bcolors.ENDC + "             jfactor"))
 
@@ -1422,7 +1432,16 @@ class MadDM_interface(master_interface.MasterCmd):
         if args[0] != 'maddm':
             return super(MadDM_interface, self).do_launch(line)
         else:
-            self._MDM = maddm_run_interface.MADDMRunCmd(dir_path=args[1], options=self.options)
+            build_tools = any(os.path.isdir(pjoin(args[1], name)) for name in
+                ('Indirect_tree_cont', 'Indirect_tree_line', 'Indirect_LI_cont', 'Indirect_LI_line'))
+            if not self.prepare_python_requirements(build_tools=build_tools):
+                logger.info('Numerical launch deferred. Install the requirements and launch again.')
+                return
+            try:
+                self._MDM = maddm_run_interface.MADDMRunCmd(dir_path=args[1], options=self.options)
+            except data_install.DataInstallError as error:
+                logger.warning('%s', error)
+                return
             self._done_export = (args[1], 'plugin')
             
             if options['interactive']:
@@ -1606,6 +1625,11 @@ class MadDM_interface(master_interface.MasterCmd):
         if len(self._dm_candidate) > 1:
             logger.warning("More than one DM candidate. Can not run Direct Detection.")
             return 
+
+        try:
+            data_install.install_neutrino_fog()
+        except (data_install.DataInstallError, OSError) as error:
+            logger.warning('Neutrino-fog references unavailable: %s. DD calculations remain available.', error)
 
         ### Check that RAPIDD is installed (ask to download/compile it if not)
         if self.check_rapidd():
@@ -1832,15 +1856,7 @@ class MadDM_interface(master_interface.MasterCmd):
         ''' takes the name of the command in cmd (either 'indirect_detection' or 'indirect_spectral_features')
             check that everything is ok and returns the value to set to _has_<cmd> and a number: if != 0 the generation function should return, otherwise should go ahead
         '''
-        if not maddm_run_interface.HAS_NUMPY:
-            logger.warning("numpy module not detected on your machine. \n"+
-                           "Running indirect detection will not be possible as long as numpy is not installed (try 'pip install numpy')" 
-                           )
-            ans = self.ask("Do you want to generate the diagrams anyway?", 'n', ['y','n'])
-            if ans == 'n':
-                return False, 2
-        
-        if cmd == 'indirect_detection':
+        if cmd in ('indirect_detection', 'indirect_spectral_features'):
             self.install_indirect()
 
         if not self._dm_candidate:
@@ -1971,7 +1987,7 @@ class MadDM_interface(master_interface.MasterCmd):
         backup_amps = [amp for amp in self._ID_line_amps[0] + self._ID_line_amps[1]]
         if argument == []:
             # exclude electric and color charged particles because of course they can't generate 'a _bsm_' diagrams
-            charged_particles = [pdg_code for pdg_code, particle in six.iteritems(self._curr_model.get('particle_dict')) if particle.get('charge') != 0. or particle.get('color') != 1]
+            charged_particles = [pdg_code for pdg_code, particle in (self._curr_model.get('particle_dict')).items() if particle.get('charge') != 0. or particle.get('color') != 1]
             odd_and_disconnected = self.list_odd_disconnected_pdg()
             bsm_content = self.indirect_bsm_multiparticle(excluded = charged_particles+odd_and_disconnected)
             final_states = ['22 22', '22 23', '22 25']
@@ -2087,13 +2103,17 @@ class MadDM_interface(master_interface.MasterCmd):
         return temp_amps # I return the last amps of all the DM candidates, because this function is called for each final state in turn
 
     def install_indirect(self):
-        """Prepare reshuffling tools and offer source spectra on first use."""
+        """Check Python first, then offer Pythia8 and source spectra on first use."""
+        if not self.prepare_python_requirements(build_tools=True):
+            logger.info('Indirect-detection setup deferred; diagram generation remains available. '
+                        'Run `install py_requirements` before installing Pythia8 or launching a calculation.')
+            return
         first = self.options['maddm_first_indirect']
         to_install = self.ask('install', '0', ask_class=AskMadDMInstaller,
                               timeout=300, path_msg=' ') if first else {}
         key_to_opts = {'cosmixs': 'pppc4dmid_path', 'pythia8': 'pythia8_path'}
 
-        for key, value in [('reweight_tools', 'install'), *to_install.items()]:
+        for key, value in to_install.items():
             try:
                 if value == 'install':
                     self.do_install(key)

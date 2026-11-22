@@ -7,8 +7,7 @@ import shutil
 import sys
 import collections
 import random
-import six
-StringIO = six
+import io as StringIO
 import re
 
 try:
@@ -34,17 +33,15 @@ from madgraph.core.base_objects import Process
 import madgraph.interface.reweight_interface as rwgt_interface
 import madgraph.various.banner as bannermod
 from madgraph.core import base_objects
-from six.moves import range
-from six.moves import zip
 
 
-class MYStringIO(six.StringIO):
+class MYStringIO(StringIO.StringIO):
     """one stringIO behaving like our dedicated writer for writelines"""
     def writelines(self, lines):
         if isinstance(lines, list):
-            return six.StringIO.writelines(self, '\n'.join(lines))
+            return StringIO.StringIO.writelines(self, '\n'.join(lines))
         else:
-            return six.StringIO.writelines(self, lines)
+            return StringIO.StringIO.writelines(self, lines)
         
 # Root path
 MDMDIR = os.path.dirname(os.path.realpath( __file__ ))

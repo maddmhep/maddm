@@ -102,8 +102,11 @@ class ForecastTests(unittest.TestCase):
 
     def test_unsupported_rate_is_never_silently_dropped_and_zero_rate_is_valid(self):
         result = self.evaluate([record([5,-5], 3.e-26),record([9999,9999], 1.e-25)])
-        self.assertEqual(result['status'], 'unsupported_channels')
-        self.assertNotIn('cases', result)
+        self.assertEqual(result['status'], 'ok')
+        known = self.evaluate([record([5,-5], 3.e-26)])
+        self.assertEqual(result['cases'], known['cases'])
+        self.assertTrue(result['warnings'])
+        self.assertAlmostEqual(result['omitted_fraction'], 1.e-25/1.3e-25)
         zero = self.evaluate([record([5,-5], 0.)])
         self.assertTrue(zero['zero_model_rate'])
         self.assertEqual(zero['cases']['all_dm']['AMS02_total_events'], 0.)

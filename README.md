@@ -25,12 +25,20 @@ For a standard installation from MadGraph's package manager, enter
 
 - At least MadGraph v3.6 is required to run the latest version of MadDM.
 - MadDM is compatible with the LTS version of MadGraph.
-- MadDM requires Python 3.8+, `six`, `numpy`, `scipy`, and `matplotlib`.
-  At startup, MadDM reports missing packages and the command to install
-  them in the Python environment running MadGraph. Interactive launches
-  offer to run the command and restart MadDM. Batch launches print the
-  command and exit. MadDM uses Conda when it manages the active Python
-  and its executable is available, or pip with the active interpreter.
+- MadDM requires Python 3.8+. Model import, definitions, diagram generation,
+  and process export work without the numerical Python packages.
+  Numerical calculations require
+  `numpy`, `scipy`, and `matplotlib`. When indirect detection is requested,
+  Python requirements are checked before the Pythia8 installer. The main
+  interface offers Conda/pip installation or manual setup, without a timeout.
+  Declining defers installation while allowing diagram generation. Numerical
+  launches are checked before constructing the run interface; missing packages
+  give an actionable message and return to the main prompt.
+  Use `install py_requirements` at the main MadDM prompt to install
+  `numpy`, `scipy`, `matplotlib`, `ninja`, and `meson` explicitly. MadDM uses
+  Conda only for a Conda-managed interpreter; otherwise it uses pip through
+  the running Python. Python packages go into that interpreter's environment.
+  Neither manager is required if you install the dependencies yourself.
   Generated processes require a Fortran compiler and `make`. Install
   PyMultiNest with the MultiNest library for optional nested scans.
 - On first indirect generation, MadDM offers to install Pythia8 and the
@@ -40,10 +48,10 @@ For a standard installation from MadGraph's package manager, enter
   separately, and the secondary flux tables are included with MadDM.
 - With Python 3.12 or later, `sigmav_method = reshuffling` requires Meson
   and the Ninja build executable for NumPy F2PY. MadDM reuses executables
-  on `PATH`. It installs missing tools with Conda in the active Conda
-  environment, or with pip in an isolated environment under MadGraph's
-  HEPTools directory. To install them separately, run `install
-  reweight_tools` at the MadDM prompt.
+  on `PATH`. They are included in the first numerical indirect-detection
+  dependency check and in `install py_requirements`. The existing
+  `install reweight_tools` command also supports an isolated pip environment
+  under MadGraph's HEPTools directory.
 - Nuclear and electron recoil calculations use RAPIDD. Its first build
   requires Git, CMake 3.13+, a C/C++ toolchain, and GNU GSL. MadDM uses an
   existing GSL that CMake can find or builds GSL under HEPTools when it is
@@ -147,3 +155,27 @@ any of these dependencies.
 
 If you are using this tool or the results obtained with it in a published work, please cite one or more of the previous references.
 A [CITATION.bib](./CITATION.bib) file is also available.
+
+### Linked inputs in a parameter scan
+
+MadDM resolves arithmetic expressions at every scan point before widths and
+matrix elements are evaluated. For example, in `Cards/param_card.dat`:
+
+```text
+BLOCK MASS
+     54 2*mxr # my0
+5000001 scan1:[1,3,4,5,7,8,10,100] # mxr
+```
+
+`mxr/2` and `mxr**2` work as well. Names come from `Cards/ident_card.dat`
+or the first name in the parameter comment. `mass_5000001` is an explicit
+alternative to `mxr`. Arithmetic uses Python precedence and true division;
+`+`, `-`, `*`, `/`, `//`, `%`, `**`, parentheses and selected math functions
+(`sqrt`, `exp`, `log`, `log10`, `sin`, `cos`, `tan`, `abs`, `min`, `max`)
+are supported. Constants `pi` and `e` are available. Names follow MadGraph's
+case-insensitive card convention. Chained relations are evaluated in dependency
+order. Unknown or ambiguous names, cycles and nonfinite results are rejected.
+Only external parameters present in the card can be linked. These relations
+are scan inputs, not changes to the UFO's internal parameter definitions.
+Use at least one `scan:` or `scanN:` entry; a one-element list makes a
+single benchmark. Dependent inputs are included in the scan summary.

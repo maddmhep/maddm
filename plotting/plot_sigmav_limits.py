@@ -4,6 +4,11 @@
 Example: python plot_sigmav_limits.py scan_run_03.txt --outdir figures
 If run folders are elsewhere, add --runs-dir /path/to/output.
 Requires NumPy and Matplotlib.
+Use --mass-column 'mass#9000005' (or --x-column) to choose the axis.
+Use --select 'BLOCK#1=0.1' to fix parameters; repeat for additional selections.
+Repeated x values are split by the other scanned inputs automatically.
+Use --group-by COLUMN [COLUMN ...] to choose slices explicitly.
+Only available analyses are plotted; nonpositive/sentinel values are omitted on log axes.
 """
 import argparse
 import csv
@@ -31,6 +36,25 @@ NU = ('neutrinos_e', 'neutrinos_mu', 'neutrinos_tau')
 SOURCE_SPECIES = [s for s in SPECIES if s != 'neutrinos_total']
 # 95% one-sided normal quantile squared (profile-likelihood convention).
 DELTA95 = 2.705543454095404
+
+
+# Deliberately separated hues; continuous curves use solid/dashed line styles.
+CURVE_COLORS = ('#0072B2', '#D55E00', '#009E73', '#CC79A7', '#6F3C9F',
+                '#E69F00', '#56B4E9', '#8C564B', '#444444', '#B2A000',
+                '#E7298A', '#00A6A6', '#A65628', '#5F8A30', '#A23B72', '#7B83CC')
+
+
+CURVE_LINESTYLES = ('-', '--', '-.', ':')
+
+
+def curve_style(index):
+    if index < len(CURVE_COLORS):
+        color = CURVE_COLORS[index]
+    else:
+        import colorsys
+        rgb = colorsys.hsv_to_rgb(((index-len(CURVE_COLORS))*.61803398875+.07)%1., .72, .72)
+        color = '#'+''.join('%02x' % round(255*channel) for channel in rgb)
+    return color, None
 
 
 def read_scan(path):
@@ -86,28 +110,104 @@ def choose(columns, candidates):
     return None
 
 
+
+def parameter_columns(columns):
+    """MadDM writes scanned inputs before xsi and calculated observables."""
+    result = []
+    for key in columns:
+        low = key.lower()
+        if low in ('xsi', 'omegah2', 'omegah^2', 'omega', 'x_f', 'sigmav(xf)') or low.startswith(
+                ('sigma', 'lim_', 'taacs', 'err_', 'tot_', 'fermi_', 'ams02_', 'gce_', 'gaps_', 'pvalue', 'like_')):
+            break
+        if low != 'run' and numeric(columns, key) is not None:
+            result.append(key)
+    return result
+
+
 def sort_scan(columns, mass_column=None):
+    """Use a reported default, with an explicit override for any scan axis."""
     if mass_column is None:
         options = [k for k in columns if k.lower().startswith('mass#')]
         if not options:
             options = [k for k in columns if k.lower() in ('mdm', 'mass', 'mchi')]
-        if len(options) != 1:
-            raise ValueError('Specify --mass-column when there is not exactly one mass column')
-        mass_column = options[0]
+        if not options:
+            options = parameter_columns(columns)
+        if not options:
+            raise ValueError('No scan parameter found. Specify --x-column COLUMN.')
+        mass_column = options[-1]
+        if len(options) > 1:
+            print('Available axes: '+', '.join(options)+'. Using '+mass_column+
+                  '; override with --mass-column or --x-column.')
     mass = numeric(columns, mass_column)
     if mass is None:
-        raise ValueError('Missing numeric x column: ' + mass_column)
-    good = np.flatnonzero(np.isfinite(positive(mass)))
+        raise ValueError('Missing numeric x column: '+mass_column)
+    good = np.flatnonzero(np.isfinite(mass) & (mass > 0))
     if not len(good):
-        raise ValueError('No positive finite x values')
+        raise ValueError('No positive finite x values in '+mass_column)
     order = good[np.argsort(mass[good], kind='stable')]
-    return mass_column, mass[order], {k: np.asarray(v)[order] for k, v in columns.items()}
+    return mass_column, mass[order], {k: np.asarray(v)[order] for k,v in columns.items()}
 
 
 def mass_label(column):
-    if column.lower().startswith('mass') or column.lower() in ('mdm', 'mchi'):
+    if column.lower().startswith('mass#'):
+        return 'Mass [GeV] ('+column+')'
+    if column.lower() in ('mass', 'mdm', 'mchi'):
         return r'Dark matter mass $m_{\rm DM}$ [GeV]'
     return column
+
+
+def scan_slices(columns, axis=None, select=None, group_by=None):
+    """Keep unrelated parameter slices separate instead of connecting a grid."""
+    mask = np.ones(len(next(iter(columns.values()))), dtype=bool)
+    for expression in select or ():
+        key, sep, value = expression.partition('=')
+        if not sep or key not in columns:
+            raise ValueError('--select requires an existing COLUMN=VALUE: '+expression)
+        values = numeric(columns, key)
+        if values is None:
+            mask &= np.asarray(columns[key], str) == value
+        else:
+            try:
+                target = float(value)
+            except ValueError:
+                raise ValueError('Expected a numeric selection for '+key)
+            mask &= np.isclose(values, target, rtol=1e-7, atol=0.)
+    if not mask.any():
+        raise ValueError('No rows match --select.')
+    axis, x, cols = sort_scan({k: np.asarray(v)[mask] for k,v in columns.items()}, axis)
+    if group_by is None:
+        group_by = []
+        if len(np.unique(x)) < len(x):
+            for key in parameter_columns(cols):
+                if key != axis and any(len(np.unique(cols[key][x == m])) > 1 for m in np.unique(x)):
+                    group_by.append(key)
+    for key in group_by:
+        if key not in cols or key == axis:
+            raise ValueError('--group-by must name existing parameters other than the x axis: '+key)
+    groups = {}
+    for i in range(len(x)):
+        signature = tuple(str(cols[key][i]) for key in group_by)
+        groups.setdefault(signature, []).append(i)
+    result = []
+    for number, (signature, indices) in enumerate(groups.items(), 1):
+        context = ', '.join(k+'='+v for k,v in zip(group_by, signature))
+        suffix = ('_slice%02d_' % number)+re.sub(r'[^a-zA-Z0-9_.-]+', '_', context)[:120] if len(groups)>1 else ''
+        result.append((suffix, context, {k: np.asarray(v)[indices] for k,v in cols.items()}))
+    return axis, result
+
+
+def dd_label(kind, nucleon, suffix=''):
+    experiment = ('PICO-60 (2019)' if kind == 'SD' and nucleon == 'p' else 'LZ (2024)')
+    if suffix:
+        experiment = 'LZ (2024)' if suffix.upper() == '_LZ' else suffix.strip('_').replace('_', ' ')
+    target = 'proton' if nucleon == 'p' else 'neutron'
+    return experiment+'; '+kind+' '+target
+
+
+def electron_label(key):
+    return {'lim_sigma_e': 'XENONnT; published convention',
+            'lim_sigma_e_rescaled': 'XENONnT; RAPIDD atomic responses',
+            'lim_sigma_e_Xenon10': 'XENON10; S2-only'}.get(key, key.replace('lim_sigma_e_', '').replace('_', ' '))
 
 
 def plot_style(show=False):
@@ -120,7 +220,9 @@ def plot_style(show=False):
 
 
 def style_axes(ax, xlabel, ylabel):
-    ax.set(xscale='log', yscale='log', xlabel=xlabel, ylabel=ylabel)
+    ax.set_xscale('log', base=10)
+    ax.set_yscale('log', base=10)
+    ax.set(xlabel=xlabel, ylabel=ylabel)
     ax.grid(which='major', alpha=.32)
     ax.grid(which='minor', alpha=.11)
     ax.tick_params(which='both', direction='in', top=True, right=True)
@@ -362,16 +464,19 @@ def channels(columns, explicit=None):
             not k.startswith(('lim_', 'AMS02_', 'GCE_', 'sigmaN_', 'sigmaP_', 'sigma_'))]
 
 
-def generate(columns, outdir, stem='scan', mass_column=None, fermi_column=None, pbar_column=None,
+def _generate(columns, outdir, stem='scan', mass_column=None, fermi_column=None, pbar_column=None,
              gce_column=None, gce_upper_column=None, total_column=None, channel_columns=None,
-             thermal=False, show=False, runs_dir=None, spectrum_method=None, min_x=None):
+             thermal=False, show=False, runs_dir=None, spectrum_method=None, min_x=None,
+              xlabel=None, context='', dm_mass_column=None):
     plt = plot_style(show)
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
     mass_column, x, cols = sort_scan(columns, mass_column)
     repeated = len(np.unique(x)) < len(x)
-    manifest = {'x_column': mass_column, 'points': len(x), 'repeated_x_scatter': repeated, 'plots': {}, 'skipped': []}
-    xlabel = mass_label(mass_column)
+    manifest = {'x_column': mass_column, 'points': len(x), 'repeated_x_scatter': False, 'repeated_x_values': repeated, 'plots': {}, 'skipped': []}
+    manifest['incomplete_indirect_columns'] = [key for key in cols
+        if key.endswith('_omitted_sigmav') and np.any(np.asarray(cols[key], float) > 0)]
+    xlabel = xlabel or mass_label(mass_column)
 
     def plot(kind, curves, ylabel, title, band=None):
         entries = []
@@ -383,24 +488,29 @@ def generate(columns, outdir, stem='scan', mass_column=None, fermi_column=None, 
             manifest['skipped'].append(kind)
             return
         fig, ax = plt.subplots(figsize=(8, 5.5), constrained_layout=True)
-        if len(entries) > 10:
-            ax.set_prop_cycle(color=plt.get_cmap('tab20').colors)
-        for key, y, label, props in entries:
-            fmt = dict(marker='o', ms=2.7, lw=1.65, ls='-')
+        styles = []
+        for index, (key, y, label, props) in enumerate(entries):
+            color, marker = curve_style(index)
+            fmt = dict(marker=None, lw=1.65, ls='-')
             fmt.update(props)
-            if repeated:
-                fmt['ls'] = 'None'
+            fmt['color'] = color
+            fmt['marker'] = None
+            fmt['ls'] = CURVE_LINESTYLES[index % len(CURVE_LINESTYLES)]
             line, = ax.plot(x, y, label=label, **fmt)
+            styles.append(dict(column=key, color=color, marker=marker, linestyle=fmt['ls']))
             if band is not None and key == band[0] and not repeated:
                 lo, hi = band[1:]
                 ax.fill_between(x, positive(y-lo), positive(y+hi), color=line.get_color(), alpha=.17,
                                 label=r'GCE fixed-mass $\Delta\chi^2=1$')
         style_axes(ax, xlabel, ylabel)
-        ax.set_title(title)
+        ax.set_title(title+('\n'+context if context else ''))
+        if kind == 'dd_comparison' and any(key.startswith('neutrino_fog_') for key, *_ in entries):
+            fig.supxlabel('NeutrinoFog: github.com/cajohare/NeutrinoFog; O’Hare (2021), arXiv:2109.03116\n'
+                          'Xe reference boundary; not an exclusion', fontsize=7)
         ax.legend(frameon=False, fontsize=9, ncol=2 if len(entries) > 5 else 1)
         path = outdir/(stem+'_'+kind+'.pdf')
         save_figure(plt, fig, path, show)
-        manifest['plots'][kind] = {'file': path.name, 'columns': [k for k, *_ in entries]}
+        manifest['plots'][kind] = {'file': path.name, 'columns': [k for k, *_ in entries], 'styles':styles}
 
     f = choose(cols, [fermi_column or 'Fermi_sigmav'])
     p = choose(cols, [pbar_column] if pbar_column else ['AMS02_pbar_sigmav_UL95', 'AMS02_pbar_sigmav'])
@@ -417,7 +527,8 @@ def generate(columns, outdir, stem='scan', mass_column=None, fermi_column=None, 
          ('GCE_fit_curve', minus, plus))
     manifest['GCE_upper_limit'] = {'methods': {m:int(np.sum(method == m)) for m in sorted(set(method)-{''})},
                                    'delta_chi2': DELTA95, 'notes': notes}
-    profile = gce_profile(cols, x, best)
+    mass_axis = mass_column.lower().startswith('mass#') or mass_column.lower() in ('mdm','mass','mchi')
+    profile = gce_profile(cols, x, best) if mass_axis and not repeated else None
     if profile is not None:
         j, grid, chi, lower, higher, incompatible = profile
         run = str(cols.get('run', ['']*len(x))[j])
@@ -445,12 +556,42 @@ def generate(columns, outdir, stem='scan', mass_column=None, fermi_column=None, 
     else:
         manifest['skipped'].append('gce_best_fit')
 
-    dd_curves = [('lim_sigmaN_'+a+'_'+n, a+' '+n, {'color':c,'ls':'-' if n=='n' else '--'})
-                 for (a,n),c in zip(DD,DD_COLORS)]
-    # projected XLZD sensitivities (maddm_card xlzd_limits), present only when they were requested
-    dd_curves += [('lim_sigmaN_'+a+'_'+n+'_XLZD', a+' '+n+' XLZD (proj.)', {'color':c,'ls':':','alpha':.8})
-                  for (a,n),c in zip(DD,DD_COLORS)]
-    plot('dd_limits', dd_curves, r'Nucleon cross-section upper limit [cm$^2$]', 'Direct-detection upper limits')
+    dd_curves, dd_predictions = [], []
+    for (kind, nucleon), color in zip(DD, DD_COLORS):
+        rate = 'sigmaN_'+kind+'_'+nucleon
+        limit = 'lim_'+rate
+        dd_predictions.append((rate, 'Prediction; '+kind+' '+('proton' if nucleon=='p' else 'neutron'),
+                               {'color':color, 'ls':'-'}))
+        for key in cols:
+            if key == limit or key.startswith(limit+'_'):
+                suffix = key[len(limit):]
+                dd_curves.append((key, dd_label(kind, nucleon, suffix),
+                                  {'color':color, 'ls':'-.' if suffix else '-' if nucleon=='n' else '--'}))
+    for exposure in (200, 1000):
+        key = 'lim_sigmaN_SI_XLZD_%dty' % exposure
+        dd_curves.append((key, 'XLZD %d t yr; projected 90%% CL SI' % exposure, {'ls': ':'}))
+    fog_curves = [(key, label, {'ls': ':'}) for key, label in (
+        ('neutrino_fog_SI', 'Xe neutrino fog; SI'),
+        ('neutrino_fog_SD_p', 'Xe neutrino fog; SD proton'),
+        ('neutrino_fog_SD_n', 'Xe neutrino fog; SD neutron'))]
+    manifest['direct_reference_sources'] = {
+        'XLZD': 'arXiv:2410.17137 Fig. 2; smoothed digitization; projected 90% CL, native halo',
+        'neutrino_fog': 'https://github.com/cajohare/NeutrinoFog; arXiv:2109.03116; xenon, native halo; NOT an exclusion'}
+    plot('dd_limits', dd_curves, r'Nucleon cross-section upper limit [cm$^2$]', 'Nuclear recoil: limits and optional projections')
+    plot('dd_comparison', dd_predictions+dd_curves+fog_curves, r'Nucleon cross section [cm$^2$]', 'Nuclear recoil: predictions, limits and references')
+    electrons = [(key, electron_label(key), {'ls':['--','-.',':'][i%3]})
+                 for i,key in enumerate(k for k in cols if k=='lim_sigma_e' or k.startswith('lim_sigma_e_'))]
+    plot('electron_recoil', [('sigma_e', 'Prediction; DM–electron scattering', {'color':'#181b20'})]+electrons,
+         r'Electron cross section [cm$^2$]', 'Electron recoil: prediction and experimental limits')
+    omega = choose(cols, ['Omegah^2', 'Omegah2', 'omegah2', 'Omega', 'omega'])
+    if omega:
+        cols['observed_relic_density'] = np.full(len(x), .12)
+    plot('relic_density', [(omega, r'Predicted $\Omega h^2$', {}),
+                          ('observed_relic_density', r'Reference $\Omega h^2=0.12$', {'ls':'--','color':'#65574e'})],
+         r'$\Omega h^2$', 'Relic density')
+    plot('freezeout_rate', [('sigmav(xf)', r'Reported $\langle\sigma v\rangle$ at $x_f$', {})],
+         r'$\langle\sigma v\rangle[x_f]$ [cm$^3$ s$^{-1}$]',
+         r'Annihilation rate evaluated at reported $x_f$')
     events = [('GAPS_dbar_events','GAPS (0.1–0.3 GeV/n)'), ('AMS02_dbar_events_low','AMS-02 low (0.18–0.70 GeV/n)'),
               ('AMS02_dbar_events_high','AMS-02 high (2.0–4.2 GeV/n)'), ('AMS02_dbar_events_total','AMS-02 total')]
     for suffix in ('', '_thermal') if thermal else ('',):
@@ -481,7 +622,15 @@ def generate(columns, outdir, stem='scan', mass_column=None, fermi_column=None, 
     plot('branching_ratios', brcurves, r'$\langle\sigma v\rangle_i/\langle\sigma v\rangle_{\rm tot}$', 'Channel branching fractions')
     manifest['branching_denominator'] = total
 
-    mult, info = multiplicities(cols, x, runs_dir, outdir/(stem+'_source_multiplicities.csv'), spectrum_method, min_x)
+    if dm_mass_column is None:
+        mass_options = [key for key in cols if key.lower().startswith('mass#') or
+                        key.lower() in ('mdm','mass','mchi')]
+        dm_mass_column = mass_column if mass_axis else (mass_options[-1] if mass_options else None)
+    spectrum_mass = numeric(cols, dm_mass_column) if dm_mass_column else np.full(len(x), np.nan)
+    if dm_mass_column and spectrum_mass is None:
+        raise ValueError('Missing DM mass column: '+dm_mass_column)
+    manifest['source_mass_column'] = dm_mass_column
+    mult, info = multiplicities(cols, spectrum_mass, runs_dir, outdir/(stem+'_source_multiplicities.csv'), spectrum_method, min_x)
     cols.update({'N#'+s: v for s,v in mult.items()})
     main_species = ['gammas','neutrinos_total','positrons','antiprotons','antideuterons']
     if any(np.any(np.isfinite(mult[s]) & ~np.isfinite(mult['neutrinos_total'])) for s in NU):
@@ -499,12 +648,26 @@ def generate(columns, outdir, stem='scan', mass_column=None, fermi_column=None, 
     return manifest
 
 
+def generate(columns, outdir, stem='scan', select=None, group_by=None, **kwargs):
+    axis, slices = scan_slices(columns, kwargs.get('mass_column'), select, group_by)
+    kwargs['mass_column'] = axis
+    manifests = {}
+    for suffix, context, cols in slices:
+        manifests[context or 'all'] = _generate(cols, outdir, stem+suffix, context=context, **kwargs)
+    if len(slices) == 1:
+        return next(iter(manifests.values()))
+    manifest = {'x_column':axis, 'slices':manifests, 'selections':select or []}
+    (Path(outdir)/(stem+'_plot_manifest.json')).write_text(json.dumps(manifest, indent=2, allow_nan=False)+'\n')
+    return manifest
+
+
 def fit_text(info, with_chi=False):
     m, lo, hi = info['mass_best_scan'], *info['mass_interval_delta_chi2_1']
+    name = info.get('mass_column', 'DM mass')
     if lo is not None and hi is not None:
-        mass = r'$m_{\rm DM}=%.1f^{+%.1f}_{-%.1f}$ GeV' % (m, hi-m, m-lo)
+        mass = name + r' $=%.3g^{+%.3g}_{-%.3g}$ GeV' % (m, hi-m, m-lo)
     else:
-        mass = r'$m_{\rm DM}=%.3g$ GeV; ' % m
+        mass = name + r' $=%.3g$ GeV; ' % m
         mass += ('interval not bracketed' if lo is None and hi is None else
                  ('lower crossing %.3g GeV' % lo if hi is None else 'upper crossing %.3g GeV' % hi))
     r, a, b = (info['sigmav_best_cm3_s'], info['sigmav_error_minus_cm3_s'], info['sigmav_error_plus_cm3_s'])
@@ -525,7 +688,7 @@ def plot_gce_profile(plt, outdir, stem, x, best, minus, plus, info, grid, chi, x
                                      gridspec_kw={'height_ratios':[1.2,1]})
     top.set_title('Galactic Center Excess: best fit on the scanned mass grid')
     repeated = len(np.unique(x)) < len(x)
-    top.plot(x, positive(best), 'o' if repeated else 'o-', ms=3, color='#287d61', label='Best fit at each mass')
+    top.plot(x, positive(best), '-', lw=1.8, color='#287d61', label='Best fit at each mass')
     if not repeated:
         top.fill_between(x, positive(best-minus), positive(best+plus), color='#287d61', alpha=.16)
     # Draw the same linear-in-log-mass profile used to locate the crossings.
@@ -534,7 +697,6 @@ def plot_gce_profile(plt, outdir, stem, x, best, minus, plus, info, grid, chi, x
     brackets = [edge for edge in info['mass_interval_delta_chi2_1'] if edge is not None]
     dense = np.unique(np.r_[dense, grid, brackets])
     bottom.plot(dense, positive(np.interp(np.log(dense), np.log(grid), chi)), color='#176b9a')
-    bottom.plot(grid, positive(chi), 'o', ms=3, color='#176b9a')
     bottom.axhline(info['chi2']+1, color='#79535e', ls='--', label=r'$\chi^2_{\rm min}+1$')
     center = info['mass_best_scan']
     lower, upper = info['mass_interval_delta_chi2_1']
@@ -608,6 +770,10 @@ def main():
     parser.add_argument('--runs-dir',type=Path,help='Directory containing the per-point run folders (default: scan directory)')
     parser.add_argument('--spectrum-method',help='Restrict source integration to this spectrum backend')
     parser.add_argument('--min-x',type=float,help='Lower integration cut on kinetic energy / DM mass')
+    parser.add_argument('--select', action='append', help='Fix COLUMN=VALUE; repeat as needed')
+    parser.add_argument('--group-by', nargs='+', help='Separate curves by these scanned parameters')
+    parser.add_argument('--xlabel', help='Override the x-axis label')
+    parser.add_argument('--dm-mass-column', help='Physical DM mass column for source-spectrum metadata')
     parser.add_argument('--show',action='store_true')
     args = parser.parse_args()
     kwargs = {k:v for k,v in vars(args).items() if k not in ('input','outdir')}

@@ -51,6 +51,9 @@
 #
 ###################################################################################
 
+# XLZD projected SI sensitivity (200 and 1000 t yr); arXiv:2410.17137; default off
+   %(xlzd_limits)s = xlzd_limits ! Future projection, not a current exclusion
+
 # galactic halo DM constants: vMP, vescape and rhoDM are shared by the RAPIDD direct detection rates
 # (always SHM) and the Galactic indirect detection signals (halo_velocity_profile).
 # The annual-average rates use the fixed Earth velocity vector of March 9 (Eq. 12 of
@@ -78,11 +81,6 @@
 # t_i = (i+0.5)*365.24/day_bins days since March 22 (one halo table per bin: slower)
    %(direct_modulation)s = direct_modulation ! compute the annual modulation
    %(day_bins)s       = day_bins  ! number of time bins of the year
-
-# Projected XLZD sensitivity (median 90 percent CL upper limits on the SI and SD DM-nucleon cross
-# sections for 200 or 1000 tonne-years), shown next to the LZ limits at the end of direct_nucleon
-# (SI: arXiv:2410.17137; SD: arXiv:2203.02309, 5 GeV - 1 TeV)
-   %(xlzd_limits)s = xlzd_limits ! off, 200ty, 1000ty
 
 # Nuclear form factor can be customised via parameters:
 #  - scalar: SPu, SPd, SPs, SPg // SNu, SNd, SNs, SNg 

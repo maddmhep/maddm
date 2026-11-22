@@ -190,7 +190,7 @@ def evaluate_channel_limits(mass, records, dm_pdg, majorana_dirac_factor, xsi, c
             row['reason'] = ('unsupported initial/final state or decay chain' if not row['supported'] else
                              'outside table range or no signal in adjacent native table rows')
         rows.append(row)
-    return dict(status='tabulated_channels', evaluation='single_channel_tables', mass_GeV=float(mass),
+    result = dict(status='tabulated_channels', evaluation='single_channel_tables', mass_GeV=float(mass),
                 channels=rows, rates=records, total_sigmav_cm3s=sum(r['sigmav_cm3s'] for r in rows),
                 sigmav95_cm3s=None, table_convention=convention, source_factor=factor,
                 rho_local_GeVcm3=rho, xsi=float(xsi), propagation=cr_config.selection(card)['propagation'], halo=cr_config.selection(card)['halo'],
@@ -199,6 +199,11 @@ def evaluate_channel_limits(mass, records, dm_pdg, majorana_dirac_factor, xsi, c
                 warnings=['Individual channel comparisons; no combined mixed-channel exclusion or likelihood.',
                           'BR=1 bounds fix secondary normalization to [0.8,1.2], tilt to [-0.1,0.1], and profile phi in [0,2] GV.',
                           'The source convention is an explicit card assumption.'])
+    mixture = channel_mixture(records, dm_pdg, majorana_dirac_factor)
+    warnings = result['warnings'] + mixture.get('warnings', [])
+    result.update(mixture_metadata(mixture))
+    result['warnings'] = warnings
+    return result
 
 
 def channel_mixture(records, dm_pdg, majorana_dirac_factor):
@@ -226,12 +231,33 @@ def channel_mixture(records, dm_pdg, majorana_dirac_factor):
                            'reason': 'initial state, decay chain, or final state is unsupported'})
             continue
         partial[channel] = partial.get(channel, 0.) + rate
-    if errors:
-        return {'status': 'unsupported_channels', 'unsupported': errors, 'total_sigmav_cm3s': total}
-    if total <= 0:
-        return {'status': 'zero_rate', 'total_sigmav_cm3s': total}
-    return {'status': 'ok', 'partial_rates_cm3s': partial, 'total_sigmav_cm3s': total,
-            'branching': {ch: rate/total for ch, rate in partial.items()}}
+    supported = sum(partial.values())
+    metadata = dict(unsupported=errors, all_channels_sigmav_cm3s=total,
+                    omitted_sigmav_cm3s=total-supported,
+                    omitted_fraction=(total-supported)/total if total else 0.,
+                    prediction_scope='supported_channels_only' if errors else 'complete',
+                    warnings=omission_warnings(errors))
+    if supported <= 0:
+        return dict(status='unsupported_channels' if errors else 'zero_rate',
+                    total_sigmav_cm3s=0., **metadata)
+    # Normalize the supported template to its OWN rate, never to the full rate.
+    # Multiplication by supported below exactly restores each partial rate.
+    return dict(status='ok', partial_rates_cm3s=partial, total_sigmav_cm3s=supported,
+                branching={ch: rate/supported for ch, rate in partial.items()}, **metadata)
+
+
+def omission_warnings(unsupported):
+    if not unsupported:
+        return []
+    return ['Incomplete indirect prediction: channels with unknown source spectra or Earth '
+            'fluxes are omitted: %s. Bounds, GCE fits, spectra, fluxes and event counts '
+            'use supported contributions only; no complete-model conclusion is implied.' %
+            ', '.join('%s (%.6e cm^3/s)' % (r['process'], r['sigmav_cm3s']) for r in unsupported)]
+
+
+def mixture_metadata(mixture):
+    return {key: mixture[key] for key in ('unsupported', 'all_channels_sigmav_cm3s',
+            'omitted_sigmav_cm3s', 'omitted_fraction', 'prediction_scope', 'warnings') if key in mixture}
 
 
 def empty_observables(velocity):
@@ -295,7 +321,9 @@ class AntiprotonLimits:
         # Copy before attaching point-specific rates/profiles to a reusable limit.
         import copy
         result = copy.deepcopy(self.limits[key])
+        warnings = result.get('warnings', []) + mixture.get('warnings', [])
         result.update(mixture)
+        result['warnings'] = warnings
         # The upper_limit status must survive an empty tabulated signal.
         result['status'] = self.limits[key]['status']
         result['rates'] = records
@@ -438,3 +466,18 @@ RESULT_COMMENTS = {
  'AMS02_pbar_q_upper_model': 'one-sided profiled Delta chi2 at theoretical rate; exclusion threshold 2.7055434541',
  'AMS02_pbar_q_upper_model_thermal': 'same statistic at xsi^2 times theoretical rate; equals AllDM when xsi=1',
 }
+
+
+def record_omissions(values, label, result):
+    """Persist analysis-specific missing contributions in terminal/text/scan outputs."""
+    channels = values.setdefault('ID_omitted_channels', {})
+    channels.pop(label, None)
+    warnings = values.setdefault('ID_incomplete_warnings', {})
+    warnings.pop(label, None)
+    omitted = result.get('unsupported', [])
+    if omitted:
+        channels[label] = omitted
+        warnings[label] = omission_warnings(omitted)
+    values[label+'_omitted_sigmav'] = float(result.get('omitted_sigmav_cm3s',
+                                               sum(r['sigmav_cm3s'] for r in omitted)))
+    values[label+'_omitted_fraction'] = float(result.get('omitted_fraction', 0.))

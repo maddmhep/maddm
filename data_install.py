@@ -24,8 +24,11 @@ import zlib
 logger = logging.getLogger('madgraph.plugin.maddm')
 ROOT = Path(__file__).resolve().parent
 FLUX_DIR = ROOT / 'ExpData' / 'CR_flux'
-PYTHON_REQUIREMENTS = ('six', 'numpy', 'scipy', 'matplotlib')
-PYTHON_INSTALL_RESTART = 'MADDM_PYTHON_INSTALL_RESTART'
+PYTHON_REQUIREMENTS = ('numpy', 'scipy', 'matplotlib')
+BUILD_REQUIREMENTS = ('ninja', 'meson')
+# Keep archive installations on the same revision as the RAPIDD git submodule.
+RAPIDD_REVISION = '8e140c45ae807b5155b22722ae99a7ced2aada7d'
+RAPIDD_REPOSITORY = 'https://github.com/cheekyparticle/RAPIDD_for_DM.git'
 ZLIB_ARCHIVE = (
     'https://zlib.net/fossils/zlib-1.3.2.tar.gz',
     'bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16',
@@ -55,55 +58,82 @@ def conda_install_command(packages):
     return None
 
 
-def check_python_dependencies(plugin_name):
-    """Run before importing modules that depend on the scientific Python stack."""
-    import __main__
-
-    options = getattr(__main__, 'options', None)
-    cli = getattr(options, 'plugin', None) == plugin_name.rsplit('.', 1)[-1]
-    restarted = cli and os.environ.pop(PYTHON_INSTALL_RESTART, None)
-    missing = [name for name in PYTHON_REQUIREMENTS if find_spec(name) is None]
-    if not missing:
-        for name in PYTHON_REQUIREMENTS:
-            try:
-                importlib.import_module(name)
-            except (ImportError, OSError, RuntimeError) as error:
-                message = 'MadDM could not import %s with %s.\n%s' % (name, sys.executable, error)
-                if cli:
-                    raise SystemExit(message) from None
-                raise ImportError(message) from error
-        return
-
-    command = conda_install_command(missing)
-    manager = 'Conda' if command else 'pip'
-    if command is None:
-        command = [sys.executable, '-m', 'pip', 'install', *missing]
-    message = ('MadDM requires %s.\n'
-               'Missing Python packages: %s\n'
-               'Python: %s\nEnvironment: %s\n'
-               'Install them with:\n  %s' %
-               (', '.join(PYTHON_REQUIREMENTS), ', '.join(missing), sys.executable,
-                sys.prefix, shlex.join(command)))
-    if not cli:
-        raise ImportError(message)
-    print(message, file=sys.stderr)
-    interactive = (not getattr(options, 'file', None) and not getattr(options, 'web', False)
-                   and not getattr(__main__, 'args', ()) and sys.stdin is not None
-                   and sys.stdin.isatty())
-    if interactive and not restarted:
+def missing_python_requirements(build_tools=False, tools_bin=None):
+    """Return missing or broken imports, respecting externally installed tools."""
+    missing = []
+    for name in PYTHON_REQUIREMENTS:
         try:
-            answer = input('Install the missing packages into this environment using %s? [y/N] ' % manager)
-            if answer.strip().lower() in ('y', 'yes'):
-                subprocess.run(command, check=True)
-                original = getattr(sys, 'orig_argv', None)
-                argv = [sys.executable, *(original[1:] if original else sys.argv)]
-                env = dict(os.environ, **{PYTHON_INSTALL_RESTART: '1'})
-                os.execve(sys.executable, argv, env)
-        except (EOFError, KeyboardInterrupt):
-            pass
-        except (OSError, subprocess.CalledProcessError) as error:
-            print('MadDM dependency setup failed: %s' % error, file=sys.stderr)
-    raise SystemExit(1)
+            importlib.import_module(name)
+        except (ImportError, OSError, RuntimeError, ValueError, AttributeError) as error:
+            logger.debug('Cannot import %s: %s', name, error)
+            missing.append(name)
+    if build_tools:
+        paths = [str(Path(sys.executable).parent), str(Path(sys.prefix) / 'bin')]
+        if tools_bin is not None:
+            paths.append(str(tools_bin))
+        paths.append(os.environ.get('PATH', ''))
+        search = os.pathsep.join(paths)
+        missing.extend(name for name in BUILD_REQUIREMENTS if shutil.which(name, path=search) is None)
+    return missing
+
+
+def python_install_command(packages):
+    """Select the manager for this interpreter; never assume pip is installed."""
+    command = conda_install_command(packages)
+    if command:
+        return 'conda', command
+    if find_spec('pip') is not None:
+        return 'pip', [sys.executable, '-m', 'pip', 'install', *packages]
+    return None, None
+
+
+def install_python_requirements(build_tools=True, tools_bin=None):
+    """Explicit `install py_requirements` target, also used after consent."""
+    missing = missing_python_requirements(build_tools, tools_bin=tools_bin)
+    if not missing:
+        logger.info('All requested MadDM Python requirements are available.')
+        return
+    manager, command = python_install_command(missing)
+    if command is None:
+        raise DataInstallError('Missing packages: %s. No conda or pip is available for %s. '
+                               'Install these packages yourself in this Python environment, then retry.' %
+                               (', '.join(missing), sys.executable))
+    logger.info('Installing %s through %s in %s: %s', ', '.join(missing), manager,
+                sys.prefix, shlex.join(command))
+    try:
+        subprocess.run(command, check=True)
+    except (OSError, subprocess.CalledProcessError) as error:
+        raise DataInstallError('Dependency installation failed: %s. Install the packages yourself or '
+                               'retry `install py_requirements`.' % error) from error
+    importlib.invalidate_caches()
+    remaining = missing_python_requirements(build_tools, tools_bin=tools_bin)
+    if remaining:
+        raise DataInstallError('Packages still unavailable: %s. Check the installation in %s, then retry.' %
+                               (', '.join(remaining), sys.executable))
+
+
+def ensure_python_requirements(ask=None, build_tools=False, tools_bin=None):
+    """Offer installation only when the user requests a numerical calculation."""
+    missing = missing_python_requirements(build_tools, tools_bin=tools_bin)
+    if not missing:
+        return
+    required = PYTHON_REQUIREMENTS + (BUILD_REQUIREMENTS if build_tools else ())
+    logger.warning('MadDM numerical calculations require: %s. Missing or unusable: %s. '
+                   'Python: %s. You can use `install py_requirements` at the main MadDM prompt '
+                   'or install the packages yourself.', ', '.join(required), ', '.join(missing), sys.executable)
+    manager, command = python_install_command(missing)
+    if ask is not None and command is not None:
+        question = ('Do you want to install the required packages through %s [y] '
+                    'or do you want to install them yourself [n]?' % manager)
+        # Declining leaves model import and diagram generation available.
+        answer = ask(question, 'n', ['y', 'n'], timeout=False)
+        if str(answer).strip().lower() == 'y':
+            install_python_requirements(build_tools, tools_bin=tools_bin)
+            return
+    raise DataInstallError('Missing packages: %s. Install them in %s yourself, or run '
+                           '`install py_requirements`, then launch the calculation again. '
+                           'Model import and diagram generation remain available.' %
+                           (', '.join(missing), sys.executable))
 
 
 def heptools_dir(mg5_dir, configured=None):
@@ -185,6 +215,33 @@ def install_reweight_tools(heptools):
     remaining = missing_reweight_build_tools(bin_dir)
     if remaining:
         raise DataInstallError('Build executables are still missing: %s' % ', '.join(remaining))
+
+
+def install_rapidd_source(destination):
+    """Fetch the pinned submodule sources when MadDM was installed from a ZIP."""
+    destination = Path(destination)
+    if destination.exists() and any(destination.iterdir()):
+        raise DataInstallError('Incomplete RAPIDD sources in %s. Keep or move that directory '
+                               'before retrying; existing files have not been changed.' % destination)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with tempfile.TemporaryDirectory(prefix='.rapidd-', dir=destination.parent) as work:
+            source = Path(work) / 'source'
+            source.mkdir()
+            commands = (['git', 'init', '--quiet'],
+                        ['git', 'remote', 'add', 'origin', RAPIDD_REPOSITORY],
+                        ['git', 'fetch', '--depth=1', 'origin', RAPIDD_REVISION],
+                        ['git', 'checkout', '--detach', 'FETCH_HEAD'],
+                        ['git', 'submodule', 'update', '--init', '--recursive', '--depth=1'])
+            for command in commands:
+                subprocess.run(command, cwd=source, check=True)
+            if not all((source / name).is_file() for name in ('lib/CMakeLists.txt', 'rapidd/__init__.py')):
+                raise DataInstallError('The pinned RAPIDD checkout is incomplete.')
+            if destination.exists():
+                destination.rmdir()  # Only an empty directory can be replaced.
+            source.replace(destination)
+    except (OSError, subprocess.CalledProcessError) as error:
+        raise DataInstallError('Could not download RAPIDD: %s' % error) from error
 
 
 def install_gsl(heptools):
@@ -280,3 +337,50 @@ def install_cosmixs_flux(destination=FLUX_DIR):
         raise DataInstallError('Could not install CosmiXsPPPC flux tables in %s: %s'
                                % (destination, error)) from error
     logger.info('Installed %d CosmiXsPPPC flux tables in %s.', len(missing), destination)
+
+
+NEUTRINO_FOG_REVISION = '0df3d0cd2322602dc147a66d94055f7f64879d80'
+NEUTRINO_FOG_ARCHIVE = (
+    'https://codeload.github.com/cajohare/NeutrinoFog/tar.gz/' + NEUTRINO_FOG_REVISION,
+    '43c53d675ef844919090e11cc1ba87d4bc6d55f1edf432725298aeb3752d44aa',
+)
+
+
+def install_neutrino_fog(root=ROOT):
+    """Fetch the pinned upstream project on first DD use, never import its code."""
+    root = Path(root)
+    destination = root/'NeutrinoFog'
+    required = ['data/floors/Xe_SI.txt', 'data/floors/Xe_SDp.txt', 'data/floors/Xe_SDn.txt', 'LICENSE']
+    marker = destination/'maddm_revision.txt'
+    if marker.is_file() and marker.read_text().strip() == NEUTRINO_FOG_REVISION and all(
+            (destination/p).is_file() for p in required):
+        return destination
+    if destination.exists():
+        raise DataInstallError('Existing %s is incomplete or from another revision; preserve or move it before retrying.' % destination)
+    root.mkdir(parents=True, exist_ok=True)
+    logger.info('Downloading NeutrinoFog for DD references: https://github.com/cajohare/NeutrinoFog (arXiv:2109.03116).')
+    with tempfile.TemporaryDirectory(prefix='.neutrino-fog-', dir=root) as work:
+        stage = Path(work)
+        archive = verified_archive(stage, *NEUTRINO_FOG_ARCHIVE)
+        with tarfile.open(archive, 'r:gz') as source:
+            prefix = 'NeutrinoFog-'+NEUTRINO_FOG_REVISION
+            # Explicit copying avoids links and archive path traversal on all supported Python versions.
+            unpack = stage/'project'
+            for member in source.getmembers():
+                parts = Path(member.name).parts
+                if not parts or parts[0] != prefix or '..' in parts or member.name.startswith('/'):
+                    raise DataInstallError('Unsafe NeutrinoFog archive path')
+                target = unpack.joinpath(*parts[1:])
+                if member.isdir():
+                    target.mkdir(parents=True, exist_ok=True)
+                elif member.isfile():
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    with source.extractfile(member) as inp, target.open('wb') as out:
+                        shutil.copyfileobj(inp, out)
+                else:
+                    raise DataInstallError('Unexpected link in NeutrinoFog archive')
+        if not all((unpack/p).is_file() for p in required):
+            raise DataInstallError('NeutrinoFog archive is missing required reference tables')
+        (unpack/'maddm_revision.txt').write_text(NEUTRINO_FOG_REVISION+'\n')
+        unpack.rename(destination)
+    return destination

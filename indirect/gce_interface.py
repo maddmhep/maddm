@@ -82,7 +82,12 @@ class GCEFit:
 
     def evaluate(self, mass, records, dm_pdg, md_factor, card, runtime_spectrum=None):
         mixture=pbar_interface.channel_mixture(records,dm_pdg,md_factor)
-        if mixture['status']=='ok':
+        if runtime_spectrum is not None and mixture.get('unsupported'):
+            spectrum=runtime_spectrum; rate=sum(r['sigmav_cm3s'] for r in records)
+            source='runtime MadDM photon spectrum at the same requested velocity'
+            mixture = dict(mixture, unsupported=[], omitted_sigmav_cm3s=0., omitted_fraction=0.,
+                           prediction_scope='complete_runtime_spectrum', warnings=[], branching=None)
+        elif mixture['status']=='ok':
             spectrum=self.spectrum(mass,mixture['branching'])
             source='CosmiXs prompt gamma yields, mixture from Milky Way rates'
             rate=mixture['total_sigmav_cm3s']
@@ -107,7 +112,7 @@ class GCEFit:
         compatibility=[dict(E_GeV=float(e),sys_upper=float(upper),quoted_upper=float(ul),
                              best_fit_SED=float(pred*fit['amplitude']),exceeds_sys_upper=bool(pred*fit['amplitude']>upper))
                        for e,pred,upper,ul in zip(eref[~used],prediction[~used],flux[~used,4],flux[~used,2])]
-        return dict(status='ok',mass_GeV=float(mass),sigmav_best_cm3s=best,error_minus_cm3s=best-low,
+        return dict(**pbar_interface.mixture_metadata(mixture),status='ok',mass_GeV=float(mass),sigmav_best_cm3s=best,error_minus_cm3s=best-low,
                     error_plus_cm3s=high-best,interval68_cm3s=[low,high],chi2=fit['chi2'],ndof=fit['ndof'],
                     chi2_ndof=fit['chi2']/fit['ndof'],measurements=int(used.sum()),upper_limit_bins=int((~used).sum()),
                     geometry=dict(jbar=jbar,rho_sun_GeVcm3=rho,rsun_kpc=rsun,solid_angle_sr=.4775494185,

@@ -1,8 +1,7 @@
 # integration routine, simpson's rule. integrates a function over a pre-set 1-D grid.
 #add option to run it with x_min, x_max npts as well.
 from __future__ import print_function
-from six.moves import range
-import numpy as np
+from importlib.util import find_spec
 
 def integrate(integrand, x_grid=[], a=0, b=0, npts=0, **kwargs):
 
@@ -13,7 +12,7 @@ def integrate(integrand, x_grid=[], a=0, b=0, npts=0, **kwargs):
         if (a!=b):
             x_grid = [float(a)+ (float(b)-float(a))*k/npts for k in range(0, npts+1)]
         
-        if np.array(x_grid).size == 0:
+        if len(x_grid) == 0:
             print("ERROR: Integration grid in integrate() function not set up! Returning 0.")
             return simpson
 
@@ -51,9 +50,8 @@ def write_data_to_file(x_data, y_data, errors = False, filename='', header=''):
 #To check if modules are installed
 def module_exists(className):
     try:
-        __import__(className, globals(), locals(), [], -1)
-        return True
-    except:
+        return find_spec(className) is not None
+    except (ImportError, ValueError):
         return False
 
 #check if a string is a float

@@ -2,11 +2,9 @@
 
 import gzip
 import hashlib
-from io import StringIO
 from pathlib import Path
 import shutil
 import tempfile
-from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 import zipfile
@@ -28,20 +26,53 @@ class PythonDependencyTests(unittest.TestCase):
                  patch.dict(data_install.os.environ, CONDA_PREFIX=str(prefix)):
                 self.assertIsNone(data_install.conda_install_command(['matplotlib']))
 
-    def test_batch_reports_every_missing_dependency_without_prompting(self):
-        import __main__
-        output = StringIO()
-        options = SimpleNamespace(plugin='maddm', file='commands.txt')
-        with patch.object(__main__, 'options', options, create=True), \
-             patch.object(data_install, 'find_spec', side_effect=lambda name: object() if name == 'six' else None), \
-             patch.object(data_install, 'conda_install_command', return_value=None), \
-             patch.object(data_install.sys, 'stderr', output), \
-             patch('builtins.input', side_effect=AssertionError('batch startup prompted')):
-            with self.assertRaises(SystemExit) as exit_code:
-                data_install.check_python_dependencies('PLUGIN.maddm')
-        self.assertEqual(exit_code.exception.code, 1)
-        self.assertIn('Missing Python packages: numpy, scipy, matplotlib', output.getvalue())
-        self.assertIn('-m pip install numpy scipy matplotlib', output.getvalue())
+    def test_manual_choice_does_not_install_or_exit_the_program(self):
+        question = []
+        def ask(text, default, choices, **kwargs):
+            question.append((text, default, choices, kwargs))
+            return 'n'
+        with patch.object(data_install, 'missing_python_requirements', return_value=['numpy','scipy','matplotlib']), \
+             patch.object(data_install, 'python_install_command', return_value=('pip', ['python','-m','pip'])), \
+             patch.object(data_install.subprocess, 'run') as run:
+            with self.assertRaisesRegex(data_install.DataInstallError, 'install py_requirements'):
+                data_install.ensure_python_requirements(ask=ask)
+        run.assert_not_called()
+        self.assertIn('through pip [y]', question[0][0])
+        self.assertIn('yourself [n]', question[0][0])
+        self.assertEqual(question[0][1:3], ('n', ['y','n']))
+        self.assertIs(question[0][3]['timeout'], False)
+
+    def test_explicit_install_uses_selected_manager_and_checks_result(self):
+        for manager, command in [('conda',['conda','install','numpy','meson']),
+                                 ('pip',['python','-m','pip','install','numpy','meson'])]:
+            with self.subTest(manager=manager), \
+                 patch.object(data_install, 'missing_python_requirements', side_effect=[['numpy','meson'], []]), \
+                 patch.object(data_install, 'python_install_command', return_value=(manager, command)), \
+                 patch.object(data_install.subprocess, 'run') as run:
+                data_install.install_python_requirements()
+                run.assert_called_once_with(command, check=True)
+
+    def test_acceptance_installs_and_no_manager_preserves_manual_route(self):
+        with patch.object(data_install, 'missing_python_requirements', return_value=['scipy']), \
+             patch.object(data_install, 'python_install_command', return_value=('conda', ['conda'])), \
+             patch.object(data_install, 'install_python_requirements') as install:
+            data_install.ensure_python_requirements(ask=lambda *args, **kwargs: 'y', build_tools=True)
+            install.assert_called_once_with(True, tools_bin=None)
+        with patch.object(data_install, 'missing_python_requirements', return_value=['scipy']), \
+             patch.object(data_install, 'python_install_command', return_value=(None, None)), \
+             patch.object(data_install.subprocess, 'run') as run:
+            with self.assertRaisesRegex(data_install.DataInstallError, 'yourself'):
+                data_install.ensure_python_requirements()
+            run.assert_not_called()
+
+    def test_pip_is_bound_to_the_running_python_and_is_not_assumed(self):
+        with patch.object(data_install, 'conda_install_command', return_value=None), \
+             patch.object(data_install, 'find_spec', return_value=object()):
+            self.assertEqual(data_install.python_install_command(['matplotlib']),
+                             ('pip', [data_install.sys.executable, '-m', 'pip', 'install', 'matplotlib']))
+        with patch.object(data_install, 'conda_install_command', return_value=None), \
+             patch.object(data_install, 'find_spec', return_value=None):
+            self.assertEqual(data_install.python_install_command(['matplotlib']), (None, None))
 
 
 def record(name, content, **details):
@@ -56,6 +87,28 @@ class DataInstallTests(unittest.TestCase):
         self.root = Path(tmp.name)
         self.manifest = dict(repository='https://github.com/test/data', revision='pinned',
                              sources=[])
+
+    def test_archive_rapidd_uses_pinned_revision_without_overwriting_sources(self):
+        destination = self.root/'vendor/RAPIDD_for_DM'
+        destination.mkdir(parents=True)
+        commands = []
+        def git(command, cwd, check):
+            commands.append(command)
+            if command[1] == 'checkout':
+                source = Path(cwd)
+                (source/'lib').mkdir()
+                (source/'rapidd').mkdir()
+                (source/'lib/CMakeLists.txt').write_text('fixture')
+                (source/'rapidd/__init__.py').write_text('')
+        with patch.object(data_install.subprocess, 'run', side_effect=git):
+            data_install.install_rapidd_source(destination)
+        self.assertTrue((destination/'lib/CMakeLists.txt').is_file())
+        self.assertIn(['git','fetch','--depth=1','origin',data_install.RAPIDD_REVISION],commands)
+        with patch.object(data_install.subprocess, 'run') as run:
+            with self.assertRaisesRegex(data_install.DataInstallError,'existing files'):
+                data_install.install_rapidd_source(destination)
+            run.assert_not_called()
+        self.assertEqual((destination/'lib/CMakeLists.txt').read_text(),'fixture')
 
     def flux_archive(self, species, correct=True):
         name = species + '.dat'
