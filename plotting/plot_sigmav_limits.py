@@ -447,6 +447,9 @@ def generate(columns, outdir, stem='scan', mass_column=None, fermi_column=None, 
 
     dd_curves = [('lim_sigmaN_'+a+'_'+n, a+' '+n, {'color':c,'ls':'-' if n=='n' else '--'})
                  for (a,n),c in zip(DD,DD_COLORS)]
+    # projected XLZD sensitivities (maddm_card xlzd_limits), present only when they were requested
+    dd_curves += [('lim_sigmaN_'+a+'_'+n+'_XLZD', a+' '+n+' XLZD (proj.)', {'color':c,'ls':':','alpha':.8})
+                  for (a,n),c in zip(DD,DD_COLORS)]
     plot('dd_limits', dd_curves, r'Nucleon cross-section upper limit [cm$^2$]', 'Direct-detection upper limits')
     events = [('GAPS_dbar_events','GAPS (0.1–0.3 GeV/n)'), ('AMS02_dbar_events_low','AMS-02 low (0.18–0.70 GeV/n)'),
               ('AMS02_dbar_events_high','AMS-02 high (2.0–4.2 GeV/n)'), ('AMS02_dbar_events_total','AMS-02 total')]

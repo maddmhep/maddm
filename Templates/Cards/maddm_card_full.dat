@@ -91,6 +91,11 @@
    %(direct_modulation)s = direct_modulation ! compute the annual modulation
    %(day_bins)s       = day_bins  ! number of time bins of the year
 
+# Projected XLZD sensitivity (median 90 percent CL upper limits on the SI and SD DM-nucleon cross
+# sections for 200 or 1000 tonne-years), shown next to the LZ limits at the end of direct_nucleon
+# (SI: arXiv:2410.17137; SD: arXiv:2203.02309, 5 GeV - 1 TeV)
+   %(xlzd_limits)s = xlzd_limits ! off, 200ty, 1000ty
+
 # Electronic recoil
 # select 'always' if you want to always do this computation independently on the
 # mass threshold, selected in direct_electron_dm_mass_max (hidden parameter),
