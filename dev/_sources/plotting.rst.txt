@@ -36,7 +36,8 @@ kept so users can retain local edits:
 
 ``plot_sigmav_limits.py`` plots available dwarf and antiproton limits,
 the GCE best fit, theoretical rates and branching fractions, nuclear
-cross sections and bounds, and antideuteron counts. It can locate the
+and electron-recoil cross sections and bounds, relic density, freeze-out
+rates, and antideuteron counts. It can locate the
 lowest chi-square GCE point and integrate the saved source spectra
 for multiplicities. For multiplicities, retain spectra during the
 scan. Missing observables are omitted.
@@ -53,3 +54,48 @@ The projection assumes smooth power-law scaling at fixed mass. It can
 fail at resonances and thresholds, for significant coannihilation,
 or if changing the coupling changes the branching ratios. The
 relic-density line does not rerun the Boltzmann calculation.
+
+For several scanned masses or couplings, select the x axis explicitly:
+
+.. code-block:: bash
+
+   python plot_sigmav_limits.py scan.txt --mass-column 'mass#9000005'
+   python plot_coupling_mass.py scan.txt --mass-column 'mass#9000005' --coupling-column 'DMINPUTS#1'
+
+Both scripts also accept ``--x-column`` for a different scanned input,
+``--select COLUMN=VALUE`` (repeatable) to select rows, and
+``--group-by COLUMN [COLUMN ...]`` for separate parameter slices.
+If several masses are present, the last one is the reported default;
+choose the physical dark-matter mass explicitly when it differs.
+Repeated x values are split by the other scanned input parameters.
+If repeated rows remain within a slice, they are shown as points.
+The plots use base-ten logarithmic axes and vector PDF output.
+Uncomputed or out-of-range negative sentinels, zeros and NaNs are not
+plotted as positive constraints. The electron legend distinguishes the
+published XENONnT limit, its RAPIDD atomic-response rescaling and XENON10.
+The two XENONnT conventions do not both enter the coupling envelope;
+choose the desired one with ``--electron-limit-column``.
+A relic-only scan without a freeze-out rate uses the approximate inverse
+abundance scaling instead, marked in the coupling metadata.
+
+Every curve in the scan summaries has a distinct color, supplemented by
+markers and dash patterns. The freeze-out diagnostic is labeled as the
+reported annihilation rate evaluated at ``x_f``. It is not a
+cross section inferred by imposing the measured relic density; the relic
+abundance is computed by integrating the Boltzmann equation.
+
+A scan can contain linked external model inputs, for example:
+
+.. code-block:: text
+
+   BLOCK MASS
+         54 2*mxr # my0
+    5000001 scan1:[1,3,4,5,7,8,10,100] # mxr
+
+The first parameter is recalculated at every point. ``mxr/2``, ``mxr**2``
+and chains of relations are also supported. Prefer the exact UFO name in
+``ident_card.dat`` or use the explicit ``mass_5000001`` alias if a comment
+name is ambiguous. Standard ``scanN`` groups retain MadGraph semantics:
+same-number lists advance together; different groups form a Cartesian product.
+Linked entries do not add independent scan dimensions. Their evaluated values
+are written to the summary. A one-element scan is supported.

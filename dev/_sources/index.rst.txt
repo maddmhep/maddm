@@ -18,15 +18,22 @@ Requirements
 ------------
 
 - MadGraph v2.9 (LTS version) is required to run the latest version of MadDM, MadGraph v3.* may be supported but more testing is necessary.
-- Python 3.6+
+- Python 3.8+
 - ``gfortran``
 - ``make``
 - ``cmake``
 - ``gsl``
 - python package:
-    - `six <https://pypi.org/project/six/>`__: to support Python 2.7 as well
     - `numpy <https://numpy.org/>`__
-    - `scipy <https://scipy.org/>`__ (required for some recent features)
+    - `scipy <https://scipy.org/>`__
+    - `matplotlib <https://matplotlib.org/>`__
+
+Numerical calculations require these Python packages; model import and diagram
+generation do not. Use ``install py_requirements`` to install them with Conda
+or pip in the running Python environment, together with Meson and Ninja for
+precise reweighting. For indirect detection the explicit Python installation
+choice is shown before Pythia8 setup, without an answer timeout. Other numerical
+launches are checked at the main prompt. Manual installation remains available.
 
 Installation
 ------------

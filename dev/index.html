@@ -438,21 +438,27 @@
 <h3>Requirements<a class="headerlink" href="#requirements" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>MadGraph v2.9 (LTS version) is required to run the latest version of MadDM, MadGraph v3.* may be supported but more testing is necessary.</p></li>
-<li><p>Python 3.6+</p></li>
+<li><p>Python 3.8+</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">gfortran</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">make</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">cmake</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">gsl</span></code></p></li>
 <li><dl class="simple">
 <dt>python package:</dt><dd><ul>
-<li><p><a class="reference external" href="https://pypi.org/project/six/">six</a>: to support Python 2.7 as well</p></li>
 <li><p><a class="reference external" href="https://numpy.org/">numpy</a></p></li>
-<li><p><a class="reference external" href="https://scipy.org/">scipy</a> (required for some recent features)</p></li>
+<li><p><a class="reference external" href="https://scipy.org/">scipy</a></p></li>
+<li><p><a class="reference external" href="https://matplotlib.org/">matplotlib</a></p></li>
 </ul>
 </dd>
 </dl>
 </li>
 </ul>
+<p>Numerical calculations require these Python packages; model import and diagram
+generation do not. Use <code class="docutils literal notranslate"><span class="pre">install</span> <span class="pre">py_requirements</span></code> to install them with Conda
+or pip in the running Python environment, together with Meson and Ninja for
+precise reweighting. For indirect detection the explicit Python installation
+choice is shown before Pythia8 setup, without an answer timeout. Other numerical
+launches are checked at the main prompt. Manual installation remains available.</p>
 </section>
 <section id="installation">
 <h3>Installation<a class="headerlink" href="#installation" title="Link to this heading">#</a></h3>

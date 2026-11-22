@@ -496,7 +496,8 @@ python<span class="w"> </span>plot_coupling_mass.py<span class="w"> </span>--hel
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">plot_sigmav_limits.py</span></code> plots available dwarf and antiproton limits,
 the GCE best fit, theoretical rates and branching fractions, nuclear
-cross sections and bounds, and antideuteron counts. It can locate the
+and electron-recoil cross sections and bounds, relic density, freeze-out
+rates, and antideuteron counts. It can locate the
 lowest chi-square GCE point and integrate the saved source spectra
 for multiplicities. For multiplicities, retain spectra during the
 scan. Missing observables are omitted.</p>
@@ -512,6 +513,44 @@ The projection assumes smooth power-law scaling at fixed mass. It can
 fail at resonances and thresholds, for significant coannihilation,
 or if changing the coupling changes the branching ratios. The
 relic-density line does not rerun the Boltzmann calculation.</p>
+<p>For several scanned masses or couplings, select the x axis explicitly:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>plot_sigmav_limits.py<span class="w"> </span>scan.txt<span class="w"> </span>--mass-column<span class="w"> </span><span class="s1">'mass#9000005'</span>
+python<span class="w"> </span>plot_coupling_mass.py<span class="w"> </span>scan.txt<span class="w"> </span>--mass-column<span class="w"> </span><span class="s1">'mass#9000005'</span><span class="w"> </span>--coupling-column<span class="w"> </span><span class="s1">'DMINPUTS#1'</span>
+</pre></div>
+</div>
+<p>Both scripts also accept <code class="docutils literal notranslate"><span class="pre">--x-column</span></code> for a different scanned input,
+<code class="docutils literal notranslate"><span class="pre">--select</span> <span class="pre">COLUMN=VALUE</span></code> (repeatable) to select rows, and
+<code class="docutils literal notranslate"><span class="pre">--group-by</span> <span class="pre">COLUMN</span> <span class="pre">[COLUMN</span> <span class="pre">...]</span></code> for separate parameter slices.
+If several masses are present, the last one is the reported default;
+choose the physical dark-matter mass explicitly when it differs.
+Repeated x values are split by the other scanned input parameters.
+If repeated rows remain within a slice, they are shown as points.
+The plots use base-ten logarithmic axes and vector PDF output.
+Uncomputed or out-of-range negative sentinels, zeros and NaNs are not
+plotted as positive constraints. The electron legend distinguishes the
+published XENONnT limit, its RAPIDD atomic-response rescaling and XENON10.
+The two XENONnT conventions do not both enter the coupling envelope;
+choose the desired one with <code class="docutils literal notranslate"><span class="pre">--electron-limit-column</span></code>.
+A relic-only scan without a freeze-out rate uses the approximate inverse
+abundance scaling instead, marked in the coupling metadata.</p>
+<p>Every curve in the scan summaries has a distinct color, supplemented by
+markers and dash patterns. The freeze-out diagnostic is labeled as the
+reported annihilation rate evaluated at <code class="docutils literal notranslate"><span class="pre">x_f</span></code>. It is not a
+cross section inferred by imposing the measured relic density; the relic
+abundance is computed by integrating the Boltzmann equation.</p>
+<p>A scan can contain linked external model inputs, for example:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>BLOCK MASS
+      54 2*mxr # my0
+ 5000001 scan1:[1,3,4,5,7,8,10,100] # mxr
+</pre></div>
+</div>
+<p>The first parameter is recalculated at every point. <code class="docutils literal notranslate"><span class="pre">mxr/2</span></code>, <code class="docutils literal notranslate"><span class="pre">mxr**2</span></code>
+and chains of relations are also supported. Prefer the exact UFO name in
+<code class="docutils literal notranslate"><span class="pre">ident_card.dat</span></code> or use the explicit <code class="docutils literal notranslate"><span class="pre">mass_5000001</span></code> alias if a comment
+name is ambiguous. Standard <code class="docutils literal notranslate"><span class="pre">scanN</span></code> groups retain MadGraph semantics:
+same-number lists advance together; different groups form a Cartesian product.
+Linked entries do not add independent scan dimensions. Their evaluated values
+are written to the summary. A one-element scan is supported.</p>
 </section>
 
 
