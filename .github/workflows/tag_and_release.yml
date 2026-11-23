@@ -13,6 +13,9 @@ jobs:
   release_on_merge:
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
+    # Needed to push the tag and create the release
+    permissions:
+      contents: write
     steps:
       # Step 1: Check out the code
       - name: Checkout repository
@@ -36,12 +39,15 @@ jobs:
           git push --follow-tags
 
       # Step 4: Pack everything in both a zip and a tar.gz
+      # The archives must contain a top-level maddm/ folder: "install maddm"
+      # in MG5_aMC unpacks them in the MG5_aMC root and moves maddm/ to PLUGIN/
       - name: Create artifacts tarballs
         run: |
-          mkdir -p artifacts
+          mkdir -p artifacts stage/maddm
           git ls-files --recurse-submodules > filelist.txt
-          tar -czf artifacts/maddm.tar.gz -T filelist.txt
-          zip -@ artifacts/maddm.zip < filelist.txt
+          tar -cf - -T filelist.txt | tar -xf - -C stage/maddm
+          tar -czf artifacts/maddm.tar.gz -C stage maddm
+          (cd stage && zip -qr ../artifacts/maddm.zip maddm)
         shell: bash
 
       # Step 5: Prepare release notes
