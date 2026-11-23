@@ -199,7 +199,9 @@ def scan_slices(columns, axis=None, select=None, group_by=None):
 def dd_label(kind, nucleon, suffix=''):
     experiment = ('PICO-60 (2019)' if kind == 'SD' and nucleon == 'p' else 'LZ (2024)')
     if suffix:
-        experiment = 'LZ (2024)' if suffix.upper() == '_LZ' else suffix.strip('_').replace('_', ' ')
+        # _XLZD: projected XLZD sensitivity (maddm_card xlzd_limits = 200ty or 1000ty)
+        experiment = {'_LZ': 'LZ (2024)', '_XLZD': 'XLZD (projected)'}.get(
+            suffix.upper(), suffix.strip('_').replace('_', ' '))
     target = 'proton' if nucleon == 'p' else 'neutron'
     return experiment+'; '+kind+' '+target
 
@@ -566,17 +568,15 @@ def _generate(columns, outdir, stem='scan', mass_column=None, fermi_column=None,
             if key == limit or key.startswith(limit+'_'):
                 suffix = key[len(limit):]
                 dd_curves.append((key, dd_label(kind, nucleon, suffix),
-                                  {'color':color, 'ls':'-.' if suffix else '-' if nucleon=='n' else '--'}))
-    for exposure in (200, 1000):
-        key = 'lim_sigmaN_SI_XLZD_%dty' % exposure
-        dd_curves.append((key, 'XLZD %d t yr; projected 90%% CL SI' % exposure, {'ls': ':'}))
+                                  {'color':color, 'ls':':' if 'XLZD' in suffix else '-.' if suffix else
+                                   '-' if nucleon=='n' else '--'}))
     fog_curves = [(key, label, {'ls': ':'}) for key, label in (
         ('neutrino_fog_SI', 'Xe neutrino fog; SI'),
         ('neutrino_fog_SD_p', 'Xe neutrino fog; SD proton'),
         ('neutrino_fog_SD_n', 'Xe neutrino fog; SD neutron'))]
     manifest['direct_reference_sources'] = {
-        'XLZD': 'arXiv:2410.17137 Fig. 2; smoothed digitization; projected 90% CL, native halo',
-        'neutrino_fog': 'https://github.com/cajohare/NeutrinoFog; arXiv:2109.03116; xenon, native halo; NOT an exclusion'}
+        'XLZD': 'RAPIDD lib/experiments/XLZD: SI arXiv:2410.17137, SD arXiv:2203.02309; projected median 90% CL, rescaled to rhoDM',
+        'neutrino_fog': 'https://github.com/cajohare/NeutrinoFog; arXiv:2109.03116; xenon, rescaled to rhoDM; NOT an exclusion'}
     plot('dd_limits', dd_curves, r'Nucleon cross-section upper limit [cm$^2$]', 'Nuclear recoil: limits and optional projections')
     plot('dd_comparison', dd_predictions+dd_curves+fog_curves, r'Nucleon cross section [cm$^2$]', 'Nuclear recoil: predictions, limits and references')
     electrons = [(key, electron_label(key), {'ls':['--','-.',':'][i%3]})

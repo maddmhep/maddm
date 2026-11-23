@@ -1,7 +1,12 @@
-"""Published nuclear-recoil projections and neutrino-fog references.
+"""Neutrino-fog references for the DM-nucleon cross sections (xenon).
 
-Tables are interpolated in log mass/log cross section, without extrapolation.
-They retain their published halo assumptions: no detector likelihood is rerun.
+The tables of C. A. J. O'Hare (github.com/cajohare/NeutrinoFog, arXiv:2109.03116) are downloaded
+by `generate`/`add direct_detection` (or `install neutrino_fog`), never by `launch`.
+They are interpolated in log mass/log cross section, without extrapolation, and rescaled by
+FOG_RHO/rhoDM like the experimental limits: the fog is the cross section at which the DM signal
+reaches a given rate in a xenon detector, and the DM rate scales as rhoDM * sigma
+(standard halo model, rho_0 = 0.3 GeV/cm^3 in WIMPFuncs.dRdE of NeutrinoFog).
+The fog is a reference boundary, not an exclusion limit.
 """
 import bisect
 import functools
@@ -11,9 +16,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 FOG_SOURCE = ('https://github.com/cajohare/NeutrinoFog; C. A. J. O\'Hare, '
               'Phys. Rev. Lett. 127, 251802 (2021), arXiv:2109.03116')
-XLZD_SOURCE = 'XLZD Design Book, arXiv:2410.17137, Fig. 2; user-supplied smoothed digitization'
 FOG_KEYS = ('neutrino_fog_SI', 'neutrino_fog_SD_p', 'neutrino_fog_SD_n')
-XLZD_KEYS = ('lim_sigmaN_SI_XLZD_200ty', 'lim_sigmaN_SI_XLZD_1000ty')
+FOG_FILES = dict(zip(FOG_KEYS, ('Xe_SI.txt', 'Xe_SDp.txt', 'Xe_SDn.txt')))
+FOG_RHO = 0.3  # local DM density [GeV/cm^3] of the published tables
+
+
+def fog_path(key, root=ROOT):
+    return Path(root)/'NeutrinoFog'/'data'/'floors'/FOG_FILES[key]
 
 
 @functools.lru_cache(maxsize=32)
@@ -32,9 +41,14 @@ def _table(path, mtime_ns):
     return tuple(math.log10(r[0]) for r in rows), tuple(math.log10(r[1]) for r in rows)
 
 
-def interpolate(path, mass):
+def table(path):
+    """(log10 masses, log10 cross sections) of a two-column table."""
     path = Path(path)
-    x, y = _table(str(path.resolve()), path.stat().st_mtime_ns)
+    return _table(str(path.resolve()), path.stat().st_mtime_ns)
+
+
+def interpolate(path, mass):
+    x, y = table(path)
     mass = float(mass)
     if not math.isfinite(mass) or mass <= 0:
         return -1.
@@ -45,61 +59,63 @@ def interpolate(path, mass):
     return 10.**(y[i]+(y[i+1]-y[i])*(v-x[i])/(x[i+1]-x[i]))
 
 
-def evaluate(mass, xlzd=False, root=ROOT):
-    root = Path(root)
+def rho_factor(rhoDM):
+    rhoDM = float(rhoDM)
+    if not math.isfinite(rhoDM) or rhoDM <= 0:
+        raise ValueError('rhoDM must be positive, got %s' % rhoDM)
+    return FOG_RHO/rhoDM
+
+
+def evaluate(mass, rhoDM=FOG_RHO, root=ROOT):
+    """Neutrino fog at the DM mass [cm^2], rescaled to rhoDM; -1 if unavailable or outside the tables."""
     values, warnings = {}, []
-    for key, filename in zip(FOG_KEYS, ('Xe_SI.txt', 'Xe_SDp.txt', 'Xe_SDn.txt')):
-        path = root/'NeutrinoFog'/'data'/'floors'/filename
+    factor = rho_factor(rhoDM)
+    folder = fog_path(FOG_KEYS[0], root).parent
+    if not folder.is_dir():
+        values.update(dict.fromkeys(FOG_KEYS, -1.))
+        values['DD_reference_warnings'] = ['Neutrino fog unavailable: %s is missing. Run `install neutrino_fog` '
+                                           'at the MadDM prompt.' % folder]
+        return values
+    for key in FOG_KEYS:
+        path = fog_path(key, root)
+        if not path.is_file():
+            values[key] = -1.
+            warnings.append('%s unavailable: %s is missing. Run `install neutrino_fog` at the MadDM prompt.'
+                            % (key, path))
+            continue
         try:
-            values[key] = interpolate(path, mass)
+            value = interpolate(path, mass)
         except (OSError, ValueError) as error:
             values[key] = -1.
             warnings.append('%s unavailable: %s' % (key, error))
-        if values[key] == -1. and path.is_file():
+            continue
+        if value == -1.:
             warnings.append('DM mass %s GeV outside the %s table; no extrapolation.' % (mass, key))
-    if xlzd:
-        for exposure, key in zip((200, 1000), XLZD_KEYS):
-            path = root/'ExpData'/'XLZD'/('XLZD_SI_90CL_%sty_digitized_smoothed.txt' % exposure)
-            try:
-                values[key] = interpolate(path, mass)
-            except (OSError, ValueError) as error:
-                values[key] = -1.
-                warnings.append('%s unavailable: %s' % (key, error))
-            if values[key] == -1. and path.is_file():
-                warnings.append('DM mass %s GeV outside the XLZD %s t yr table; no extrapolation.' % (mass, exposure))
+        values[key] = value*factor if value > 0 else -1.
     values['DD_reference_warnings'] = warnings
-    values['neutrino_fog_source'] = FOG_SOURCE
-    values['neutrino_fog_target'] = 'natural xenon; native published halo (rho=0.3 GeV/cm^3)'
-    if xlzd:
-        values['XLZD_source'] = XLZD_SOURCE
     return values
 
 
-def report(values):
-    lines = []
-    if any(k in values for k in FOG_KEYS):
-        lines += ['Neutrino fog: xenon reference boundary, NOT an exclusion limit.', FOG_SOURCE,
-                  'Published native halo assumptions; not recalculated for the run-card halo.']
-        lines += ['%s = %.10e # cm^2; -1 means unavailable' % (k, values[k]) for k in FOG_KEYS if k in values]
-    if any(k in values for k in XLZD_KEYS):
-        lines += ['XLZD: projected 90% CL SI sensitivity, NOT a current exclusion.', XLZD_SOURCE,
-                  'Native digitized reference curves; no run-card halo rescaling. SI assumes equal proton/neutron couplings.']
-        lines += ['%s = %.10e # cm^2; -1 means unavailable' % (k, values[k]) for k in XLZD_KEYS if k in values]
-    for exposure, key in zip((200, 1000), XLZD_KEYS):
-        upper = values.get(key, -1.)
-        if upper <= 0:
+def curves(rhoDM=FOG_RHO, root=ROOT):
+    """{key: (masses, cross sections rescaled to rhoDM)} of the available fog tables."""
+    factor = rho_factor(rhoDM)
+    result = {}
+    for key in FOG_KEYS:
+        path = fog_path(key, root)
+        try:
+            x, y = table(path)
+        except (OSError, ValueError):
             continue
-        for nucleon in ('p', 'n'):
-            prediction = values.get('sigmaN_SI_'+nucleon, -1.)
-            if prediction < 0 or not math.isfinite(prediction):
-                continue
-            ratio = prediction/upper
-            lines.append('XLZD %s t yr SI %s: sigma/reference = %.6e; %s projected curve (All DM)' %
-                         (exposure, nucleon, ratio, 'above' if ratio > 1. else 'below or on'))
-            xsi = values.get('xsi', 1.)
-            if 0. < xsi < 1.:
-                ratio *= xsi
-                lines.append('XLZD %s t yr SI %s: sigma/reference = %.6e; %s projected curve (thermal fraction)' %
-                             (exposure, nucleon, ratio, 'above' if ratio > 1. else 'below or on'))
+        result[key] = ([10.**v for v in x], [10.**v*factor for v in y])
+    return result
+
+
+def report(values, rhoDM=FOG_RHO):
+    """Lines describing the fog at the current point (screen and MadDM_results.txt)."""
+    if not any(k in values for k in FOG_KEYS):
+        return []
+    lines = ['Neutrino fog (xenon): reference boundary, NOT an exclusion limit. ' + FOG_SOURCE,
+             'Rescaled from rho = %.2g GeV/cm^3 (published tables) to rhoDM = %.4g GeV/cm^3.' % (FOG_RHO, rhoDM)]
+    lines += ['%s = %.10e # cm^2; -1 means unavailable' % (k, values[k]) for k in FOG_KEYS if k in values]
     lines += ['WARNING: '+s for s in values.get('DD_reference_warnings', [])]
     return lines

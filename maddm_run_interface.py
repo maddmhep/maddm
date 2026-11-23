@@ -101,6 +101,9 @@ __dme_xenon10_cl__ = 0.9  # confidence level of the XENON10 limit (excluded if p
 # <key> is lim_sigmaN_<key> and is compared with sigmaN_<cross section>.
 DD_ROWS = (('SI_p', 'SI_p', 'LZ2024'), ('SI_n', 'SI_n', 'LZ2024'), ('SD_p', 'SD_p', 'Pico60 (2019)'),
            ('SD_p_LZ', 'SD_p', 'LZ2024'), ('SD_n', 'SD_n', 'LZ2024'))
+# Projected XLZD sensitivities, shown when xlzd_limits (maddm_card) is 200ty or 1000ty: median 90% CL upper limits
+# for 200 or 1000 tonne-years (SI: XLZD Design Book arXiv:2410.17137; SD: arXiv:2203.02309)
+DD_ROWS_XLZD = (('SI_p_XLZD', 'SI_p'), ('SI_n_XLZD', 'SI_n'), ('SD_p_XLZD', 'SD_p'), ('SD_n_XLZD', 'SD_n'))
 
 
 def rapidd_library_ready():
@@ -112,6 +115,11 @@ def rapidd_library_ready():
 
 
 class ExpConstraints:
+
+    # exposures of the XLZD projections (maddm_card xlzd_limits)
+    XLZD_EXPOSURES = ('200ty', '1000ty')
+    # DM-nucleon limits are extrapolated linearly in the DM mass above their tables up to this mass [GeV] (_dd_limit)
+    DD_EXTRAPOLATION_MAX = 1.e15
 
     def __init__(self):
 
@@ -134,6 +142,11 @@ class ExpConstraints:
             # (vendor/RAPIDD_for_DM/examples/xenonnt_dme_limit_rapidd_ff.py)
             'electron_rescaled': pjoin(rapidd_exp_dir, 'XENONnT', 'XENONnT_DMe_SI_RAPIDD_FF.dat')
         }
+        # XLZD projections (maddm_card xlzd_limits): median 90% CL upper limits for 200 and 1000 tonne-years.
+        # SI: XLZD Design Book (arXiv:2410.17137, Fig. 2); SD-p and SD-n: arXiv:2203.02309 (Fig. 7), 5 GeV - 1 TeV
+        for exposure in self.XLZD_EXPOSURES:
+            for key, name in (('si', 'SI'), ('sd_proton', 'SDp'), ('sd_neutron', 'SDn')):
+                self._dd_limit_file['%s_xlzd_%s' % (key, exposure)] = pjoin(rapidd_exp_dir, 'XLZD', 'XLZD_%s_%s.dat' % (name, exposure))
 
         # local DM density [GeV/cm^3] assumed by each limit: the limits on the cross sections scale as 1/rho,
         # so they are rescaled by rho_limit/rhoDM (rhoDM of the maddm_card, set_rhoDM). All of them use
@@ -141,12 +154,16 @@ class ExpConstraints:
         # the conventions of arXiv:2105.00599), LZ 2024 (arXiv:2410.17036: standard halo model with the
         # conventions of arXiv:2105.00599, which LZ follows; the value is not repeated in the paper).
         # The limits set by the user (set dd_si_limits / dd_sd_limits) are also assumed at 0.3 GeV/cm^3.
+        # The XLZD projections are taken at 0.3 GeV/cm^3 as well (standard halo model, not restated in the papers).
         self._dd_limit_rho = {'si': 0.3, 'sd_proton': 0.3, 'sd_neutron': 0.3, 'sd_proton_lz': 0.3, 'electron': 0.3,
                               'electron_rescaled': 0.3}
+        for key in self._dd_limit_file:
+            self._dd_limit_rho.setdefault(key, 0.3)
         self._rhoDM = 0.3
 
         self._dd_limit_mdm = dict()
         self._dd_limit_sigma = dict()
+        self._dd_extrapolated = set()  # limits already reported as extrapolated above their tables
 
         self._id_limit_file = {
             # cont final states
@@ -241,6 +258,7 @@ class ExpConstraints:
             logger.info('Spin Dependent cross section (p): %s' % self._dd_limit_file['sd_proton'])
             logger.info('Spin Dependent cross section (n): %s' % self._dd_limit_file['sd_neutron'])
             logger.info('Spin Dependent cross section (p, LZ): %s' % self._dd_limit_file['sd_proton_lz'])
+            logger.info('XLZD projections (xlzd_limits): %s' % pjoin(os.path.dirname(self._dd_limit_file['si_xlzd_200ty']), 'XLZD_*.dat'))
             logger.info('DM-electron cross section: %s' % self._dd_limit_file['electron'])
             logger.info('DM-electron cross section (rescaled to the RAPIDD atomic responses): %s' % self._dd_limit_file['electron_rescaled'])
         else:
@@ -260,6 +278,7 @@ class ExpConstraints:
 
     def load_constraints(self):
         #Load in direct detection constraints
+        self._dd_extrapolated = set()
         for spin_type, limit_file in (self._dd_limit_file).items():
             self.safe_load_file(filename = limit_file, variables = ['_dd_limit_mdm', '_dd_limit_sigma'], key = spin_type)
                                                                                                             
@@ -284,45 +303,86 @@ class ExpConstraints:
             return limit
         return limit * self._dd_limit_rho.get(key, 0.3) / self._rhoDM
 
+    @classmethod
+    def _xlzd_key(cls, key, experiment):
+        ''' key of the XLZD projection (experiment = 'XLZD_200ty' or 'XLZD_1000ty') of the limit key '''
+        exposure = experiment.split('_', 1)[1] if '_' in experiment else ''
+        if exposure not in cls.XLZD_EXPOSURES:
+            raise ValueError('unknown XLZD exposure in %s: use one of %s' % (experiment, ', '.join(cls.XLZD_EXPOSURES)))
+        return '%s_xlzd_%s' % (key, exposure)
+
+    def _dd_limit(self, key, mdm, what):
+        ''' limit [cm^2] of the limit key at the DM mass mdm and at the local DM density of the run: linear interpolation
+        of the table, -1 below its lowest mass. Above the highest tabulated mass the limit is extrapolated as
+        sigma(m_max) * mdm / m_max up to DD_EXTRAPOLATION_MAX: for mdm >> m_nucleus the recoil spectrum no longer depends
+        on mdm and the limit scales as the inverse DM number density rho/mdm (the tabulated limits already have
+        slope ~1 at their highest masses). Above DD_EXTRAPOLATION_MAX (multiple scattering in the detector and
+        breakdown of the A^4 coherent scaling for the cross sections reached there) -1 is returned. '''
+        if key not in self._dd_limit_mdm:
+            return -1
+        masses, sigmas = np.asarray(self._dd_limit_mdm[key]), np.asarray(self._dd_limit_sigma[key])
+        if mdm < np.min(masses):
+            logger.warning('Dark matter mass value %s is outside the range of the %s limit' % (mdm, what))
+            return -1
+        imax = np.argmax(masses)
+        if mdm <= masses[imax]:
+            return self._rho_rescale(key, np.interp(mdm, masses, sigmas))
+        if mdm > self.DD_EXTRAPOLATION_MAX:
+            logger.warning('Dark matter mass value %s is above %.0e GeV: no %s limit (multiple scattering regime)'
+                           % (mdm, self.DD_EXTRAPOLATION_MAX, what))
+            return -1
+        if key not in self._dd_extrapolated:
+            self._dd_extrapolated.add(key)
+            logger.info('%s limit extrapolated linearly in the DM mass above %.4g GeV (%s)'
+                        % (what, masses[imax], os.path.basename(self._dd_limit_file.get(key, key))))
+        return self._rho_rescale(key, sigmas[imax] * mdm / masses[imax])
+
+    def dd_limit_curve(self, key, m_max):
+        ''' (masses [GeV], limits [cm^2] at the local DM density of the run, highest tabulated mass) of the limit key
+        for plotting: the table, extended as in _dd_limit up to min(m_max, DD_EXTRAPOLATION_MAX) when m_max is above
+        it. None if the limit is not loaded. '''
+        if key not in self._dd_limit_mdm:
+            return None
+        masses, sigmas = np.asarray(self._dd_limit_mdm[key], float), np.asarray(self._dd_limit_sigma[key], float)
+        order = np.argsort(masses)
+        masses, sigmas = masses[order], sigmas[order]
+        m_table = masses[-1]
+        m_end = min(float(m_max), self.DD_EXTRAPOLATION_MAX)
+        if m_end > m_table:
+            masses = np.append(masses, m_end)
+            sigmas = np.append(sigmas, sigmas[-1] * m_end / m_table)
+        sigmas = sigmas * self._dd_limit_rho.get(key, 0.3) / self._rhoDM
+        return masses.tolist(), sigmas.tolist(), float(m_table)
+
     #Returns a value in cm^2
-    def SI_max(self, mdm):
+    def SI_max(self, mdm, experiment=None):
+        ''' SI limit on the DM-nucleon cross section: LZ 2024, or the XLZD projection with experiment = 'XLZD_200ty'
+        or 'XLZD_1000ty' '''
         if not HAS_NUMPY:
             logger.warning("missing numpy module for SI limit")
             return -1
-        
-        if (mdm < np.min(self._dd_limit_mdm['si']) or mdm > np.max(self._dd_limit_mdm['si'])):
-            logger.warning('Dark matter mass value '+str(mdm)+' is outside the range of SI limit')
-            return -1
-        else:
-            return self._rho_rescale('si', np.interp(mdm, self._dd_limit_mdm['si'], self._dd_limit_sigma['si']))
+
+        if experiment and experiment.startswith('XLZD'):
+            return self._dd_limit(self._xlzd_key('si', experiment), mdm, 'XLZD SI')
+        return self._dd_limit('si', mdm, 'SI')
 
     #Returns a value in cm^2
     def SD_max(self, mdm, nucleon, experiment=None):
         ''' SD limit on the DM-proton (nucleon = 'p': PICO-60, or LZ 2024 with experiment = 'LZ2024') or DM-neutron
-        (nucleon = 'n': LZ 2024) cross section '''
+        (nucleon = 'n': LZ 2024) cross section; experiment = 'XLZD_200ty' or 'XLZD_1000ty' gives the XLZD projection '''
         if not HAS_NUMPY:
             logger.warning("missing numpy module for SD limit")
             return -1
-            
+
         if nucleon not in ['n','p']:
             logger.error('nucleon can only be p or n')
             return -1
-        else:
-            if nucleon=='p':
-                key = 'sd_proton_lz' if experiment == 'LZ2024' else 'sd_proton'
-                if key not in self._dd_limit_mdm:
-                    return -1
-                if (mdm < np.min(self._dd_limit_mdm[key]) or mdm > np.max(self._dd_limit_mdm[key])):
-                    logger.warning('Dark matter mass value '+str(mdm)+' is outside the range of SD limit')
-                    return -1
-                else:
-                    return self._rho_rescale(key, np.interp(mdm, self._dd_limit_mdm[key], self._dd_limit_sigma[key]))
-            elif nucleon=='n':
-                if (mdm < np.min(self._dd_limit_mdm['sd_neutron']) or mdm > np.max(self._dd_limit_mdm['sd_neutron'])):
-                    logger.warning('Dark matter mass value '+str(mdm)+' is outside the range of SD limit')
-                    return -1
-                else:
-                    return self._rho_rescale('sd_neutron', np.interp(mdm, self._dd_limit_mdm['sd_neutron'], self._dd_limit_sigma['sd_neutron']))
+        key = 'sd_proton' if nucleon == 'p' else 'sd_neutron'
+        if experiment and experiment.startswith('XLZD'):
+            return self._dd_limit(self._xlzd_key(key, experiment), mdm, 'XLZD SD-' + nucleon)
+        if nucleon == 'p' and experiment == 'LZ2024':
+            key = 'sd_proton_lz'
+        return self._dd_limit(key, mdm, 'SD-' + nucleon)
 
     #Returns a value in cm^2
     def DMe_max(self, mdm, rescaled=False):
@@ -1921,17 +1981,9 @@ class MADDMRunCmd(cmd.CmdShell):
 
         else: result['xsi'] = 1.0
 
-        if self.mode['direct_nucleon'] or self.mode['direct_electron']:
-            # Also support previously generated output folders and stand-alone launches.
-            if not getattr(self, '_neutrino_fog_install_attempted', False):
-                self._neutrino_fog_install_attempted = True
-                try:
-                    data_install.install_neutrino_fog()
-                except (data_install.DataInstallError, OSError) as error:
-                    logger.warning('Neutrino-fog reference download failed: %s', error)
-            result.update(direct_references.evaluate(mdm, xlzd=self.maddm_card['xlzd_limits']))
-
         if self.mode['direct_nucleon']:
+            # xenon neutrino fog at the DM mass, rescaled to rhoDM (tables downloaded by generate, not by launch)
+            result.update(direct_references.evaluate(mdm, rhoDM=self.maddm_card['rhoDM']))
             RP_parent = os.path.abspath(pjoin(MDMDIR, 'vendor', 'RAPIDD_for_DM'))
             if RP_parent not in sys.path:
                 sys.path.insert(0, RP_parent)
@@ -1943,6 +1995,12 @@ class MADDMRunCmd(cmd.CmdShell):
             result['lim_sigmaN_SD_p'] = self.limits.SD_max(mdm, 'p')
             result['lim_sigmaN_SD_p_LZ'] = self.limits.SD_max(mdm, 'p', 'LZ2024')
             result['lim_sigmaN_SD_n'] = self.limits.SD_max(mdm, 'n')
+            # projected XLZD sensitivities (maddm_card xlzd_limits)
+            xlzd = self.xlzd_exposure()
+            if xlzd:
+                result['lim_sigmaN_SI_p_XLZD'] = result['lim_sigmaN_SI_n_XLZD'] = self.limits.SI_max(mdm, 'XLZD_' + xlzd)
+                result['lim_sigmaN_SD_p_XLZD'] = self.limits.SD_max(mdm, 'p', 'XLZD_' + xlzd)
+                result['lim_sigmaN_SD_n_XLZD'] = self.limits.SD_max(mdm, 'n', 'XLZD_' + xlzd)
 
             # no DM-quark process (all the quark alphas are -1): skip the nucleon computation
             if not nucleon_alphas_valid(alphaq_values):
@@ -2138,6 +2196,9 @@ class MADDMRunCmd(cmd.CmdShell):
                           'sigmaN_SI_n', 'lim_sigmaN_SI_n',
                           'sigmaN_SD_p', 'lim_sigmaN_SD_p', 'lim_sigmaN_SD_p_LZ',
                           'sigmaN_SD_n', 'lim_sigmaN_SD_n']
+                if self.xlzd_exposure():
+                    order += ['lim_sigmaN_' + key for key, _ in DD_ROWS_XLZD]
+                order += list(direct_references.FOG_KEYS)
 
 
             if self.mode['direct_electron']:
@@ -2148,8 +2209,6 @@ class MADDMRunCmd(cmd.CmdShell):
                     order += ['pvalue_Xenon1T']
 
 
-            if self.mode['direct_nucleon'] or self.mode['direct_electron']:
-                order += list(direct_references.FOG_KEYS) + list(direct_references.XLZD_KEYS)
             order += [k for k in self.last_results if k.endswith(('_omitted_sigmav', '_omitted_fraction'))]
 
             # *** Indirect detection
@@ -3665,11 +3724,62 @@ class MADDMRunCmd(cmd.CmdShell):
             summary.write('\n')
             summary.close()
     
+    def xlzd_exposure(self):
+        """Exposure of the XLZD projections to show (maddm_card xlzd_limits), '' if off."""
+        card = getattr(self, 'maddm_card', None)
+        value = str(card['xlzd_limits']).lower() if card is not None and 'xlzd_limits' in card else 'off'
+        return value if value in ExpConstraints.XLZD_EXPOSURES else ''
+
     def direct_detection_rows(self):
         """Use the current point's predictions and limits in both reports."""
         for key, channel, experiment in DD_ROWS:
             yield dict(n='SigmaN_' + key, sig=self.last_results['sigmaN_' + channel],
                        lim=self.last_results.get('lim_sigmaN_' + key, -1), exp=experiment)
+        xlzd = self.xlzd_exposure()
+        if xlzd:
+            for key, channel in DD_ROWS_XLZD:
+                yield dict(n='SigmaN_' + key, sig=self.last_results['sigmaN_' + channel],
+                           lim=self.last_results.get('lim_sigmaN_' + key, -1), exp='XLZD ' + xlzd, projection=True)
+
+    def write_dd_limits(self, directory):
+        """DD_limits.json of the run: the DM-nucleon limits (LZ, PICO-60, the XLZD projection when xlzd_limits is
+        200ty or 1000ty) and the xenon neutrino fog as functions of the DM mass, all at the rhoDM of the card, with
+        the cross sections of the point (plotted in DD_limits.pdf by run_products)."""
+        import json
+        mdm = self.param_card.get_value('mass', self.proc_characteristics['dm_candidate'][0])
+        rho = self.maddm_card['rhoDM']
+        self.limits.set_rhoDM(rho)
+        # the limit curves reach 10 mDM (with the extrapolation of _dd_limit above the tables)
+        m_max = 10. * mdm
+        curves = []
+        def add(kind, nucleons, label, style, key):
+            curve = self.limits.dd_limit_curve(key, m_max)
+            if curve is not None:
+                curves.append(dict(kind=kind, nucleons=nucleons, label=label, style=style,
+                                   mass=curve[0], sigma=curve[1], table_max=curve[2]))
+        add('SI', 'pn', 'LZ (2024)', 'limit', 'si')
+        add('SD', 'p', 'PICO-60 (2019)', 'limit', 'sd_proton')
+        add('SD', 'p', 'LZ (2024)', 'limit', 'sd_proton_lz')
+        add('SD', 'n', 'LZ (2024)', 'limit', 'sd_neutron')
+        xlzd = self.xlzd_exposure()
+        if xlzd:
+            label = 'XLZD %s (projected)' % xlzd.replace('ty', ' t yr')
+            add('SI', 'pn', label, 'projection', 'si_xlzd_' + xlzd)
+            add('SD', 'p', label, 'projection', 'sd_proton_xlzd_' + xlzd)
+            add('SD', 'n', label, 'projection', 'sd_neutron_xlzd_' + xlzd)
+        for key, (mass, sigma) in direct_references.curves(rho).items():
+            kind, nucleons = {'neutrino_fog_SI': ('SI', 'pn'), 'neutrino_fog_SD_p': ('SD', 'p'),
+                              'neutrino_fog_SD_n': ('SD', 'n')}[key]
+            curves.append(dict(kind=kind, nucleons=nucleons, label='Xe neutrino fog', style='fog',
+                               mass=mass, sigma=sigma, table_max=mass[-1]))
+        data = dict(mDM=mdm, rhoDM=rho, xsi=self.last_results.get('xsi', 1.), xlzd_limits=xlzd or 'off',
+                    predictions={k: self.last_results.get('sigmaN_' + k, -1.) for k in ('SI_p', 'SI_n', 'SD_p', 'SD_n')},
+                    curves=curves,
+                    notes=['Limits rescaled by 0.3/rhoDM; above table_max they are extrapolated as sigma(m_max)*mDM/m_max.',
+                           'XLZD: SI arXiv:2410.17137, SD arXiv:2203.02309 (projected median 90% CL).',
+                           'Neutrino fog: ' + direct_references.FOG_SOURCE + '; reference, not an exclusion.'])
+        with open(pjoin(directory, 'DD_limits.json'), 'w') as out:
+            json.dump(data, out, indent=1, allow_nan=False)
 
     def print_results(self):    
         """ print the latest results on screen """
@@ -3677,8 +3787,6 @@ class MADDMRunCmd(cmd.CmdShell):
         for label, messages in sorted(self.last_results.get('ID_incomplete_warnings', {}).items()):
             for message in messages:
                 logger.warning('%s: %s', label, message)
-        for line in direct_references.report(self.last_results):
-            logger.info(line)
 
         # Determine xsi for thermal scenarios with DM < DM tot.                
         dm_scen = 0
@@ -3754,7 +3862,15 @@ class MADDMRunCmd(cmd.CmdShell):
                     mess_th       = self.det_message_screen(th_cross, D['lim'] )
                     mess_alldm    = self.det_message_screen(D['sig'], D['lim'] )
                     self.print_ind(D['n'],th_cross , D['sig'], ul,  thermal=dm_scen ,direc = False , exp=D['exp']) # leave False to avout GeV^-2
-         
+            if any(D.get('projection') for D in direct_names):
+                logger.info('XLZD %s: projected sensitivity (median 90%% CL; SI arXiv:2410.17137, SD arXiv:2203.02309): '
+                            'EXCLUDED means within the XLZD reach' % self.xlzd_exposure())
+            for line in direct_references.report(self.last_results, self.maddm_card['rhoDM']):
+                if line.startswith('WARNING: '):
+                    logger.warning(line[len('WARNING: '):])
+                else:
+                    logger.info(line)
+
         if self.mode['direct_electron'] and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
 
             def det_message_screen(n1,n2):
@@ -4058,9 +4174,14 @@ class MADDMRunCmd(cmd.CmdShell):
         keep_spectra = (not scan or self.maddm_card['save_output'] != 'off')
         source_method = (self.maddm_card['indirect_flux_source_method']
                          if keep_spectra and self.mode['indirect'] in ('flux_source', 'flux_earth') else None)
-        run_products.write_run_products(pjoin(self.dir_path, 'output', run_name),
-                                        recoil=not scan or self.maddm_card['save_output'] == 'all',
-                                        source_method=source_method)
+        recoil = not scan or self.maddm_card['save_output'] == 'all'
+        run_dir = pjoin(self.dir_path, 'output', run_name)
+        if recoil and self.mode['direct_nucleon'] and os.path.isdir(run_dir):
+            try:
+                self.write_dd_limits(run_dir)
+            except (OSError, ValueError, TypeError) as error:
+                logger.warning('Could not write DD_limits.json: %s', error)
+        run_products.write_run_products(run_dir, recoil=recoil, source_method=source_method)
 
     # This aux function saves the spectra/fluxes in the given directory out_dir
     def save_spec_flux(self, out_run, spec_source = False, flux_source = False, flux_earth = False):
@@ -4209,8 +4330,6 @@ class MADDMRunCmd(cmd.CmdShell):
         out.write('#                 MadDM v. ' + str(self.MadDM_version) +'                 #\n' )
         out.write('################################################\n\n\n')
 
-        for line in direct_references.report(self.last_results):
-            out.write(('' if line.startswith(('neutrino_fog_SI =', 'neutrino_fog_SD_', 'lim_sigmaN_SI_XLZD_')) else '# ')+line+'\n')
         for label, messages in sorted(self.last_results.get('ID_incomplete_warnings', {}).items()):
             for message in messages:
                 out.write('# WARNING ['+label+']: '+message+'\n')
@@ -4260,7 +4379,11 @@ class MADDMRunCmd(cmd.CmdShell):
                 cross = D['sig']
                 ul = D['lim']
                 exp = D['exp']
+                if D.get('projection'):
+                    exp += ' projected sensitivity (median 90% CL)'
                 out.write(form_s(D['n']) + '= ' + form_s('['+ form_n(cross) + ',' + form_n(ul) + ']' ) + '# '+exp + '\n')
+            for line in direct_references.report(self.last_results, self.maddm_card['rhoDM']):
+                out.write(('' if line.startswith(direct_references.FOG_KEYS) else '# ')+line+'\n')
 
         if direct_electron and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
 
@@ -5737,8 +5860,6 @@ class MadDMCard(banner_mod.RunCard):
         self.add_param('vSun_phi', 12.2, include=False)
         self.add_param('vSun_theta', 7.3, include=False)
         self.add_param('rhoDM', 0.3, include=False)
-        self.add_param('xlzd_limits', False, include=False,
-                       comment='Optional XLZD projected 90% CL SI reference curves (200 and 1000 t yr), arXiv:2410.17137')
         # Annual modulation of the direct detection rates (RAPIDD, DM-nucleus and DM-electron):
         # the year (365.24 days) is divided in day_bins bins and the halo and the rates are computed
         # at the center of each bin, t_i = (i + 0.5) * 365.24/day_bins days since March 22.
@@ -5749,6 +5870,9 @@ class MadDMCard(banner_mod.RunCard):
 
         # For electronic recoil
         self.add_param('direct_electron_mode', 'auto', allowed=['auto', 'always'], include=True)
+        # projected XLZD limits shown with the direct_nucleon results (SI and SD, median 90% CL)
+        self.add_param('xlzd_limits', 'off', allowed=['off', '200ty', '1000ty'], include=False,
+                       comment='show the projected XLZD SI/SD limits for 200 or 1000 tonne-years after direct_nucleon')
         self.add_param('direct_electron_dm_mass_max', 1., comment="Max value of DM mass allowed to make the electronic recoil computation in case direct_electron_mode is set to 'auto'", include=True, hidden=True)
 
         # velocities for indirect detection

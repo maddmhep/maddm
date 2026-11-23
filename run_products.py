@@ -14,6 +14,8 @@ FILE_GUIDE = (
     ('DDrates.txt', 'Differential nuclear recoil rates for xenon, argon and germanium versus recoil energy in keV. Rates are in events per kg, day and keV.'),
     ('DDrates.npz', 'Numerical arrays for the nuclear recoil calculation.'),
     ('DDrates.pdf', 'Three nuclear recoil spectra on a linear energy axis and a logarithmic rate axis.'),
+    ('DD_limits.json', 'DM-nucleon limits (LZ, PICO-60, XLZD projection if xlzd_limits is set) and xenon neutrino fog versus DM mass, rescaled to rhoDM, with the cross sections of this run.'),
+    ('DD_limits.pdf', 'SI and SD DM-nucleon cross sections of this run against the limits, the XLZD projection and the neutrino fog of DD_limits.json.'),
     ('DDrates_e.txt', 'Differential xenon electron recoil rates from RAPIDD, summed and per shell.'),
     ('DDrates_e.npz', 'Numerical arrays for the RAPIDD electron recoil and detector signals.'),
     ('DDrates_e.pdf', 'Total xenon electron recoil spectrum on a linear energy axis and a logarithmic rate axis.'),
@@ -91,13 +93,18 @@ def write_run_products(directory, *, recoil, source_method=None):
     plots = []
     if recoil and (directory / 'DDrates.txt').is_file():
         plots.append(('DDrates.pdf', 'recoil_rates_plot', (directory / 'DDrates.txt',)))
+    if recoil and (directory / 'DD_limits.json').is_file():
+        plots.append(('DD_limits.pdf', 'dd_limits_plot', (directory / 'DD_limits.json',)))
     if recoil and (directory / 'DDrates_e.txt').is_file():
         plots.append(('DDrates_e.pdf', 'electron_recoil_rates_plot', (directory / 'DDrates_e.txt',)))
     if source_method and any(directory.glob('*_spectrum_' + source_method + '.dat')):
         plots.append(('source_spectra.pdf', 'source_spectra_plot', (directory, source_method)))
     for name, plotter, args in plots:
         try:
-            from .plotting import signal_plots
+            try:
+                from .plotting import signal_plots
+            except ImportError:  # run_products imported as a top-level module (tests)
+                from plotting import signal_plots
             target = directory / name
             target.unlink(missing_ok=True)
             getattr(signal_plots, plotter)(*args, target)

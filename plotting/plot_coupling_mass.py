@@ -326,7 +326,9 @@ def scan_slices(columns, axis=None, select=None, group_by=None):
 def dd_label(kind, nucleon, suffix=''):
     experiment = ('PICO-60 (2019)' if kind == 'SD' and nucleon == 'p' else 'LZ (2024)')
     if suffix:
-        experiment = 'LZ (2024)' if suffix.upper() == '_LZ' else suffix.strip('_').replace('_', ' ')
+        # _XLZD: projected XLZD sensitivity (maddm_card xlzd_limits = 200ty or 1000ty)
+        experiment = {'_LZ': 'LZ (2024)', '_XLZD': 'XLZD (projected)'}.get(
+            suffix.upper(), suffix.strip('_').replace('_', ' '))
     target = 'proton' if nucleon == 'p' else 'neutron'
     return experiment+'; '+kind+' '+target
 
@@ -392,14 +394,9 @@ def _generate(input_path, *, outdir=None, mass_column=None, coupling=None, coupl
             add(key, rate, numeric(cols, limit_key), dd_power, 'XLZD' not in limit_key)
             targets[key] = limit_key
             label = dd_label(kind, nucleon, suffix)
-            dd_lines.append((key, label, color, '-.' if suffix else '-' if nucleon == 'n' else '--'))
+            dd_lines.append((key, label, color, ':' if 'XLZD' in suffix else '-.' if suffix else
+                             '-' if nucleon == 'n' else '--'))
 
-    for exposure in (200, 1000):
-        column = 'lim_sigmaN_SI_XLZD_%dty' % exposure
-        key = 'XLZD_%dty_SI' % exposure
-        add(key, 'sigmaN_SI_p', numeric(cols, column), dd_power, False)
-        targets[key] = column
-        dd_lines.append((key, 'XLZD %d t yr; projected SI (equal p/n)' % exposure, '#227799', ':'))
     for column, rate, label in (
             ('neutrino_fog_SI', 'sigmaN_SI_p', 'Xe neutrino fog; SI (equal p/n)'),
             ('neutrino_fog_SD_p', 'sigmaN_SD_p', 'Xe neutrino fog; SD proton'),
@@ -539,7 +536,7 @@ def _generate(input_path, *, outdir=None, mass_column=None, coupling=None, coupl
             'powers':{'direct':dd_power,'electron':electron_power,'indirect':id_power,'freezeout':relic_power},
             'rate_columns':references,'limit_columns':targets,
             'electron_limit_column':primary_electron,
-            'direct_reference_sources': {'XLZD': 'arXiv:2410.17137; projected 90% CL SI, native halo', 'neutrino_fog': 'https://github.com/cajohare/NeutrinoFog; arXiv:2109.03116; xenon reference, not exclusion'},
+            'direct_reference_sources': {'XLZD': 'RAPIDD lib/experiments/XLZD: SI arXiv:2410.17137, SD arXiv:2203.02309; projected median 90% CL, rescaled to rhoDM', 'neutrino_fog': 'https://github.com/cajohare/NeutrinoFog; arXiv:2109.03116; xenon, rescaled to rhoDM; reference, not exclusion'},
             'envelope_inputs':upper_keys,'relic_target_cm3_s':relic_target,
             'GCE_upper_limit_methods':{k:int(np.sum(methods==k)) for k in sorted(set(methods)-{''})},
             'notes':notes+['Envelope = strongest available individual constraint, no joint likelihood.',

@@ -1,4 +1,4 @@
-"""Reference coverage, first-use download, and projected-versus-current semantics."""
+"""Neutrino fog and XLZD references: rhoDM rescaling, download at generation, projected-versus-current semantics."""
 import io
 from pathlib import Path
 import tarfile
@@ -24,42 +24,123 @@ class ReferenceTests(unittest.TestCase):
                 self.assertEqual(refs.interpolate(path, mass), -1.)
             self.assertEqual(refs.interpolate(path, 100), 1.e-44)
 
-    def test_xlzd_is_opt_in_and_recovers_supplied_nodes(self):
-        default = refs.evaluate(50.)
-        self.assertFalse(any(k in default for k in refs.XLZD_KEYS))
-        for exposure, key in zip((200,1000), refs.XLZD_KEYS):
-            data = np.loadtxt(refs.ROOT/'ExpData/XLZD'/('XLZD_SI_90CL_%sty_digitized_smoothed.txt' % exposure))
-            i = len(data)//2
-            self.assertAlmostEqual(refs.evaluate(data[i,0], True)[key]/data[i,1], 1., places=12)
-        self.assertIn('NOT a current exclusion', '\n'.join(refs.report(refs.evaluate(50., True))))
+    @staticmethod
+    def fog_root(folder):
+        root = Path(folder)
+        floors = root/'NeutrinoFog'/'data'/'floors'; floors.mkdir(parents=True)
+        for name in refs.FOG_FILES.values():
+            (floors/name).write_text('# mass sigma\n1 1e-40\n100 1e-44\n')
+        return root
 
-    def test_launch_reference_check_with_actual_madgraph_card(self):
+    def test_fog_is_rescaled_to_rhoDM(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = self.fog_root(folder)
+            native = refs.evaluate(10., rhoDM=.3, root=root)
+            double = refs.evaluate(10., rhoDM=.6, root=root)
+            for key in refs.FOG_KEYS:
+                self.assertAlmostEqual(native[key]/1e-42, 1.)
+                self.assertAlmostEqual(double[key]/native[key], .5)
+            self.assertEqual(refs.evaluate(1e3, rhoDM=.6, root=root)['neutrino_fog_SI'], -1.)
+            mass, sigma = refs.curves(.6, root=root)['neutrino_fog_SD_n']
+            np.testing.assert_allclose(sigma, [.5e-40, .5e-44])
+            lines = refs.report(double, .6)
+            self.assertIn('NOT an exclusion', lines[0])
+            self.assertIn('rhoDM = 0.6', lines[1])
+        with tempfile.TemporaryDirectory() as folder:
+            missing = refs.evaluate(10., rhoDM=.3, root=folder)
+            self.assertTrue(all(missing[key] == -1. for key in refs.FOG_KEYS))
+            self.assertEqual(len(missing['DD_reference_warnings']), 1)
+            self.assertIn('install neutrino_fog', missing['DD_reference_warnings'][0])
+
+    def test_fog_is_downloaded_by_generate_and_evaluated_only_for_direct_nucleon(self):
         import ast
-        import types
-        try:
-            from PLUGIN.maddm.maddm_run_interface import MadDMCard
-        except ImportError:
-            self.skipTest('requires MadGraph plugin imports on PYTHONPATH')
+        run = ast.parse((refs.ROOT/'maddm_run_interface.py').read_text())
+        calls = lambda tree, name: [n for n in ast.walk(tree) if isinstance(n, ast.Call)
+                                    and isinstance(n.func, ast.Attribute) and n.func.attr == name]
+        # launch never downloads
+        self.assertEqual(calls(run, 'install_neutrino_fog'), [])
+        # the fog is computed in the `if self.mode['direct_nucleon']:` block only
+        evaluate = [n for n in calls(run, 'evaluate') if isinstance(n.func.value, ast.Name)
+                    and n.func.value.id == 'direct_references']
+        self.assertEqual(len(evaluate), 1)
+        blocks = [n for n in ast.walk(run) if isinstance(n, ast.If) and evaluate[0] in ast.walk(n)]
+        self.assertEqual(ast.unparse(blocks[-1].test), "self.mode['direct_nucleon']")
+        interface = ast.parse((refs.ROOT/'maddm_interface.py').read_text())
+        generate = next(n for n in ast.walk(interface) if isinstance(n, ast.FunctionDef) and n.name == 'generate_direct')
+        self.assertTrue(calls(generate, 'install_neutrino_fog'))
+        launch = next(n for n in ast.walk(interface) if isinstance(n, ast.FunctionDef) and n.name == 'do_launch')
+        self.assertEqual(calls(launch, 'install_neutrino_fog'), [])
+
+    def test_xlzd_limits_come_from_rapidd_and_are_off_by_default(self):
+        import ast
+        from test_sigmav_channel_limits import ENV
         tree = ast.parse((refs.ROOT/'maddm_run_interface.py').read_text())
-        launch = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == 'do_launch'
-                      and any(isinstance(x, ast.Name) and x.id == 'direct_references' for x in ast.walk(n)))
-        statement = next(n for n in ast.walk(launch) if isinstance(n, ast.Expr)
-                         and any(isinstance(x, ast.Attribute) and x.attr == 'evaluate'
-                                 and isinstance(x.value, ast.Name) and x.value.id == 'direct_references'
-                                 for x in ast.walk(n)))
-        code = compile(ast.Module(body=[statement], type_ignores=[]), '<actual DD reference launch>', 'exec')
-        for flag in (None, False, True):
-            with self.subTest(xlzd=flag), tempfile.TemporaryDirectory() as folder:
-                path = Path(folder)/'maddm_card.dat'
-                # A card from before XLZD was added must also load the default.
-                path.write_text('True = relic_canonical\n' if flag is None else str(flag)+' = xlzd_limits\n')
-                card = MadDMCard(str(path))
-                values = {}
-                exec(code, {'self':types.SimpleNamespace(maddm_card=card),
-                            'direct_references':refs, 'mdm':100., 'result':values})
-                self.assertEqual(any(key in values for key in refs.XLZD_KEYS), flag is True)
-                if flag is True:
-                    self.assertTrue(all(values[key] > 0 for key in refs.XLZD_KEYS))
+        param = next(n for n in ast.walk(tree) if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+                     and n.func.attr == 'add_param' and n.args and getattr(n.args[0], 'value', None) == 'xlzd_limits')
+        self.assertEqual(param.args[1].value, 'off')
+        self.assertEqual(ast.literal_eval(next(k.value for k in param.keywords if k.arg == 'allowed')),
+                         ['off', '200ty', '1000ty'])
+        limits = ENV['ExpConstraints']()
+        limits.load_constraints()
+        xlzd = refs.ROOT/'vendor'/'RAPIDD_for_DM'/'lib'/'experiments'/'XLZD'
+        if not (xlzd/'XLZD_SI_200ty.dat').is_file():
+            self.skipTest('RAPIDD submodule (vendor/RAPIDD_for_DM) not checked out')
+        for exposure in ('200ty', '1000ty'):
+            for name, value in (('SI', lambda m: limits.SI_max(m, 'XLZD_'+exposure)),
+                                ('SDp', lambda m: limits.SD_max(m, 'p', 'XLZD_'+exposure)),
+                                ('SDn', lambda m: limits.SD_max(m, 'n', 'XLZD_'+exposure))):
+                data = np.loadtxt(xlzd/('XLZD_%s_%s.dat' % (name, exposure)))
+                i = len(data)//2
+                limits.set_rhoDM(.3)
+                self.assertAlmostEqual(value(data[i, 0])/data[i, 1], 1., places=10)
+                limits.set_rhoDM(.6)
+                self.assertAlmostEqual(value(data[i, 0])/data[i, 1], .5, places=10)
+                # linear extrapolation above the table, nothing above 1e15 GeV
+                top = data[np.argmax(data[:, 0])]
+                self.assertAlmostEqual(value(10.*top[0])/(5.*top[1]), 1., places=10)
+                self.assertEqual(value(2e15), -1)
+        limits.set_rhoDM(.3)
+        mass, sigma, table_max = limits.dd_limit_curve('si_xlzd_200ty', 1e9)
+        self.assertEqual(mass[-1], 1e9)
+        self.assertEqual(table_max, np.loadtxt(xlzd/'XLZD_SI_200ty.dat')[:, 0].max())
+        self.assertIsNone(limits.dd_limit_curve('missing', 1e3))
+
+    def test_run_folder_dd_limits_plot(self):
+        import ast, json, types
+        from test_sigmav_channel_limits import ENV
+        import run_products
+        tree = ast.parse((refs.ROOT/'maddm_run_interface.py').read_text())
+        run = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == 'MADDMRunCmd')
+        with tempfile.TemporaryDirectory() as folder:
+            root = self.fog_root(folder)
+            scope = dict(ENV, json=json, direct_references=types.SimpleNamespace(
+                curves=lambda rho: refs.curves(rho, root=root), FOG_SOURCE=refs.FOG_SOURCE))
+            for node in run.body:
+                if isinstance(node, ast.FunctionDef) and node.name in ('write_dd_limits', 'xlzd_exposure'):
+                    exec(compile(ast.Module(body=[node], type_ignores=[]), 'maddm_run_interface.py', 'exec'), scope)
+            h = types.SimpleNamespace(maddm_card={'rhoDM': .6, 'xlzd_limits': '1000ty'},
+                                      proc_characteristics={'dm_candidate': [1000022]},
+                                      param_card=types.SimpleNamespace(get_value=lambda *a: 50.),
+                                      last_results={'xsi': .5, 'sigmaN_SI_p': 1e-47, 'sigmaN_SI_n': 1.1e-47,
+                                                    'sigmaN_SD_p': 1e-42, 'sigmaN_SD_n': -1.},
+                                      limits=scope['ExpConstraints']())
+            h.limits.load_constraints()
+            for name in ('write_dd_limits', 'xlzd_exposure'):
+                setattr(h, name, types.MethodType(scope[name], h))
+            out = Path(folder)/'run_01'; out.mkdir()
+            h.write_dd_limits(str(out))
+            data = json.loads((out/'DD_limits.json').read_text())
+            self.assertEqual(data['rhoDM'], .6)
+            labels = {(c['kind'], c['nucleons'], c['label']) for c in data['curves']}
+            self.assertIn(('SI', 'pn', 'LZ (2024)'), labels)
+            self.assertIn(('SI', 'pn', 'Xe neutrino fog'), labels)
+            if (refs.ROOT/'vendor/RAPIDD_for_DM/lib/experiments/XLZD').is_dir():
+                self.assertIn(('SD', 'n', 'XLZD 1000 t yr (projected)'), labels)
+            fog = next(c for c in data['curves'] if c['style'] == 'fog' and c['kind'] == 'SI')
+            np.testing.assert_allclose(fog['sigma'], [.5e-40, .5e-44])
+            run_products.write_run_products(out, recoil=True)
+            self.assertTrue((out/'DD_limits.pdf').is_file())
+            self.assertIn('DD_limits.pdf', (out/'README.md').read_text())
 
     def test_first_use_download_is_atomic_and_cached(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -97,12 +178,12 @@ class ReferenceTests(unittest.TestCase):
             root=Path(folder)
             cols={'run':np.array(['a','b','c']),'mass#1':np.array([10.,50.,100.]),
                   'sigmaN_SI_p':np.full(3,1e-45),'lim_sigmaN_SI_p':np.full(3,1e-46),
-                  'lim_sigmaN_SI_XLZD_200ty':np.full(3,1e-49),
-                  'lim_sigmaN_SI_XLZD_1000ty':np.full(3,5e-50),
+                  'lim_sigmaN_SI_p_XLZD':np.full(3,1e-49),
                   'neutrino_fog_SI':np.full(3,1e-50)}
             result=SUMMARY.generate(cols,root,'reference')
             self.assertIn('neutrino_fog_SI',result['plots']['dd_comparison']['columns'])
-            self.assertIn('lim_sigmaN_SI_XLZD_1000ty',result['plots']['dd_limits']['columns'])
+            self.assertIn('lim_sigmaN_SI_p_XLZD',result['plots']['dd_limits']['columns'])
+            self.assertEqual(SUMMARY.dd_label('SI','p','_XLZD'),'XLZD (projected); SI proton')
             path=root/'scan.txt';scan_file(path,cols)
             curves,meta=COUPLING.generate(path,coupling=.1)
             self.assertIn('neutrino_fog_SI',curves)

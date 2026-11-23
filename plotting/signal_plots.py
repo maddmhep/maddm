@@ -173,3 +173,72 @@ def gce_plot(result, output):
     ax.set_title('Galactic-center excess: prompt spectral fit')
     ax.legend(loc='lower left',frameon=False,fontsize=9)
     fig.savefig(output,format='pdf',dpi=600);plt.close(fig)
+
+
+def dd_limits_plot(data, output):
+    """SI (left) and SD (right) DM-nucleon cross sections of the run (markers at mDM, hollow for the
+    thermal fraction) against the limits, the XLZD projection and the xenon neutrino fog of DD_limits.json.
+    Above the highest tabulated mass the extrapolated limits are drawn thinner."""
+    import json
+    result = json.loads(Path(data).read_text()) if not isinstance(data, dict) else data
+    quiet_plot_logging()
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    plt.rcParams.update({'font.family':'DejaVu Sans','font.size':11,'pdf.fonttype':42,'savefig.dpi':600})
+    mdm, xsi = float(result['mDM']), float(result.get('xsi', 1.))
+    colors = {('SI','pn'): '#1c6ba0', ('SD','p'): '#c2542e', ('SD','n'): '#27824d'}
+    styles = {'limit': '-', 'projection': '--', 'fog': ':'}
+    fig, axs = plt.subplots(1, 2, figsize=(13., 5.6), constrained_layout=True)
+    plotted = False
+    for ax, kind in zip(axs, ('SI', 'SD')):
+        ax.set_xscale('log'); ax.set_yscale('log')
+        ax.grid(which='major', alpha=.35); ax.grid(which='minor', alpha=.12)
+        ax.tick_params(which='both', direction='in', top=True, right=True)
+        seen = {}
+        for curve in result['curves']:
+            if curve['kind'] != kind:
+                continue
+            m, s = np.asarray(curve['mass'], float), np.asarray(curve['sigma'], float)
+            ok = np.isfinite(m) & np.isfinite(s) & (m > 0) & (s > 0)
+            if not np.any(ok):
+                continue
+            m, s = m[ok], s[ok]
+            color = '#777777' if curve['style'] == 'fog' else colors.get((kind, curve['nucleons']), '#444444')
+            if kind == 'SD' and curve['label'].startswith('PICO'):
+                color = '#d7902a'
+            target = {'pn': '', 'p': ' proton', 'n': ' neutron'}[curve['nucleons']]
+            label = curve['label'] + ('; ' + kind + target if kind == 'SD' else '')
+            ls = styles.get(curve['style'], '-')
+            tab = m <= curve['table_max']
+            ax.plot(m[tab], s[tab], color=color, ls=ls, lw=1.9, label=label)
+            if np.any(~tab):
+                last = np.flatnonzero(tab)[-1]
+                ax.plot(np.r_[m[last], m[~tab]], np.r_[s[last], s[~tab]], color=color, ls=ls, lw=.9, alpha=.7)
+            seen[label] = True
+            plotted = True
+        for nucleon, marker in (('p', 'o'), ('n', 's')):
+            sigma = float(result['predictions'].get(kind + '_' + nucleon, -1.))
+            if not (np.isfinite(sigma) and sigma > 0):
+                continue
+            color = colors[(kind, 'pn' if kind == 'SI' else nucleon)]
+            name = 'proton' if nucleon == 'p' else 'neutron'
+            ax.plot([mdm], [sigma], marker=marker, ms=8, ls='none', color=color, mec='black',
+                    label=r'$\sigma_{\rm %s}^{%s}$ (all DM)' % (kind, name))
+            if 0. < xsi < 1.:
+                ax.plot([mdm], [sigma*xsi], marker=marker, ms=8, ls='none', mfc='none', color=color,
+                        label=r'$\xi\,\sigma_{\rm %s}^{%s}$ (thermal)' % (kind, name))
+            plotted = True
+        ax.axvline(mdm, color='#999999', lw=.8, ls='-.', zorder=0)
+        ax.set_xlabel(r'Dark matter mass $m_{\rm DM}$ [GeV]')
+        ax.set_ylabel(r'$\sigma_{\rm %s}$ (DM-nucleon) [cm$^2$]' % kind)
+        ax.set_title('%s; $\\rho_{\\rm DM}$ = %.3g GeV/cm$^3$' % ('Spin independent' if kind == 'SI' else 'Spin dependent',
+                                                              float(result['rhoDM'])))
+        if ax.get_legend_handles_labels()[0]:
+            ax.legend(loc='best', frameon=False, fontsize=8)
+    fig.supxlabel('Thin segments: limits extrapolated as $\\sigma(m_{\\rm max})\\,m_{\\rm DM}/m_{\\rm max}$ above their tables. '
+                  'Neutrino fog: O’Hare (2021), arXiv:2109.03116; reference, not an exclusion.', fontsize=8)
+    if plotted:
+        fig.savefig(output, format='pdf', dpi=600)
+    plt.close(fig)
+    return plotted

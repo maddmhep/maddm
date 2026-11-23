@@ -27,7 +27,7 @@ FLUX_DIR = ROOT / 'ExpData' / 'CR_flux'
 PYTHON_REQUIREMENTS = ('numpy', 'scipy', 'matplotlib')
 BUILD_REQUIREMENTS = ('ninja', 'meson')
 # Keep archive installations on the same revision as the RAPIDD git submodule.
-RAPIDD_REVISION = '8e140c45ae807b5155b22722ae99a7ced2aada7d'
+RAPIDD_REVISION = 'bf79afbe210b09cc7e2a1fb6c550659a242b6be6'
 RAPIDD_REPOSITORY = 'https://github.com/cheekyparticle/RAPIDD_for_DM.git'
 ZLIB_ARCHIVE = (
     'https://zlib.net/fossils/zlib-1.3.2.tar.gz',
@@ -347,7 +347,7 @@ NEUTRINO_FOG_ARCHIVE = (
 
 
 def install_neutrino_fog(root=ROOT):
-    """Fetch the pinned upstream project on first DD use, never import its code."""
+    """Fetch the pinned upstream project when the DM-nucleon diagrams are generated, never import its code."""
     root = Path(root)
     destination = root/'NeutrinoFog'
     required = ['data/floors/Xe_SI.txt', 'data/floors/Xe_SDp.txt', 'data/floors/Xe_SDn.txt', 'LICENSE']

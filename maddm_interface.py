@@ -147,6 +147,17 @@ class MadDM_interface(master_interface.MasterCmd):
             return False
         return True
 
+    def install_neutrino_fog(self):
+        """Download the xenon neutrino-fog tables (direct_references) when the DM-nucleon diagrams are generated:
+        `launch` never downloads them and reports the fog as unavailable (-1) when they are missing."""
+        try:
+            data_install.install_neutrino_fog()
+        except (data_install.DataInstallError, OSError) as error:
+            logger.warning('Neutrino-fog references unavailable: %s. DD calculations remain available; '
+                           'retry with `install neutrino_fog`.', error)
+            return False
+        return True
+
     def do_install(self, line, paths=None, additional_options=()):
         """Handle MadDM dependencies alongside the standard MG5 installers."""
 
@@ -154,7 +165,7 @@ class MadDM_interface(master_interface.MasterCmd):
         if split:
             package = split[0].lower()
             if package == 'neutrino_fog':
-                data_install.install_neutrino_fog()
+                self.install_neutrino_fog()
                 return
             if package == 'py_requirements':
                 try:
@@ -1626,14 +1637,11 @@ class MadDM_interface(master_interface.MasterCmd):
             logger.warning("More than one DM candidate. Can not run Direct Detection.")
             return 
 
-        try:
-            data_install.install_neutrino_fog()
-        except (data_install.DataInstallError, OSError) as error:
-            logger.warning('Neutrino-fog references unavailable: %s. DD calculations remain available.', error)
-
         ### Check that RAPIDD is installed (ask to download/compile it if not)
         if self.check_rapidd():
             self._has_direct_nucleon = self.generate_direct_nucleon(excluded_particles)
+            if self._has_direct_nucleon:
+                self.install_neutrino_fog()
 
         
         self._has_direct_electron = self.generate_direct_electron(excluded_particles)

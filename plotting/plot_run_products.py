@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate available pbar, Dbar and GCE PDFs from a completed run directory."""
+"""Regenerate available DD limits, pbar, Dbar and GCE PDFs from a completed run directory."""
 import argparse
 import json
 from pathlib import Path
@@ -24,6 +24,9 @@ def main():
         result['_secondary_flux']=np.loadtxt(sec)[:,1] if sec.is_file() else None
         signal_plots.dbar_plot(result,out/'AMS02_dbar_comparison.pdf')
         print(out/'AMS02_dbar_comparison.pdf')
+    if (out/'DD_limits.json').is_file():
+        if signal_plots.dd_limits_plot(out/'DD_limits.json',out/'DD_limits.pdf'):
+            print(out/'DD_limits.pdf')
     if (out/'GCE_spectrum.dat').is_file():
         result=json.loads((out/'GCE_fit.json').read_text())
         result['_bins']=np.loadtxt(out/'GCE_spectrum.dat')

@@ -205,3 +205,6 @@ Session.vim
 
 # CosmiXs propagated flux tables, downloaded by `install cosmixs_flux`
 ExpData/CR_flux/
+
+# Neutrino-fog tables (github.com/cajohare/NeutrinoFog), downloaded by `generate`/`install neutrino_fog`
+NeutrinoFog/
