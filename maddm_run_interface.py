@@ -90,6 +90,10 @@ if hasattr(me5_interface.AskRun, 'get_cardcmd_for_reweight'):
 __infty__ = float('inf')
 __mnestlog0__ = -1.0E90
 
+# targets of the RAPIDD recoil spectra (maddm_card direct_nucleon_targets, direct_electron_targets)
+DD_NUCLEON_TARGETS = ('xe', 'ge', 'ar')
+DD_ELECTRON_TARGETS = ('xe', 'ar')
+
 # DM-electron scattering: sigma_e is compared with the XENONnT upper limit and with the XENON10 S2-only
 # data (arXiv:1703.00910: p-value of the most constraining S2 bin and the equivalent upper limit on sigma_e).
 # The XENON1T S2-only p-value is kept in the code but switched off; set to True to restore it.
@@ -1845,6 +1849,23 @@ class MADDMRunCmd(cmd.CmdShell):
         return dict(modulation=bool(self.maddm_card['direct_modulation']), day_bins=int(self.maddm_card['day_bins']),
                     save_rates_per_bin=False, verbose=False)
 
+    def _log_recoil_files(self, names):
+        """Tell where the recoil spectra of the current run are (direct_mode = limit_and_rates)."""
+        run_dir = pjoin(self.dir_path, 'output', str(self.last_results.get('run', '')))
+        found = [name for name in names if os.path.isfile(pjoin(run_dir, name))]
+        if found:
+            logger.info('Recoil spectra: %s in %s' % (', '.join(found), run_dir))
+
+    def direct_rates(self):
+        """True if the direct detection recoil spectra are computed and saved (maddm_card
+        direct_mode = limit_and_rates), False if only the cross sections and the limits (limit)."""
+        return self.maddm_card['direct_mode'] == 'limit_and_rates'
+
+    def xenon_s2_results(self):
+        """XENON10 / XENON1T S2-only results of direct_electron: they need the Xenon DM-electron
+        rates (direct_mode = limit_and_rates and xe in direct_electron_targets)."""
+        return self.direct_rates() and 'xe' in [str(t).lower() for t in self.maddm_card['direct_electron_targets']]
+
     def do_launch(self, line):
         """run the code"""
 
@@ -2011,13 +2032,16 @@ class MADDMRunCmd(cmd.CmdShell):
                 result['sigmaN_SI_p'], result['sigmaN_SI_n'] = sigmaSI_nucleon_mdm(self.maddm_card, alphaq_values, mdm)
                 result['sigmaN_SD_p'], result['sigmaN_SD_n'] = sigmaSD_nucleon_mdm(self.maddm_card, alphaq_values, mdm)
 
-                from rapidd.calc_dRdE import DDrate_save
-                from rapidd.core import halo_path_from_card
-                rapidd_out_path = pjoin(self.dir_path,'output', self.run_name)
-                # default halo table, recomputed only if vescape, vmp or vSun differ from the default
-                halo_path = halo_path_from_card(self.maddm_card, rapidd_out_path)
-                DDrate_save(self.maddm_card, alphaq_values, mdm, rapidd_out_path, halo_path=halo_path,
-                            **self.rapidd_modulation_kwargs())
+                # recoil spectra of the selected targets in dRdE_nucleon.dat (direct_mode = limit_and_rates)
+                if self.direct_rates():
+                    from rapidd.calc_dRdE import DDrate_save
+                    from rapidd.core import halo_path_from_card
+                    rapidd_out_path = pjoin(self.dir_path,'output', self.run_name)
+                    # default halo table, recomputed only if vescape, vmp or vSun differ from the default
+                    halo_path = halo_path_from_card(self.maddm_card, rapidd_out_path)
+                    DDrate_save(self.maddm_card, alphaq_values, mdm, rapidd_out_path,
+                                targets=self.maddm_card['direct_nucleon_targets'], halo_path=halo_path,
+                                **self.rapidd_modulation_kwargs())
 
         # DM-electron scattering: alphas from the Fortran, rates and signals from RAPIDD
         if electron_recoil:
@@ -2025,7 +2049,9 @@ class MADDMRunCmd(cmd.CmdShell):
             if RP_parent not in sys.path:
                 sys.path.insert(0, RP_parent)
             from rapidd.alpha_map import electron_alphas_valid
-            if electron_alphas_valid(alphaq_values):
+            if electron_alphas_valid(alphaq_values) and self.direct_rates():
+                # rates of the selected targets (dRdE_electron.dat) and, with Xenon, the XENON10 / XENON1T
+                # S2 signals (dRdS2_electron_XENON10.dat, dRdS2_electron_XENON1T.dat)
                 from rapidd.calc_dRdE import DDrate_electron_save
                 from rapidd.core import halo_path_from_card
                 rapidd_out_path = pjoin(self.dir_path,'output', self.run_name)
@@ -2033,7 +2059,13 @@ class MADDMRunCmd(cmd.CmdShell):
                 halo_path = halo_path_from_card(self.maddm_card, rapidd_out_path)
                 result.update(DDrate_electron_save(self.maddm_card, alphaq_values, electron_info['dm_spin'],
                                                    electron_info['M_e'], mdm, rapidd_out_path,
+                                                   targets=self.maddm_card['direct_electron_targets'],
                                                    halo_path=halo_path, **self.rapidd_modulation_kwargs()))
+            elif electron_alphas_valid(alphaq_values):
+                # direct_mode = limit: reference cross section sigma_e only
+                from rapidd.calc_dRdE import electron_cross_section
+                result.update(electron_cross_section(alphaq_values, electron_info['dm_spin'],
+                                                     electron_info['M_e'], mdm))
             else:
                 result['DM_response'] = -1
             # sigma_e is needed by the summary
@@ -2203,9 +2235,10 @@ class MADDMRunCmd(cmd.CmdShell):
 
             if self.mode['direct_electron']:
                 order += ['sigma_e', 'lim_sigma_e', 'lim_sigma_e_rescaled']
-                if __dme_use_xenon10_pvalue__:
+                # XENON10 / XENON1T: only with the Xenon rates
+                if __dme_use_xenon10_pvalue__ and self.xenon_s2_results():
                     order += ['lim_sigma_e_Xenon10', 'pvalue_Xenon10']
-                if __dme_use_xenon1t_pvalue__:
+                if __dme_use_xenon1t_pvalue__ and self.xenon_s2_results():
                     order += ['pvalue_Xenon1T']
 
 
@@ -2318,6 +2351,9 @@ class MADDMRunCmd(cmd.CmdShell):
         self.last_results['pvalue_Xenon1T'] = -1
 
         if not (__dme_use_xenon10_pvalue__ or __dme_use_xenon1t_pvalue__):
+            return
+        # direct_mode = limit or no Xenon in direct_electron_targets: no S2 signals
+        if not self.xenon_s2_results():
             return
 
         if ("Xenon10_signal" not in self.last_results) and ("Xenon1T_signal" not in self.last_results):
@@ -3870,6 +3906,7 @@ class MADDMRunCmd(cmd.CmdShell):
                     logger.warning(line[len('WARNING: '):])
                 else:
                     logger.info(line)
+            self._log_recoil_files(['dRdE_nucleon.dat'])
 
         if self.mode['direct_electron'] and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
 
@@ -3881,6 +3918,8 @@ class MADDMRunCmd(cmd.CmdShell):
 
             pval_Xenon10 = self.last_results.get('pvalue_Xenon10', -1)
             pval_Xenon1T = self.last_results.get('pvalue_Xenon1T', -1)
+            # XENON10 / XENON1T S2-only results exist only with the Xenon rates (direct_mode, direct_electron_targets)
+            has_s2 = 'Xenon10_signal' in self.last_results
             sigma_e = self.last_results['sigma_e']
             logger.info('\n****** Direct detection - electron recoil [cm^2]: ')
             if sigma_e < 0:
@@ -3889,13 +3928,14 @@ class MADDMRunCmd(cmd.CmdShell):
                 self.print_ind('Sigma_e', sigma_e * xsi, sigma_e, self.last_results['lim_sigma_e'], thermal=dm_scen, direc=False, exp='XENONnT')
                 # XENONnT limit rescaled to the RAPIDD atomic responses (estimate)
                 self.print_ind('Sigma_e (rescaled)', sigma_e * xsi, sigma_e, self.last_results['lim_sigma_e_rescaled'], thermal=dm_scen, direc=False, exp='XENONnT')
-                if __dme_use_xenon10_pvalue__:
+                if __dme_use_xenon10_pvalue__ and has_s2:
                     # XENON10 S2-only: limit on sigma_e equivalent to p-value < 1 - CL
                     self.print_ind('Sigma_e', sigma_e * xsi, sigma_e, self.last_results.get('lim_sigma_e_Xenon10', -1),
                                    thermal=dm_scen, direc=False, exp='XENON10')
-            if __dme_use_xenon1t_pvalue__:
+            if __dme_use_xenon1t_pvalue__ and has_s2:
                 sig_1T = sigma_e if pval_Xenon1T != -1 else -1
                 logger.info( self.form_s('Sigma_e             All DM = ') + self.form_n(sig_1T) + self.form_s('      ' + det_message_screen(0.05,pval_Xenon1T)) + self.form_s('     Xenon1ton p_val  = ') + self.form_n(pval_Xenon1T))
+            self._log_recoil_files(['dRdE_electron.dat', 'dRdS2_electron_XENON10.dat', 'dRdS2_electron_XENON1T.dat'])
 
         # INDIRECT DETECTION
         detailled_keys = [k for k in self.last_results.keys() if k.startswith('taacsID#')]
@@ -4399,11 +4439,12 @@ class MADDMRunCmd(cmd.CmdShell):
             out.write(form_s('Sigma_e ref.') + '= ' + form_s('['+ form_n(cross_DMe) + ',' + form_n(ul_DMe) + ']') + '# XENONnT\n')
             ul_DMe_rescaled = self.last_results['lim_sigma_e_rescaled']
             out.write(form_s('Sigma_e ref. (rescaled)') + '= ' + form_s('['+ form_n(cross_DMe) + ',' + form_n(ul_DMe_rescaled) + ']') + '# XENONnT rescaled to the RAPIDD atomic responses\n')
-            if __dme_use_xenon10_pvalue__:
+            has_s2 = 'Xenon10_signal' in self.last_results  # Xenon rates computed
+            if __dme_use_xenon10_pvalue__ and has_s2:
                 ul_DMe_10 = self.last_results.get('lim_sigma_e_Xenon10', -1)
                 out.write(form_s('Sigma_e ref. (XENON10)') + '= ' + form_s('['+ form_n(cross_DMe) + ',' + form_n(ul_DMe_10) + ']') + '# XENON10 S2-only (arXiv:1703.00910), %d%% CL\n' % round(100*__dme_xenon10_cl__))
                 out.write(form_s('Xenon10_pvalue') + '= ' + form_s(form_n(pval10)) + '# all DM, most constraining S2 bin\n')
-            if __dme_use_xenon1t_pvalue__:
+            if __dme_use_xenon1t_pvalue__ and has_s2:
                 out.write(form_s('Xenon1T_pvalue') + '= ' + form_s(form_n(pval1T)) + '\n')
         
 
@@ -5136,11 +5177,15 @@ class MadDMSelector(cmd.ControlSwitch, common_run.AskforEditCard):
         
         self.special_shortcut.update({'nevents': ([int],['Main:numberOfEvents %(0)s']),
                                       'fast':([],[lambda self: self.pass_to_fast_mode]),
-                                      'precise':([],[lambda self: self.pass_to_precise_mode])
+                                      'precise':([],[lambda self: self.pass_to_precise_mode]),
+                                      'limit':([],['direct_mode limit']),
+                                      'limit_and_rates':([],['direct_mode limit_and_rates'])
                                       })
         self.special_shortcut_help.update({'nevents': 'number of events to generate for indirect detection if sigmav_method is madevent/reshuffling',
                                            'fast': 'modify the maddm_card to favor fast computation (but less precise) of the indirect mode',
-                                           'precise': 'modify the maddm_card to favor accuracy over speed computation for the indirect mode'
+                                           'precise': 'modify the maddm_card to favor accuracy over speed computation for the indirect mode',
+                                           'limit': 'direct detection: compute only the cross sections and the exclusion limits (direct_mode limit)',
+                                           'limit_and_rates': 'direct detection: also compute and save the recoil spectra (direct_mode limit_and_rates)'
                                           }
                                           )
     
@@ -5427,10 +5472,22 @@ When you are done with such edition, just press enter (or write 'done' or '0')
         logger.info("direct flag can take two values: ON/OFF")
         logger.info('     ')
         logger.info("     Theoretical elastic spin-independent and spin-dependent cross section dark matter off nucleons")
+        self.help_direct_mode()
         
     def help_direct_electron(self):
         logger.info("direct_electron flag can take two values: ON/OFF")
         logger.info("  It controls if you are going to compute the electronic recoil for direct detection")
+        self.help_direct_mode()
+
+    def help_direct_mode(self):
+        logger.info("  for direct_nucleon and direct_electron the maddm_card parameter direct_mode can be")
+        logger.info("    limit:           only the cross sections and the exclusion limits")
+        logger.info("    limit_and_rates: also the recoil spectra of direct_nucleon_targets (%s) in dRdE_nucleon.dat"
+                    % ', '.join(DD_NUCLEON_TARGETS))
+        logger.info("                     and of direct_electron_targets (%s) in dRdE_electron.dat; with xe also"
+                    % ', '.join(DD_ELECTRON_TARGETS))
+        logger.info("                     dRdS2_electron_XENON10.dat, dRdS2_electron_XENON1T.dat and the XENON10/XENON1T results")
+        logger.info("  A quick way to set it up is to type: 'set limit' or 'set limit_and_rates'")
         
     def help_relic(self):
         logger.info("relic flag can take two values: ON/OFF")
@@ -5868,6 +5925,18 @@ class MadDMCard(banner_mod.RunCard):
         self.add_param('direct_modulation', False, include=False)
         self.add_param('day_bins', 12, include=False)
 
+        # Direct detection output: 'limit' = cross sections and exclusion limits only, 'limit_and_rates' = also
+        # the recoil spectra (dRdE_nucleon.dat, dRdE_electron.dat, dRdS2_electron_XENON*.dat) and the XENON10 /
+        # XENON1T DM-electron results, which need the Xenon rates
+        self.add_param('direct_mode', 'limit_and_rates', allowed=['limit', 'limit_and_rates'], include=False,
+                       comment="limit: only the exclusion limits; limit_and_rates: also the recoil spectra")
+        # targets of the recoil spectra (one column per target in the same file; values checked in check_validity
+        # against DD_NUCLEON_TARGETS, DD_ELECTRON_TARGETS: the unit tests exec default_setup alone)
+        self.add_param('direct_nucleon_targets', ['xe'], typelist=str, include=False,
+                       comment='targets of dRdE_nucleon.dat: one or more of xe, ge, ar')
+        self.add_param('direct_electron_targets', ['xe'], typelist=str, include=False,
+                       comment='targets of dRdE_electron.dat: one or more of xe, ar')
+
         # For electronic recoil
         self.add_param('direct_electron_mode', 'auto', allowed=['auto', 'always'], include=True)
         # projected XLZD limits shown with the direct_nucleon results (SI and SD, median 90% CL)
@@ -6009,10 +6078,22 @@ class MadDMCard(banner_mod.RunCard):
             else:
                 template = pjoin(MDMDIR, 'Templates', 'Cards', 'maddm_card.dat')
             python_template = True
-            
-        super(MadDMCard, self).write(output_file, template=template,
-                                    python_template=python_template,
-                                    write_hidden=write_hidden)
+
+        # MG5 formats the cards that have list parameters with a lower-case mapping (KeyError on
+        # %(vEarth_mod)s) and writes the lists of strings as python lists: the lists (the targets of the
+        # direct detection rates) are written here as comma-separated values, read back as lists
+        lists = {name: dict.__getitem__(self, name) for name in self.list_parameter}
+        list_types, self.list_parameter = self.list_parameter, {}
+        try:
+            for name, value in lists.items():
+                dict.__setitem__(self, name, ', '.join(str(v) for v in value))
+            super(MadDMCard, self).write(output_file, template=template,
+                                        python_template=python_template,
+                                        write_hidden=write_hidden)
+        finally:
+            for name, value in lists.items():
+                dict.__setitem__(self, name, value)
+            self.list_parameter = list_types
 
     def check_validity(self):
         """ """
@@ -6021,6 +6102,14 @@ class MadDMCard(banner_mod.RunCard):
 
         if self['day_bins'] < 1:
             raise InvalidMaddmCard('day_bins should be >= 1, get %s' % self['day_bins'])
+        # targets of the recoil spectra (case insensitive; MG5 list parameters with allowed values fail on
+        # upper case entries, so they are checked here)
+        for key, allowed in (('direct_nucleon_targets', DD_NUCLEON_TARGETS),
+                             ('direct_electron_targets', DD_ELECTRON_TARGETS)):
+            values = [str(v).lower() for v in self[key]]
+            if not values or any(v not in allowed for v in values):
+                raise InvalidMaddmCard('%s should be a list of targets among %s, get %s'
+                                       % (key, ', '.join(allowed), ', '.join(str(v) for v in self[key]) or 'nothing'))
         
         if self['SPu'] + self['SPs'] + self['SPd'] + self['SPg'] -1 > 1e-3:
             raise InvalidMaddmCard('The sum of SP* parameter should be 1.0 get %s' % (self['SPu'] + self['SPs'] + self['SPd'] + self['SPg']))

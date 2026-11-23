@@ -27,7 +27,7 @@ FLUX_DIR = ROOT / 'ExpData' / 'CR_flux'
 PYTHON_REQUIREMENTS = ('numpy', 'scipy', 'matplotlib')
 BUILD_REQUIREMENTS = ('ninja', 'meson')
 # Keep archive installations on the same revision as the RAPIDD git submodule.
-RAPIDD_REVISION = 'bf79afbe210b09cc7e2a1fb6c550659a242b6be6'
+RAPIDD_REVISION = 'ca700b9f3b92e9195f99ebeaf2f0946581f70c28'
 RAPIDD_REPOSITORY = 'https://github.com/cheekyparticle/RAPIDD_for_DM.git'
 ZLIB_ARCHIVE = (
     'https://zlib.net/fossils/zlib-1.3.2.tar.gz',

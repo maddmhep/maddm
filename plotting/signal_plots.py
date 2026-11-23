@@ -62,24 +62,41 @@ def _plot_yields(curves, output, *, xlabel, ylabel, title, xscale='log', empty_m
     return True
 
 
+TARGET_STYLES = {'Xe': ('Xenon', '#1c6ba0', '-'), 'Ar': ('Argon', '#c2542e', '--'),
+                 'Ge': ('Germanium', '#27824d', '-.')}
+
+
+def _target_columns(data):
+    """Columns drde_<target> (total rate of each target) of a RAPIDD rate table, from its header."""
+    with open(data) as stream:
+        header = stream.readline().lstrip('#').split()
+    names = [name for name in header if name.startswith('drde_')]
+    return [(index, name[len('drde_'):]) for index, name in enumerate(names)
+            if name[len('drde_'):] in TARGET_STYLES]
+
+
 def recoil_rates_plot(data, output):
-    """Plot the RAPIDD xenon, argon and germanium rates as written to disk."""
-    energy, xe, ar, ge = np.loadtxt(data, ndmin=2, usecols=(0, 1, 2, 3)).T
-    return _plot_yields([(energy, xe, 'Xenon', '#1c6ba0', '-'),
-                         (energy, ar, 'Argon', '#c2542e', '--'),
-                         (energy, ge, 'Germanium', '#27824d', '-.')], output,
+    """Plot the RAPIDD nuclear recoil rates of the targets in dRdE_nucleon.dat."""
+    table = np.loadtxt(data, ndmin=2)
+    energy = table[:, 0]
+    return _plot_yields([(energy, table[:, 1 + index]) + TARGET_STYLES[target]
+                         for index, target in _target_columns(data)], output,
                         xlabel=r'Recoil energy $E_R$ [keV]',
                         ylabel=r'$dR/dE_R$ [events kg$^{-1}$ day$^{-1}$ keV$^{-1}$]',
                         title='Nuclear recoil spectra', xscale='linear')
 
 
 def electron_recoil_rates_plot(data, output):
-    """Plot the total xenon ionization spectrum as a function of recoil energy."""
-    energy, total = np.loadtxt(data, ndmin=2, usecols=(1, 2)).T
-    return _plot_yields([(energy, total, 'Xenon, all shells', '#1c6ba0', '-')],
-                        output, xlabel=r'Electron recoil energy $E_e$ [keV]',
+    """Plot the total (all shells) ionization spectra of the targets in dRdE_electron.dat."""
+    table = np.loadtxt(data, ndmin=2)
+    energy = table[:, 1]
+    curves = []
+    for index, target in _target_columns(data):
+        label, color, style = TARGET_STYLES[target]
+        curves.append((energy, table[:, 2 + index], label + ', all shells', color, style))
+    return _plot_yields(curves, output, xlabel=r'Electron recoil energy $E_e$ [keV]',
                         ylabel=r'$dR/dE_e$ [events kg$^{-1}$ day$^{-1}$ keV$^{-1}$]',
-                        title='Electron recoil spectrum', xscale='linear',
+                        title='Electron recoil spectra', xscale='linear',
                         empty_message='No positive rates on the recoil energy grid')
 
 

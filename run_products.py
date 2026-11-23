@@ -11,20 +11,17 @@ FILE_GUIDE = (
     ('MadDM_results.txt', 'Main results: relic abundance, rates, cross sections and limits for the enabled analyses.'),
     ('maddm_card.dat', 'Settings used for this run. `rhoDM` is the local DM density in GeV/cm³, shared by direct detection and the Milky Way signals.'),
     ('maddm.out', 'Raw output from the MadDM calculation, useful for troubleshooting.'),
-    ('DDrates.txt', 'Differential nuclear recoil rates for xenon, argon and germanium versus recoil energy in keV. Rates are in events per kg, day and keV.'),
-    ('DDrates.npz', 'Numerical arrays for the nuclear recoil calculation.'),
-    ('DDrates.pdf', 'Three nuclear recoil spectra on a linear energy axis and a logarithmic rate axis.'),
+    ('dRdE_nucleon.dat', 'Differential nuclear recoil rates (direct_mode = limit_and_rates) versus recoil energy in keV, one column per target of direct_nucleon_targets (xenon, germanium, argon). Rates are in events per kg, day and keV.'),
+    ('dRdE_nucleon.pdf', 'Nuclear recoil spectra of the selected targets on a linear energy axis and a logarithmic rate axis.'),
     ('DD_limits.json', 'DM-nucleon limits (LZ, PICO-60, XLZD projection if xlzd_limits is set) and xenon neutrino fog versus DM mass, rescaled to rhoDM, with the cross sections of this run.'),
     ('DD_limits.pdf', 'SI and SD DM-nucleon cross sections of this run against the limits, the XLZD projection and the neutrino fog of DD_limits.json.'),
-    ('DDrates_e.txt', 'Differential xenon electron recoil rates from RAPIDD, summed and per shell.'),
-    ('DDrates_e.npz', 'Numerical arrays for the RAPIDD electron recoil and detector signals.'),
-    ('DDrates_e.pdf', 'Total xenon electron recoil spectrum on a linear energy axis and a logarithmic rate axis.'),
-    ('dRdS2_Xenon*_e_recoil.dat', 'RAPIDD electron recoil signal as a function of S2.'),
-    ('dRdE_e_recoil.dat', 'RAPIDD differential electron recoil rate versus electron energy.'),
+    ('dRdE_electron.dat', 'Differential electron recoil rates from RAPIDD (direct_mode = limit_and_rates) versus electron momentum and energy in keV: for each target of direct_electron_targets (xenon, argon) the rate summed over the shells, then the rate of each shell. Rates are in events per kg, day and keV.'),
+    ('dRdE_electron.pdf', 'Total electron recoil spectra of the selected targets on a linear energy axis and a logarithmic rate axis.'),
+    ('dRdS2_electron_XENON*.dat', 'RAPIDD xenon electron recoil signal in XENON10 or XENON1T as a function of S2 (XENON10: also the contribution of each shell).'),
     ('signal_e_recoil.dat', 'RAPIDD signal per XENON10 S2 bin.'),
     ('SHM.dat', 'SHM velocity table used by RAPIDD, written when vMP, vescape or vSun_* differ from the defaults.'),
-    ('rate_vs_time*.dat', 'Annual modulation (direct_modulation = True): RAPIDD recoil rate in each time bin of the year.'),
-    ('dRdE_modulation*.dat', 'Annual modulation (direct_modulation = True): RAPIDD differential recoil rate in each time bin.'),
+    ('rate_vs_time_*.dat', 'Annual modulation (direct_modulation = True): RAPIDD nuclear or electron recoil rate of each target in each time bin of the year.'),
+    ('dRdE_modulation_*.dat', 'Annual modulation (direct_modulation = True): RAPIDD differential nuclear or electron recoil rate of each target, averaged over the year and integrated over it.'),
     ('Halo_velocity.json', 'Local density and velocity distribution settings for the Galactic annihilation rates.'),
     ('MW_relative_speed.dat', 'Relative speeds and quadrature weights for the Milky Way annihilation average.'),
     ('*_spectrum_*.dat', 'Source yields per annihilation: log10(x), dN/dlog10(x), and uncertainties when available, with x = kinetic energy / DM mass.'),
@@ -91,12 +88,12 @@ def write_run_products(directory, *, recoil, source_method=None):
     if not directory.is_dir():
         return
     plots = []
-    if recoil and (directory / 'DDrates.txt').is_file():
-        plots.append(('DDrates.pdf', 'recoil_rates_plot', (directory / 'DDrates.txt',)))
+    if recoil and (directory / 'dRdE_nucleon.dat').is_file():
+        plots.append(('dRdE_nucleon.pdf', 'recoil_rates_plot', (directory / 'dRdE_nucleon.dat',)))
     if recoil and (directory / 'DD_limits.json').is_file():
         plots.append(('DD_limits.pdf', 'dd_limits_plot', (directory / 'DD_limits.json',)))
-    if recoil and (directory / 'DDrates_e.txt').is_file():
-        plots.append(('DDrates_e.pdf', 'electron_recoil_rates_plot', (directory / 'DDrates_e.txt',)))
+    if recoil and (directory / 'dRdE_electron.dat').is_file():
+        plots.append(('dRdE_electron.pdf', 'electron_recoil_rates_plot', (directory / 'dRdE_electron.dat',)))
     if source_method and any(directory.glob('*_spectrum_' + source_method + '.dat')):
         plots.append(('source_spectra.pdf', 'source_spectra_plot', (directory, source_method)))
     for name, plotter, args in plots:

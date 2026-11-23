@@ -73,6 +73,15 @@
    %(halo_lmc_cosb)s = halo_lmc_cosb # Cosine with the RAPIDD reference lab direction
    %(halo_lmc_azimuth_deg)s = halo_lmc_azimuth_deg # Galactic orientation about that direction [deg]
 
+# Direct detection output (direct_nucleon and direct_electron), quick setup: 'set limit' or 'set limit_and_rates'
+#  - limit: only the cross sections and the exclusion limits (faster, no recoil spectra)
+#  - limit_and_rates: also the recoil spectra of the targets below, dRdE_nucleon.dat and dRdE_electron.dat
+#    (one column per target in the same file); with xe in direct_electron_targets also the XENON10 / XENON1T
+#    S2 spectra (dRdS2_electron_XENON10.dat, dRdS2_electron_XENON1T.dat) and the XENON10 limit on sigma_e
+   %(direct_mode)s = direct_mode ! limit, limit_and_rates
+   %(direct_nucleon_targets)s = direct_nucleon_targets ! one or more of xe, ge, ar (comma separated)
+   %(direct_electron_targets)s = direct_electron_targets ! one or more of xe, ar (comma separated)
+
 # Annual modulation of the direct detection rates (DM-nucleus and DM-electron): the year
 # (365.24 days) is divided in day_bins bins, the rates are computed at the bin centers
 # t_i = (i+0.5)*365.24/day_bins days since March 22 (one halo table per bin: slower)
