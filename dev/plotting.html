@@ -474,7 +474,14 @@ results. <code class="docutils literal notranslate"><span class="pre">spectra</s
 figures. <code class="docutils literal notranslate"><span class="pre">all</span></code> also keeps the detailed recoil products and event
 samples. The retention mode does not change the numerical scan results.</p>
 <p>With Matplotlib installed, MadDM plots available source yields and
-direct-detection rates. The antiproton comparison shows the secondary,
+direct-detection rates. With <code class="docutils literal notranslate"><span class="pre">direct_nucleon</span></code>, <code class="docutils literal notranslate"><span class="pre">DD_limits.pdf</span></code>
+compares the SI and SD DM-nucleon cross sections of the run with the
+LZ and PICO-60 limits, the XLZD projection (<code class="docutils literal notranslate"><span class="pre">xlzd_limits</span> <span class="pre">=</span> <span class="pre">200ty</span></code> or
+<code class="docutils literal notranslate"><span class="pre">1000ty</span></code>, off by default) and the xenon neutrino fog, all rescaled to
+<code class="docutils literal notranslate"><span class="pre">rhoDM</span></code>; the curves are saved in <code class="docutils literal notranslate"><span class="pre">DD_limits.json</span></code>. The neutrino-fog
+tables (O’Hare, arXiv:2109.03116) are downloaded when the direct-detection
+diagrams are generated, or with <code class="docutils literal notranslate"><span class="pre">install</span> <span class="pre">neutrino_fog</span></code>; <code class="docutils literal notranslate"><span class="pre">launch</span></code> never
+downloads them. The antiproton comparison shows the secondary,
 dark matter and total flux at the upper limit and a separate dark
 matter curve at the model rate. The signed residual is
 (model minus data) divided by model. The antideuteron comparison
