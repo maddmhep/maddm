@@ -1,3 +1,5 @@
+.. _plotting:
+
 Run outputs and scan plots
 ==========================
 
@@ -8,8 +10,20 @@ results. ``spectra`` also keeps the available indirect spectra and
 figures. ``all`` also keeps the detailed recoil products and event
 samples. The retention mode does not change the numerical scan results.
 
+With ``direct_mode = limit_and_rates``, direct detection runs write the
+recoil spectra, one column per target selected in the ``maddm_card``:
+``dRdE_nucleon.dat`` (nuclear recoils, ``direct_nucleon_targets``) and
+``dRdE_electron.dat`` (electron recoils, ``direct_electron_targets``;
+the rate summed over the shells for each target, then the rate of each
+shell). With xenon among the electron targets, the run also writes the
+XENON10 and XENON1T S2 spectra (``dRdS2_electron_XENON10.dat``,
+``dRdS2_electron_XENON1T.dat``) and the XENON10 signal per S2 bin
+(``signal_e_recoil.dat``). The run ``README.md`` lists the files that
+were produced.
+
 With Matplotlib installed, MadDM plots available source yields and
-direct-detection rates. With ``direct_nucleon``, ``DD_limits.pdf``
+direct-detection rates (``dRdE_nucleon.pdf`` and ``dRdE_electron.pdf``,
+one curve per target). With ``direct_nucleon``, ``DD_limits.pdf``
 compares the SI and SD DM-nucleon cross sections of the run with the
 LZ and PICO-60 limits, the XLZD projection (``xlzd_limits = 200ty`` or
 ``1000ty``, off by default) and the xenon neutrino fog, all rescaled to
@@ -102,7 +116,18 @@ A scan can contain linked external model inputs, for example:
 The first parameter is recalculated at every point. ``mxr/2``, ``mxr**2``
 and chains of relations are also supported. Prefer the exact UFO name in
 ``ident_card.dat`` or use the explicit ``mass_5000001`` alias if a comment
-name is ambiguous. Standard ``scanN`` groups retain MadGraph semantics:
+name is ambiguous. Names come from ``Cards/ident_card.dat`` or the first
+name in the parameter comment and follow MadGraph's case-insensitive card
+convention. Arithmetic uses Python precedence and true division:
+``+``, ``-``, ``*``, ``/``, ``//``, ``%``, ``**``, parentheses, the
+constants ``pi`` and ``e`` and the functions ``sqrt``, ``exp``, ``log``,
+``log10``, ``sin``, ``cos``, ``tan``, ``abs``, ``min`` and ``max``.
+Relations are evaluated at every scan point, before widths and matrix
+elements, in dependency order. Unknown or ambiguous names, cycles and
+nonfinite results are rejected. Only external parameters present in the
+card can be linked; the relations are scan inputs, not changes to the
+UFO's internal parameter definitions. Use at least one ``scan:`` or
+``scanN:`` entry. Standard ``scanN`` groups retain MadGraph semantics:
 same-number lists advance together; different groups form a Cartesian product.
 Linked entries do not add independent scan dimensions. Their evaluated values
 are written to the summary. A one-element scan is supported.

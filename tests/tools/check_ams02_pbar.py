@@ -1,18 +1,15 @@
 #!/usr/bin/env python3
-"""
-Antiproton likelihood from partial rates
-========================================
+"""Evaluate the AMS-02 antiproton likelihood for user-supplied partial rates.
 
-Evaluate model partial rates without importing MadGraph.
-
-This is a likelihood/adapter demonstration. It does not generate a model or
-compute any matrix elements. A normal MadDM launch computes its own rates.
+This is a likelihood/adapter demonstration that does not import MadGraph. It
+does not generate a model or compute any matrix elements; a normal MadDM
+launch computes its own rates.
 """
 import argparse
 import json
 from pathlib import Path
 import sys
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from indirect.pbar_interface import AntiprotonLimits, PDG_CHANNELS, write_outputs
 
 

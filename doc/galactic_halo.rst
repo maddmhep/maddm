@@ -65,7 +65,7 @@ times their relative speed:
 .. math::
 
    \langle\sigma u\rangle_f =
-     \int\mathrm{d}u\,p_{\rm rel}[u],\sigma_f[u],u,
+     \int\mathrm{d}u\,p_{\rm rel}[u]\,\sigma_f[u]\,u,
    \qquad u=|\mathbf v_1-\mathbf v_2|.
 
 By default, ``mw_shm_npts = 16`` evaluates this integral as a weighted

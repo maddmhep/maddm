@@ -27,7 +27,7 @@ copyright = f"{datetime.now().year}, MadDM developers"
 author = "Chiara Arina & Andrew Cheek & Mattia Di Mauro & Jan Heisig & Gian Marco Lucchetti & Fabio Maltoni & Olivier Mattelaer & Daniele Massaro"
 
 package_root_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..")
-# load version number from setup.cfg
+# load the version number from the 'version' file
 with open(os.path.join(package_root_path, "version"), "r") as f:
     fstring = str(f.read())
     version = re.search(r"MadDM v(?P<version>\d+\.\d+\.\d+)", fstring).group(1)
@@ -41,7 +41,6 @@ extensions = [
     "sphinx_gallery.gen_gallery"
 ]
 
-templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 # Sphinx Gallery

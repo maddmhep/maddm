@@ -2,92 +2,53 @@
 Contributing to the documentation
 =================================
 
-The documentation has been created with `Sphinx <https://www.sphinx-doc.org/>`__.
+The documentation is built with `Sphinx <https://www.sphinx-doc.org/>`__, the `PyData Sphinx theme <https://pydata-sphinx-theme.readthedocs.io/>`__ and the `Sphinx-Gallery <https://sphinx-gallery.github.io/stable/index.html>`__ extension.
 
-How this documentation was created
-==================================
+Layout of the sources
+=====================
 
-Install Sphinx with:
+- ``doc/`` contains the Sphinx configuration (``conf.py``), the landing page (``index.rst``) and the other pages, written in reStructuredText. A new page must be added to the ``toctree`` at the end of ``index.rst`` to appear in the navigation bar.
+- ``doc/_static/`` contains the logo, the favicon, the gallery thumbnails and ``switcher.json``, which lists the ``stable`` and ``dev`` versions for the version switcher.
+- ``examples/`` in the root of the repository contains the sources of the *Tutorial and examples* gallery. ``examples/plot_data/`` holds the data files read by the executed examples.
 
-.. code:: bash
+The gallery pages are generated in ``doc/tutorial_and_examples/`` during the build. That folder is ignored by git and must not be edited.
 
-   python -m pip install sphinx
+Building locally
+================
 
-Run the following command in the ``doc/`` folder previously created (where this document is):
-
-.. code:: bash
-
-   sphinx-quickstart
-
-and fill accordingly:
-
-- separate source and build directory: no;
-- project name: MadDM;
-- authors: list all authors in a “Name Surname” list separated by ``&``;
-- project release: leave empty;
-- project language: default is ``en``;
-
-Then the folder will be populated by several files.
-In particular, we will modify the `conf.py <./conf.py>`__ file as you can check, in order to have dynamic copyright and release, and adding all the various extensions.
-
-Requirements and extensions
----------------------------
-
-Theme
-~~~~~
-
-The theme used to build the documentation can be downloaded with
+Install the requirements in a Python environment:
 
 .. code:: bash
 
-   python -m pip install pydata-sphinx-theme
+   python -m pip install sphinx pydata-sphinx-theme sphinx-gallery matplotlib numpy
 
-Tutorial and examples gallery
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-To automatically build the tutorial and the examples gallery from ipython notebook files containing rst code, we use the `Sphinx-Gallery <https://sphinx-gallery.github.io/stable/index.html>`__ extension:
-
-.. code:: bash
-
-   python -m pip install sphinx-gallery
-
-and we modify the `conf.py <./conf.py>`__ accordingly, by adding the following configuration (or something similar):
-
-.. code:: python
-
-   sphinx_gallery_conf = {
-       "examples_dirs": os.path.join(package_root_path, "examples"),
-       "gallery_dirs": "tutorial_and_examples",
-   }
-
-where:
-
-- ``examples_dirs`` is the path to the folder created in the root of the repository, and containing the ``rst`` notebooks, **this folder should be created**, in this case we will name it ``examples``;
-- ``gallery_dirs`` is the name of the folder where the generated files from the extension would be placed after the build.
-
-How to add new examples
-~~~~~~~~~~~~~~~~~~~~~~~
-
-The examples are in the folder ``examples`` in the root of the repository.
-That folder contains a general header file, which should be named ``GALLERY_HEADER.rst``, that contains some information on the gallery, it will be the landpage for whoever would click on the *Tutorial and examples* entry in the menu.
-That file would also show a list of the files present in the gallery.
-The gallery is made of python files inside the ``examples`` folder.
-See also the `official documentation <https://sphinx-gallery.github.io/stable/getting_started.html#structure-the-examples-folder>`__, but, briefly, there are two kinds of files:
-
-- normal python files, like ``getting_started.py``, they will be parsed and presented in a rich literate programming fashion, but they won’t have any output file/plot associated to them;
-- python files with name starting with ``plot_``, they will be executed, their output will be captured and incorporated in the HTML that will be created.
-
-See the `following page <https://sphinx-gallery.github.io/stable/syntax.html#python-script-syntax>`__ for the structure that each of these python files must have.
-
-Updating the documentation
-==========================
-
-Whenever a change in the ``.rst`` files is made, the documentation should be rebuilt locally and the ``gh-pages`` branch must be updated accordingly.
-The main files to build the documentation are already present when cloning the repository, one just needs to build it with:
+``matplotlib`` and ``numpy`` are needed to execute the ``plot_*`` examples. Then build the HTML pages from the ``doc/`` folder:
 
 .. code:: bash
 
    make html
 
-And then copy the files created in ``_build`` to the ``gh-pages`` branch.
+and open ``_build/html/index.html`` in a browser. Check that the build prints no warnings.
 
+Adding a tutorial or an example
+===============================
+
+Each example is a Python file in ``examples/``. ``examples/GALLERY_HEADER.rst`` is the landing page of the gallery, followed by the list of examples.
+The file starts with a docstring in reStructuredText that holds the title and the text of the page; see the `Sphinx-Gallery syntax <https://sphinx-gallery.github.io/stable/syntax.html#python-script-syntax>`__ for how to alternate text and code blocks.
+There are two kinds of files:
+
+- files whose name starts with ``plot_``, like ``plot_direct_detection.py``, are executed during the build, and their output and figures are included in the page;
+- all other files, like ``getting_started.py``, are rendered without being executed.
+
+Every file in ``examples/`` becomes a gallery page, so keep standalone tools elsewhere (for example in ``tests/tools/``).
+To choose the gallery thumbnail, add a PNG to ``doc/_static/thumbnail/`` and reference it at the end of the example:
+
+.. code:: python
+
+   # sphinx_gallery_thumbnail_path = '_static/thumbnail/my_example_thumb.png'
+
+Publishing
+==========
+
+The workflow ``.github/workflows/build-and-deploy.yml`` builds the documentation on every push to ``dev`` or ``master`` that changes ``doc/`` or ``examples/``, and publishes it on the ``gh-pages`` branch: ``master`` goes to the `stable <https://maddmhep.github.io/maddm/stable/>`__ version and ``dev`` to the `dev <https://maddmhep.github.io/maddm/dev/>`__ version.
+No manual copy to ``gh-pages`` is needed.

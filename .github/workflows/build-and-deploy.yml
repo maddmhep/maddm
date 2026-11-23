@@ -7,18 +7,18 @@ on:  # yamllint disable-line rule:truthy
       - dev
       - master
     # Trigger only when changes happen in the doc or examples folders
-    paths: [doc/**, examples/**]
+    paths: [doc/**, examples/**, .github/workflows/build-and-deploy.yml]
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       # Step 1: Check out the code
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       # Step 2: Set up Python
       - name: Set up Python 3.x
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: 3.x
 
@@ -26,8 +26,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install sphinx pydata-sphinx-theme sphinx-gallery pygit2
-          pip install sphinx sphinx-gallery matplotlib numpy
+          pip install sphinx pydata-sphinx-theme sphinx-gallery matplotlib numpy
 
       # Step 4: Build the documentation
       - name: Build the documentation
@@ -37,7 +36,7 @@ jobs:
 
       # Step 5: Deploy to gh-pages
       - name: Deploy documentation to gh-pages branch
-        uses: peaceiris/actions-gh-pages@v3
+        uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./doc/_build/html
