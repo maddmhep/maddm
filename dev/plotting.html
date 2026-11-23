@@ -466,15 +466,26 @@
                 <article class="bd-article">
                   
   <section id="run-outputs-and-scan-plots">
-<h1>Run outputs and scan plots<a class="headerlink" href="#run-outputs-and-scan-plots" title="Link to this heading">#</a></h1>
+<span id="plotting"></span><h1>Run outputs and scan plots<a class="headerlink" href="#run-outputs-and-scan-plots" title="Link to this heading">#</a></h1>
 <p>Each completed run has a <code class="docutils literal notranslate"><span class="pre">MadDM_results.txt</span></code> and a short
 <code class="docutils literal notranslate"><span class="pre">README.md</span></code> listing the outputs that were produced. For scans,
 <code class="docutils literal notranslate"><span class="pre">save_output</span> <span class="pre">=</span> <span class="pre">off</span></code> keeps the main summary and applicable JSON
 results. <code class="docutils literal notranslate"><span class="pre">spectra</span></code> also keeps the available indirect spectra and
 figures. <code class="docutils literal notranslate"><span class="pre">all</span></code> also keeps the detailed recoil products and event
 samples. The retention mode does not change the numerical scan results.</p>
+<p>With <code class="docutils literal notranslate"><span class="pre">direct_mode</span> <span class="pre">=</span> <span class="pre">limit_and_rates</span></code>, direct detection runs write the
+recoil spectra, one column per target selected in the <code class="docutils literal notranslate"><span class="pre">maddm_card</span></code>:
+<code class="docutils literal notranslate"><span class="pre">dRdE_nucleon.dat</span></code> (nuclear recoils, <code class="docutils literal notranslate"><span class="pre">direct_nucleon_targets</span></code>) and
+<code class="docutils literal notranslate"><span class="pre">dRdE_electron.dat</span></code> (electron recoils, <code class="docutils literal notranslate"><span class="pre">direct_electron_targets</span></code>;
+the rate summed over the shells for each target, then the rate of each
+shell). With xenon among the electron targets, the run also writes the
+XENON10 and XENON1T S2 spectra (<code class="docutils literal notranslate"><span class="pre">dRdS2_electron_XENON10.dat</span></code>,
+<code class="docutils literal notranslate"><span class="pre">dRdS2_electron_XENON1T.dat</span></code>) and the XENON10 signal per S2 bin
+(<code class="docutils literal notranslate"><span class="pre">signal_e_recoil.dat</span></code>). The run <code class="docutils literal notranslate"><span class="pre">README.md</span></code> lists the files that
+were produced.</p>
 <p>With Matplotlib installed, MadDM plots available source yields and
-direct-detection rates. With <code class="docutils literal notranslate"><span class="pre">direct_nucleon</span></code>, <code class="docutils literal notranslate"><span class="pre">DD_limits.pdf</span></code>
+direct-detection rates (<code class="docutils literal notranslate"><span class="pre">dRdE_nucleon.pdf</span></code> and <code class="docutils literal notranslate"><span class="pre">dRdE_electron.pdf</span></code>,
+one curve per target). With <code class="docutils literal notranslate"><span class="pre">direct_nucleon</span></code>, <code class="docutils literal notranslate"><span class="pre">DD_limits.pdf</span></code>
 compares the SI and SD DM-nucleon cross sections of the run with the
 LZ and PICO-60 limits, the XLZD projection (<code class="docutils literal notranslate"><span class="pre">xlzd_limits</span> <span class="pre">=</span> <span class="pre">200ty</span></code> or
 <code class="docutils literal notranslate"><span class="pre">1000ty</span></code>, off by default) and the xenon neutrino fog, all rescaled to
@@ -554,7 +565,18 @@ abundance is computed by integrating the Boltzmann equation.</p>
 <p>The first parameter is recalculated at every point. <code class="docutils literal notranslate"><span class="pre">mxr/2</span></code>, <code class="docutils literal notranslate"><span class="pre">mxr**2</span></code>
 and chains of relations are also supported. Prefer the exact UFO name in
 <code class="docutils literal notranslate"><span class="pre">ident_card.dat</span></code> or use the explicit <code class="docutils literal notranslate"><span class="pre">mass_5000001</span></code> alias if a comment
-name is ambiguous. Standard <code class="docutils literal notranslate"><span class="pre">scanN</span></code> groups retain MadGraph semantics:
+name is ambiguous. Names come from <code class="docutils literal notranslate"><span class="pre">Cards/ident_card.dat</span></code> or the first
+name in the parameter comment and follow MadGraph’s case-insensitive card
+convention. Arithmetic uses Python precedence and true division:
+<code class="docutils literal notranslate"><span class="pre">+</span></code>, <code class="docutils literal notranslate"><span class="pre">-</span></code>, <code class="docutils literal notranslate"><span class="pre">*</span></code>, <code class="docutils literal notranslate"><span class="pre">/</span></code>, <code class="docutils literal notranslate"><span class="pre">//</span></code>, <code class="docutils literal notranslate"><span class="pre">%</span></code>, <code class="docutils literal notranslate"><span class="pre">**</span></code>, parentheses, the
+constants <code class="docutils literal notranslate"><span class="pre">pi</span></code> and <code class="docutils literal notranslate"><span class="pre">e</span></code> and the functions <code class="docutils literal notranslate"><span class="pre">sqrt</span></code>, <code class="docutils literal notranslate"><span class="pre">exp</span></code>, <code class="docutils literal notranslate"><span class="pre">log</span></code>,
+<code class="docutils literal notranslate"><span class="pre">log10</span></code>, <code class="docutils literal notranslate"><span class="pre">sin</span></code>, <code class="docutils literal notranslate"><span class="pre">cos</span></code>, <code class="docutils literal notranslate"><span class="pre">tan</span></code>, <code class="docutils literal notranslate"><span class="pre">abs</span></code>, <code class="docutils literal notranslate"><span class="pre">min</span></code> and <code class="docutils literal notranslate"><span class="pre">max</span></code>.
+Relations are evaluated at every scan point, before widths and matrix
+elements, in dependency order. Unknown or ambiguous names, cycles and
+nonfinite results are rejected. Only external parameters present in the
+card can be linked; the relations are scan inputs, not changes to the
+UFO’s internal parameter definitions. Use at least one <code class="docutils literal notranslate"><span class="pre">scan:</span></code> or
+<code class="docutils literal notranslate"><span class="pre">scanN:</span></code> entry. Standard <code class="docutils literal notranslate"><span class="pre">scanN</span></code> groups retain MadGraph semantics:
 same-number lists advance together; different groups form a Cartesian product.
 Linked entries do not add independent scan dimensions. Their evaluated values
 are written to the summary. A one-element scan is supported.</p>

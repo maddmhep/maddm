@@ -45,6 +45,7 @@
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/sg-tags.js?v=d80f6fa4"></script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'tutorial_and_examples/plot_direct_detection';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.24.0';
@@ -58,7 +59,7 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Indirect detection" href="../indirect_detection.html" />
-    <link rel="prev" title="Antiproton likelihood from partial rates" href="check_ams02_pbar.html" />
+    <link rel="prev" title="Indirect Detection Tutorial" href="plot_indirect_detection.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="color-scheme" content="light dark"/>
   <meta name="docsearch:language" content="en"/>
@@ -418,7 +419,6 @@
 <li class="toctree-l1"><a class="reference internal" href="relic_density.html">Relic Density Computation in MadDM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
 <li class="toctree-l1"><a class="reference internal" href="plot_indirect_detection.html">Indirect Detection Tutorial</a></li>
-<li class="toctree-l1"><a class="reference internal" href="check_ams02_pbar.html">Antiproton likelihood from partial rates</a></li>
 <li class="toctree-l1 current active"><a aria-current="page" class="current reference internal" href="#">Direct Detection Tutorial</a></li>
 </ul>
 </div>
@@ -488,11 +488,11 @@ to download the full example code.</p>
 <section class="sphx-glr-example-title" id="direct-detection-tutorial">
 <span id="sphx-glr-tutorial-and-examples-plot-direct-detection-py"></span><h1>Direct Detection Tutorial<a class="headerlink" href="#direct-detection-tutorial" title="Link to this heading">#</a></h1>
 <p>Compute direct detection signal and limits for both <strong>nuclear</strong> and <strong>electronic</strong> recoils.</p>
-<section id="nuclear-recoils-with-rapidd-and-lz-likelihood">
-<h2>1. Nuclear Recoils with RAPIDD and LZ likelihood<a class="headerlink" href="#nuclear-recoils-with-rapidd-and-lz-likelihood" title="Link to this heading">#</a></h2>
-<p>For nuclear recoil interactions, MadDM makes use of the <a class="reference external" href="https://github.com/cheekyparticle/RAPIDD_for_DM/tree/main">RAPIDD</a> module to efficiently evaluate
-differential recoil spectra and likelihoods. It uses the <strong>LZ experiment likelihood</strong> to
-place constraints on DM-nucleus interactions, while also comparing the cross section against experimental limits from Pico60.</p>
+<section id="nuclear-recoils-with-rapidd-and-lz-pico-60-limits">
+<h2>1. Nuclear Recoils with RAPIDD and LZ/PICO-60 limits<a class="headerlink" href="#nuclear-recoils-with-rapidd-and-lz-pico-60-limits" title="Link to this heading">#</a></h2>
+<p>For nuclear recoil interactions, MadDM compares the spin-independent and spin-dependent DM-nucleon cross sections with the
+upper limits from <strong>LZ 2024</strong> and <strong>PICO-60</strong> (and, with <code class="docutils literal notranslate"><span class="pre">xlzd_limits</span></code> in the <code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code>, with the projected XLZD sensitivity),
+and uses the <a class="reference external" href="https://github.com/cheekyparticle/RAPIDD_for_DM">RAPIDD</a> module to evaluate the differential recoil spectra.</p>
 <section id="example-with-a-simplified-scalar-mediated-dm-model">
 <h3>Example with a simplified scalar-mediated DM model<a class="headerlink" href="#example-with-a-simplified-scalar-mediated-dm-model" title="Link to this heading">#</a></h3>
 <p>First, import the model and define the dark matter particle. Generally, for DMsimp models, you can choose between Xr (real scalar DM), Xc (complex scalar DM)
@@ -521,32 +521,46 @@ and you will receive results for both types of interactions considered separatel
 <p>You can set the MadDM parameters (such as the halo parameters, recoil energy range and much more) in the <code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code> by pressing 8,
 or by editing the file directly in the process folder (in this case <code class="docutils literal notranslate"><span class="pre">DD_NR_spin0/Cards/maddm_card.dat</span></code>).</p>
 <p>Once you are all set, you can run the process by pressing Enter. This module will first evaluate the DM-nucleon cross section and compare it against the experimental limits
-from LZ and Pico60.
-Next, it will use RAPIDD to compute the differential nuclear recoil rates, and from those, it will evaluate the p-values using the likelihoods derived from the most recent LZ data.
+from LZ 2024 and PICO-60.
+Next, with <code class="docutils literal notranslate"><span class="pre">direct_mode</span> <span class="pre">=</span> <span class="pre">limit_and_rates</span></code>, it will use RAPIDD to compute the differential nuclear recoil rates.
 After running the above commands, the output will look like:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>INFO: MadDM Results
+INFO: Local Galactic halo (SHM): rho = 0.3 GeV/cm^3, vMP = 238 km/s, vescape = 544 km/s
 INFO:
 ****** Direct detection [cm^2]:
-INFO: SigmaN_SI_p         All DM = 2.46e-47       ALLOWED           LZ2024 ul        = 6.48e-47
-INFO: SigmaN_SI_n         All DM = 2.46e-47       ALLOWED           LZ2024 ul        = 6.48e-47
-INFO: SigmaN_SD_p         All DM = 0.00e+00       ALLOWED           Pico60 (2019) ul = 4.16e-41
-INFO: SigmaN_SD_n         All DM = 0.00e+00       ALLOWED           LZ2024 ul        = 7.59e-42
+INFO: SigmaN_SI_p         All DM = 6.16e-48       ALLOWED     LZ2024 ul        = 6.48e-47
+INFO: SigmaN_SI_n         All DM = 6.14e-48       ALLOWED     LZ2024 ul        = 6.48e-47
+INFO: SigmaN_SD_p         All DM = 0.00e+00       ALLOWED     Pico60 (2019) ul = 4.16e-41
+INFO: SigmaN_SD_p_LZ      All DM = 0.00e+00       ALLOWED     LZ2024 ul        = 2.33e-40
+INFO: SigmaN_SD_n         All DM = 0.00e+00       ALLOWED     LZ2024 ul        = 7.59e-42
+INFO: Neutrino fog (xenon): reference boundary, NOT an exclusion limit. https://github.com/cajohare/NeutrinoFog; C. A. J. O'Hare, Phys. Rev. Lett. 127, 251802 (2021), arXiv:2109.03116
+INFO: Rescaled from rho = 0.3 GeV/cm^3 (published tables) to rhoDM = 0.3 GeV/cm^3.
+INFO: neutrino_fog_SI = 4.3291631542e-48 # cm^2; -1 means unavailable
+INFO: neutrino_fog_SD_p = 1.9474339879e-40 # cm^2; -1 means unavailable
+INFO: neutrino_fog_SD_n = 1.0584409940e-42 # cm^2; -1 means unavailable
+INFO: Recoil spectra: dRdE_nucleon.dat in /Users/yourname/yourprocessfolder/DD_NR_spin0/output/run_01
 INFO:
 INFO: Results written in: /Users/yourname/yourprocessfolder/DD_NR_spin0/output/run_01/MadDM_results.txt
 quit
 </pre></div>
 </div>
-<p>where <code class="docutils literal notranslate"><span class="pre">All</span> <span class="pre">DM</span></code> refers to the reference DM-electron cross section in case the DM particle contributes to the entire dark matter density of the universe.
-In the second column, you can see the upper limits (ul) from the LZ2024 and Pico60 experiments, which are compared against the computed cross sections,
-returning the status of the model (ALLOWED or NOT ALLOWED).</p>
+<p>where <code class="docutils literal notranslate"><span class="pre">All</span> <span class="pre">DM</span></code> refers to the DM-nucleon cross sections in case the DM particle contributes to the entire dark matter density of the universe
+(default model parameters, with a DM mass of 10 GeV).
+In the last column, you can see the upper limits (ul) from the LZ 2024 and PICO-60 experiments, which are compared against the computed cross sections,
+returning the status of the model (ALLOWED or NOT ALLOWED).
+The xenon neutrino fog is a reference boundary, not an exclusion limit. <code class="docutils literal notranslate"><span class="pre">DD_limits.pdf</span></code> in the run folder shows the cross sections
+of the run against the limits and the neutrino fog as a function of the DM mass.</p>
 </section>
 <section id="results">
 <h3>Results<a class="headerlink" href="#results" title="Link to this heading">#</a></h3>
 <p>The results of each run will be stored inside the process folder you created, whose path is shown in the last line of the output.
 Each time you launch the same process, MadDM creates a new folder <code class="docutils literal notranslate"><span class="pre">output/run_XX</span></code> within the process folder.</p>
 <p>In this folder, you will find the cross sections in a file named <code class="docutils literal notranslate"><span class="pre">MadDM_results.txt</span></code>.</p>
-<p>You can also find the differential recoil rates in the <code class="docutils literal notranslate"><span class="pre">DDrates.txt</span></code> file, which contains the differential recoil spectra vs energy
-for DM-nucleon interactions in Xenon, Argon and Germanium targets. Below is an example of how to plot the differential rates:</p>
+<p>With <code class="docutils literal notranslate"><span class="pre">direct_mode</span> <span class="pre">=</span> <span class="pre">limit_and_rates</span></code> (the default; type <code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">limit</span></code> to compute only the exclusion limits) you can also find
+the differential recoil rates in the <code class="docutils literal notranslate"><span class="pre">dRdE_nucleon.dat</span></code> file, which contains the differential recoil spectra vs energy
+for DM-nucleon interactions, one column per target chosen with <code class="docutils literal notranslate"><span class="pre">direct_nucleon_targets</span></code> in the <code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code>
+(one or more of <code class="docutils literal notranslate"><span class="pre">xe</span></code>, <code class="docutils literal notranslate"><span class="pre">ge</span></code>, <code class="docutils literal notranslate"><span class="pre">ar</span></code>; default <code class="docutils literal notranslate"><span class="pre">xe</span></code>). The file used below was produced with <code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">direct_nucleon_targets</span> <span class="pre">xe,</span> <span class="pre">ge,</span> <span class="pre">ar</span></code>.
+Below is an example of how to plot the differential rates:</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span class="w">
 </span></pre></div></div>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib</span><span class="nn">.</span><span class="nn">pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span><span class="w">
@@ -554,60 +568,38 @@ for DM-nucleon interactions in Xenon, Argon and Germanium targets. Below is an e
 </span><span class="w">
 </span><span class="k">def</span><span class="w"> </span><span class="nf">plot_dd_rates</span><span class="p">(</span><span class="n">dd_file</span><span class="p">)</span><span class="p">:</span><span class="w">
 </span><span class="w">    </span><span class="sd">&quot;&quot;&quot;
-    Plots direct detection rates for different materials from DDrates.txt.
+    Plots the direct detection rates of all the targets in dRdE_nucleon.dat.
 
     Parameters:
-    dd_file (str): Path to the DDrates.txt file.
+    dd_file (str): Path to the dRdE_nucleon.dat file.
     &quot;&quot;&quot;</span><span class="w">
-</span>    <span class="c1"># Lists to store data</span><span class="w">
-</span>    <span class="n">Er_vals</span> <span class="o">=</span> <span class="p">[</span><span class="p">]</span><span class="w">
-</span>    <span class="n">Xe_vals</span> <span class="o">=</span> <span class="p">[</span><span class="p">]</span><span class="w">
-</span>    <span class="n">Ar_vals</span> <span class="o">=</span> <span class="p">[</span><span class="p">]</span><span class="w">
-</span>    <span class="n">Ge_vals</span> <span class="o">=</span> <span class="p">[</span><span class="p">]</span><span class="w">
-</span><span class="w">
-</span>    <span class="c1"># Read the data file</span><span class="w">
-</span>    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">dd_file</span><span class="p">,</span> <span class="s1">'</span><span class="s1">r</span><span class="s1">'</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span><span class="w">
-</span>        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">file</span><span class="p">:</span><span class="w">
-</span>            <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">'</span><span class="s1">#</span><span class="s1">'</span><span class="p">)</span><span class="p">:</span><span class="w">
-</span>                <span class="k">continue</span>  <span class="c1"># skip header lines</span><span class="w">
-</span>            <span class="n">parts</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="p">)</span><span class="w">
-</span>            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">4</span><span class="p">:</span><span class="w">
-</span>                <span class="k">continue</span>  <span class="c1"># skip malformed lines</span><span class="w">
-</span>            <span class="n">Er</span><span class="p">,</span> <span class="n">drde_Xe</span><span class="p">,</span> <span class="n">drde_Ar</span><span class="p">,</span> <span class="n">drde_Ge</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">parts</span><span class="p">)</span><span class="w">
-</span>            <span class="n">Er_vals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Er</span><span class="p">)</span><span class="w">
-</span>            <span class="n">Xe_vals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">drde_Xe</span><span class="p">)</span><span class="w">
-</span>            <span class="n">Ar_vals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">drde_Ar</span><span class="p">)</span><span class="w">
-</span>            <span class="n">Ge_vals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">drde_Ge</span><span class="p">)</span><span class="w">
-</span><span class="w">
-</span>    <span class="c1"># Convert lists to numpy arrays</span><span class="w">
-</span>    <span class="n">Er_vals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">Er_vals</span><span class="p">)</span><span class="w">
-</span>    <span class="n">Xe_vals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">Xe_vals</span><span class="p">)</span><span class="w">
-</span>    <span class="n">Ar_vals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">Ar_vals</span><span class="p">)</span><span class="w">
-</span>    <span class="n">Ge_vals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">Ge_vals</span><span class="p">)</span><span class="w">
+</span>    <span class="c1"># the header gives the targets: E_R [keV] drde_&lt;target&gt; [events/kg/day/keV] ...</span><span class="w">
+</span>    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">dd_file</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span><span class="w">
+</span>        <span class="n">targets</span> <span class="o">=</span> <span class="p">[</span><span class="n">name</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="s1">'</span><span class="s1">drde_</span><span class="s1">'</span><span class="p">)</span><span class="p">:</span><span class="p">]</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">file</span><span class="o">.</span><span class="n">readline</span><span class="p">(</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="p">)</span> <span class="k">if</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">'</span><span class="s1">drde_</span><span class="s1">'</span><span class="p">)</span><span class="p">]</span><span class="w">
+</span>    <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">dd_file</span><span class="p">)</span><span class="w">
 </span><span class="w">
 </span>    <span class="c1"># Plotting</span><span class="w">
 </span>    <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">6</span><span class="p">)</span><span class="p">)</span><span class="w">
-</span>    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">Er_vals</span><span class="p">,</span> <span class="n">Xe_vals</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">'</span><span class="s1">Xe</span><span class="s1">'</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">'</span><span class="s1">blue</span><span class="s1">'</span><span class="p">)</span><span class="w">
-</span>    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">Er_vals</span><span class="p">,</span> <span class="n">Ar_vals</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">'</span><span class="s1">Ar</span><span class="s1">'</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">'</span><span class="s1">green</span><span class="s1">'</span><span class="p">)</span><span class="w">
-</span>    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">Er_vals</span><span class="p">,</span> <span class="n">Ge_vals</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">'</span><span class="s1">Ge</span><span class="s1">'</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">'</span><span class="s1">red</span><span class="s1">'</span><span class="p">)</span><span class="w">
+</span>    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">target</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">targets</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="n">rates</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="p">:</span><span class="p">,</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span><span class="w">
+</span>        <span class="n">mask</span> <span class="o">=</span> <span class="n">rates</span> <span class="o">&gt;</span> <span class="mi">0</span>  <span class="c1"># the rate vanishes above the kinematic endpoint of each target</span><span class="w">
+</span>        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="p">,</span> <span class="n">rates</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">target</span><span class="p">)</span><span class="w">
 </span>    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">'</span><span class="s1">Recoil Energy $E_R$ [keV]</span><span class="s1">'</span><span class="p">)</span><span class="w">
 </span>    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">'</span><span class="s1">dR/dE [$</span><span class="se">\\</span><span class="s1">mathrm</span><span class="s1">{</span><span class="s1">events / kg / day / keV}$]</span><span class="s1">'</span><span class="p">)</span><span class="w">
 </span>    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">'</span><span class="s1">DD nucleon Differential Rates</span><span class="s1">'</span><span class="p">)</span><span class="w">
 </span>    <span class="n">plt</span><span class="o">.</span><span class="n">yscale</span><span class="p">(</span><span class="s1">'</span><span class="s1">log</span><span class="s1">'</span><span class="p">)</span>  <span class="c1"># y-axis in log scale</span><span class="w">
-</span>    <span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">20</span><span class="p">)</span><span class="w">
-</span>    <span class="n">plt</span><span class="o">.</span><span class="n">ylim</span><span class="p">(</span><span class="mf">1e-19</span><span class="p">,</span> <span class="mf">1e-15</span><span class="p">)</span>  <span class="c1"># Adjust y-axis limits for better visibility</span><span class="w">
 </span>    <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="p">)</span><span class="w">
 </span>    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="p">)</span><span class="w">
 </span><span class="w">
-</span><span class="n">plot_dd_rates</span><span class="p">(</span><span class="s1">'</span><span class="s1">./plot_data/DDrates.txt</span><span class="s1">'</span><span class="p">)</span><span class="w">
+</span><span class="n">plot_dd_rates</span><span class="p">(</span><span class="s1">'</span><span class="s1">./plot_data/dRdE_nucleon.dat</span><span class="s1">'</span><span class="p">)</span><span class="w">
 </span></pre></div></div>
 <img src="../_images/sphx_glr_plot_direct_detection_001.png" srcset="../_images/sphx_glr_plot_direct_detection_001.png" alt="DD nucleon Differential Rates" class = "sphx-glr-single-img"/></section>
 </section>
-<section id="electronic-recoils-with-xenon10-xenon1t-likelihoods">
-<h2>2. Electronic Recoils with XENON10/XENON1T likelihoods<a class="headerlink" href="#electronic-recoils-with-xenon10-xenon1t-likelihoods" title="Link to this heading">#</a></h2>
-<p>MadDM also supports <strong>electronic recoil</strong> constraints, currently using the <strong>XENON10</strong> and <strong>XENON1T</strong>
-likelihoods. These are particularly relevant for models with sub-GeV DM that interact with electrons.
-With this module you can compute the DM-electron recoil rates and constrain the Lagrangian parameters, or the cross section, using experimental data from XENON10 and XENON1T.</p>
+<section id="electronic-recoils-with-xenonnt-and-xenon10-limits">
+<h2>2. Electronic Recoils with XENONnT and XENON10 limits<a class="headerlink" href="#electronic-recoils-with-xenonnt-and-xenon10-limits" title="Link to this heading">#</a></h2>
+<p>MadDM also supports <strong>electronic recoil</strong> constraints: the reference DM-electron cross section is compared with the
+<strong>XENONnT</strong> S2-only upper limit and with the <strong>XENON10</strong> S2-only data. These are particularly relevant for models with sub-GeV DM that interact with electrons.
+With this module you can compute the DM-electron recoil rates and constrain the Lagrangian parameters, or the cross section.</p>
 <section id="id1">
 <h3>Example with a simplified scalar-mediated DM model<a class="headerlink" href="#id1" title="Link to this heading">#</a></h3>
 <p>First, import the model and define the dark matter particle. Generally, for DMsimp models, you can choose between Xr (real scalar DM), Xc (complex scalar DM)
@@ -634,65 +626,61 @@ and you will receive results for both types of interactions considered separatel
 or by editing the file directly in the process folder (in this case <code class="docutils literal notranslate"><span class="pre">DD_ER_spin0/Cards/maddm_card.dat</span></code>).</p>
 <p>Note that in the <code class="docutils literal notranslate"><span class="pre">direct_electron</span></code> module, if the DM particle has a mass above 1 GeV, it will be ignored by default.
 To change this behavior, set <code class="docutils literal notranslate"><span class="pre">direct_electron_mode</span></code> to <code class="docutils literal notranslate"><span class="pre">always</span></code> in the <code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code> file, which you can do by pressing 8 after launching the process.</p>
-<p>Once you are all set, you can run the process by pressing Enter. This module will evaluate the DM-electron recoil rates and constrain them using XENON10 + XENON1T data.</p>
+<p>Once you are all set, you can run the process by pressing Enter. This module will compute the reference cross section <span class="math notranslate nohighlight">\(\bar\sigma_e\)</span>
+and compare it with the XENONnT limit, both as published and rescaled to the RAPIDD atomic responses; with <code class="docutils literal notranslate"><span class="pre">direct_mode</span> <span class="pre">=</span> <span class="pre">limit_and_rates</span></code>
+it will also compute the DM-electron recoil rates and compare them with the XENON10 S2-only data.</p>
 <p>After running the above commands, the output will look like:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>INFO: compilation done
-INFO: MadDM Results
-INFO: Sigma_e             All DM = 3.23e-43       ALLOWED       Xenon10 p_val    = 1.00e+00
-INFO: Sigma_e             All DM = 3.23e-43       ALLOWED       Xenon1ton p_val  = 1.00e+00
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>INFO: MadDM Results
+INFO: Local Galactic halo (SHM): rho = 0.3 GeV/cm^3, vMP = 238 km/s, vescape = 544 km/s
+INFO:
+****** Direct detection - electron recoil [cm^2]:
+INFO: Sigma_e             All DM = 3.23e-43       ALLOWED     XENONnT ul       = 1.54e-41
+INFO: Sigma_e (rescaled)  All DM = 3.23e-43       ALLOWED     XENONnT ul       = 3.01e-41
+INFO: Sigma_e             All DM = 3.23e-43       ALLOWED     XENON10 ul       = 4.73e-38
+INFO: Recoil spectra: dRdE_electron.dat, dRdS2_electron_XENON10.dat, dRdS2_electron_XENON1T.dat in /Users/yourname/yourprocessfolder/DD_ER_spin0/output/run_01
 INFO:
 INFO: Results written in: /Users/yourname/yourprocessfolder/DD_ER_spin0/output/run_01/MadDM_results.txt
 </pre></div>
 </div>
 <p>where <code class="docutils literal notranslate"><span class="pre">All</span> <span class="pre">DM</span></code> refers to the reference DM-electron cross section in case the DM particle contributes to the entire dark matter density of the universe,
-<code class="docutils literal notranslate"><span class="pre">ALLOWED</span></code> indicates that the model is consistent with the experimental limits from XENON10 and XENON1T. You can also see the p-values for the likelihoods used in the analysis.</p>
+<code class="docutils literal notranslate"><span class="pre">ALLOWED</span></code> indicates that the model is consistent with the corresponding upper limit, shown in the last column. The XENON10 limit is the cross section
+for which the p-value of the most constraining S2 bin falls below 0.1; the p-value itself is written in <code class="docutils literal notranslate"><span class="pre">MadDM_results.txt</span></code>.</p>
 </section>
 <section id="id2">
 <h3>Results<a class="headerlink" href="#id2" title="Link to this heading">#</a></h3>
 <p>The results of each run will be stored inside the process folder you created, whose path is shown in the last line of the output.
 Each time you launch the same process, MadDM creates a new folder <code class="docutils literal notranslate"><span class="pre">output/run_XX</span></code> within the process folder.</p>
 <p>In this folder, you will find the results, such as the cross section and p-values, in a file named <code class="docutils literal notranslate"><span class="pre">MadDM_results.txt</span></code>.</p>
-<p>You can find all the output produced by the Fortran module of MadDM, such as signal, background and binning, in the <code class="docutils literal notranslate"><span class="pre">maddm.out</span></code> file.</p>
-<p>You can also find the differential recoil spectra vs energy or vs scintillation signal. The rates produced with this module are labeled with the suffix <code class="docutils literal notranslate"><span class="pre">e_recoil</span></code> at the end.
+<p>The raw output of the Fortran module of MadDM, such as the DM mass and the effective DM-electron couplings, is in the <code class="docutils literal notranslate"><span class="pre">maddm.out</span></code> file,
+and the XENON10 signal in each S2 bin is in <code class="docutils literal notranslate"><span class="pre">signal_e_recoil.dat</span></code>.</p>
+<p>With <code class="docutils literal notranslate"><span class="pre">direct_mode</span> <span class="pre">=</span> <span class="pre">limit_and_rates</span></code> (the default) you can also find the differential recoil spectra vs energy in <code class="docutils literal notranslate"><span class="pre">dRdE_electron.dat</span></code>
+(for each target of <code class="docutils literal notranslate"><span class="pre">direct_electron_targets</span></code>, <code class="docutils literal notranslate"><span class="pre">xe</span></code> and/or <code class="docutils literal notranslate"><span class="pre">ar</span></code>, the rate summed over the shells and then the rate of each shell)
+and, for Xenon, the number of events vs scintillation signal in <code class="docutils literal notranslate"><span class="pre">dRdS2_electron_XENON10.dat</span></code> and <code class="docutils literal notranslate"><span class="pre">dRdS2_electron_XENON1T.dat</span></code>.
+With <code class="docutils literal notranslate"><span class="pre">direct_mode</span> <span class="pre">=</span> <span class="pre">limit</span></code> (<code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">limit</span></code>) only sigma_e and the XENONnT limit are computed: the XENON10 and XENON1T results need the Xenon rates.
+The files used below were produced with <code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">direct_electron_targets</span> <span class="pre">xe,</span> <span class="pre">ar</span></code>.
 Below is an example of how to plot the differential rates and number of events vs scintillation signal for electronic recoils:</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span><span class="w">
 </span><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib</span><span class="nn">.</span><span class="nn">pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span><span class="w">
 </span><span class="w">
 </span><span class="k">def</span><span class="w"> </span><span class="nf">plot_dRdE_er</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span><span class="p">:</span><span class="w">
 </span><span class="w">    </span><span class="sd">&quot;&quot;&quot;
-    Read and plot the dR/dE spectrum from the given file.
+    Read and plot the dR/dE spectrum (all shells) of each target in dRdE_electron.dat.
 
     Parameters:
-    file_path (str): Path to the dRdE file.
+    file_path (str): Path to the dRdE_electron.dat file.
     &quot;&quot;&quot;</span><span class="w">
-</span>    <span class="n">energies</span> <span class="o">=</span> <span class="p">[</span><span class="p">]</span><span class="w">
-</span>    <span class="n">rates</span> <span class="o">=</span> <span class="p">[</span><span class="p">]</span><span class="w">
+</span>    <span class="c1"># header: k [keV] E [keV] drde_&lt;target&gt; [events/kg/day/keV] ... drde_&lt;target&gt;_&lt;shell&gt; ...</span><span class="w">
+</span>    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span><span class="w">
+</span>        <span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="n">name</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">file</span><span class="o">.</span><span class="n">readline</span><span class="p">(</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="p">)</span> <span class="k">if</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">'</span><span class="s1">drde_</span><span class="s1">'</span><span class="p">)</span><span class="p">]</span><span class="w">
+</span>    <span class="n">targets</span> <span class="o">=</span> <span class="p">[</span><span class="n">name</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="s1">'</span><span class="s1">drde_</span><span class="s1">'</span><span class="p">)</span><span class="p">:</span><span class="p">]</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">names</span> <span class="k">if</span> <span class="s1">'</span><span class="s1">_</span><span class="s1">'</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">name</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="s1">'</span><span class="s1">drde_</span><span class="s1">'</span><span class="p">)</span><span class="p">:</span><span class="p">]</span><span class="p">]</span><span class="w">
+</span>    <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span><span class="w">
 </span><span class="w">
-</span>    <span class="c1"># Read file</span><span class="w">
-</span>    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="s1">'</span><span class="s1">r</span><span class="s1">'</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span><span class="w">
-</span>        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">file</span><span class="p">:</span><span class="w">
-</span>            <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">'</span><span class="s1">#</span><span class="s1">'</span><span class="p">)</span><span class="p">:</span><span class="w">
-</span>                <span class="k">continue</span>  <span class="c1"># skip header lines</span><span class="w">
-</span>            <span class="n">parts</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="p">)</span><span class="w">
-</span>            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span><span class="w">
-</span>                <span class="k">continue</span>  <span class="c1"># skip malformed lines</span><span class="w">
-</span>            <span class="c1"># Extract Energy and dR/dE</span><span class="w">
-</span>            <span class="n">energy</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="p">)</span>  <span class="c1"># second column: Energy (keV)</span><span class="w">
-</span>            <span class="n">rate</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="p">)</span>    <span class="c1"># third column: dR/dE</span><span class="w">
-</span>            <span class="n">energies</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">energy</span><span class="p">)</span><span class="w">
-</span>            <span class="n">rates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rate</span><span class="p">)</span><span class="w">
-</span><span class="w">
-</span>    <span class="n">energies</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">energies</span><span class="p">)</span><span class="w">
-</span>    <span class="n">rates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">rates</span><span class="p">)</span><span class="w">
-</span><span class="w">
-</span>    <span class="c1"># Apply mask to exclude points with rate &lt;= 0 (if any)</span><span class="w">
-</span>    <span class="n">mask</span> <span class="o">=</span> <span class="n">rates</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="w">
-</span>    <span class="n">energies</span> <span class="o">=</span> <span class="n">energies</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span><span class="w">
-</span>    <span class="n">rates</span> <span class="o">=</span> <span class="n">rates</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span><span class="w">
-</span><span class="w">
-</span>    <span class="c1"># Plot</span><span class="w">
+</span>    <span class="c1"># Plot (points with rate &lt;= 0 are not shown on the log scale)</span><span class="w">
 </span>    <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span><span class="p">)</span><span class="w">
-</span>    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">energies</span><span class="p">,</span> <span class="n">rates</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">'</span><span class="s1">-</span><span class="s1">'</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">'</span><span class="s1">b</span><span class="s1">'</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">'</span><span class="s1">dR/dE</span><span class="s1">'</span><span class="p">)</span><span class="w">
+</span>    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">target</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">targets</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="n">rates</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="p">:</span><span class="p">,</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">i</span><span class="p">]</span><span class="w">
+</span>        <span class="n">mask</span> <span class="o">=</span> <span class="n">rates</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="w">
+</span>        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="p">,</span> <span class="n">rates</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">'</span><span class="s1">-</span><span class="s1">'</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">'</span><span class="s1">dR/dE </span><span class="s1">'</span> <span class="o">+</span> <span class="n">target</span><span class="p">)</span><span class="w">
 </span>    <span class="n">plt</span><span class="o">.</span><span class="n">yscale</span><span class="p">(</span><span class="s1">'</span><span class="s1">log</span><span class="s1">'</span><span class="p">)</span><span class="w">
 </span>    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">Recoil Energy (keV)</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
 </span>    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">dR/dE [events/kg/day/keV]</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
@@ -700,62 +688,21 @@ Below is an example of how to plot the differential rates and number of events v
 </span>    <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="p">)</span><span class="w">
 </span>    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="p">)</span><span class="w">
 </span><span class="w">
-</span><span class="n">plot_dRdE_er</span><span class="p">(</span><span class="s1">'</span><span class="s1">./plot_data/dRdE_e_recoil.dat</span><span class="s1">'</span><span class="p">)</span><span class="w">
+</span><span class="n">plot_dRdE_er</span><span class="p">(</span><span class="s1">'</span><span class="s1">./plot_data/dRdE_electron.dat</span><span class="s1">'</span><span class="p">)</span><span class="w">
 </span></pre></div></div>
 <img src="../_images/sphx_glr_plot_direct_detection_002.png" srcset="../_images/sphx_glr_plot_direct_detection_002.png" alt="Differential Recoil Rate" class = "sphx-glr-single-img"/><p>Plot the number of events vs scintillation signal for Electronic Recoils</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span><span class="w">
 </span><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib</span><span class="nn">.</span><span class="nn">pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span><span class="w">
 </span><span class="w">
-</span><span class="k">def</span><span class="w"> </span><span class="nf">plot_dRdS2_er</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span><span class="k">def</span><span class="w"> </span><span class="nf">plot_dRdS2_er</span><span class="p">(</span><span class="n">xenon10_file</span><span class="p">,</span> <span class="n">xenon1t_file</span><span class="p">)</span><span class="p">:</span><span class="w">
 </span><span class="w">    </span><span class="sd">&quot;&quot;&quot;
-    Read and plot the dR/dS2 spectra from Xenon10 and Xenon1T files.
+    Read and plot the dN/dS2 spectra (second column) from the XENON10 and XENON1T files.
     &quot;&quot;&quot;</span><span class="w">
-</span>    <span class="c1"># Xenon10</span><span class="w">
-</span>    <span class="n">s2_vals_10</span> <span class="o">=</span> <span class="p">[</span><span class="p">]</span><span class="w">
-</span>    <span class="n">rates_10</span> <span class="o">=</span> <span class="p">[</span><span class="p">]</span><span class="w">
-</span>    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="s1">'</span><span class="s1">r</span><span class="s1">'</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span><span class="w">
-</span>        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">file</span><span class="p">:</span><span class="w">
-</span>            <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">'</span><span class="s1">#</span><span class="s1">'</span><span class="p">)</span><span class="p">:</span><span class="w">
-</span>                <span class="k">continue</span><span class="w">
-</span>            <span class="n">parts</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="p">)</span><span class="w">
-</span>            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span><span class="w">
-</span>                <span class="k">continue</span><span class="w">
-</span>            <span class="n">s2</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="p">)</span><span class="w">
-</span>            <span class="n">rate</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="p">)</span><span class="w">
-</span>            <span class="n">s2_vals_10</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">s2</span><span class="p">)</span><span class="w">
-</span>            <span class="n">rates_10</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rate</span><span class="p">)</span><span class="w">
-</span><span class="w">
-</span>    <span class="n">s2_vals_10</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">s2_vals_10</span><span class="p">)</span><span class="w">
-</span>    <span class="n">rates_10</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">rates_10</span><span class="p">)</span><span class="w">
-</span>    <span class="n">mask_10</span> <span class="o">=</span> <span class="n">rates_10</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="w">
-</span>    <span class="n">s2_vals_10</span> <span class="o">=</span> <span class="n">s2_vals_10</span><span class="p">[</span><span class="n">mask_10</span><span class="p">]</span><span class="w">
-</span>    <span class="n">rates_10</span> <span class="o">=</span> <span class="n">rates_10</span><span class="p">[</span><span class="n">mask_10</span><span class="p">]</span><span class="w">
-</span><span class="w">
-</span>    <span class="c1"># Xenon1T</span><span class="w">
-</span>    <span class="n">s2_vals_1t</span> <span class="o">=</span> <span class="p">[</span><span class="p">]</span><span class="w">
-</span>    <span class="n">rates_1t</span> <span class="o">=</span> <span class="p">[</span><span class="p">]</span><span class="w">
-</span>    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">./plot_data/dRdS2_Xenon1T_e_recoil.dat</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s1">'</span><span class="s1">r</span><span class="s1">'</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span><span class="w">
-</span>        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">file</span><span class="p">:</span><span class="w">
-</span>            <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">'</span><span class="s1">#</span><span class="s1">'</span><span class="p">)</span><span class="p">:</span><span class="w">
-</span>                <span class="k">continue</span><span class="w">
-</span>            <span class="n">parts</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="p">)</span><span class="w">
-</span>            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span><span class="w">
-</span>                <span class="k">continue</span><span class="w">
-</span>            <span class="n">s2</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="p">)</span><span class="w">
-</span>            <span class="n">rate</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="p">)</span><span class="w">
-</span>            <span class="n">s2_vals_1t</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">s2</span><span class="p">)</span><span class="w">
-</span>            <span class="n">rates_1t</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rate</span><span class="p">)</span><span class="w">
-</span><span class="w">
-</span>    <span class="n">s2_vals_1t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">s2_vals_1t</span><span class="p">)</span><span class="w">
-</span>    <span class="n">rates_1t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">rates_1t</span><span class="p">)</span><span class="w">
-</span>    <span class="n">mask_1t</span> <span class="o">=</span> <span class="n">rates_1t</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="w">
-</span>    <span class="n">s2_vals_1t</span> <span class="o">=</span> <span class="n">s2_vals_1t</span><span class="p">[</span><span class="n">mask_1t</span><span class="p">]</span><span class="w">
-</span>    <span class="n">rates_1t</span> <span class="o">=</span> <span class="n">rates_1t</span><span class="p">[</span><span class="n">mask_1t</span><span class="p">]</span><span class="w">
-</span><span class="w">
-</span>    <span class="c1"># Plot</span><span class="w">
 </span>    <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span><span class="p">)</span><span class="w">
-</span>    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">s2_vals_10</span><span class="p">,</span> <span class="n">rates_10</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">'</span><span class="s1">-</span><span class="s1">'</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">'</span><span class="s1">red</span><span class="s1">'</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">'</span><span class="s1">Xenon10</span><span class="s1">'</span><span class="p">)</span><span class="w">
-</span>    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">s2_vals_1t</span><span class="p">,</span> <span class="n">rates_1t</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">'</span><span class="s1">-</span><span class="s1">'</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">'</span><span class="s1">blue</span><span class="s1">'</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">'</span><span class="s1">Xenon1T</span><span class="s1">'</span><span class="p">)</span><span class="w">
+</span>    <span class="k">for</span> <span class="n">path</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="n">color</span> <span class="ow">in</span> <span class="p">(</span><span class="p">(</span><span class="n">xenon10_file</span><span class="p">,</span> <span class="s1">'</span><span class="s1">Xenon10</span><span class="s1">'</span><span class="p">,</span> <span class="s1">'</span><span class="s1">red</span><span class="s1">'</span><span class="p">)</span><span class="p">,</span> <span class="p">(</span><span class="n">xenon1t_file</span><span class="p">,</span> <span class="s1">'</span><span class="s1">Xenon1T</span><span class="s1">'</span><span class="p">,</span> <span class="s1">'</span><span class="s1">blue</span><span class="s1">'</span><span class="p">)</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="n">s2</span><span class="p">,</span> <span class="n">rates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">usecols</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span><span class="p">)</span><span class="o">.</span><span class="n">T</span><span class="w">
+</span>        <span class="n">mask</span> <span class="o">=</span> <span class="n">rates</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="w">
+</span>        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">s2</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span><span class="p">,</span> <span class="n">rates</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">'</span><span class="s1">-</span><span class="s1">'</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">)</span><span class="w">
 </span>    <span class="n">plt</span><span class="o">.</span><span class="n">yscale</span><span class="p">(</span><span class="s1">'</span><span class="s1">log</span><span class="s1">'</span><span class="p">)</span><span class="w">
 </span>    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">S2</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
 </span>    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">dN/dS2 [events]</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
@@ -764,14 +711,14 @@ Below is an example of how to plot the differential rates and number of events v
 </span>    <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="p">)</span><span class="w">
 </span>    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="p">)</span><span class="w">
 </span><span class="w">
-</span><span class="n">plot_dRdS2_er</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">./plot_data/dRdS2_Xenon10_e_recoil.dat</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span><span class="n">plot_dRdS2_er</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">./plot_data/dRdS2_electron_XENON10.dat</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s2">./plot_data/dRdS2_electron_XENON1T.dat</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
 </span></pre></div></div>
 <img src="../_images/sphx_glr_plot_direct_detection_003.png" srcset="../_images/sphx_glr_plot_direct_detection_003.png" alt="Differential Rate vs S2" class = "sphx-glr-single-img"/><section id="exiting-maddm">
 <h4>Exiting MadDM<a class="headerlink" href="#exiting-maddm" title="Link to this heading">#</a></h4>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; quit
 </pre></div>
 </div>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 0.463 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 0.260 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorial-and-examples-plot-direct-detection-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../_downloads/ed55d6c604f326f38dd25a849d679b4e/plot_direct_detection.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">plot_direct_detection.ipynb</span></code></a></p>
@@ -800,12 +747,12 @@ Below is an example of how to plot the differential rates and number of events v
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="check_ams02_pbar.html"
+       href="plot_indirect_detection.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Antiproton likelihood from partial rates</p>
+        <p class="prev-next-title">Indirect Detection Tutorial</p>
       </div>
     </a>
     <a class="right-next"
@@ -836,12 +783,12 @@ Below is an example of how to plot the differential rates and number of events v
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#nuclear-recoils-with-rapidd-and-lz-likelihood">1. Nuclear Recoils with RAPIDD and LZ likelihood</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#nuclear-recoils-with-rapidd-and-lz-pico-60-limits">1. Nuclear Recoils with RAPIDD and LZ/PICO-60 limits</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#example-with-a-simplified-scalar-mediated-dm-model">Example with a simplified scalar-mediated DM model</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#results">Results</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#electronic-recoils-with-xenon10-xenon1t-likelihoods">2. Electronic Recoils with XENON10/XENON1T likelihoods</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#electronic-recoils-with-xenonnt-and-xenon10-limits">2. Electronic Recoils with XENONnT and XENON10 limits</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">Example with a simplified scalar-mediated DM model</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id2">Results</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#exiting-maddm">Exiting MadDM</a></li>

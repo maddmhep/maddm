@@ -238,6 +238,8 @@ Optional integration checks require a generated MadGraph run or a
 locally built Pythia or RAPIDD library. See the test skip messages and
 ``python tests/tools/run_shower_regressions.py --help`` for the inputs.
 
+.. _old-process-directories:
+
 Process directories created by older versions
 ---------------------------------------------
 

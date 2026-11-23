@@ -45,6 +45,7 @@
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/sg-tags.js?v=d80f6fa4"></script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'index';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.24.0';
@@ -430,92 +431,103 @@
                   
   <section id="welcome-to-maddm-documentation">
 <h1>Welcome to MadDM documentation<a class="headerlink" href="#welcome-to-maddm-documentation" title="Link to this heading">#</a></h1>
-<p>MadDM is a numerical tool designed to compute dark matter relic abundance, dark matter nucleus scattering rates, and dark matter indirect detection predictions in a generic model. Based on the existing MadGraph 5 architecture, MadDM is easily integrable into any MadGraph collider study. The tool features a simple Python interface, maintaining the user-friendliness characteristic of MadGraph 5 without sacrificing functionality.</p>
+<p>MadDM is a numerical tool designed to compute dark matter relic abundance, dark matter nucleus scattering rates, and dark matter indirect detection predictions in a generic model. Based on the existing MadGraph architecture, MadDM is easily integrable into any MadGraph collider study. The tool features a simple Python interface, maintaining the user-friendliness characteristic of MadGraph without sacrificing functionality.</p>
 <section id="install-maddm">
 <h2>Install MadDM<a class="headerlink" href="#install-maddm" title="Link to this heading">#</a></h2>
-<p><strong>MadDM</strong> is a plugin for <code class="docutils literal notranslate"><span class="pre">MG5_aMC&#64;NLO</span></code> (<strong>MadGraph</strong>).</p>
+<p><strong>MadDM</strong> is a plugin for <code class="docutils literal notranslate"><span class="pre">MG5_aMC&#64;NLO</span></code> and for <code class="docutils literal notranslate"><span class="pre">MadGraph7</span></code> (<strong>MadGraph</strong>).</p>
 <section id="requirements">
 <h3>Requirements<a class="headerlink" href="#requirements" title="Link to this heading">#</a></h3>
 <ul class="simple">
-<li><p>MadGraph v2.9 (LTS version) is required to run the latest version of MadDM, MadGraph v3.* may be supported but more testing is necessary.</p></li>
-<li><p>Python 3.8+</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">gfortran</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">make</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">cmake</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">gsl</span></code></p></li>
-<li><dl class="simple">
-<dt>python package:</dt><dd><ul>
-<li><p><a class="reference external" href="https://numpy.org/">numpy</a></p></li>
-<li><p><a class="reference external" href="https://scipy.org/">scipy</a></p></li>
-<li><p><a class="reference external" href="https://matplotlib.org/">matplotlib</a></p></li>
+<li><p>One of the following MadGraph versions:</p>
+<ul>
+<li><p><a class="reference external" href="https://launchpad.net/mg5amcnlo/+download">MG5_aMC&#64;NLO</a> v3.8.x, with Python 3.8 or higher;</p></li>
+<li><p><a class="reference external" href="https://github.com/MadGraphTeam/MadGraph7/releases">MadGraph7</a> v0.2.x, with Python 3.12 or higher.</p></li>
 </ul>
-</dd>
-</dl>
 </li>
+<li><p>Python packages: <a class="reference external" href="https://numpy.org/">numpy</a>, <a class="reference external" href="https://scipy.org/">scipy</a> and <a class="reference external" href="https://matplotlib.org/">matplotlib</a>.
+Numerical calculations require them; model import, definitions, diagram generation and process export do not.
+Use <code class="docutils literal notranslate"><span class="pre">install</span> <span class="pre">py_requirements</span></code> at the MadDM prompt to install them, together with Meson and Ninja, in the Python environment running MadGraph.
+MadDM uses Conda only for a Conda-managed interpreter, otherwise pip through the running Python; neither is needed if you install the packages yourself.
+For indirect detection, the installation choice is shown before the Pythia 8 setup, without an answer timeout; other numerical launches are checked at the main prompt, and missing packages give an actionable message.</p></li>
+<li><p>A Fortran compiler and <code class="docutils literal notranslate"><span class="pre">make</span></code> for the generated processes.</p></li>
+<li><p>Optional: <a class="reference external" href="https://johannesbuchner.github.io/PyMultiNest/">PyMultiNest</a> with the MultiNest library for nested-sampling scans.</p></li>
 </ul>
-<p>Numerical calculations require these Python packages; model import and diagram
-generation do not. Use <code class="docutils literal notranslate"><span class="pre">install</span> <span class="pre">py_requirements</span></code> to install them with Conda
-or pip in the running Python environment, together with Meson and Ninja for
-precise reweighting. For indirect detection the explicit Python installation
-choice is shown before Pythia8 setup, without an answer timeout. Other numerical
-launches are checked at the main prompt. Manual installation remains available.</p>
+<p>Further tools are installed on demand (see <a class="reference internal" href="#third-party-packages">Third-party packages</a> below):</p>
+<ul class="simple">
+<li><p>Pythia 8 needs a C++ compiler, <code class="docutils literal notranslate"><span class="pre">make</span></code> and <code class="docutils literal notranslate"><span class="pre">rsync</span></code>. MadDM supplies a verified <code class="docutils literal notranslate"><span class="pre">zlib</span></code> archive when needed.</p></li>
+<li><p><a class="reference external" href="https://github.com/cheekyparticle/RAPIDD_for_DM">RAPIDD</a>, used for nuclear and electron recoils, needs Git, CMake 3.13+, a C/C++ toolchain and GNU GSL.
+MadDM uses an existing GSL that CMake can find, or builds GSL under <code class="docutils literal notranslate"><span class="pre">HEPTools</span></code> when it is missing.
+On macOS, build RAPIDD and GSL for the same architecture as the Python running MadDM.</p></li>
+<li><p>With Python 3.12 or later, <code class="docutils literal notranslate"><span class="pre">sigmav_method</span> <span class="pre">=</span> <span class="pre">reshuffling</span></code> requires Meson and the Ninja build executable for NumPy F2PY.
+MadDM reuses executables on <code class="docutils literal notranslate"><span class="pre">PATH</span></code>; they are part of the first numerical indirect-detection dependency check and of <code class="docutils literal notranslate"><span class="pre">install</span> <span class="pre">py_requirements</span></code>.</p></li>
+</ul>
+<p>First-time downloads require internet access.</p>
 </section>
 <section id="installation">
 <h3>Installation<a class="headerlink" href="#installation" title="Link to this heading">#</a></h3>
-<p>Given <strong>MadDM</strong> depends on <strong>MadGraph</strong>, we first need to install the latter, for example, for MadGraph v2.9.24, we need to:</p>
 <ol class="arabic">
-<li><p>Download a tarball for the latest version v2.9.* from the <a class="reference external" href="https://launchpad.net/mg5amcnlo/+download">MadGraph5_aMC&#64;NLO download page</a> (e.g. for v2.9.24 - the link may change for newer/older versions):</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>wget<span class="w"> </span>https://launchpad.net/mg5amcnlo/lts/2.9.x/+download/MG5_aMC_v2.9.24.tar.gz
+<li><p>Download and unpack MadGraph. For <a class="reference external" href="mailto:MG5_aMC&#37;&#52;&#48;NLO">MG5_aMC<span>&#64;</span>NLO</a>, take a v3.8.x tarball from the <a class="reference external" href="https://launchpad.net/mg5amcnlo/+download">download page</a>; for MadGraph7, take a v0.2.x tarball from the <a class="reference external" href="https://github.com/MadGraphTeam/MadGraph7/releases">releases page</a>. For example:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>tar<span class="w"> </span>xzf<span class="w"> </span>MG5_aMC_v3.8.1.tar.gz
+<span class="nb">cd</span><span class="w"> </span>MG5_aMC_v3_8_1
 </pre></div>
 </div>
 </li>
-<li><p>Then unpack the tarball and change into the directory (we use as example the version v2.9.24, but you can use any other version, change the version number accordingly):</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>tar<span class="w"> </span>xzf<span class="w"> </span>MG5_aMC_v2.9.24.tar.gz
-<span class="nb">cd</span><span class="w"> </span>MG5_aMC_v2.9.24
-</pre></div>
-</div>
-</li>
-</ol>
-<ol class="arabic" start="2">
-<li><p>Start MadGraph by running:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>./bin/mg5_aMC
-</pre></div>
-</div>
-</li>
-<li><p>Install MadDM from the MadGraph command line and then quit MadGraph:</p>
+<li><p>Start MadGraph, with <code class="docutils literal notranslate"><span class="pre">./bin/mg5_aMC</span></code> for <a class="reference external" href="mailto:MG5_aMC&#37;&#52;&#48;NLO">MG5_aMC<span>&#64;</span>NLO</a> or <code class="docutils literal notranslate"><span class="pre">./bin/madgraph</span></code> for MadGraph7.</p></li>
+<li><p>Install MadDM from the MadGraph prompt and then quit MadGraph:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MG5_aMC&gt;install maddm
 MG5_aMC&gt;quit
 </pre></div>
 </div>
-</li>
-<li><p>Switch to the development branch of MadDM:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>PLUGIN
-rm<span class="w"> </span>-rf<span class="w"> </span>maddm
-git<span class="w"> </span>clone<span class="w"> </span>https://github.com/maddmhep/maddm.git
-<span class="nb">cd</span><span class="w"> </span>maddm
-git<span class="w"> </span>checkout<span class="w"> </span>dev
-<span class="nb">cd</span><span class="w"> </span>../..
+<p>For a manual installation, for example to use the development branch, move any previous MadDM copy <strong>outside</strong> the MadGraph <code class="docutils literal notranslate"><span class="pre">PLUGIN/</span></code> directory and clone MadDM there instead:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>-b<span class="w"> </span>dev<span class="w"> </span>https://github.com/maddmhep/maddm.git<span class="w"> </span>PLUGIN/maddm
 </pre></div>
 </div>
 </li>
-<li><p>Run MadDM with:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>./bin/maddm.py
+<li><p>Start MadDM from the MadGraph root directory:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>./bin/mg5_aMC<span class="w"> </span>--mode<span class="o">=</span>maddm<span class="w">     </span><span class="c1"># MG5_aMC@NLO</span>
+./bin/madgraph<span class="w"> </span>--mode<span class="o">=</span>maddm<span class="w">    </span><span class="c1"># MadGraph7</span>
 </pre></div>
 </div>
 </li>
-<li><p>Install some prerequisites: <a class="reference external" href="https://pythia.org/">Pythia</a> and the tabulated spectra <a class="reference external" href="https://github.com/ajueid/CosmiXs">CosmiXs</a> (and <a class="reference external" href="http://www.marcocirelli.net/PPPC4DMID.html">PPPC4DMID</a>):</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt;install pythia8
-MadDM&gt;install PPPC4DMID
-</pre></div>
-</div>
-<p>The installation of Pythia 8 will take care of automatically installing also <a class="reference external" href="https://www.lhapdf.org/index.html">LHAPDF</a>, <code class="docutils literal notranslate"><span class="pre">zlib</span></code> and the interface in between MadGraph and Pythia (<code class="docutils literal notranslate"><span class="pre">mg5amc_py8_interface</span></code>), while the command <code class="docutils literal notranslate"><span class="pre">install</span> <span class="pre">PPPC4DMID</span></code> will also install CosmiXs.</p>
-<p>Install <a class="reference external" href="https://github.com/cheekyparticle/RAPIDD_for_DM/tree/maddm">RAPIDD</a> for direct detection. Execute in the maddm repository:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>submodule<span class="w"> </span>update<span class="w"> </span>--init<span class="w"> </span>--recursive
-</pre></div>
-</div>
-</li>
-<li><p>You are now set, have fun!</p></li>
+<li><p>You are now set, have fun! MadDM offers to install the remaining dependencies when a process first needs them (see below).</p></li>
 </ol>
+<p>When updating MadDM, export old processes again under a new directory name and reuse their input cards (see <a class="reference internal" href="indirect_detection.html#old-process-directories"><span class="std std-ref">Process directories created by older versions</span></a>).</p>
+</section>
+<section id="third-party-packages">
+<h3>Third-party packages<a class="headerlink" href="#third-party-packages" title="Link to this heading">#</a></h3>
+<p>The following packages can be installed with the <code class="docutils literal notranslate"><span class="pre">install</span></code> command at the MadDM prompt. Be sure to cite them as indicated during the install phase if you use them.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">install</span> <span class="pre">pythia8</span></code> installs <a class="reference external" href="https://pythia.org/">Pythia 8</a> with the MadGraph installer, together with <a class="reference external" href="https://www.lhapdf.org/index.html">LHAPDF</a>, <code class="docutils literal notranslate"><span class="pre">zlib</span></code> and the MadGraph–Pythia interface (<code class="docutils literal notranslate"><span class="pre">mg5amc_py8_interface</span></code>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">install</span> <span class="pre">cosmixs</span></code> installs the tabulated <a class="reference external" href="https://github.com/ajueid/CosmiXs">CosmiXs</a> source spectra; select them with <code class="docutils literal notranslate"><span class="pre">indirect_flux_source_method</span> <span class="pre">=</span> <span class="pre">CosmiXs</span></code> in the run card.
+On the first indirect generation, MadDM offers to install both Pythia 8 and the CosmiXs source spectra.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">install</span> <span class="pre">RAPIDD</span></code> downloads and compiles RAPIDD. MadDM also offers to do it automatically the first time you generate <code class="docutils literal notranslate"><span class="pre">direct_detection</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">install</span> <span class="pre">cosmixs_flux</span></code> downloads the <a class="reference external" href="https://github.com/CosmiXsPPPC/CosmicRay-flux">CosmiXsPPPC</a> propagated fluxes.
+The first <code class="docutils literal notranslate"><span class="pre">generate</span> <span class="pre">indirect_detection</span></code> or <code class="docutils literal notranslate"><span class="pre">add</span> <span class="pre">process</span> <span class="pre">indirect_detection</span></code> downloads them automatically; use the command to prepare an existing process directory or to retry a failed download.
+The secondary fluxes are included with MadDM.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">install</span> <span class="pre">neutrino_fog</span></code> downloads the xenon <a class="reference external" href="https://github.com/cajohare/NeutrinoFog">neutrino-fog tables</a>.
+They are downloaded automatically when the direct-detection diagrams are generated (<code class="docutils literal notranslate"><span class="pre">generate</span></code> or <code class="docutils literal notranslate"><span class="pre">add</span> <span class="pre">direct_detection</span></code>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">install</span> <span class="pre">py_requirements</span></code> installs <code class="docutils literal notranslate"><span class="pre">numpy</span></code>, <code class="docutils literal notranslate"><span class="pre">scipy</span></code>, <code class="docutils literal notranslate"><span class="pre">matplotlib</span></code>, Meson and Ninja; <code class="docutils literal notranslate"><span class="pre">install</span> <span class="pre">reweight_tools</span></code> installs only Meson and Ninja, also in an isolated pip environment under <code class="docutils literal notranslate"><span class="pre">HEPTools</span></code>.</p></li>
+</ul>
+<p>Launching an analysis does not install any of these dependencies.</p>
+</section>
+<section id="running-relic-density-direct-and-indirect-detection-together">
+<h3>Running relic density, direct and indirect detection together<a class="headerlink" href="#running-relic-density-direct-and-indirect-detection-together" title="Link to this heading">#</a></h3>
+<p>After importing your model and defining its dark matter candidate, generate the processes for all the calculations you want in the same output:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>generate relic_density
+add direct_detection
+add indirect_detection
+output dm_combined
+launch dm_combined
+</pre></div>
+</div>
+<p>At the launch menu, <code class="docutils literal notranslate"><span class="pre">1</span></code> toggles relic density and <code class="docutils literal notranslate"><span class="pre">4</span></code> cycles through the continuum indirect modes.
+You can also enter <code class="docutils literal notranslate"><span class="pre">relic</span> <span class="pre">=</span> <span class="pre">ON</span></code> and <code class="docutils literal notranslate"><span class="pre">indirect</span> <span class="pre">=</span> <span class="pre">sigmav</span></code> for rates, or <code class="docutils literal notranslate"><span class="pre">indirect</span> <span class="pre">=</span> <span class="pre">flux_earth</span></code> for the propagated CosmiXsPPPC antiproton and antideuteron predictions.
+For a gamma-ray line analysis, also run <code class="docutils literal notranslate"><span class="pre">add</span> <span class="pre">indirect_spectral_features</span></code> before <code class="docutils literal notranslate"><span class="pre">output</span></code>.</p>
+<p>If the menu shows <strong>No processes generated</strong>, add the missing process at the main MadDM prompt and export a new output directory.
+Use <code class="docutils literal notranslate"><span class="pre">add</span></code> to keep the processes already in memory; <code class="docutils literal notranslate"><span class="pre">generate</span></code> starts a new set.
+Installing RAPIDD enables the nucleon recoil calculation but does not generate relic or indirect matrix elements.
+Existing cards can be reused: the obsolete <code class="docutils literal notranslate"><span class="pre">indirect_flux_earth_method</span></code> setting is ignored when they are read.</p>
+<p>See the <a class="reference internal" href="tutorial_and_examples/index.html"><span class="doc">tutorials and examples</span></a> for complete worked setups.</p>
 </section>
 </section>
 <section id="overview">
@@ -523,7 +535,24 @@ MadDM&gt;install PPPC4DMID
 <p>MadDM can calculate the dark matter relic abundance in models that include a multi-component dark sector, resonance annihilation channels, and co-annihilations.</p>
 <section id="direct-detection-module">
 <h3>Direct Detection Module<a class="headerlink" href="#direct-detection-module" title="Link to this heading">#</a></h3>
-<p>The direct detection module of MadDM calculates spin-independent and spin-dependent dark matter-nucleon cross-sections and differential recoil rates. These are provided as functions of recoil energy, angle, and time. The module also offers a simplified simulation of detector effects for various target materials and volumes.</p>
+<p>The direct detection module of MadDM computes spin-independent and spin-dependent cross-sections, as well as differential recoil rates, for both dark matter–nucleon and dark matter–electron scattering.
+It then evaluates the statistical significance of the selected model against the most recent experimental data.</p>
+<p>For dark matter–nucleon scattering, MadDM compares the spin-independent and spin-dependent cross sections with the LZ 2024 and PICO-60 upper limits and, with <code class="docutils literal notranslate"><span class="pre">xlzd_limits</span> <span class="pre">=</span> <span class="pre">200ty</span></code> or <code class="docutils literal notranslate"><span class="pre">1000ty</span></code> in the <code class="docutils literal notranslate"><span class="pre">maddm_card</span></code>, with the projected XLZD sensitivity.
+RAPIDD calculates the differential recoil rates for xenon, argon and germanium targets.</p>
+<p>For dark matter–electron scattering, the module evaluates the differential recoil spectrum in xenon and argon and, for xenon, the event rate as a function of the ionization (S2) signal for XENON10 and XENON1T, and compares the reference cross section <span class="math notranslate nohighlight">\(\bar\sigma_e\)</span> with the XENONnT S2-only limit (heavy mediator, <a class="reference external" href="https://arxiv.org/abs/2601.11296">arXiv:2601.11296</a>).
+That limit is computed by XENONnT with the ionization form factors of Essig et al.; with the atomic responses used by RAPIDD it would be about 2 times weaker.
+MadDM shows both: <code class="docutils literal notranslate"><span class="pre">Sigma_e</span></code> with the published limit and <code class="docutils literal notranslate"><span class="pre">Sigma_e</span> <span class="pre">(rescaled)</span></code> with the limit rescaled to the RAPIDD atomic responses (an estimate, <code class="docutils literal notranslate"><span class="pre">vendor/RAPIDD_for_DM/lib/experiments/XENONnT/XENONnT_DMe_SI_RAPIDD_FF.dat</span></code>; <code class="docutils literal notranslate"><span class="pre">lim_sigma_e_rescaled</span></code> in the scan output).
+The cross section is also tested against the XENON10 S2-only data as reanalysed in <a class="reference external" href="https://arxiv.org/abs/1703.00910">arXiv:1703.00910</a> (7 S2 bins, 15 kg day, no background subtraction): MadDM reports the p-value of the most constraining bin, <span class="math notranslate nohighlight">\(P(n \le n_{\rm obs}\,|\,s)\)</span>, and the equivalent 90% CL upper limit on <span class="math notranslate nohighlight">\(\bar\sigma_e\)</span>, <code class="docutils literal notranslate"><span class="pre">Sigma_e</span> <span class="pre">(XENON10)</span></code> (excluded when the p-value is below 0.1; <code class="docutils literal notranslate"><span class="pre">lim_sigma_e_Xenon10</span></code> and <code class="docutils literal notranslate"><span class="pre">pvalue_Xenon10</span></code> in the scan output).
+The p-value refers to all DM at the local density of the card.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">maddm_card</span></code> parameter <code class="docutils literal notranslate"><span class="pre">direct_mode</span></code> sets what the two modules compute.
+With <code class="docutils literal notranslate"><span class="pre">limit</span></code> (<code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">limit</span></code> at the launch prompt), MadDM computes only the cross sections and compares them with the upper limits, which is faster.
+With <code class="docutils literal notranslate"><span class="pre">limit_and_rates</span></code> (the default, <code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">limit_and_rates</span></code>), it also computes and saves the recoil spectra of the targets chosen with <code class="docutils literal notranslate"><span class="pre">direct_nucleon_targets</span></code> (one or more of <code class="docutils literal notranslate"><span class="pre">xe</span></code>, <code class="docutils literal notranslate"><span class="pre">ge</span></code>, <code class="docutils literal notranslate"><span class="pre">ar</span></code>) and <code class="docutils literal notranslate"><span class="pre">direct_electron_targets</span></code> (<code class="docutils literal notranslate"><span class="pre">xe</span></code> and/or <code class="docutils literal notranslate"><span class="pre">ar</span></code>), both <code class="docutils literal notranslate"><span class="pre">xe</span></code> by default.
+The XENON10 and XENON1T results need the xenon DM–electron rates, so they are computed only with <code class="docutils literal notranslate"><span class="pre">limit_and_rates</span></code> and <code class="docutils literal notranslate"><span class="pre">xe</span></code> among the electron targets.
+See <a class="reference internal" href="plotting.html#plotting"><span class="std std-ref">Run outputs and scan plots</span></a> for the output files.</p>
+<p>MadDM also reports the xenon neutrino fog of <a class="reference external" href="https://arxiv.org/abs/2109.03116">O’Hare (2021)</a> at the DM mass, as a reference boundary rather than an exclusion limit.
+With <code class="docutils literal notranslate"><span class="pre">direct_nucleon</span></code>, <code class="docutils literal notranslate"><span class="pre">DD_limits.pdf</span></code> compares the cross sections of the run with the limits, the XLZD projection and the neutrino fog as a function of the DM mass (see <a class="reference internal" href="plotting.html#plotting"><span class="std std-ref">Run outputs and scan plots</span></a>).
+Above the highest tabulated mass, the DM–nucleon limits are extrapolated linearly in the DM mass up to <span class="math notranslate nohighlight">\(10^{15}\)</span> GeV.</p>
+<p>The upper limits on the cross sections (LZ 2024 SI, SD-neutron and SD-proton, PICO-60 SD-proton, XENONnT DM-electron), the XLZD projections and the neutrino fog assume a local dark matter density of <span class="math notranslate nohighlight">\(0.3\,\mathrm{GeV\,cm^{-3}}\)</span>: they are rescaled by <code class="docutils literal notranslate"><span class="pre">0.3/rhoDM</span></code>, with <code class="docutils literal notranslate"><span class="pre">rhoDM</span></code> the density of the <code class="docutils literal notranslate"><span class="pre">maddm_card</span></code> (see <a class="reference internal" href="galactic_halo.html#galactic-halo"><span class="std std-ref">Shared Galactic halo</span></a>).</p>
 </section>
 <section id="indirect-detection-module">
 <h3>Indirect Detection Module<a class="headerlink" href="#indirect-detection-module" title="Link to this heading">#</a></h3>
@@ -531,19 +560,20 @@ MadDM&gt;install PPPC4DMID
 <p>In <code class="docutils literal notranslate"><span class="pre">flux_earth</span></code> mode, it computes antiproton and antideuteron fluxes with the CosmiXsPPPC propagated annihilation tables and bundled secondary spectra. Positron Earth fluxes are pending the corresponding inputs. A built-in interface with the <strong>nested sampling</strong> PyMultiNest algorithm enables efficient sampling of the model parameter space. The code also allows testing the model against the Fermi-LAT dwarf spheroidal galaxy likelihood.</p>
 <p>MadDM is also able to compute loop-induced processes relevant to indirect detection phenomenology. Specifically, MadDM can automatically compute the annihilation of dark matter into final states like gamma-gamma, gamma-Z, gamma-H, gluon-gluon, and others. In generic dark matter models, these final states are loop-induced processes, where the tree-level amplitude is zero.</p>
 <p>For the gamma-ray line final state, MadDM performs an analysis of the signal against Fermi-LAT gamma-ray line data to assess whether the model parameter space is allowed by current exclusion limits at 95% CL.</p>
+<p>See <a class="reference internal" href="indirect_detection.html#indirect-detection"><span class="std std-ref">Indirect detection</span></a> for the details.</p>
 </section>
 </section>
 <section id="references">
 <h2>References<a class="headerlink" href="#references" title="Link to this heading">#</a></h2>
 <ol class="arabic simple">
-<li><p><strong>M. Backovic **, **K. Kong</strong>, and <strong>M. McCaskey</strong> (2014), <em>MadDM v.1.0: Computation of Dark Matter Relic Abundance Using MadGraph5</em>.
+<li><p><strong>M. Backovic</strong>, <strong>K. Kong</strong>, and <strong>M. McCaskey</strong> (2014), <em>MadDM v.1.0: Computation of Dark Matter Relic Abundance Using MadGraph5</em>.
 <a class="reference external" href="https://arxiv.org/abs/1308.4955">arXiv:1308.4955</a>.
 DOI: <a class="reference external" href="https://doi.org/10.1016/j.dark.2014.04.001">10.1016/j.dark.2014.04.001</a>.
 <em>Physics of the Dark Universe</em>, <strong>5-6</strong>, 18–28.</p></li>
 <li><p><strong>M. Backović</strong>, <strong>A. Martini</strong>, <strong>O. Mattelaer</strong>, <strong>K. Kong</strong>, and <strong>G. Mohlabeng</strong> (2015), <em>Direct Detection of Dark Matter with MadDM v.2.0</em>.
 <a class="reference external" href="https://arxiv.org/abs/1505.04190">arXiv:1505.04190</a>.
 DOI: <a class="reference external" href="https://doi.org/10.1016/j.dark.2015.09.001">10.1016/j.dark.2015.09.001</a>.
-<em>Phys. Dark Univ.</em>, <strong>9-10</strong>, 37–50</p></li>
+<em>Phys. Dark Univ.</em>, <strong>9-10</strong>, 37–50.</p></li>
 <li><p><strong>F. Ambrogi</strong>, <strong>C. Arina</strong>, <strong>M. Backovic</strong>, <strong>J. Heisig</strong>, <strong>F. Maltoni</strong>, <strong>L. Mantani</strong>, <strong>O. Mattelaer</strong>, and <strong>G. Mohlabeng</strong> (2019), <em>MadDM v.3.0: a Comprehensive Tool for Dark Matter Studies</em>.
 <a class="reference external" href="https://arxiv.org/abs/1804.00044">arXiv:1804.00044</a>.
 DOI: <a class="reference external" href="https://doi.org/10.1016/j.dark.2018.11.009">10.1016/j.dark.2018.11.009</a>.
@@ -553,11 +583,11 @@ DOI: <a class="reference external" href="https://doi.org/10.1016/j.dark.2018.11.
 DOI: <a class="reference external" href="https://doi.org/10.1140/epjc/s10052-023-11377-2">10.1140/epjc/s10052-023-11377-2</a>.
 <em>Eur. Phys. J. C</em>, <strong>83</strong> (3), 241.</p></li>
 </ol>
-<p>Some third-party packages can be installed using the <code class="docutils literal notranslate"><span class="pre">install</span></code> command in the shell. Be sure to cite them as indicated during the install phase if you use them.</p>
 </section>
 <section id="citation">
 <h2>Citation<a class="headerlink" href="#citation" title="Link to this heading">#</a></h2>
-<p>If you are using this tool or the results obtained with it in a published work, please cite one or more of the previous references.</p>
+<p>If you are using this tool or the results obtained with it in a published work, please cite one or more of the previous references.
+A <code class="docutils literal notranslate"><span class="pre">CITATION.bib</span></code> file is available in the root of the <a class="reference external" href="https://github.com/maddmhep/maddm">MadDM repository</a>.</p>
 <div class="toctree-wrapper compound">
 </div>
 </section>
@@ -604,6 +634,8 @@ DOI: <a class="reference external" href="https://doi.org/10.1140/epjc/s10052-023
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#install-maddm">Install MadDM</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#requirements">Requirements</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#installation">Installation</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#third-party-packages">Third-party packages</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#running-relic-density-direct-and-indirect-detection-together">Running relic density, direct and indirect detection together</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#overview">Overview</a><ul class="pst-show_toc_level nav section-nav flex-column">

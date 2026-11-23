@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**00:00.704** total execution time for 7 files **from all galleries**:
+**00:00.405** total execution time for 6 files **from all galleries**:
 
 .. container::
 
@@ -33,13 +33,10 @@ Computation times
      - Time
      - Mem (MB)
    * - :ref:`sphx_glr_tutorial_and_examples_plot_direct_detection.py` (``../examples/plot_direct_detection.py``)
-     - 00:00.463
+     - 00:00.260
      - 0.0
    * - :ref:`sphx_glr_tutorial_and_examples_plot_indirect_detection.py` (``../examples/plot_indirect_detection.py``)
-     - 00:00.242
-     - 0.0
-   * - :ref:`sphx_glr_tutorial_and_examples_check_ams02_pbar.py` (``../examples/check_ams02_pbar.py``)
-     - 00:00.000
+     - 00:00.145
      - 0.0
    * - :ref:`sphx_glr_tutorial_and_examples_getting_started.py` (``../examples/getting_started.py``)
      - 00:00.000

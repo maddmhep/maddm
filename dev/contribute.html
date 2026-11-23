@@ -469,78 +469,47 @@
                   
   <section id="contributing-to-the-documentation">
 <h1>Contributing to the documentation<a class="headerlink" href="#contributing-to-the-documentation" title="Link to this heading">#</a></h1>
-<p>The documentation has been created with <a class="reference external" href="https://www.sphinx-doc.org/">Sphinx</a>.</p>
-<section id="how-this-documentation-was-created">
-<h2>How this documentation was created<a class="headerlink" href="#how-this-documentation-was-created" title="Link to this heading">#</a></h2>
-<p>Install Sphinx with:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>sphinx
-</pre></div>
-</div>
-<p>Run the following command in the <code class="docutils literal notranslate"><span class="pre">doc/</span></code> folder previously created (where this document is):</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sphinx-quickstart
-</pre></div>
-</div>
-<p>and fill accordingly:</p>
+<p>The documentation is built with <a class="reference external" href="https://www.sphinx-doc.org/">Sphinx</a>, the <a class="reference external" href="https://pydata-sphinx-theme.readthedocs.io/">PyData Sphinx theme</a> and the <a class="reference external" href="https://sphinx-gallery.github.io/stable/index.html">Sphinx-Gallery</a> extension.</p>
+<section id="layout-of-the-sources">
+<h2>Layout of the sources<a class="headerlink" href="#layout-of-the-sources" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p>separate source and build directory: no;</p></li>
-<li><p>project name: MadDM;</p></li>
-<li><p>authors: list all authors in a “Name Surname” list separated by <code class="docutils literal notranslate"><span class="pre">&amp;</span></code>;</p></li>
-<li><p>project release: leave empty;</p></li>
-<li><p>project language: default is <code class="docutils literal notranslate"><span class="pre">en</span></code>;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">doc/</span></code> contains the Sphinx configuration (<code class="docutils literal notranslate"><span class="pre">conf.py</span></code>), the landing page (<code class="docutils literal notranslate"><span class="pre">index.rst</span></code>) and the other pages, written in reStructuredText. A new page must be added to the <code class="docutils literal notranslate"><span class="pre">toctree</span></code> at the end of <code class="docutils literal notranslate"><span class="pre">index.rst</span></code> to appear in the navigation bar.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">doc/_static/</span></code> contains the logo, the favicon, the gallery thumbnails and <code class="docutils literal notranslate"><span class="pre">switcher.json</span></code>, which lists the <code class="docutils literal notranslate"><span class="pre">stable</span></code> and <code class="docutils literal notranslate"><span class="pre">dev</span></code> versions for the version switcher.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">examples/</span></code> in the root of the repository contains the sources of the <em>Tutorial and examples</em> gallery. <code class="docutils literal notranslate"><span class="pre">examples/plot_data/</span></code> holds the data files read by the executed examples.</p></li>
 </ul>
-<p>Then the folder will be populated by several files.
-In particular, we will modify the <a class="reference external" href="./conf.py">conf.py</a> file as you can check, in order to have dynamic copyright and release, and adding all the various extensions.</p>
-<section id="requirements-and-extensions">
-<h3>Requirements and extensions<a class="headerlink" href="#requirements-and-extensions" title="Link to this heading">#</a></h3>
-<section id="theme">
-<h4>Theme<a class="headerlink" href="#theme" title="Link to this heading">#</a></h4>
-<p>The theme used to build the documentation can be downloaded with</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>pydata-sphinx-theme
+<p>The gallery pages are generated in <code class="docutils literal notranslate"><span class="pre">doc/tutorial_and_examples/</span></code> during the build. That folder is ignored by git and must not be edited.</p>
+</section>
+<section id="building-locally">
+<h2>Building locally<a class="headerlink" href="#building-locally" title="Link to this heading">#</a></h2>
+<p>Install the requirements in a Python environment:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>sphinx<span class="w"> </span>pydata-sphinx-theme<span class="w"> </span>sphinx-gallery<span class="w"> </span>matplotlib<span class="w"> </span>numpy
 </pre></div>
 </div>
-</section>
-<section id="tutorial-and-examples-gallery">
-<h4>Tutorial and examples gallery<a class="headerlink" href="#tutorial-and-examples-gallery" title="Link to this heading">#</a></h4>
-<p>To automatically build the tutorial and the examples gallery from ipython notebook files containing rst code, we use the <a class="reference external" href="https://sphinx-gallery.github.io/stable/index.html">Sphinx-Gallery</a> extension:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>sphinx-gallery
-</pre></div>
-</div>
-<p>and we modify the <a class="reference external" href="./conf.py">conf.py</a> accordingly, by adding the following configuration (or something similar):</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">sphinx_gallery_conf</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s2">"examples_dirs"</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">package_root_path</span><span class="p">,</span> <span class="s2">"examples"</span><span class="p">),</span>
-    <span class="s2">"gallery_dirs"</span><span class="p">:</span> <span class="s2">"tutorial_and_examples"</span><span class="p">,</span>
-<span class="p">}</span>
-</pre></div>
-</div>
-<p>where:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">examples_dirs</span></code> is the path to the folder created in the root of the repository, and containing the <code class="docutils literal notranslate"><span class="pre">rst</span></code> notebooks, <strong>this folder should be created</strong>, in this case we will name it <code class="docutils literal notranslate"><span class="pre">examples</span></code>;</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">gallery_dirs</span></code> is the name of the folder where the generated files from the extension would be placed after the build.</p></li>
-</ul>
-</section>
-<section id="how-to-add-new-examples">
-<h4>How to add new examples<a class="headerlink" href="#how-to-add-new-examples" title="Link to this heading">#</a></h4>
-<p>The examples are in the folder <code class="docutils literal notranslate"><span class="pre">examples</span></code> in the root of the repository.
-That folder contains a general header file, which should be named <code class="docutils literal notranslate"><span class="pre">GALLERY_HEADER.rst</span></code>, that contains some information on the gallery, it will be the landpage for whoever would click on the <em>Tutorial and examples</em> entry in the menu.
-That file would also show a list of the files present in the gallery.
-The gallery is made of python files inside the <code class="docutils literal notranslate"><span class="pre">examples</span></code> folder.
-See also the <a class="reference external" href="https://sphinx-gallery.github.io/stable/getting_started.html#structure-the-examples-folder">official documentation</a>, but, briefly, there are two kinds of files:</p>
-<ul class="simple">
-<li><p>normal python files, like <code class="docutils literal notranslate"><span class="pre">getting_started.py</span></code>, they will be parsed and presented in a rich literate programming fashion, but they won’t have any output file/plot associated to them;</p></li>
-<li><p>python files with name starting with <code class="docutils literal notranslate"><span class="pre">plot_</span></code>, they will be executed, their output will be captured and incorporated in the HTML that will be created.</p></li>
-</ul>
-<p>See the <a class="reference external" href="https://sphinx-gallery.github.io/stable/syntax.html#python-script-syntax">following page</a> for the structure that each of these python files must have.</p>
-</section>
-</section>
-</section>
-<section id="updating-the-documentation">
-<h2>Updating the documentation<a class="headerlink" href="#updating-the-documentation" title="Link to this heading">#</a></h2>
-<p>Whenever a change in the <code class="docutils literal notranslate"><span class="pre">.rst</span></code> files is made, the documentation should be rebuilt locally and the <code class="docutils literal notranslate"><span class="pre">gh-pages</span></code> branch must be updated accordingly.
-The main files to build the documentation are already present when cloning the repository, one just needs to build it with:</p>
+<p><code class="docutils literal notranslate"><span class="pre">matplotlib</span></code> and <code class="docutils literal notranslate"><span class="pre">numpy</span></code> are needed to execute the <code class="docutils literal notranslate"><span class="pre">plot_*</span></code> examples. Then build the HTML pages from the <code class="docutils literal notranslate"><span class="pre">doc/</span></code> folder:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>make<span class="w"> </span>html
 </pre></div>
 </div>
-<p>And then copy the files created in <code class="docutils literal notranslate"><span class="pre">_build</span></code> to the <code class="docutils literal notranslate"><span class="pre">gh-pages</span></code> branch.</p>
+<p>and open <code class="docutils literal notranslate"><span class="pre">_build/html/index.html</span></code> in a browser. Check that the build prints no warnings.</p>
+</section>
+<section id="adding-a-tutorial-or-an-example">
+<h2>Adding a tutorial or an example<a class="headerlink" href="#adding-a-tutorial-or-an-example" title="Link to this heading">#</a></h2>
+<p>Each example is a Python file in <code class="docutils literal notranslate"><span class="pre">examples/</span></code>. <code class="docutils literal notranslate"><span class="pre">examples/GALLERY_HEADER.rst</span></code> is the landing page of the gallery, followed by the list of examples.
+The file starts with a docstring in reStructuredText that holds the title and the text of the page; see the <a class="reference external" href="https://sphinx-gallery.github.io/stable/syntax.html#python-script-syntax">Sphinx-Gallery syntax</a> for how to alternate text and code blocks.
+There are two kinds of files:</p>
+<ul class="simple">
+<li><p>files whose name starts with <code class="docutils literal notranslate"><span class="pre">plot_</span></code>, like <code class="docutils literal notranslate"><span class="pre">plot_direct_detection.py</span></code>, are executed during the build, and their output and figures are included in the page;</p></li>
+<li><p>all other files, like <code class="docutils literal notranslate"><span class="pre">getting_started.py</span></code>, are rendered without being executed.</p></li>
+</ul>
+<p>Every file in <code class="docutils literal notranslate"><span class="pre">examples/</span></code> becomes a gallery page, so keep standalone tools elsewhere (for example in <code class="docutils literal notranslate"><span class="pre">tests/tools/</span></code>).
+To choose the gallery thumbnail, add a PNG to <code class="docutils literal notranslate"><span class="pre">doc/_static/thumbnail/</span></code> and reference it at the end of the example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># sphinx_gallery_thumbnail_path = '_static/thumbnail/my_example_thumb.png'</span>
+</pre></div>
+</div>
+</section>
+<section id="publishing">
+<h2>Publishing<a class="headerlink" href="#publishing" title="Link to this heading">#</a></h2>
+<p>The workflow <code class="docutils literal notranslate"><span class="pre">.github/workflows/build-and-deploy.yml</span></code> builds the documentation on every push to <code class="docutils literal notranslate"><span class="pre">dev</span></code> or <code class="docutils literal notranslate"><span class="pre">master</span></code> that changes <code class="docutils literal notranslate"><span class="pre">doc/</span></code> or <code class="docutils literal notranslate"><span class="pre">examples/</span></code>, and publishes it on the <code class="docutils literal notranslate"><span class="pre">gh-pages</span></code> branch: <code class="docutils literal notranslate"><span class="pre">master</span></code> goes to the <a class="reference external" href="https://maddmhep.github.io/maddm/stable/">stable</a> version and <code class="docutils literal notranslate"><span class="pre">dev</span></code> to the <a class="reference external" href="https://maddmhep.github.io/maddm/dev/">dev</a> version.
+No manual copy to <code class="docutils literal notranslate"><span class="pre">gh-pages</span></code> is needed.</p>
 </section>
 </section>
 
@@ -582,16 +551,10 @@ The main files to build the documentation are already present when cloning the r
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#how-this-documentation-was-created">How this documentation was created</a><ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#requirements-and-extensions">Requirements and extensions</a><ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#theme">Theme</a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#tutorial-and-examples-gallery">Tutorial and examples gallery</a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#how-to-add-new-examples">How to add new examples</a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#updating-the-documentation">Updating the documentation</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#layout-of-the-sources">Layout of the sources</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#building-locally">Building locally</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#adding-a-tutorial-or-an-example">Adding a tutorial or an example</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#publishing">Publishing</a></li>
 </ul>
   </nav></div>
 
