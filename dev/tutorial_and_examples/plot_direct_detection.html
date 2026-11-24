@@ -490,9 +490,18 @@ to download the full example code.</p>
 <p>Compute direct detection signal and limits for both <strong>nuclear</strong> and <strong>electronic</strong> recoils.</p>
 <section id="nuclear-recoils-with-rapidd-and-lz-pico-60-limits">
 <h2>1. Nuclear Recoils with RAPIDD and LZ/PICO-60 limits<a class="headerlink" href="#nuclear-recoils-with-rapidd-and-lz-pico-60-limits" title="Link to this heading">#</a></h2>
-<p>For nuclear recoil interactions, MadDM compares the spin-independent and spin-dependent DM-nucleon cross sections with the
-upper limits from <strong>LZ 2024</strong> and <strong>PICO-60</strong> (and, with <code class="docutils literal notranslate"><span class="pre">xlzd_limits</span></code> in the <code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code>, with the projected XLZD sensitivity),
-and uses the <a class="reference external" href="https://github.com/cheekyparticle/RAPIDD_for_DM">RAPIDD</a> module to evaluate the differential recoil spectra.</p>
+<p>For nuclear recoil interactions, MadDM compares the model with the upper limits from <strong>LZ 2024</strong> and <strong>PICO-60</strong> (and, with
+<code class="docutils literal notranslate"><span class="pre">xlzd_limits</span></code> in the <code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code>, with the projected XLZD sensitivity), and uses the
+<a class="reference external" href="https://github.com/cheekyparticle/RAPIDD_for_DM">RAPIDD</a> module to evaluate the differential recoil spectra.</p>
+<p>The LZ limits are published for reference models (an isoscalar SI coupling, SD couplings to neutrons only or to protons
+only), while a model couples to protons and neutrons, whose amplitudes interfere in the nucleus. MadDM therefore compares
+with the LZ limits the <strong>equivalent cross sections</strong> <code class="docutils literal notranslate"><span class="pre">SigmaN_SI_eq</span></code>, <code class="docutils literal notranslate"><span class="pre">SigmaN_SD_n_eq</span></code> and <code class="docutils literal notranslate"><span class="pre">SigmaN_SD_p_eq</span></code>: the cross
+section of the reference model of each limit that gives the same expected number of events in LZ as the full model
+(SI and SD couplings, protons and neutrons, with the chiral EFT structure factors and their two-body currents).
+Comparing the proton and neutron cross sections separately with the limits would ignore the interference: it can exclude
+models whose xenon signal cancels, or (for SI couplings to protons only) be too aggressive by <span class="math notranslate nohighlight">\((A/Z)^2 \simeq 6\)</span>,
+because the SI limit is isoscalar. See the direct detection section of the documentation for the details and the limits of
+validity (the comparison is exact when the spectrum has the same shape as the reference one).</p>
 <section id="example-with-a-simplified-scalar-mediated-dm-model">
 <h3>Example with a simplified scalar-mediated DM model<a class="headerlink" href="#example-with-a-simplified-scalar-mediated-dm-model" title="Link to this heading">#</a></h3>
 <p>First, import the model and define the dark matter particle. Generally, for DMsimp models, you can choose between Xr (real scalar DM), Xc (complex scalar DM)
@@ -520,19 +529,23 @@ and you will receive results for both types of interactions considered separatel
 <p>You can set the model parameters in the <code class="docutils literal notranslate"><span class="pre">param_card.dat</span></code> by pressing 7, or by editing the file directly in the process folder (in this case <code class="docutils literal notranslate"><span class="pre">DD_NR_spin0/Cards/param_card.dat</span></code>).</p>
 <p>You can set the MadDM parameters (such as the halo parameters, recoil energy range and much more) in the <code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code> by pressing 8,
 or by editing the file directly in the process folder (in this case <code class="docutils literal notranslate"><span class="pre">DD_NR_spin0/Cards/maddm_card.dat</span></code>).</p>
-<p>Once you are all set, you can run the process by pressing Enter. This module will first evaluate the DM-nucleon cross section and compare it against the experimental limits
-from LZ 2024 and PICO-60.
+<p>Once you are all set, you can run the process by pressing Enter. This module will first evaluate the DM-nucleon cross sections and the
+equivalent cross sections and compare them against the experimental limits from LZ 2024 and PICO-60.
 Next, with <code class="docutils literal notranslate"><span class="pre">direct_mode</span> <span class="pre">=</span> <span class="pre">limit_and_rates</span></code>, it will use RAPIDD to compute the differential nuclear recoil rates.
 After running the above commands, the output will look like:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>INFO: MadDM Results
 INFO: Local Galactic halo (SHM): rho = 0.3 GeV/cm^3, vMP = 238 km/s, vescape = 544 km/s
 INFO:
 ****** Direct detection [cm^2]:
-INFO: SigmaN_SI_p         All DM = 6.16e-48       ALLOWED     LZ2024 ul        = 6.48e-47
-INFO: SigmaN_SI_n         All DM = 6.14e-48       ALLOWED     LZ2024 ul        = 6.48e-47
+INFO: SigmaN_*_eq: DM-nucleon cross sections equivalent to the model in LZ (same expected signal as the reference model of each LZ limit; RAPIDD chiral EFT, p-n interference and two-body currents included)
+INFO: SigmaN_SI_eq        All DM = 6.41e-48       ALLOWED     LZ2024 ul        = 6.48e-47
+INFO: SigmaN_SD_n_eq      All DM = 9.84e-43       ALLOWED     LZ2024 ul        = 7.59e-42
+INFO: SigmaN_SD_p_eq      All DM = 3.03e-41       ALLOWED     LZ2024 ul        = 2.33e-40
 INFO: SigmaN_SD_p         All DM = 0.00e+00       ALLOWED     Pico60 (2019) ul = 4.16e-41
-INFO: SigmaN_SD_p_LZ      All DM = 0.00e+00       ALLOWED     LZ2024 ul        = 2.33e-40
-INFO: SigmaN_SD_n         All DM = 0.00e+00       ALLOWED     LZ2024 ul        = 7.59e-42
+INFO: sigma_p and sigma_n (information only: compared separately with the LZ limits they ignore the p-n interference; SD_p is compared with PICO-60 above):
+INFO: SigmaN_SI_p         All DM = 6.16e-48
+INFO: SigmaN_SI_n         All DM = 6.14e-48
+INFO: SigmaN_SD_n         All DM = 0.00e+00
 INFO: Neutrino fog (xenon): reference boundary, NOT an exclusion limit. https://github.com/cajohare/NeutrinoFog; C. A. J. O'Hare, Phys. Rev. Lett. 127, 251802 (2021), arXiv:2109.03116
 INFO: Rescaled from rho = 0.3 GeV/cm^3 (published tables) to rhoDM = 0.3 GeV/cm^3.
 INFO: neutrino_fog_SI = 4.3291631542e-48 # cm^2; -1 means unavailable
@@ -546,10 +559,13 @@ quit
 </div>
 <p>where <code class="docutils literal notranslate"><span class="pre">All</span> <span class="pre">DM</span></code> refers to the DM-nucleon cross sections in case the DM particle contributes to the entire dark matter density of the universe
 (default model parameters, with a DM mass of 10 GeV).
-In the last column, you can see the upper limits (ul) from the LZ 2024 and PICO-60 experiments, which are compared against the computed cross sections,
-returning the status of the model (ALLOWED or NOT ALLOWED).
-The xenon neutrino fog is a reference boundary, not an exclusion limit. <code class="docutils literal notranslate"><span class="pre">DD_limits.pdf</span></code> in the run folder shows the cross sections
-of the run against the limits and the neutrino fog as a function of the DM mass.</p>
+In the last column, you can see the upper limits (ul) from the LZ 2024 and PICO-60 experiments, which are compared against the
+equivalent cross sections (LZ) and the SD proton cross section (PICO-60), returning the status of the model (ALLOWED or EXCLUDED).
+This model has only a scalar (SI) coupling: <code class="docutils literal notranslate"><span class="pre">SigmaN_SD_n_eq</span></code> and <code class="docutils literal notranslate"><span class="pre">SigmaN_SD_p_eq</span></code> are not zero because they are the SI signal
+of the model seen through the SD reference models (LZ sees the sum of the SI and SD signals), and they give approximately the same verdict as
+<code class="docutils literal notranslate"><span class="pre">SigmaN_SI_eq</span></code> (here sigma_eq/limit = 0.10 for SI and 0.13 for SD: different LZ curves and spectral shapes). The proton and neutron cross sections are given for information, without a verdict.
+The xenon neutrino fog is a reference boundary, not an exclusion limit. <code class="docutils literal notranslate"><span class="pre">DD_limits.pdf</span></code> in the run folder shows the equivalent cross sections
+of the run against the LZ limits, the SD proton cross section against the PICO-60 limit, and the neutrino fog as a function of the DM mass.</p>
 </section>
 <section id="results">
 <h3>Results<a class="headerlink" href="#results" title="Link to this heading">#</a></h3>
@@ -559,7 +575,9 @@ Each time you launch the same process, MadDM creates a new folder <code class="d
 <p>With <code class="docutils literal notranslate"><span class="pre">direct_mode</span> <span class="pre">=</span> <span class="pre">limit_and_rates</span></code> (the default; type <code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">limit</span></code> to compute only the exclusion limits) you can also find
 the differential recoil rates in the <code class="docutils literal notranslate"><span class="pre">dRdE_nucleon.dat</span></code> file, which contains the differential recoil spectra vs energy
 for DM-nucleon interactions, one column per target chosen with <code class="docutils literal notranslate"><span class="pre">direct_nucleon_targets</span></code> in the <code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code>
-(one or more of <code class="docutils literal notranslate"><span class="pre">xe</span></code>, <code class="docutils literal notranslate"><span class="pre">ge</span></code>, <code class="docutils literal notranslate"><span class="pre">ar</span></code>; default <code class="docutils literal notranslate"><span class="pre">xe</span></code>). The file used below was produced with <code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">direct_nucleon_targets</span> <span class="pre">xe,</span> <span class="pre">ge,</span> <span class="pre">ar</span></code>.
+(one or more of <code class="docutils literal notranslate"><span class="pre">xe</span></code>, <code class="docutils literal notranslate"><span class="pre">ge</span></code>, <code class="docutils literal notranslate"><span class="pre">ar</span></code>; default <code class="docutils literal notranslate"><span class="pre">xe</span></code>). The spectra are computed with the chiral EFT structure factors
+(<code class="docutils literal notranslate"><span class="pre">dd_nuclear_responses</span> <span class="pre">=</span> <span class="pre">chiral_eft</span></code>, the default; <code class="docutils literal notranslate"><span class="pre">nreft</span></code> gives the one-body NREFT responses with the
+<span class="math notranslate nohighlight">\(\mathcal O_1\)</span> and <span class="math notranslate nohighlight">\(\mathcal O_4\)</span> couplings only). The file used below was produced with <code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">direct_nucleon_targets</span> <span class="pre">xe,</span> <span class="pre">ge,</span> <span class="pre">ar</span></code>.
 Below is an example of how to plot the differential rates:</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span class="w">
 </span></pre></div></div>
@@ -718,7 +736,7 @@ Below is an example of how to plot the differential rates and number of events v
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; quit
 </pre></div>
 </div>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 0.260 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 0.263 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorial-and-examples-plot-direct-detection-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../_downloads/ed55d6c604f326f38dd25a849d679b4e/plot_direct_detection.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">plot_direct_detection.ipynb</span></code></a></p>

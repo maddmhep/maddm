@@ -486,8 +486,8 @@ were produced.</p>
 <p>With Matplotlib installed, MadDM plots available source yields and
 direct-detection rates (<code class="docutils literal notranslate"><span class="pre">dRdE_nucleon.pdf</span></code> and <code class="docutils literal notranslate"><span class="pre">dRdE_electron.pdf</span></code>,
 one curve per target). With <code class="docutils literal notranslate"><span class="pre">direct_nucleon</span></code>, <code class="docutils literal notranslate"><span class="pre">DD_limits.pdf</span></code>
-compares the SI and SD DM-nucleon cross sections of the run with the
-LZ and PICO-60 limits, the XLZD projection (<code class="docutils literal notranslate"><span class="pre">xlzd_limits</span> <span class="pre">=</span> <span class="pre">200ty</span></code> or
+compares the SI and SD equivalent cross sections of the run with the
+LZ limits (and the SD-proton cross section with the PICO-60 limit), the XLZD projection (<code class="docutils literal notranslate"><span class="pre">xlzd_limits</span> <span class="pre">=</span> <span class="pre">200ty</span></code> or
 <code class="docutils literal notranslate"><span class="pre">1000ty</span></code>, off by default) and the xenon neutrino fog, all rescaled to
 <code class="docutils literal notranslate"><span class="pre">rhoDM</span></code>; the curves are saved in <code class="docutils literal notranslate"><span class="pre">DD_limits.json</span></code>. The neutrino-fog
 tables (O’Hare, arXiv:2109.03116) are downloaded when the direct-detection
@@ -515,13 +515,20 @@ python<span class="w"> </span>plot_coupling_mass.py<span class="w"> </span>--hel
 <p><code class="docutils literal notranslate"><span class="pre">plot_sigmav_limits.py</span></code> plots available dwarf and antiproton limits,
 the GCE best fit, theoretical rates and branching fractions, nuclear
 and electron-recoil cross sections and bounds, relic density, freeze-out
-rates, and antideuteron counts. It can locate the
+rates, and antideuteron counts. For nuclear recoils it compares the
+equivalent cross sections (<code class="docutils literal notranslate"><span class="pre">sigmaN_SI_eq</span></code>, <code class="docutils literal notranslate"><span class="pre">sigmaN_SD_n_eq</span></code>,
+<code class="docutils literal notranslate"><span class="pre">sigmaN_SD_p_eq</span></code>) with the LZ limits, the XLZD projection and the
+neutrino fog, and the SD-proton cross section with the PICO-60 limit;
+scan tables written before the equivalent cross sections existed are
+plotted with the proton and neutron cross sections. It can locate the
 lowest chi-square GCE point and integrate the saved source spectra
 for multiplicities. For multiplicities, retain spectra during the
 scan. Missing observables are omitted.</p>
 <p><code class="docutils literal notranslate"><span class="pre">plot_coupling_mass.py</span></code> combines available direct-detection,
 indirect-detection and relic-density information on a mass versus
-coupling plot. For each observable <span class="math notranslate nohighlight">\(O\propto g^p\)</span>, it projects
+coupling plot (nuclear recoils: the equivalent cross sections against
+the LZ and XLZD limits and the neutrino fog, the SD-proton cross
+section against PICO-60). For each observable <span class="math notranslate nohighlight">\(O\propto g^p\)</span>, it projects
 the limit from the scan point using
 <span class="math notranslate nohighlight">\(g_{\rm lim}=g_{\rm scan}[O_{\rm lim}/O_{\rm scan}]^{1/p}\)</span>.
 The default direct- and indirect-detection powers are both four and

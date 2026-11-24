@@ -146,11 +146,22 @@ Once you are all set, press Enter to launch the process. The results will be dis
     INFO: xxdxxdb_bbx         : 19.69 % 
     INFO: No contribution from processes: xxdxxdb_y1y1, xxdxxdb_vevex, xxdxxdb_vmvmx, xxdxxdb_vtvtx, xxdxxdb_ttx, xxdxxdb_emep, xxdxxdb_mummup, xxdxxdb_tamtap 
     INFO: 
-    ****** Direct detection [cm^2]:  
-    INFO: SigmaN_SI_p         All DM = 2.05e-40       EXCLUDED          LZ2024 ul        = 6.48e-47 
-    INFO: SigmaN_SI_n         All DM = 2.06e-40       EXCLUDED          LZ2024 ul        = 6.48e-47 
-    INFO: SigmaN_SD_p         All DM = 2.58e-60       ALLOWED           Pico60 (2019) ul = 4.16e-41 
-    INFO: SigmaN_SD_n         All DM = 1.01e-59       ALLOWED           LZ2024 ul        = 7.59e-42 
+    ****** Direct detection [cm^2]:
+    INFO: SigmaN_*_eq: DM-nucleon cross sections equivalent to the model in LZ (same expected signal as the reference model of each LZ limit; RAPIDD chiral EFT, p-n interference and two-body currents included)
+    INFO: SigmaN_SI_eq        All DM = 5.07e-41       EXCLUDED          LZ2024 ul        = 6.48e-47
+    INFO: SigmaN_SD_n_eq      All DM = 7.77e-36       EXCLUDED          LZ2024 ul        = 7.59e-42
+    INFO: SigmaN_SD_p_eq      All DM = 2.39e-34       EXCLUDED          LZ2024 ul        = 2.33e-40
+    INFO: SigmaN_SD_p         All DM = 6.46e-61       ALLOWED           Pico60 (2019) ul = 4.16e-41
+    INFO: sigma_p and sigma_n (information only: compared separately with the LZ limits they ignore the p-n interference; SD_p is compared with PICO-60 above):
+    INFO: SigmaN_SI_p         All DM = 5.13e-41
+    INFO: SigmaN_SI_n         All DM = 5.14e-41
+    INFO: SigmaN_SD_n         All DM = 2.52e-60
+    INFO: Neutrino fog (xenon): reference boundary, NOT an exclusion limit. https://github.com/cajohare/NeutrinoFog; C. A. J. O'Hare, Phys. Rev. Lett. 127, 251802 (2021), arXiv:2109.03116
+    INFO: Rescaled from rho = 0.3 GeV/cm^3 (published tables) to rhoDM = 0.3 GeV/cm^3.
+    INFO: neutrino_fog_SI = 4.3291631542e-48 # cm^2; -1 means unavailable
+    INFO: neutrino_fog_SD_p = 1.9474339879e-40 # cm^2; -1 means unavailable
+    INFO: neutrino_fog_SD_n = 1.0584409940e-42 # cm^2; -1 means unavailable
+    INFO: Recoil spectra: dRdE_nucleon.dat in /root/DMspin1/output/run_01
     INFO: 
     ****** Indirect detection: 
     INFO: <sigma v> method: inclusive  
@@ -170,6 +181,10 @@ Once you are all set, press Enter to launch the process. The results will be dis
     INFO:  
     INFO:  
     INFO: Results written in: /root/DMspin1/output/run_01/MadDM_results.txt
+
+For DM-nucleon scattering the verdicts use the cross sections equivalent to the model in LZ (``SigmaN_SI_eq``, ``SigmaN_SD_n_eq``,
+``SigmaN_SD_p_eq``, see the direct detection tutorial); this model has only a vector (SI) coupling, and its SI signal seen through the
+SD reference models also exceeds the LZ SD limits. The proton and neutron cross sections are given for information.
 
 The results will be stored in the ``MadDM_results.txt`` file located in the process folder (in this case ``DMspin1/output/run_01/MadDM_results.txt``).
 In the process folder, you will also find additional files produced by the different MadDM modules. See the tutorials for those modules for additional details.

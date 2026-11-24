@@ -24,8 +24,8 @@ were produced.
 With Matplotlib installed, MadDM plots available source yields and
 direct-detection rates (``dRdE_nucleon.pdf`` and ``dRdE_electron.pdf``,
 one curve per target). With ``direct_nucleon``, ``DD_limits.pdf``
-compares the SI and SD DM-nucleon cross sections of the run with the
-LZ and PICO-60 limits, the XLZD projection (``xlzd_limits = 200ty`` or
+compares the SI and SD equivalent cross sections of the run with the
+LZ limits (and the SD-proton cross section with the PICO-60 limit), the XLZD projection (``xlzd_limits = 200ty`` or
 ``1000ty``, off by default) and the xenon neutrino fog, all rescaled to
 ``rhoDM``; the curves are saved in ``DD_limits.json``. The neutrino-fog
 tables (O'Hare, arXiv:2109.03116) are downloaded when the direct-detection
@@ -58,14 +58,21 @@ kept so users can retain local edits:
 ``plot_sigmav_limits.py`` plots available dwarf and antiproton limits,
 the GCE best fit, theoretical rates and branching fractions, nuclear
 and electron-recoil cross sections and bounds, relic density, freeze-out
-rates, and antideuteron counts. It can locate the
+rates, and antideuteron counts. For nuclear recoils it compares the
+equivalent cross sections (``sigmaN_SI_eq``, ``sigmaN_SD_n_eq``,
+``sigmaN_SD_p_eq``) with the LZ limits, the XLZD projection and the
+neutrino fog, and the SD-proton cross section with the PICO-60 limit;
+scan tables written before the equivalent cross sections existed are
+plotted with the proton and neutron cross sections. It can locate the
 lowest chi-square GCE point and integrate the saved source spectra
 for multiplicities. For multiplicities, retain spectra during the
 scan. Missing observables are omitted.
 
 ``plot_coupling_mass.py`` combines available direct-detection,
 indirect-detection and relic-density information on a mass versus
-coupling plot. For each observable :math:`O\propto g^p`, it projects
+coupling plot (nuclear recoils: the equivalent cross sections against
+the LZ and XLZD limits and the neutrino fog, the SD-proton cross
+section against PICO-60). For each observable :math:`O\propto g^p`, it projects
 the limit from the scan point using
 :math:`g_{\rm lim}=g_{\rm scan}[O_{\rm lim}/O_{\rm scan}]^{1/p}`.
 The default direct- and indirect-detection powers are both four and

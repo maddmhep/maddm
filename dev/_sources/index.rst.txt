@@ -125,8 +125,34 @@ Direct Detection Module
 The direct detection module of MadDM computes spin-independent and spin-dependent cross-sections, as well as differential recoil rates, for both dark matter--nucleon and dark matter--electron scattering.
 It then evaluates the statistical significance of the selected model against the most recent experimental data.
 
-For dark matter--nucleon scattering, MadDM compares the spin-independent and spin-dependent cross sections with the LZ 2024 and PICO-60 upper limits and, with ``xlzd_limits = 200ty`` or ``1000ty`` in the ``maddm_card``, with the projected XLZD sensitivity.
+For dark matter--nucleon scattering, MadDM compares the model with the LZ 2024 and PICO-60 upper limits and, with ``xlzd_limits = 200ty`` or ``1000ty`` in the ``maddm_card``, with the projected XLZD sensitivity.
 RAPIDD calculates the differential recoil rates for xenon, argon and germanium targets.
+
+The published limits are given for reference models: an isoscalar spin-independent coupling (:math:`f_p = f_n`), and spin-dependent couplings to neutrons only or to protons only.
+A model couples in general to both nucleons, and a xenon detector sees the coherent sum of the proton and neutron amplitudes.
+Comparing :math:`\sigma_p` and :math:`\sigma_n` separately with the limits ignores this interference and goes wrong in both directions:
+
+- with destructive interference the signal can vanish while both cross sections are above the limits (spin independent: :math:`f_n/f_p \simeq -Z/(A-Z) \simeq -0.7` in xenon; spin dependent: e.g. an axial coupling to the :math:`u` quark only, for which the naive SD-neutron comparison is about 3 times too aggressive);
+- the SI limit is isoscalar: for a coupling to protons only the xenon signal scales as :math:`Z^2\sigma_p` while the limit refers to :math:`A^2\sigma`, so the naive comparison is too aggressive by :math:`(A/Z)^2 \simeq 5.9`;
+- in xenon the two-body currents make the SD response to a proton coupling much larger than the one-body estimate.
+
+MadDM therefore uses, for each LZ limit, the **equivalent cross section** computed by RAPIDD (``rapidd.chiral_eft.equivalent_sigma``):
+
+.. math::
+
+   \sigma_{\rm eq} = \sigma_{\rm ref}\,\frac{N_{\rm model}}{N_{\rm ref}(\sigma_{\rm ref})},
+
+where :math:`N` is the expected LZ signal (recoil spectrum times the LZ 2024 nuclear-recoil efficiency), computed with the full model (SI and SD couplings, protons and neutrons, all xenon isotopes, with the chiral EFT structure factors of `Hoferichter et al. 2019 <https://arxiv.org/abs/1812.05617>`__ for SI and `Hoferichter et al. 2020 <https://arxiv.org/abs/2007.08529>`__ for SD, which include the two-body currents) and with the reference model of each curve (Helm form factor and isoscalar coupling for SI, neutron-only or proton-only axial couplings for SD-n and SD-p, as in the LZ analysis), at the same DM mass and halo.
+:math:`\sigma_{\rm eq}` does not depend on :math:`\sigma_{\rm ref}` nor on ``rhoDM``, and is compared directly with the published curve: ``SigmaN_SI_eq``, ``SigmaN_SD_n_eq`` and ``SigmaN_SD_p_eq`` give the verdicts of LZ (and of the XLZD projections, which use the same xenon target; their different efficiency is neglected).
+A model with both SI and SD couplings has an SI equivalent cross section that includes the SD signal, and vice versa: LZ sees the sum.
+The SD-n and SD-p rows are the same LZ data with different reference models, so they give the same verdict up to the relative normalization of the two curves (about 10%).
+The comparison is exact when the recoil spectrum of the model has the same shape as the reference one, which holds to a good approximation for standard SI and SD couplings; for momentum- or velocity-dependent interactions and light mediators it is an approximation, still better than the separate comparison.
+If the reference models have no signal in LZ (DM mass below threshold) there is no verdict.
+The direct-detection likelihood of the nested-sampling scans (``directSI``, ``directSD_p``, ``directSD_n`` in the ``multinest_card``) uses the same equivalent cross sections: the half-Gaussian penalty applies when :math:`\sigma_{\rm eq}` is above the LZ limit (for ``directSD_p`` also when :math:`\sigma_{\rm SD,p}` is above the PICO-60 limit; the most constraining is used).
+
+``SigmaN_SD_p`` is compared directly with the PICO-60 SD-proton limit (fluorine is dominated by the proton spin; PICO-60 uses one-body responses). This comparison is approximate: with the two-body currents and the proton-neutron interference the fluorine signal of an axial coupling is up to 1.5 (coupling to the :math:`u` quark only) or 2.6 (:math:`d` quark only) times smaller than the one implied by :math:`\sigma_p`, so the naive comparison can be too aggressive by these factors (no difference for isoscalar axial or tensor couplings).
+``SigmaN_SI_p``, ``SigmaN_SI_n`` and ``SigmaN_SD_n`` are shown as information only, without a verdict; they and their limits (``lim_sigmaN_*``) stay in the scan output, together with ``sigmaN_SI_eq``, ``sigmaN_SD_n_eq``, ``sigmaN_SD_p_eq`` and their limits.
+The equivalent cross sections always use the chiral EFT; the ``maddm_card`` parameter ``dd_nuclear_responses`` (``chiral_eft``, default, or ``nreft``: one-body NREFT responses, :math:`\mathcal O_1` and :math:`\mathcal O_4` only) selects only the nuclear responses of the saved recoil spectra.
 
 For dark matter--electron scattering, the module evaluates the differential recoil spectrum in xenon and argon and, for xenon, the event rate as a function of the ionization (S2) signal for XENON10 and XENON1T, and compares the reference cross section :math:`\bar\sigma_e` with the XENONnT S2-only limit (heavy mediator, `arXiv:2601.11296 <https://arxiv.org/abs/2601.11296>`__).
 That limit is computed by XENONnT with the ionization form factors of Essig et al.; with the atomic responses used by RAPIDD it would be about 2 times weaker.
@@ -141,7 +167,7 @@ The XENON10 and XENON1T results need the xenon DM--electron rates, so they are c
 See :ref:`plotting` for the output files.
 
 MadDM also reports the xenon neutrino fog of `O'Hare (2021) <https://arxiv.org/abs/2109.03116>`__ at the DM mass, as a reference boundary rather than an exclusion limit.
-With ``direct_nucleon``, ``DD_limits.pdf`` compares the cross sections of the run with the limits, the XLZD projection and the neutrino fog as a function of the DM mass (see :ref:`plotting`).
+With ``direct_nucleon``, ``DD_limits.pdf`` compares the equivalent cross sections of the run (and :math:`\sigma_{\rm SD,p}` for PICO-60) with the limits, the XLZD projection and the neutrino fog as a function of the DM mass (see :ref:`plotting`).
 Above the highest tabulated mass, the DM--nucleon limits are extrapolated linearly in the DM mass up to :math:`10^{15}` GeV.
 
 The upper limits on the cross sections (LZ 2024 SI, SD-neutron and SD-proton, PICO-60 SD-proton, XENONnT DM-electron), the XLZD projections and the neutrino fog assume a local dark matter density of :math:`0.3\,\mathrm{GeV\,cm^{-3}}`: they are rescaled by ``0.3/rhoDM``, with ``rhoDM`` the density of the ``maddm_card`` (see :ref:`galactic-halo`).
