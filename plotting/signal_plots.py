@@ -194,7 +194,9 @@ def gce_plot(result, output):
 
 def dd_limits_plot(data, output):
     """SI (left) and SD (right) DM-nucleon cross sections of the run (markers at mDM, hollow for the
-    thermal fraction) against the limits, the XLZD projection and the xenon neutrino fog of DD_limits.json.
+    thermal fraction) against the limits, the XLZD projection and the xenon neutrino fog of DD_limits.json:
+    the equivalent cross sections (predictions_eq) on the xenon curves and sigma_SD_p on the PICO-60 curve
+    (sigma_p, sigma_n for the files written before predictions_eq existed).
     Above the highest tabulated mass the extrapolated limits are drawn thinner."""
     import json
     result = json.loads(Path(data).read_text()) if not isinstance(data, dict) else data
@@ -234,17 +236,26 @@ def dd_limits_plot(data, output):
                 ax.plot(np.r_[m[last], m[~tab]], np.r_[s[last], s[~tab]], color=color, ls=ls, lw=.9, alpha=.7)
             seen[label] = True
             plotted = True
-        for nucleon, marker in (('p', 'o'), ('n', 's')):
-            sigma = float(result['predictions'].get(kind + '_' + nucleon, -1.))
+        if 'predictions_eq' in result:
+            # equivalent cross sections on the xenon (LZ, XLZD, fog) curves, sigma_SD_p on the PICO-60 curve
+            points = [(result['predictions_eq'].get('SI'), colors[('SI', 'pn')], 'o', r'$\sigma_{\rm eq}^{\rm SI}$')] \
+                if kind == 'SI' else \
+                [(result['predictions_eq'].get('SD_n'), colors[('SD', 'n')], 's', r'$\sigma_{\rm eq}^{\rm SD,n}$'),
+                 (result['predictions_eq'].get('SD_p'), colors[('SD', 'p')], 'o', r'$\sigma_{\rm eq}^{\rm SD,p}$'),
+                 (result['predictions'].get('SD_p'), '#d7902a', 'D', r'$\sigma_{\rm SD}^{\rm proton}$ (PICO-60)')]
+        else:
+            points = [(result['predictions'].get(kind + '_' + nucleon), colors[(kind, 'pn' if kind == 'SI' else nucleon)],
+                       marker, r'$\sigma_{\rm %s}^{%s}$' % (kind, 'proton' if nucleon == 'p' else 'neutron'))
+                      for nucleon, marker in (('p', 'o'), ('n', 's'))]
+        for sigma, color, marker, name in points:
+            sigma = float(-1. if sigma is None else sigma)
             if not (np.isfinite(sigma) and sigma > 0):
                 continue
-            color = colors[(kind, 'pn' if kind == 'SI' else nucleon)]
-            name = 'proton' if nucleon == 'p' else 'neutron'
             ax.plot([mdm], [sigma], marker=marker, ms=8, ls='none', color=color, mec='black',
-                    label=r'$\sigma_{\rm %s}^{%s}$ (all DM)' % (kind, name))
+                    label=name + ' (all DM)')
             if 0. < xsi < 1.:
                 ax.plot([mdm], [sigma*xsi], marker=marker, ms=8, ls='none', mfc='none', color=color,
-                        label=r'$\xi\,\sigma_{\rm %s}^{%s}$ (thermal)' % (kind, name))
+                        label=r'$\xi\,$' + name + ' (thermal)')
             plotted = True
         ax.axvline(mdm, color='#999999', lw=.8, ls='-.', zorder=0)
         ax.set_xlabel(r'Dark matter mass $m_{\rm DM}$ [GeV]')
@@ -253,7 +264,9 @@ def dd_limits_plot(data, output):
                                                               float(result['rhoDM'])))
         if ax.get_legend_handles_labels()[0]:
             ax.legend(loc='best', frameon=False, fontsize=8)
-    fig.supxlabel('Thin segments: limits extrapolated as $\\sigma(m_{\\rm max})\\,m_{\\rm DM}/m_{\\rm max}$ above their tables. '
+    fig.supxlabel(('$\\sigma_{\\rm eq}$: cross sections equivalent to the model in LZ (same expected signal as the reference '
+                   'model of each curve).\n' if 'predictions_eq' in result else '') +
+                  'Thin segments: limits extrapolated as $\\sigma(m_{\\rm max})\\,m_{\\rm DM}/m_{\\rm max}$ above their tables. '
                   'Neutrino fog: O’Hare (2021), arXiv:2109.03116; reference, not an exclusion.', fontsize=8)
     if plotted:
         fig.savefig(output, format='pdf', dpi=600)

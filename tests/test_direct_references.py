@@ -105,6 +105,74 @@ class ReferenceTests(unittest.TestCase):
         self.assertEqual(table_max, np.loadtxt(xlzd/'XLZD_SI_200ty.dat')[:, 0].max())
         self.assertIsNone(limits.dd_limit_curve('missing', 1e3))
 
+    def test_direct_detection_rows_use_equivalent_cross_sections(self):
+        """LZ verdicts on the equivalent cross sections (no verdict when sigma_eq = -1), PICO-60 on sigma_SD_p,
+        sigma_p and sigma_n as information only; the XLZD rows use the equivalent cross sections"""
+        import ast
+        import types
+        from test_sigmav_channel_limits import ENV
+        source = (refs.ROOT/'maddm_run_interface.py').read_text()
+        tree = ast.parse(source)
+        scope = dict(ENV)
+        for node in tree.body:
+            if isinstance(node, ast.Assign) and any(getattr(t, 'id', '').startswith('DD_') for t in node.targets):
+                exec(compile(ast.Module(body=[node], type_ignores=[]), 'maddm_run_interface.py', 'exec'), scope)
+        run = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == 'MADDMRunCmd')
+        for node in run.body:
+            if isinstance(node, ast.FunctionDef) and node.name in ('direct_detection_rows', 'xlzd_exposure'):
+                exec(compile(ast.Module(body=[node], type_ignores=[]), 'maddm_run_interface.py', 'exec'), scope)
+        res = {'sigmaN_SI_p': 1e-45, 'sigmaN_SI_n': 1e-45, 'sigmaN_SD_p': 1e-40, 'sigmaN_SD_n': 1e-41,
+               'sigmaN_SI_eq': 2e-46, 'sigmaN_SD_n_eq': 3e-41, 'sigmaN_SD_p_eq': -1}
+        res.update({'lim_sigmaN_' + k: 1e-44 for k in ('SI_p', 'SI_n', 'SD_p', 'SD_n', 'SI_eq', 'SD_n_eq', 'SD_p_eq',
+                                                        'SI_eq_XLZD', 'SD_n_eq_XLZD', 'SD_p_eq_XLZD')})
+        h = types.SimpleNamespace(maddm_card={'xlzd_limits': '200ty'}, last_results=res,
+                                  limits=types.SimpleNamespace())
+        scope['ExpConstraints'] = types.SimpleNamespace(XLZD_EXPOSURES=('200ty', '1000ty'))
+        for name in ('direct_detection_rows', 'xlzd_exposure'):
+            setattr(h, name, types.MethodType(scope[name], h))
+        rows = {D['n']: D for D in h.direct_detection_rows()}
+        self.assertEqual([n for n, D in rows.items() if D['verdict']],
+                         ['SigmaN_SI_eq', 'SigmaN_SD_n_eq', 'SigmaN_SD_p_eq', 'SigmaN_SD_p', 'SigmaN_SI_eq_XLZD',
+                          'SigmaN_SD_n_eq_XLZD', 'SigmaN_SD_p_eq_XLZD'])
+        self.assertEqual(rows['SigmaN_SI_eq']['sig'], 2e-46)
+        self.assertEqual(rows['SigmaN_SD_p']['exp'], 'Pico60 (2019)')
+        self.assertEqual(rows['SigmaN_SD_p_eq']['lim'], -1)
+        self.assertEqual(rows['SigmaN_SD_p_eq_XLZD']['lim'], -1)
+        self.assertEqual(rows['SigmaN_SD_n_eq_XLZD']['sig'], 3e-41)
+        self.assertFalse(rows['SigmaN_SI_p']['verdict'])
+
+    def test_multinest_direct_nucleon_likelihood_uses_equivalent_cross_sections(self):
+        """half_gauss: penalty only above the limit, on sigma_eq for LZ; SD-p also on sigma_SD_p for PICO-60 (the
+        most constraining); widths from the multinest card names; gaussian with the dd_si_limits values"""
+        import ast
+        import types
+        from test_sigmav_channel_limits import ENV
+        tree = ast.parse((refs.ROOT/'maddm_run_interface.py').read_text())
+        scope = dict(ENV)
+        for node in tree.body:
+            if isinstance(node, ast.FunctionDef) and node.name == 'secure_float_f77' or \
+                    isinstance(node, ast.ClassDef) and node.name == 'Multinest':
+                exec(compile(ast.Module(body=[node], type_ignores=[]), 'maddm_run_interface.py', 'exec'), scope)
+        mn = object.__new__(scope['Multinest'])
+        mn.options = {'half_gauss_width': {'spinSI': 0.01, 'spinSD_p': 0.01, 'spinSD_n': 0.01, 'directSI': 0.5}}
+        mn.maddm_run = types.SimpleNamespace(limits=types.SimpleNamespace(
+            _sigma_SI=2e-47, _sigma_SI_width=1e-47, _sigma_SDp=-1, _sigma_SDp_width=-1, _sigma_SDn=-1,
+            _sigma_SDn_width=-1))
+        res = {'sigmaN_SI_eq': 1e-46, 'lim_sigmaN_SI_eq': 1e-47, 'sigmaN_SI_p': 1e-50, 'lim_sigmaN_SI_p': 1e-47,
+               'sigmaN_SD_n_eq': 1e-43, 'lim_sigmaN_SD_n_eq': 1e-42,
+               'sigmaN_SD_p_eq': 1e-41, 'lim_sigmaN_SD_p_eq': 1e-40, 'sigmaN_SD_p': 1e-39, 'lim_sigmaN_SD_p': 1e-41}
+        # SI above the LZ limit by a factor 10, width 0.5 from the card (key directSI)
+        self.assertAlmostEqual(mn.direct_nucleon_loglike('directSI', 'half_gauss', res), -0.5*(1/0.5)**2)
+        # SD-n below the limit: no penalty
+        self.assertEqual(mn.direct_nucleon_loglike('directSD_n', 'half_gauss', res), 0.)
+        # SD-p: sigma_eq below the LZ limit, sigma_SD_p 100 times the PICO-60 limit (legacy width spinSD_p)
+        self.assertAlmostEqual(mn.direct_nucleon_loglike('directSD_p', 'half_gauss', res), -0.5*(2/0.01)**2)
+        # no prediction (-1) or no limit: no contribution
+        self.assertEqual(mn.direct_nucleon_loglike('directSI', 'half_gauss', dict(res, sigmaN_SI_eq=-1)), 0.)
+        self.assertEqual(mn.direct_nucleon_loglike('directSI', 'half_gauss', dict(res, lim_sigmaN_SI_eq=-1)), 0.)
+        self.assertAlmostEqual(mn.direct_nucleon_loglike('directSI', 'gaussian', res), -0.5*(8e-47/1e-47)**2)
+        self.assertEqual(mn.direct_nucleon_loglike('directSD_n', 'user', res), 0.)
+
     def test_run_folder_dd_limits_plot(self):
         import ast, json, types
         from test_sigmav_channel_limits import ENV
@@ -113,7 +181,8 @@ class ReferenceTests(unittest.TestCase):
         run = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == 'MADDMRunCmd')
         with tempfile.TemporaryDirectory() as folder:
             root = self.fog_root(folder)
-            scope = dict(ENV, json=json, direct_references=types.SimpleNamespace(
+            scope = dict(ENV, json=json, DD_EQUIVALENT_KEYS=('SI_eq', 'SD_n_eq', 'SD_p_eq'),
+                         direct_references=types.SimpleNamespace(
                 curves=lambda rho: refs.curves(rho, root=root), FOG_SOURCE=refs.FOG_SOURCE))
             for node in run.body:
                 if isinstance(node, ast.FunctionDef) and node.name in ('write_dd_limits', 'xlzd_exposure'):
@@ -122,7 +191,9 @@ class ReferenceTests(unittest.TestCase):
                                       proc_characteristics={'dm_candidate': [1000022]},
                                       param_card=types.SimpleNamespace(get_value=lambda *a: 50.),
                                       last_results={'xsi': .5, 'sigmaN_SI_p': 1e-47, 'sigmaN_SI_n': 1.1e-47,
-                                                    'sigmaN_SD_p': 1e-42, 'sigmaN_SD_n': -1.},
+                                                    'sigmaN_SD_p': 1e-42, 'sigmaN_SD_n': -1.,
+                                                    'sigmaN_SI_eq': 9e-48, 'sigmaN_SD_n_eq': 2e-42,
+                                                    'sigmaN_SD_p_eq': 5e-41},
                                       limits=scope['ExpConstraints']())
             h.limits.load_constraints()
             for name in ('write_dd_limits', 'xlzd_exposure'):
@@ -131,6 +202,7 @@ class ReferenceTests(unittest.TestCase):
             h.write_dd_limits(str(out))
             data = json.loads((out/'DD_limits.json').read_text())
             self.assertEqual(data['rhoDM'], .6)
+            self.assertEqual(data['predictions_eq'], {'SI': 9e-48, 'SD_n': 2e-42, 'SD_p': 5e-41})
             labels = {(c['kind'], c['nucleons'], c['label']) for c in data['curves']}
             self.assertIn(('SI', 'pn', 'LZ (2024)'), labels)
             self.assertIn(('SI', 'pn', 'Xe neutrino fog'), labels)

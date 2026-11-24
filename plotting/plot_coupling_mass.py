@@ -333,6 +333,43 @@ def dd_label(kind, nucleon, suffix=''):
     return experiment+'; '+kind+' '+target
 
 
+# DM-nucleon channels of the plots: (prediction column, legend label, [(limit column, label)], color). With the
+# equivalent cross sections of MadDM (sigmaN_<SI|SD_n|SD_p>_eq: the cross section of the reference model of each LZ
+# limit with the same expected LZ signal as the model) the LZ and XLZD limits are compared with them, and the PICO-60
+# SD-proton limit with sigmaN_SD_p. Scans written before (no sigmaN_*_eq column) compare sigma_p and sigma_n.
+DD_EQ = (('SI_eq', 'SI'), ('SD_n_eq', 'SD neutron'), ('SD_p_eq', 'SD proton'))
+DD_EQ_COLORS = ['#176b9a', '#28a09d', '#ad4b22', '#d7902a']
+
+
+def dd_channels(cols):
+    if any('sigmaN_' + key in cols for key, _ in DD_EQ):
+        out = []
+        for (key, what), color in zip(DD_EQ, DD_EQ_COLORS):
+            rate = 'sigmaN_' + key
+            limits = [(lim, experiment + '; ' + what) for lim, experiment in
+                      (('lim_' + rate, 'LZ (2024)'), ('lim_' + rate + '_XLZD', 'XLZD (projected)')) if lim in cols]
+            out.append((rate, r'Prediction; $\sigma_{\rm eq}$ ' + what, limits, color))
+        out.append(('sigmaN_SD_p', r'Prediction; $\sigma_{\rm SD}$ proton',
+                    [(lim, 'PICO-60 (2019); SD proton') for lim in ('lim_sigmaN_SD_p',) if lim in cols], DD_EQ_COLORS[3]))
+        return out
+    out = []
+    for (kind, nucleon), color in zip(DD, DD_COLORS):
+        rate = 'sigmaN_' + kind + '_' + nucleon
+        limit = 'lim_' + rate
+        limits = [(key, dd_label(kind, nucleon, key[len(limit):])) for key in cols
+                  if key == limit or key.startswith(limit + '_')]
+        out.append((rate, 'Prediction; ' + kind + ' ' + ('proton' if nucleon == 'p' else 'neutron'), limits, color))
+    return out
+
+
+def fog_predictions(cols):
+    """(neutrino-fog column, prediction compared with it, label): the equivalent cross sections when available"""
+    eq = any('sigmaN_' + key in cols for key, _ in DD_EQ)
+    return [('neutrino_fog_SI', 'sigmaN_SI_eq' if eq else 'sigmaN_SI_p', 'Xe neutrino fog; SI' + ('' if eq else ' (equal p/n)')),
+            ('neutrino_fog_SD_p', 'sigmaN_SD_p_eq' if eq else 'sigmaN_SD_p', 'Xe neutrino fog; SD proton'),
+            ('neutrino_fog_SD_n', 'sigmaN_SD_n_eq' if eq else 'sigmaN_SD_n', 'Xe neutrino fog; SD neutron')]
+
+
 def electron_label(key):
     return {'lim_sigma_e': 'XENONnT; published convention',
             'lim_sigma_e_rescaled': 'XENONnT; RAPIDD atomic responses',
@@ -384,23 +421,16 @@ def _generate(input_path, *, outdir=None, mass_column=None, coupling=None, coupl
         if is_upper and np.isfinite(y).any():
             upper_keys.append(key)
         return y
-    for (kind, nucleon), color in zip(DD, DD_COLORS):
-        rate = 'sigmaN_' + kind + '_' + nucleon
-        limit = 'lim_' + rate
-        limits = [limit] + [key for key in cols if key.startswith(limit + '_')]
-        for limit_key in limits:
-            suffix = limit_key[len(limit):]
-            key = kind + '_' + nucleon + suffix
+    # coupling at which each prediction reaches its limit: the equivalent cross sections for LZ / XLZD,
+    # sigma_SD_p for PICO-60 (sigma_p, sigma_n for the scans written before the equivalent cross sections)
+    for rate, _, limits, color in dd_channels(cols):
+        for limit_key, label in limits:
+            key = limit_key[len('lim_sigmaN_'):]
             add(key, rate, numeric(cols, limit_key), dd_power, 'XLZD' not in limit_key)
             targets[key] = limit_key
-            label = dd_label(kind, nucleon, suffix)
-            dd_lines.append((key, label, color, ':' if 'XLZD' in suffix else '-.' if suffix else
-                             '-' if nucleon == 'n' else '--'))
+            dd_lines.append((key, label, color, ':' if 'XLZD' in limit_key else '--'))
 
-    for column, rate, label in (
-            ('neutrino_fog_SI', 'sigmaN_SI_p', 'Xe neutrino fog; SI (equal p/n)'),
-            ('neutrino_fog_SD_p', 'sigmaN_SD_p', 'Xe neutrino fog; SD proton'),
-            ('neutrino_fog_SD_n', 'sigmaN_SD_n', 'Xe neutrino fog; SD neutron')):
+    for column, rate, label in fog_predictions(cols):
         add(column, rate, numeric(cols, column), dd_power, False)
         targets[column] = column
         dd_lines.append((column, label, '#777777', ':'))

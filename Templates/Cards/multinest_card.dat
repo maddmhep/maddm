@@ -4,6 +4,8 @@ prefix mnest_ # prefix for multinest output files
 prior loguniform # [uniform, loguniform, user]
 #
 loglikelihood relic        gaussian   # [gaussian, half_gauss, user] half_gauss width automaticc
+# directSI, directSD_p, directSD_n: the cross sections equivalent to the model in LZ (sigmaN_SI_eq, sigmaN_SD_p_eq,
+# sigmaN_SD_n_eq) against the LZ 2024 limits; directSD_p also sigma_SD_p against PICO-60 (the most constraining)
 loglikelihood directSI     half_gauss 0.01 # [gaussian, half_gauss, user] log10(gauss_width) - for half_gauss
 loglikelihood directSD_p   half_gauss 0.01 # [gaussian, half_gauss, user] log10(gauss_width) - for half_gauss
 loglikelihood directSD_n   half_gauss 0.01 # [gaussian, half_gauss, user] log10(gauss_width) - for half_gauss

@@ -101,13 +101,29 @@ __dme_use_xenon10_pvalue__ = True
 __dme_use_xenon1t_pvalue__ = False
 __dme_xenon10_cl__ = 0.9  # confidence level of the XENON10 limit (excluded if p-value < 1 - CL)
 
-# Published limits on the DM-nucleon cross sections: (limit key, cross section, experiment). The limit of the row
-# <key> is lim_sigmaN_<key> and is compared with sigmaN_<cross section>.
-DD_ROWS = (('SI_p', 'SI_p', 'LZ2024'), ('SI_n', 'SI_n', 'LZ2024'), ('SD_p', 'SD_p', 'Pico60 (2019)'),
-           ('SD_p_LZ', 'SD_p', 'LZ2024'), ('SD_n', 'SD_n', 'LZ2024'))
+# Published limits on the DM-nucleon cross sections: (limit key, cross section, experiment, verdict). The limit of
+# the row <key> is lim_sigmaN_<key> and is compared with sigmaN_<cross section>.
+#  - LZ 2024 (xenon): the verdict uses the equivalent cross sections sigmaN_<SI|SD_n|SD_p>_eq of RAPIDD
+#    (rapidd.chiral_eft.equivalent_sigma): the cross section of the reference model of each published curve
+#    (SI isoscalar with the Helm form factor, SD neutrons only, SD protons only) with the same expected LZ signal
+#    as the full model (SI + SD, protons and neutrons, interference and two-body currents included). SD-n and
+#    SD-p are the same data with different reference models: their verdicts agree up to the relative
+#    normalization of the two curves (~10%).
+#  - PICO-60 (19F): sigma_SD_p of the model against the published SD-p limit (19F is proton dominated).
+#  - sigma_p and sigma_n against the LZ limits (verdict False): information only, kept for the scans; comparing
+#    them separately with the limits ignores the proton-neutron interference (and, for SI, that the limit is
+#    isoscalar).
+DD_ROWS = (('SI_eq', 'SI_eq', 'LZ2024', True), ('SD_n_eq', 'SD_n_eq', 'LZ2024', True),
+           ('SD_p_eq', 'SD_p_eq', 'LZ2024', True), ('SD_p', 'SD_p', 'Pico60 (2019)', True),
+           ('SI_p', 'SI_p', 'LZ2024', False), ('SI_n', 'SI_n', 'LZ2024', False), ('SD_n', 'SD_n', 'LZ2024', False))
+# equivalent cross sections of RAPIDD (sigmaN_<key>)
+DD_EQUIVALENT_KEYS = ('SI_eq', 'SD_n_eq', 'SD_p_eq')
 # Projected XLZD sensitivities, shown when xlzd_limits (maddm_card) is 200ty or 1000ty: median 90% CL upper limits
-# for 200 or 1000 tonne-years (SI: XLZD Design Book arXiv:2410.17137; SD: arXiv:2203.02309)
-DD_ROWS_XLZD = (('SI_p_XLZD', 'SI_p'), ('SI_n_XLZD', 'SI_n'), ('SD_p_XLZD', 'SD_p'), ('SD_n_XLZD', 'SD_n'))
+# for 200 or 1000 tonne-years (SI: XLZD Design Book arXiv:2410.17137; SD: arXiv:2203.02309), compared with the
+# equivalent cross sections of LZ (same target; the different efficiency is neglected). The limits of sigma_p,
+# sigma_n (lim_sigmaN_<SI_p|SI_n|SD_p|SD_n>_XLZD) are kept in the scan output.
+DD_ROWS_XLZD = (('SI_eq_XLZD', 'SI_eq'), ('SD_n_eq_XLZD', 'SD_n_eq'), ('SD_p_eq_XLZD', 'SD_p_eq'))
+DD_XLZD_NUCLEON_KEYS = ('SI_p_XLZD', 'SI_n_XLZD', 'SD_p_XLZD', 'SD_n_XLZD')
 
 
 def rapidd_library_ready():
@@ -2016,31 +2032,47 @@ class MADDMRunCmd(cmd.CmdShell):
             result['lim_sigmaN_SD_p'] = self.limits.SD_max(mdm, 'p')
             result['lim_sigmaN_SD_p_LZ'] = self.limits.SD_max(mdm, 'p', 'LZ2024')
             result['lim_sigmaN_SD_n'] = self.limits.SD_max(mdm, 'n')
+            # limits of the equivalent cross sections (LZ 2024)
+            result['lim_sigmaN_SI_eq'] = result['lim_sigmaN_SI_p']
+            result['lim_sigmaN_SD_n_eq'] = result['lim_sigmaN_SD_n']
+            result['lim_sigmaN_SD_p_eq'] = result['lim_sigmaN_SD_p_LZ']
             # projected XLZD sensitivities (maddm_card xlzd_limits)
             xlzd = self.xlzd_exposure()
             if xlzd:
                 result['lim_sigmaN_SI_p_XLZD'] = result['lim_sigmaN_SI_n_XLZD'] = self.limits.SI_max(mdm, 'XLZD_' + xlzd)
                 result['lim_sigmaN_SD_p_XLZD'] = self.limits.SD_max(mdm, 'p', 'XLZD_' + xlzd)
                 result['lim_sigmaN_SD_n_XLZD'] = self.limits.SD_max(mdm, 'n', 'XLZD_' + xlzd)
+                result['lim_sigmaN_SI_eq_XLZD'] = result['lim_sigmaN_SI_p_XLZD']
+                result['lim_sigmaN_SD_n_eq_XLZD'] = result['lim_sigmaN_SD_n_XLZD']
+                result['lim_sigmaN_SD_p_eq_XLZD'] = result['lim_sigmaN_SD_p_XLZD']
 
             # no DM-quark process (all the quark alphas are -1): skip the nucleon computation
             if not nucleon_alphas_valid(alphaq_values):
                 for key in ['sigmaN_SI_p', 'sigmaN_SI_n', 'sigmaN_SD_p', 'sigmaN_SD_n']:
                     result[key] = -1
+                for key in DD_EQUIVALENT_KEYS:
+                    result['sigmaN_' + key] = -1
             else:
+                from rapidd.calc_dRdE import equivalent_sigma_mdm
+                from rapidd.core import halo_path_from_card
+                rapidd_out_path = pjoin(self.dir_path,'output', self.run_name)
+                # default halo table, recomputed only if vescape, vmp or vSun differ from the default
+                halo_path = halo_path_from_card(self.maddm_card, rapidd_out_path)
                 # cross sections in cm^2
                 result['sigmaN_SI_p'], result['sigmaN_SI_n'] = sigmaSI_nucleon_mdm(self.maddm_card, alphaq_values, mdm)
                 result['sigmaN_SD_p'], result['sigmaN_SD_n'] = sigmaSD_nucleon_mdm(self.maddm_card, alphaq_values, mdm)
+                # cross sections equivalent to the model in LZ (always with the chiral EFT structure factors and
+                # the halo of the card); -1 (no verdict) if the reference models have no LZ signal at this mass
+                for key, value in equivalent_sigma_mdm(self.maddm_card, alphaq_values, mdm,
+                                                       halo_path=halo_path).items():
+                    result[key] = value if np.isfinite(value) else -1
 
                 # recoil spectra of the selected targets in dRdE_nucleon.dat (direct_mode = limit_and_rates)
                 if self.direct_rates():
                     from rapidd.calc_dRdE import DDrate_save
-                    from rapidd.core import halo_path_from_card
-                    rapidd_out_path = pjoin(self.dir_path,'output', self.run_name)
-                    # default halo table, recomputed only if vescape, vmp or vSun differ from the default
-                    halo_path = halo_path_from_card(self.maddm_card, rapidd_out_path)
                     DDrate_save(self.maddm_card, alphaq_values, mdm, rapidd_out_path,
                                 targets=self.maddm_card['direct_nucleon_targets'], halo_path=halo_path,
+                                nuclear_model=self.maddm_card['dd_nuclear_responses'],
                                 **self.rapidd_modulation_kwargs())
 
         # DM-electron scattering: alphas from the Fortran, rates and signals from RAPIDD
@@ -2228,7 +2260,11 @@ class MADDMRunCmd(cmd.CmdShell):
                           'sigmaN_SI_n', 'lim_sigmaN_SI_n',
                           'sigmaN_SD_p', 'lim_sigmaN_SD_p', 'lim_sigmaN_SD_p_LZ',
                           'sigmaN_SD_n', 'lim_sigmaN_SD_n']
+                # equivalent cross sections of LZ and their limits (the verdict of the LZ rows)
+                for key in DD_EQUIVALENT_KEYS:
+                    order += ['sigmaN_' + key, 'lim_sigmaN_' + key]
                 if self.xlzd_exposure():
+                    order += ['lim_sigmaN_' + key for key in DD_XLZD_NUCLEON_KEYS]
                     order += ['lim_sigmaN_' + key for key, _ in DD_ROWS_XLZD]
                 order += list(direct_references.FOG_KEYS)
 
@@ -3767,15 +3803,21 @@ class MADDMRunCmd(cmd.CmdShell):
         return value if value in ExpConstraints.XLZD_EXPOSURES else ''
 
     def direct_detection_rows(self):
-        """Use the current point's predictions and limits in both reports."""
-        for key, channel, experiment in DD_ROWS:
-            yield dict(n='SigmaN_' + key, sig=self.last_results['sigmaN_' + channel],
-                       lim=self.last_results.get('lim_sigmaN_' + key, -1), exp=experiment)
+        """Use the current point's predictions and limits in both reports. verdict = False for the rows given as
+        information only (sigma_p, sigma_n against the LZ limits); an equivalent cross section without LZ signal
+        in the reference model (-1) has no verdict (lim = -1)."""
+        def row(key, channel, experiment, verdict, **kw):
+            sig = self.last_results.get('sigmaN_' + channel, -1)
+            lim = self.last_results.get('lim_sigmaN_' + key, -1)
+            if channel in DD_EQUIVALENT_KEYS and sig < 0:
+                lim = -1
+            return dict(n='SigmaN_' + key, sig=sig, lim=lim, exp=experiment, verdict=verdict, **kw)
+        for key, channel, experiment, verdict in DD_ROWS:
+            yield row(key, channel, experiment, verdict)
         xlzd = self.xlzd_exposure()
         if xlzd:
             for key, channel in DD_ROWS_XLZD:
-                yield dict(n='SigmaN_' + key, sig=self.last_results['sigmaN_' + channel],
-                           lim=self.last_results.get('lim_sigmaN_' + key, -1), exp='XLZD ' + xlzd, projection=True)
+                yield row(key, channel, 'XLZD ' + xlzd, True, projection=True)
 
     def write_dd_limits(self, directory):
         """DD_limits.json of the run: the DM-nucleon limits (LZ, PICO-60, the XLZD projection when xlzd_limits is
@@ -3810,8 +3852,12 @@ class MADDMRunCmd(cmd.CmdShell):
                                mass=mass, sigma=sigma, table_max=mass[-1]))
         data = dict(mDM=mdm, rhoDM=rho, xsi=self.last_results.get('xsi', 1.), xlzd_limits=xlzd or 'off',
                     predictions={k: self.last_results.get('sigmaN_' + k, -1.) for k in ('SI_p', 'SI_n', 'SD_p', 'SD_n')},
+                    predictions_eq={k[:-3]: self.last_results.get('sigmaN_' + k, -1.) for k in DD_EQUIVALENT_KEYS},
                     curves=curves,
-                    notes=['Limits rescaled by 0.3/rhoDM; above table_max they are extrapolated as sigma(m_max)*mDM/m_max.',
+                    notes=['predictions_eq: cross sections equivalent to the model in LZ (RAPIDD chiral EFT, '
+                           'interference and two-body currents included), compared with the LZ and XLZD curves; '
+                           'predictions: sigma_p, sigma_n (SD_p compared with PICO-60).',
+                           'Limits rescaled by 0.3/rhoDM; above table_max they are extrapolated as sigma(m_max)*mDM/m_max.',
                            'XLZD: SI arXiv:2410.17137, SD arXiv:2203.02309 (projected median 90% CL).',
                            'Neutrino fog: ' + direct_references.FOG_SOURCE + '; reference, not an exclusion.'])
         with open(pjoin(directory, 'DD_limits.json'), 'w') as out:
@@ -3892,12 +3938,25 @@ class MADDMRunCmd(cmd.CmdShell):
             self.last_results['direct_results'] = direct_names
 
             logger.info('\n****** Direct detection [cm^2]: ')  
+            logger.info('SigmaN_*_eq: DM-nucleon cross sections equivalent to the model in LZ (same expected signal as '
+                        'the reference model of each LZ limit; RAPIDD chiral EFT, p-n interference and two-body '
+                        'currents included)')
             for D in direct_names:
-                    th_cross = D['sig']* xsi
-                    ul = D['lim']
-                    mess_th       = self.det_message_screen(th_cross, D['lim'] )
-                    mess_alldm    = self.det_message_screen(D['sig'], D['lim'] )
-                    self.print_ind(D['n'],th_cross , D['sig'], ul,  thermal=dm_scen ,direc = False , exp=D['exp']) # leave False to avout GeV^-2
+                if not D['verdict']:
+                    continue
+                th_cross = D['sig']* xsi
+                ul = D['lim']
+                self.print_ind(D['n'],th_cross , D['sig'], ul,  thermal=dm_scen ,direc = False , exp=D['exp']) # leave False to avout GeV^-2
+            logger.info('sigma_p and sigma_n (information only: compared separately with the LZ limits they ignore '
+                        'the p-n interference; SD_p is compared with PICO-60 above):')
+            for D in direct_names:
+                if D['verdict']:
+                    continue
+                line = self.form_s(D['n'])
+                if dm_scen:
+                    line += self.form_s('Thermal = ' + self.form_n(D['sig'] * xsi)) + '   ' + self.form_s('') + '\t'
+                line += self.form_s('All DM = ' + self.form_n(D['sig']))
+                logger.info(line)
             if any(D.get('projection') for D in direct_names):
                 logger.info('XLZD %s: projected sensitivity (median 90%% CL; SI arXiv:2410.17137, SD arXiv:2203.02309): '
                             'EXCLUDED means within the XLZD reach' % self.xlzd_exposure())
@@ -4415,12 +4474,17 @@ class MADDMRunCmd(cmd.CmdShell):
             out.write('# Direct Detection [cm^2]                      #\n')
             out.write('################################################\n\n')
 
+            out.write('# SigmaN_*_eq: DM-nucleon cross sections equivalent to the model in LZ (same expected signal as\n'
+                      '# the reference model of each LZ limit: SI isoscalar, SD neutrons only, SD protons only; RAPIDD\n'
+                      '# chiral EFT, p-n interference and two-body currents included)\n')
             for D in self.direct_detection_rows():
                 cross = D['sig']
                 ul = D['lim']
                 exp = D['exp']
                 if D.get('projection'):
                     exp += ' projected sensitivity (median 90% CL)'
+                if not D['verdict']:
+                    exp += ' (information only, no verdict: the LZ verdict uses SigmaN_*_eq)'
                 out.write(form_s(D['n']) + '= ' + form_s('['+ form_n(cross) + ',' + form_n(ul) + ']' ) + '# '+exp + '\n')
             for line in direct_references.report(self.last_results, self.maddm_card['rhoDM']):
                 out.write(('' if line.startswith(direct_references.FOG_KEYS) else '# ')+line+'\n')
@@ -5936,6 +6000,12 @@ class MadDMCard(banner_mod.RunCard):
                        comment='targets of dRdE_nucleon.dat: one or more of xe, ge, ar')
         self.add_param('direct_electron_targets', ['xe'], typelist=str, include=False,
                        comment='targets of dRdE_electron.dat: one or more of xe, ar')
+        # nuclear structure of the DM-nucleus spectra saved with direct_mode = limit_and_rates: chiral EFT
+        # (SI: Hoferichter, Klos, Menendez, Schwenk 2019; SD: Hoferichter, Menendez, Schwenk 2020, with the two-body
+        # currents) or the one-body NREFT responses (O_1, O_4). The equivalent cross sections compared with the LZ
+        # limits always use the chiral EFT.
+        self.add_param('dd_nuclear_responses', 'chiral_eft', allowed=['chiral_eft', 'nreft'], include=False,
+                       comment='nuclear responses of dRdE_nucleon.dat: chiral_eft or nreft')
 
         # For electronic recoil
         self.add_param('direct_electron_mode', 'auto', allowed=['auto', 'always'], include=True)
@@ -6308,6 +6378,58 @@ class Multinest(object):
 
         self.counter = 0
         #self.Fermi   = Fermi_bounds()
+
+    # direct detection likelihoods of the multinest card: (equivalent cross section, its limit (LZ 2024), and for SD-p
+    # also the PICO-60 comparison of sigma_SD_p; legacy name of the half-gauss width)
+    DIRECT_NUCLEON_LIKELIHOODS = {'directSI': ('SI_eq', None, 'spinSI'),
+                                  'directSD_p': ('SD_p_eq', 'SD_p', 'spinSD_p'),
+                                  'directSD_n': ('SD_n_eq', None, 'spinSD_n')}
+
+    def direct_nucleon_loglike(self, obs, likelihood, results):
+        """log-likelihood of the DM-nucleon results for the multinest observable obs (directSI, directSD_p,
+        directSD_n). The prediction is the cross section equivalent to the model in LZ (sigmaN_SI_eq, sigmaN_SD_p_eq,
+        sigmaN_SD_n_eq: the cross section of the reference model of each LZ limit with the same expected LZ signal,
+        proton-neutron interference and two-body currents included), compared with the LZ 2024 limit at the rhoDM of
+        the card (lim_sigmaN_*_eq):
+          half_gauss: -0.5 (log10(sigma/limit)/width)^2 above the limit, 0 below (width: log10 of the Gaussian width,
+                      from the multinest card); for SD-p the most constraining of LZ (sigma_eq) and PICO-60 (sigma_SD_p
+                      against its SD-p limit);
+          gaussian:   -0.5 ((sigma - measured)/width)^2 with the values of set dd_si_limits / dd_sd_limits <value> <width>;
+          user / '':  0 (add your own log-likelihood here).
+        No contribution (0) when the prediction or the limit is not available (-1: no DM-quark process, DM mass outside
+        the limit tables or below the LZ threshold)."""
+        eq_key, naive_key, legacy_width = self.DIRECT_NUCLEON_LIKELIHOODS[obs]
+        sigma = results.get('sigmaN_' + eq_key, -1)
+        if likelihood == 'half_gauss':
+            widths = self.options['half_gauss_width']
+            width = widths.get(obs, widths.get(legacy_width, 0.01))
+            def half_gauss(prediction, limit):
+                if prediction > 0 and limit > 0 and prediction > limit:
+                    return -0.5*pow(np.log10(limit/prediction), 2)/pow(width, 2)
+                return 0.
+            contrib = half_gauss(sigma, results.get('lim_sigmaN_' + eq_key, -1))
+            if naive_key:
+                contrib = min(contrib, half_gauss(results.get('sigmaN_' + naive_key, -1),
+                                                  results.get('lim_sigmaN_' + naive_key, -1)))
+            return contrib
+        if likelihood == 'gaussian':
+            limits = self.maddm_run.limits
+            value, width = {'directSI': (limits._sigma_SI, limits._sigma_SI_width),
+                            'directSD_p': (limits._sigma_SDp, limits._sigma_SDp_width),
+                            'directSD_n': (limits._sigma_SDn, limits._sigma_SDn_width)}[obs]
+            value, width = secure_float_f77(value), secure_float_f77(width)
+            if value > 0 and width > 0 and sigma >= 0:
+                return -0.5*pow(sigma - value, 2)/pow(width, 2)
+            logger.error('Set dd_si_limits / dd_sd_limits <value> <width> to positive values to use the gaussian '
+                         'likelihood for %s!' % obs)
+            return 0.
+        if likelihood in ('user', ''):
+            #
+            # HERE ADD YOUR OWN LOG LIKELIHOOD FOR DIRECT DETECTION
+            #
+            return 0.
+        logger.error('You are not using a valid likelihood function for %s. Omitting the contribution!' % obs)
+        return 0.
         
     #Starts the multinest run.
     def launch(self, resume=True):
@@ -6350,6 +6472,9 @@ class Multinest(object):
                 self.output_observables.append('sigmaN_SI_p')
                 self.output_observables.append('sigmaN_SD_n')
                 self.output_observables.append('sigmaN_SD_p')
+                # cross sections equivalent to the model in LZ (used by the direct detection likelihood)
+                for key in DD_EQUIVALENT_KEYS:
+                    self.output_observables.append('sigmaN_' + key)
 
             if self.maddm_run.mode['indirect']:
                 if 'inclusive' in self.maddm_run.maddm_card['sigmav_method']:
@@ -6560,10 +6685,6 @@ class Multinest(object):
 
         if self.maddm_run.mode['relic']:
             omegah2 = results['Omegah^2']
-        if self.maddm_run.mode['direct_nucleon']:
-            spinSI = 0.5*(results['sigmaN_SI_p'] + results['sigmaN_SI_n'])# * GeV2pb * pb2cm2
-            spinSDp = results['sigmaN_SD_p']#  * GeV2pb * pb2cm2
-            spinSDn = results['sigmaN_SD_n']# * GeV2pb * pb2cm2
         #<=========== for ID we will need each channel separately.
         
         #if self.maddm_run.mode['indirect']:   
@@ -6581,6 +6702,9 @@ class Multinest(object):
         logger.debug(self.maddm_run.mode['direct_nucleon'])
 
         ndim_obs = ndim + len(self.output_observables)
+        # sum of the SI, SD-p and SD-n log-likelihoods
+        if 'direct_nucleon' in self.likelihood_parts:
+            cube[ndim_obs+self.likelihood_parts.index('direct_nucleon')] = 0
 
         for obs, likelihood in (self.options.get('loglikelihood')).items():
 
@@ -6615,71 +6739,13 @@ class Multinest(object):
                 cube[ndim_obs+self.likelihood_parts.index('relic')] = relic_contrib
                 chi += relic_contrib
 
-            #direct detection (SI)
-            if self.maddm_run.mode['direct_nucleon']:
-                cube[ndim_obs+self.likelihood_parts.index('direct_nucleon')] = 0
-            if obs == 'directSI' and self.maddm_run.mode['direct_nucleon']:
-                if likelihood=='half_gauss':
-
-                    if spinSI > self.maddm_run.limits.SI_max(mdm):
-                        direct_contrib_1= -0.5*pow(np.log10(self.maddm_run.limits.SI_max(mdm)/spinSI),2)\
-                                    /pow(self.options['half_gauss_width']['spinSI'],2)
-
-                elif likelihood == 'gaussian':
-                    if self.maddm_run.limits._sigma_SI > 0:
-                        direct_contrib_1=  -0.5*pow(spinSI - self.maddm_run.limits._sigma_SI,2)/pow(self.maddm_run.limits._sigma_SI_width,2)
-                    else:
-                        logger.error('You have to set up the sigma_SI(_width) to a positive value to use gaussian likelihood!')
-                elif likelihood == 'user':
-                    #
-                    # HERE ADD YOUR OWN LOG LIKELIHOOD FOR SI
-                    #
-                    direct_contrib_1=0
-
-                elif likelihood == '':
-                    direct_contrib_1=0
-                else:
-                    logger.error('You are not using a valid likelihood function for SI direct detection. Omitting the contribution!')
-                    direct_contrib_1 = 0
-
-                # add to cube
-                cube[ndim_obs+self.likelihood_parts.index('direct_nucleon')] += direct_contrib_1
-                chi += direct_contrib_1
-
-            #direct detection (SD) proton and neutron
-            if obs.startswith('directSD') and self.maddm_run.mode['direct_nucleon']:
-                nucleon = obs.split('_')[1]
-                if likelihood=='half_gauss':
-                    if nucleon =='p':
-                        if spinSDp > self.maddm_run.limits.SD_max(mdm, 'p'):
-                            direct_contrib_2= -0.5*pow(np.log10(self.maddm_run.limits.SD_max(mdm, 'p')/spinSDp),2)\
-                                  /pow(self.options['half_gauss_width']['spinSDp'],2)
-                    elif nucleon == 'n':
-                        if spinSDp > self.maddm_run.limits.SD_max(mdm,'n'):
-                            direct_contrib_2= -0.5*pow(np.log10(self.maddm_run.limits.SD_max(mdm, 'n')/spinSDn),2)\
-                                  /pow(self.options['half_gauss_width']['spinSDn'],2)
-                elif likelihood == 'gaussian':
-                    if nucleon == 'p' and self.maddm_run.limits._sigma_SDp > 0:
-                        direct_contrib_2=  -0.5*pow(spinSDp - self.maddm_run.limits._sigma_SDp,2)/pow(self.maddm_run.limits._sigma_SDp_width,2)
-                    else:
-                        logger.error('You have to set up the sigma_SDp(_width) to a positive value to use gaussian likelihood!')
-                    if nucleon == 'n' and self.maddm_run.limits.sigma_SDn > 0:
-                        direct_contrib_2=  -0.5*pow(spinSDn - self.maddm_run.limits.sigma_SDn,2)/pow(self.maddm_run.limits._sigma_SDn_width,2)
-                    else:
-                        logger.error('You have to set up the sigma_SDp(_width) to a positive value to use gaussian likelihood!')
-                elif likelihood == 'user':
-                    #
-                    # HERE ADD YOUR OWN LOG LIKELIHOOD FOR SD
-                    #
-                    direct_contrib_2=0
-                elif likelihood == '':
-                    direct_contrib_2=0
-                else:
-                    logger.error('You are not using a valid likelihood function for SD direct detection. Omitting the contribution!')
-                    direct_contrib_2=0
-                # add to cube
-                cube[ndim_obs+self.likelihood_parts.index('direct_nucleon')] += direct_contrib_2
-                chi += direct_contrib_2
+            # direct detection (DM-nucleon): equivalent cross sections against the LZ limits, sigma_SD_p against PICO-60
+            if self.maddm_run.mode['direct_nucleon'] and obs in self.DIRECT_NUCLEON_LIKELIHOODS:
+                if 'direct_nucleon' in self.likelihood_parts:
+                    index = ndim_obs+self.likelihood_parts.index('direct_nucleon')
+                    direct_contrib = self.direct_nucleon_loglike(obs, likelihood, results)
+                    cube[index] += direct_contrib
+                    chi += direct_contrib
 
             # indirect detection:
             # using Fermi Likelihood for combined gamma spectrum (only SM channels and relative SM xsection for PPPC sepctra)

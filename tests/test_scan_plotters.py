@@ -70,6 +70,38 @@ class ScanPlotsTests(unittest.TestCase):
         self.assertNotIn('electron_rescaled', meta['envelope_inputs'])
         self.assertEqual(meta['other_mass_columns'], ['mass#32'])
 
+    def test_direct_nucleon_uses_equivalent_cross_sections(self):
+        """LZ / XLZD limits and the neutrino fog against sigmaN_*_eq, PICO-60 against sigmaN_SD_p; the sigma_p,
+        sigma_n limits of the same scan are not plotted"""
+        cols = self.base()
+        n = lambda *v: np.array(v, float)
+        cols.update(sigmaN_SI_p=n(1e-46, 2e-46, 3e-46), sigmaN_SI_n=n(1e-46, 2e-46, 3e-46),
+                    sigmaN_SD_p=n(1e-40, 2e-40, 3e-40), sigmaN_SD_n=n(1e-41, 2e-41, 3e-41),
+                    lim_sigmaN_SI_p=n(1e-47, 1e-47, 1e-47), lim_sigmaN_SI_n=n(1e-47, 1e-47, 1e-47),
+                    lim_sigmaN_SD_p=n(2e-41, 3e-41, 4e-41), lim_sigmaN_SD_p_LZ=n(1e-41, 1e-41, 2e-41),
+                    lim_sigmaN_SD_n=n(1e-42, 1e-42, 1e-42),
+                    sigmaN_SI_eq=n(5e-47, 6e-47, 7e-47), lim_sigmaN_SI_eq=n(1e-47, 1e-47, 1e-47),
+                    sigmaN_SD_n_eq=n(4e-41, 5e-41, 6e-41), lim_sigmaN_SD_n_eq=n(1e-42, 1e-42, 1e-42),
+                    sigmaN_SD_p_eq=n(9e-40, 9e-40, 9e-40), lim_sigmaN_SD_p_eq=n(1e-41, 1e-41, 2e-41),
+                    lim_sigmaN_SI_eq_XLZD=n(1e-49, 1e-49, 1e-49), neutrino_fog_SI=n(1e-49, 2e-49, 3e-49))
+        manifest = SUMMARY.generate(cols, self.root, 'eq')
+        plotted = manifest['plots']['dd_comparison']['columns']
+        self.assertEqual(sorted(manifest['plots']['dd_limits']['columns']),
+                         sorted(['lim_sigmaN_SI_eq', 'lim_sigmaN_SI_eq_XLZD', 'lim_sigmaN_SD_n_eq',
+                                 'lim_sigmaN_SD_p_eq', 'lim_sigmaN_SD_p']))
+        for key in ('sigmaN_SI_eq', 'sigmaN_SD_n_eq', 'sigmaN_SD_p_eq', 'sigmaN_SD_p'):
+            self.assertIn(key, plotted)
+        for key in ('sigmaN_SI_p', 'sigmaN_SD_n', 'lim_sigmaN_SI_p', 'lim_sigmaN_SD_p_LZ'):
+            self.assertNotIn(key, plotted)
+        path = self.root/'direct_eq.txt'
+        scan_file(path, cols)
+        curves, meta = COUPLING.generate(path, coupling=.2)
+        np.testing.assert_allclose(curves['SI_eq'], .2*(cols['lim_sigmaN_SI_eq']/cols['sigmaN_SI_eq'])**.25)
+        np.testing.assert_allclose(curves['SD_p'], .2*(cols['lim_sigmaN_SD_p']/cols['sigmaN_SD_p'])**.25)
+        np.testing.assert_allclose(curves['neutrino_fog_SI'], .2*(cols['neutrino_fog_SI']/cols['sigmaN_SI_eq'])**.25)
+        self.assertNotIn('SI_p', curves)
+        self.assertNotIn('SD_p_LZ', curves)
+
     def test_relic_only_and_indirect_only(self):
         for kind in ('relic','indirect'):
             cols = self.base()

@@ -81,6 +81,11 @@
    %(direct_mode)s = direct_mode ! limit, limit_and_rates
    %(direct_nucleon_targets)s = direct_nucleon_targets ! one or more of xe, ge, ar (comma separated)
    %(direct_electron_targets)s = direct_electron_targets ! one or more of xe, ar (comma separated)
+# Nuclear responses of the DM-nucleus spectra (dRdE_nucleon.dat, direct_mode = limit_and_rates): chiral_eft
+# (SI: Hoferichter, Klos, Menendez, Schwenk 2019, with the two-body pion couplings; SD: Hoferichter, Menendez,
+# Schwenk 2020, with the two-body currents of the axial-vector coupling) or nreft (one-body NREFT responses, O_1
+# and O_4 only). The cross sections compared with the LZ limits (SigmaN_*_eq) always use chiral_eft.
+   %(dd_nuclear_responses)s = dd_nuclear_responses ! chiral_eft or nreft
 
 # Annual modulation of the direct detection rates (DM-nucleus and DM-electron): the year
 # (365.24 days) is divided in day_bins bins, the rates are computed at the bin centers
