@@ -91,7 +91,7 @@ __infty__ = float('inf')
 __mnestlog0__ = -1.0E90
 
 # targets of the RAPIDD recoil spectra (maddm_card direct_nucleon_targets, direct_electron_targets)
-DD_NUCLEON_TARGETS = ('xe', 'ge', 'ar')
+DD_NUCLEON_TARGETS = ('xe', 'ge', 'ar', 'f')
 DD_ELECTRON_TARGETS = ('xe', 'ar')
 
 # DM-electron scattering: sigma_e is compared with the XENONnT upper limit and with the XENON10 S2-only
@@ -5997,7 +5997,7 @@ class MadDMCard(banner_mod.RunCard):
         # targets of the recoil spectra (one column per target in the same file; values checked in check_validity
         # against DD_NUCLEON_TARGETS, DD_ELECTRON_TARGETS: the unit tests exec default_setup alone)
         self.add_param('direct_nucleon_targets', ['xe'], typelist=str, include=False,
-                       comment='targets of dRdE_nucleon.dat: one or more of xe, ge, ar')
+                       comment='targets of dRdE_nucleon.dat: one or more of xe, ge, ar, f')
         self.add_param('direct_electron_targets', ['xe'], typelist=str, include=False,
                        comment='targets of dRdE_electron.dat: one or more of xe, ar')
         # nuclear structure of the DM-nucleus spectra saved with direct_mode = limit_and_rates: chiral EFT

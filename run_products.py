@@ -11,7 +11,7 @@ FILE_GUIDE = (
     ('MadDM_results.txt', 'Main results: relic abundance, rates, cross sections and limits for the enabled analyses.'),
     ('maddm_card.dat', 'Settings used for this run. `rhoDM` is the local DM density in GeV/cm³, shared by direct detection and the Milky Way signals.'),
     ('maddm.out', 'Raw output from the MadDM calculation, useful for troubleshooting.'),
-    ('dRdE_nucleon.dat', 'Differential nuclear recoil rates (direct_mode = limit_and_rates) versus recoil energy in keV, one column per target of direct_nucleon_targets (xenon, germanium, argon). Rates are in events per kg, day and keV.'),
+    ('dRdE_nucleon.dat', 'Differential nuclear recoil rates (direct_mode = limit_and_rates) versus recoil energy in keV, one column per target of direct_nucleon_targets (xenon, germanium, argon, fluorine). Rates are in events per kg, day and keV.'),
     ('dRdE_nucleon.pdf', 'Nuclear recoil spectra of the selected targets on a linear energy axis and a logarithmic rate axis.'),
     ('DD_limits.json', 'DM-nucleon limits (LZ, PICO-60, XLZD projection if xlzd_limits is set) and xenon neutrino fog versus DM mass, rescaled to rhoDM, with the cross sections of this run (predictions: sigma_p, sigma_n; predictions_eq: the cross sections equivalent to the model in LZ, used for the verdict).'),
     ('DD_limits.pdf', 'Equivalent SI and SD DM-nucleon cross sections of this run against the LZ limits (sigma_SD_p against PICO-60), the XLZD projection and the neutrino fog of DD_limits.json.'),

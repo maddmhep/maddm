@@ -91,7 +91,7 @@
 #    (one column per target in the same file); with xe in direct_electron_targets also the XENON10 / XENON1T
 #    S2 spectra (dRdS2_electron_XENON10.dat, dRdS2_electron_XENON1T.dat) and the XENON10 limit on sigma_e
    %(direct_mode)s = direct_mode ! limit, limit_and_rates
-   %(direct_nucleon_targets)s = direct_nucleon_targets ! one or more of xe, ge, ar (comma separated)
+   %(direct_nucleon_targets)s = direct_nucleon_targets ! one or more of xe, ge, ar, f (comma separated)
    %(direct_electron_targets)s = direct_electron_targets ! one or more of xe, ar (comma separated)
 # Nuclear responses of the DM-nucleus spectra (dRdE_nucleon.dat, direct_mode = limit_and_rates): chiral_eft
 # (SI: Hoferichter, Klos, Menendez, Schwenk 2019, with the two-body pion couplings; SD: Hoferichter, Menendez,

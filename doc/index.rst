@@ -126,7 +126,7 @@ The direct detection module of MadDM computes spin-independent and spin-dependen
 It then evaluates the statistical significance of the selected model against the most recent experimental data.
 
 For dark matter--nucleon scattering, MadDM compares the model with the LZ 2024 and PICO-60 upper limits and, with ``xlzd_limits = 200ty`` or ``1000ty`` in the ``maddm_card``, with the projected XLZD sensitivity.
-RAPIDD calculates the differential recoil rates for xenon, argon and germanium targets.
+RAPIDD calculates the differential recoil rates for xenon, argon, germanium and fluorine targets.
 
 The published limits are given for reference models: an isoscalar spin-independent coupling (:math:`f_p = f_n`), and spin-dependent couplings to neutrons only or to protons only.
 A model couples in general to both nucleons, and a xenon detector sees the coherent sum of the proton and neutron amplitudes.
@@ -152,7 +152,7 @@ The direct-detection likelihood of the nested-sampling scans (``directSI``, ``di
 
 ``SigmaN_SD_p`` is compared directly with the PICO-60 SD-proton limit (fluorine is dominated by the proton spin; PICO-60 uses one-body responses). This comparison is approximate: with the two-body currents and the proton-neutron interference the fluorine signal of an axial coupling is up to 1.5 (coupling to the :math:`u` quark only) or 2.6 (:math:`d` quark only) times smaller than the one implied by :math:`\sigma_p`, so the naive comparison can be too aggressive by these factors (no difference for isoscalar axial or tensor couplings).
 ``SigmaN_SI_p``, ``SigmaN_SI_n`` and ``SigmaN_SD_n`` are shown as information only, without a verdict; they and their limits (``lim_sigmaN_*``) stay in the scan output, together with ``sigmaN_SI_eq``, ``sigmaN_SD_n_eq``, ``sigmaN_SD_p_eq`` and their limits.
-The equivalent cross sections always use the chiral EFT; the ``maddm_card`` parameter ``dd_nuclear_responses`` (``chiral_eft``, default, or ``nreft``: one-body NREFT responses, :math:`\mathcal O_1` and :math:`\mathcal O_4` only) selects only the nuclear responses of the saved recoil spectra.
+The equivalent cross sections always use the chiral EFT; the ``maddm_card`` parameter ``dd_nuclear_responses`` (``chiral_eft``, default, or ``nreft``: one-body NREFT responses, :math:`\mathcal O_1` and :math:`\mathcal O_4` only) selects only the nuclear responses of the saved recoil spectra (with ``nreft``: DMFormFactor with the shell-model density matrices of `arXiv:2208.07945 <https://arxiv.org/abs/2208.07945>`__ for xenon and fluorine, the fits of `arXiv:1203.3542 <https://arxiv.org/abs/1203.3542>`__ for germanium and argon).
 
 For dark matter--electron scattering, the module evaluates the differential recoil spectrum in xenon and argon and, for xenon, the event rate as a function of the ionization (S2) signal for XENON10 and XENON1T, and compares the reference cross section :math:`\bar\sigma_e` with the XENONnT S2-only limit (heavy mediator, `arXiv:2601.11296 <https://arxiv.org/abs/2601.11296>`__).
 That limit is computed by XENONnT with the ionization form factors of Essig et al.; with the atomic responses used by RAPIDD it would be about 2 times weaker.
@@ -162,7 +162,7 @@ The p-value refers to all DM at the local density of the card.
 
 The ``maddm_card`` parameter ``direct_mode`` sets what the two modules compute.
 With ``limit`` (``set limit`` at the launch prompt), MadDM computes only the cross sections and compares them with the upper limits, which is faster.
-With ``limit_and_rates`` (the default, ``set limit_and_rates``), it also computes and saves the recoil spectra of the targets chosen with ``direct_nucleon_targets`` (one or more of ``xe``, ``ge``, ``ar``) and ``direct_electron_targets`` (``xe`` and/or ``ar``), both ``xe`` by default.
+With ``limit_and_rates`` (the default, ``set limit_and_rates``), it also computes and saves the recoil spectra of the targets chosen with ``direct_nucleon_targets`` (one or more of ``xe``, ``ge``, ``ar``, ``f``) and ``direct_electron_targets`` (``xe`` and/or ``ar``), both ``xe`` by default.
 The XENON10 and XENON1T results need the xenon DM--electron rates, so they are computed only with ``limit_and_rates`` and ``xe`` among the electron targets.
 See :ref:`plotting` for the output files.
 

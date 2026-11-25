@@ -63,7 +63,7 @@ def _plot_yields(curves, output, *, xlabel, ylabel, title, xscale='log', empty_m
 
 
 TARGET_STYLES = {'Xe': ('Xenon', '#1c6ba0', '-'), 'Ar': ('Argon', '#c2542e', '--'),
-                 'Ge': ('Germanium', '#27824d', '-.')}
+                 'Ge': ('Germanium', '#27824d', '-.'), 'F': ('Fluorine', '#7b4fa0', ':')}
 
 
 def _target_columns(data):
