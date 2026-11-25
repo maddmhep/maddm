@@ -42,7 +42,8 @@ Finally, the candidate must:
 - Have some non-zero couplings,
 - Not decay into a pair of SM particles.
 
-Then, generate the direct detection (``direct``), indirect detection (``indirect``) or relic density (``relic_rensity``) processes with:
+Then, generate the direct detection (``direct`` or ``direct_detection``), indirect detection (``indirect`` or ``indirect_detection``),
+gamma-ray line (``spectral`` or ``indirect_spectral_features``) or relic density (``relic_density``) processes with:
 
 .. code-block:: text
 
@@ -72,7 +73,7 @@ Once you launch the process, you will be prompted a selection menu to choose whi
         The following switches determine which programs are run:
     /====================== Description =======================|===================== values =====================|========== other options ===========\\
     | 1. Compute the Relic Density                             |                relic = OFF                       |     ON                             |
-    | 2. Compute direct detection - nucleon recoil             |               direct = ON                        |     OFF                            |
+    | 2. Compute direct detection - nucleon recoil             |       direct_nucleon = ON                        |     OFF                            |
     | 3. Compute direct detection - electron recoil            |      direct_electron = ON                        |     OFF                            |
     | 4. Compute indirect detection/flux (cont spectrum)       |             indirect = sigmav                    |     flux_source|flux_earth|OFF     |
     | 5. Compute indirect detection in aX (line spectrum)      |             spectral = OFF                       |     Please install module          |
@@ -99,11 +100,25 @@ Some modules can be set to specific values, such as:
 
 .. code-block:: text
 
-    MadDM> set indirect = flux_source
+    MadDM> indirect = flux_source
+
+Direct detection has two switches, ``direct_nucleon`` (DM-nucleon scattering) and ``direct_electron`` (DM-electron
+scattering, available if the model has DM-electron couplings). What they compute is set by ``direct_mode`` in the
+``maddm_card.dat``, with two shortcuts:
+
+.. code-block:: text
+
+    MadDM> set limit_and_rates
+    MadDM> set limit
+
+``limit_and_rates`` (the default) computes the cross sections, compares them with the exclusion limits and saves the
+recoil spectra of the targets in ``direct_nucleon_targets`` (``xe``, ``ge``, ``ar``, ``f``) and
+``direct_electron_targets`` (``xe``, ``ar``); ``limit`` computes only the cross sections and the limits, which is faster
+(for instance in scans). See the :doc:`direct detection tutorial <plot_direct_detection>` for the details.
 
 You can set the model parameters in the ``param_card.dat`` by pressing 7, or by editing the file directly in the process folder (in this case ``DMspin1/Cards/param_card.dat``).
 
-You can set the MadDM parameters (such as the halo parameters, recoil energy range, and much more) in the ``maddm_card.dat`` by pressing 8,
+You can set the MadDM parameters (such as the halo parameters, the direct detection targets, and much more) in the ``maddm_card.dat`` by pressing 8,
 or by editing the file directly in the process folder (in this case ``DMspin1/Cards/maddm_card.dat``).
 
 Once you are all set, press Enter to launch the process. The results will be displayed in the terminal as shown below:
@@ -183,8 +198,14 @@ Install additional tools
 .. code-block:: text
 
     MadDM> install pythia8
-    MadDM> install PPPC4DMID
+    MadDM> install cosmixs
+    MadDM> install RAPIDD
+    MadDM> install py_requirements
     MadDM> quit
+
+``pythia8`` and ``cosmixs`` (CosmiXs source spectra) are used by indirect detection, ``RAPIDD`` by direct detection
+(recoil spectra and DM-electron scattering), and ``py_requirements`` installs ``numpy``, ``scipy`` and ``matplotlib``
+in the Python environment running MadDM. MadDM also offers to install them when a process first needs them.
 
 """
 

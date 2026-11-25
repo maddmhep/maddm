@@ -5531,12 +5531,14 @@ When you are done with such edition, just press enter (or write 'done' or '0')
         logger.info("  flux_earth:", "$MG:BOLD")
         logger.info("     Uses the cached CosmiXsPPPC antiproton and antideuteron fluxes at Earth.")
                 
-    def help_direct(self):
-        
-        logger.info("direct flag can take two values: ON/OFF")
-        logger.info('     ')
-        logger.info("     Theoretical elastic spin-independent and spin-dependent cross section dark matter off nucleons")
+    def help_direct_nucleon(self):
+
+        logger.info("direct_nucleon flag can take two values: ON/OFF")
+        logger.info("  It controls if you are going to compute the DM-nucleon elastic spin-independent and spin-dependent")
+        logger.info("  cross sections and the nuclear recoil for direct detection")
         self.help_direct_mode()
+
+    help_direct = help_direct_nucleon
         
     def help_direct_electron(self):
         logger.info("direct_electron flag can take two values: ON/OFF")

@@ -116,6 +116,13 @@ with all the information needed to make the computation requested.
 MadDM> launch MY_FIRST_MADDM_RUN
 and then follow instruction on the screen to edit your benchmark point/ choose 
 what to run/...
+For example, at the launch prompt:
+   relic = ON              (relic density)
+   direct_nucleon = ON     (DM-nucleon direct detection)
+   direct_electron = ON    (DM-electron direct detection, if the model has DM-electron couplings)
+   indirect = sigmav       (or flux_source, flux_earth)
+   set limit               (direct detection: only cross sections and exclusion limits)
+   set limit_and_rates     (direct detection: also the recoil spectra, the default)
 
 """
 
