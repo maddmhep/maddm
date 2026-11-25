@@ -489,7 +489,8 @@ to download the full example code.</p>
 <p>Scan over a specified range of model parameters.</p>
 <section id="running-a-scan">
 <h2>1. Running a Scan<a class="headerlink" href="#running-a-scan" title="Link to this heading">#</a></h2>
-<p>First, you need to set up your model and process as usual. For example, if you want to scan over a simplified scalar dark matter model, you can do the following:</p>
+<p>First, you need to set up your model and process as usual. For example, to scan the DM-electron scattering of a simplified scalar-mediated
+dark matter model, you can do the following:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; import model eDMsimp_s_spin0
 MadDM&gt; define darkmatter xd
 MadDM&gt; generate direct
@@ -497,11 +498,14 @@ MadDM&gt; output SCAN_example
 MadDM&gt; launch SCAN_example
 </pre></div>
 </div>
-<p>At the launch prompt, set the parameters you want to scan, using <code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">MXd</span> <span class="pre">scan:</span></code> followed by a python array or <code class="docutils literal notranslate"><span class="pre">range</span></code> function.
+<p>This model has only DM-electron couplings, so at the launch prompt only <code class="docutils literal notranslate"><span class="pre">direct_electron</span></code> is ON (<code class="docutils literal notranslate"><span class="pre">direct_nucleon</span></code> is OFF).
+At the launch prompt, set the parameters you want to scan, using <code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">MXd</span> <span class="pre">scan:</span></code> followed by a python array or <code class="docutils literal notranslate"><span class="pre">range</span></code> function.
 For instance, if you want to scan the dark matter mass (MXd) from 50 GeV to &lt;700 GeV in steps of 25 GeV, you can do:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set MXd scan:range(50,700,25)
 </pre></div>
 </div>
+<p>Note that <code class="docutils literal notranslate"><span class="pre">direct_electron</span></code> skips DM masses above 1 GeV unless <code class="docutils literal notranslate"><span class="pre">direct_electron_mode</span></code> is set to <code class="docutils literal notranslate"><span class="pre">always</span></code>
+(<code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">direct_electron_mode</span> <span class="pre">always</span></code>): for DM-electron scattering a sub-GeV range, as in the examples below, is the relevant one.</p>
 <p>If you want to scan only over some specific values, you can also use python arrays, as follows:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set MXd scan:[0.01,0.02,0.04,0.10,0.20,0.4,0.8,1]
 </pre></div>
@@ -510,9 +514,16 @@ For instance, if you want to scan the dark matter mass (MXd) from 50 GeV to &lt;
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set MXd scan:[10 ** (-2 + i * 0.2) for i in range(11)]
 </pre></div>
 </div>
-<p>Then press Enter to start the scan. For scans, you will find in the <code class="docutils literal notranslate"><span class="pre">output</span></code> directory a <code class="docutils literal notranslate"><span class="pre">run_XX_YY</span></code> folder containing the <code class="docutils literal notranslate"><span class="pre">maddm.out</span></code> file  for each <code class="docutils literal notranslate"><span class="pre">YY</span></code> iteration.
+<p>If you only need the cross sections and the exclusion limits, and not the recoil spectra of each point, set <code class="docutils literal notranslate"><span class="pre">direct_mode</span></code> to <code class="docutils literal notranslate"><span class="pre">limit</span></code>
+before starting the scan, which is faster (<code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">limit_and_rates</span></code>, the default, also computes the spectra and, for DM-electron
+scattering, the XENON10 limit):</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set limit
+</pre></div>
+</div>
+<p>Then press Enter to start the scan. For scans, you will find in the <code class="docutils literal notranslate"><span class="pre">output</span></code> directory a <code class="docutils literal notranslate"><span class="pre">run_XX_YY</span></code> folder for each <code class="docutils literal notranslate"><span class="pre">YY</span></code> iteration,
+with the <code class="docutils literal notranslate"><span class="pre">MadDM_results.txt</span></code> and <code class="docutils literal notranslate"><span class="pre">maddm.out</span></code> files and the output files kept by <code class="docutils literal notranslate"><span class="pre">save_output</span></code>.
 You will also find a <code class="docutils literal notranslate"><span class="pre">scan_run_XX.txt</span></code> file that summarizes the scan parameters and results.
-You can also make a scan over multiple parameters at once. For example, if you want to scan over the dark matter mass <code class="docutils literal notranslate"><span class="pre">MXd</span></code> and the coupling ,``gsxd`` you can do:</p>
+You can also make a scan over multiple parameters at once. For example, if you want to scan over the dark matter mass <code class="docutils literal notranslate"><span class="pre">MXd</span></code> and the coupling <code class="docutils literal notranslate"><span class="pre">gsxd</span></code>, you can do:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set MXd scan:[10 ** (-2 + i * 0.2) for i in range(11)]
 MadDM&gt; set gsxd scan:range(100,1000,100)
 </pre></div>
@@ -520,8 +531,11 @@ MadDM&gt; set gsxd scan:range(100,1000,100)
 <p>Then press Enter to start the scan. MadDM will generate one run for each combination of the parameters you specified, iterating first over the last parameter in the <cite>param_card.dat</cite>.
 Once all values of that parameter are exhausted, it steps the second-to-last parameter and repeats the process, and so on, like nested <code class="docutils literal notranslate"><span class="pre">for</span></code> loops, starting from the outermost (first)
 parameter to the innermost (last).</p>
-<p>You will find the results of the scan in <code class="docutils literal notranslate"><span class="pre">/SCAN_example/output/scan_run_01.txt</span></code>. In this example, this file will contain
-the pvalues for XENON10 and XENON1T for each value of the dark matter mass and coupling you scanned.</p>
+<p>You will find the results of the scan in <code class="docutils literal notranslate"><span class="pre">SCAN_example/output/scan_run_01.txt</span></code>. In this example, this file will contain,
+for each value of the dark matter mass and coupling you scanned, the reference DM-electron cross section <code class="docutils literal notranslate"><span class="pre">sigma_e</span></code>, the XENONnT
+limits <code class="docutils literal notranslate"><span class="pre">lim_sigma_e</span></code> and <code class="docutils literal notranslate"><span class="pre">lim_sigma_e_rescaled</span></code> and, with <code class="docutils literal notranslate"><span class="pre">limit_and_rates</span></code>, the XENON10 limit <code class="docutils literal notranslate"><span class="pre">lim_sigma_e_Xenon10</span></code> and
+p-value <code class="docutils literal notranslate"><span class="pre">pvalue_Xenon10</span></code>. For DM-nucleon scattering (<code class="docutils literal notranslate"><span class="pre">direct_nucleon</span></code>) the file contains the cross sections <code class="docutils literal notranslate"><span class="pre">sigmaN_*</span></code>, the
+equivalent cross sections <code class="docutils literal notranslate"><span class="pre">sigmaN_*_eq</span></code> and their limits <code class="docutils literal notranslate"><span class="pre">lim_sigmaN_*</span></code>.</p>
 </section>
 <section id="exiting-maddm">
 <h2>Exiting MadDM<a class="headerlink" href="#exiting-maddm" title="Link to this heading">#</a></h2>

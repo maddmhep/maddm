@@ -520,15 +520,42 @@ Next, create the process folder. In this case, we call it <code class="docutils 
 MadDM&gt; launch DD_NR_spin0
 </pre></div>
 </div>
-<p>Select to run the <code class="docutils literal notranslate"><span class="pre">direct</span></code> module (but it should be already ON) by entering:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; direct = ON
+<p>Select to run the <code class="docutils literal notranslate"><span class="pre">direct_nucleon</span></code> module (but it should be already ON) by entering:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; direct_nucleon = ON
 </pre></div>
 </div>
 <p>If your model has both DM-nucleon and DM-electron interactions, you can set both <code class="docutils literal notranslate"><span class="pre">direct_nucleon</span></code> and <code class="docutils literal notranslate"><span class="pre">direct_electron</span></code> modules to ON,
 and you will receive results for both types of interactions considered separately.</p>
 <p>You can set the model parameters in the <code class="docutils literal notranslate"><span class="pre">param_card.dat</span></code> by pressing 7, or by editing the file directly in the process folder (in this case <code class="docutils literal notranslate"><span class="pre">DD_NR_spin0/Cards/param_card.dat</span></code>).</p>
-<p>You can set the MadDM parameters (such as the halo parameters, recoil energy range and much more) in the <code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code> by pressing 8,
+<p>You can set the MadDM parameters (such as the halo parameters, the targets and much more) in the <code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code> by pressing 8,
 or by editing the file directly in the process folder (in this case <code class="docutils literal notranslate"><span class="pre">DD_NR_spin0/Cards/maddm_card.dat</span></code>).</p>
+</section>
+<section id="limits-only-or-limits-and-rates">
+<h3>Limits only, or limits and rates<a class="headerlink" href="#limits-only-or-limits-and-rates" title="Link to this heading">#</a></h3>
+<p>The <code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code> parameter <code class="docutils literal notranslate"><span class="pre">direct_mode</span></code> sets what <code class="docutils literal notranslate"><span class="pre">direct_nucleon</span></code> and <code class="docutils literal notranslate"><span class="pre">direct_electron</span></code> compute. At the launch
+prompt you can set it with a shortcut:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set limit_and_rates
+MadDM&gt; set limit
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">limit_and_rates</span></code> (default): the cross sections and the comparison with the exclusion limits, plus the recoil spectra of
+the selected targets computed with RAPIDD (<code class="docutils literal notranslate"><span class="pre">dRdE_nucleon.dat</span></code>, <code class="docutils literal notranslate"><span class="pre">dRdE_electron.dat</span></code>) and, for DM-electron scattering in
+xenon, the XENON10 and XENON1T S2 spectra and the XENON10 limit;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">limit</span></code>: only the cross sections and the comparison with the exclusion limits (LZ 2024, PICO-60 and XENONnT), without
+recoil spectra. It is faster, for instance in scans. The equivalent cross sections compared with LZ are computed in both modes.</p></li>
+</ul>
+<p>The targets of the recoil spectra are chosen in the <code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code> (comma-separated lists, one column per target in the
+output files):</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set direct_nucleon_targets xe, ge, ar, f
+MadDM&gt; set direct_electron_targets xe, ar
+</pre></div>
+</div>
+<p>DM-nucleon scattering supports xenon (<code class="docutils literal notranslate"><span class="pre">xe</span></code>), germanium (<code class="docutils literal notranslate"><span class="pre">ge</span></code>), argon (<code class="docutils literal notranslate"><span class="pre">ar</span></code>) and fluorine (<code class="docutils literal notranslate"><span class="pre">f</span></code>); DM-electron
+scattering supports xenon and argon. Both lists are <code class="docutils literal notranslate"><span class="pre">xe</span></code> by default. Argon has no spin-dependent rate (no nuclear spin);
+fluorine is the target of the PICO-60 bubble chamber (C<sub>3</sub>F<sub>8</sub>) and is dominated by the proton spin.
+The XENON10 and XENON1T results need <code class="docutils literal notranslate"><span class="pre">xe</span></code> among the electron targets. With <code class="docutils literal notranslate"><span class="pre">limit_and_rates</span></code> you can also compute the
+annual modulation of the rates (<code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">direct_modulation</span> <span class="pre">True</span></code>, see below).</p>
 <p>Once you are all set, you can run the process by pressing Enter. This module will first evaluate the DM-nucleon cross sections and the
 equivalent cross sections and compare them against the experimental limits from LZ 2024 and PICO-60.
 Next, with <code class="docutils literal notranslate"><span class="pre">direct_mode</span> <span class="pre">=</span> <span class="pre">limit_and_rates</span></code>, it will use RAPIDD to compute the differential nuclear recoil rates.
@@ -612,6 +639,127 @@ Below is an example of how to plot the differential rates:</p>
 </span><span class="n">plot_dd_rates</span><span class="p">(</span><span class="s1">'</span><span class="s1">./plot_data/dRdE_nucleon.dat</span><span class="s1">'</span><span class="p">)</span><span class="w">
 </span></pre></div></div>
 <img src="../_images/sphx_glr_plot_direct_detection_001.png" srcset="../_images/sphx_glr_plot_direct_detection_001.png" alt="DD nucleon Differential Rates" class = "sphx-glr-single-img"/></section>
+<section id="annual-modulation-of-the-rates">
+<h3>Annual modulation of the rates<a class="headerlink" href="#annual-modulation-of-the-rates" title="Link to this heading">#</a></h3>
+<p>The rates above use the annual-average halo, with the Earth velocity vector of March 9 (Eq. 12 of
+<a class="reference external" href="https://arxiv.org/abs/2105.00599">arXiv:2105.00599</a>). Since the Earth moves around the Sun, the DM velocity
+distribution seen by the detector changes during the year, and so do the SI and SD rates. To compute this annual
+modulation, set <code class="docutils literal notranslate"><span class="pre">direct_modulation</span></code> to <code class="docutils literal notranslate"><span class="pre">True</span></code> in the <code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code> (press 8, or use <code class="docutils literal notranslate"><span class="pre">set</span></code>) before running:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; launch DD_NR_spin0
+MadDM&gt; direct_nucleon = ON
+MadDM&gt; set direct_nucleon_targets xe, ge, ar
+MadDM&gt; set direct_modulation True
+MadDM&gt; set day_bins 24
+</pre></div>
+</div>
+<p>The year (365.24 days) is divided in <code class="docutils literal notranslate"><span class="pre">day_bins</span></code> bins (default 12) of width <span class="math notranslate nohighlight">\(\Delta t = 365.24/N_\mathrm{bins}\)</span>
+days, and RAPIDD computes the halo and the recoil spectrum of each target at the bin centers
+<span class="math notranslate nohighlight">\(t_i = (i + 1/2)\,\Delta t\)</span>, in days since March 22. The Earth velocity has modulus <code class="docutils literal notranslate"><span class="pre">vEarth_mod</span></code> (29.8 km/s
+by default) and the time-dependent direction of Eq. 11 of arXiv:2105.00599; <code class="docutils literal notranslate"><span class="pre">vMP</span></code>, <code class="docutils literal notranslate"><span class="pre">vescape</span></code>, <code class="docutils literal notranslate"><span class="pre">vSun_*</span></code> and
+<code class="docutils literal notranslate"><span class="pre">rhoDM</span></code> are those of the card, as for the annual-average rates. Each bin needs its own halo table, so the run is
+slower for many bins. The modulation needs <code class="docutils literal notranslate"><span class="pre">direct_mode</span> <span class="pre">=</span> <span class="pre">limit_and_rates</span></code>; the equivalent cross sections and the
+exclusion limits do not change (they always use the annual-average halo).</p>
+<p>The run folder then also contains:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">rate_vs_time_nucleon.dat</span></code>: <span class="math notranslate nohighlight">\(t_i\)</span> [days since March 22], <span class="math notranslate nohighlight">\(\Delta t\)</span> [days] and, for each target,
+<code class="docutils literal notranslate"><span class="pre">R_&lt;target&gt;</span></code> <span class="math notranslate nohighlight">\(= \Delta t \int \frac{dR}{dE}(t_i)\, dE\)</span> [events/kg per time bin]. The integral covers the
+whole energy grid of <code class="docutils literal notranslate"><span class="pre">dRdE_nucleon.dat</span></code> (0.01-40 keV), without threshold or efficiency;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dRdE_modulation_nucleon.dat</span></code>: <span class="math notranslate nohighlight">\(E_R\)</span> [keV] and, for each target, the spectrum averaged over the year
+<code class="docutils literal notranslate"><span class="pre">drde_&lt;target&gt;_avg</span></code> [events/kg/day/keV] and integrated over the year <code class="docutils literal notranslate"><span class="pre">drde_&lt;target&gt;_year</span></code> [events/kg/yr/keV].
+The averaged spectrum is close to the one of <code class="docutils literal notranslate"><span class="pre">dRdE_nucleon.dat</span></code> (here the total rates agree within 0.3%), except
+in the tail near the kinematic endpoint, which depends on the maximal DM velocity in the detector frame and is
+therefore set by the fastest time bins.</p></li>
+</ul>
+<p>The same flag gives the modulation of the DM-electron rates (<code class="docutils literal notranslate"><span class="pre">direct_electron</span></code>, see below), in
+<code class="docutils literal notranslate"><span class="pre">rate_vs_time_electron.dat</span></code> and <code class="docutils literal notranslate"><span class="pre">dRdE_modulation_electron.dat</span></code>, with the same format.</p>
+<p>The files used below were produced with the commands above (default model parameters, 10 GeV DM).
+The rate of each time bin is fitted with <span class="math notranslate nohighlight">\(R(t) = S_0 + S_m \cos[2\pi (t - t_\mathrm{max})/T]\)</span>, with
+<span class="math notranslate nohighlight">\(T\)</span> = 1 year, which gives the modulated fraction <span class="math notranslate nohighlight">\(S_m/S_0\)</span> and the date of the maximum:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span class="kn">import</span><span class="w"> </span><span class="nn">datetime</span><span class="w">
+</span><span class="w">
+</span><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib</span><span class="nn">.</span><span class="nn">pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span><span class="w">
+</span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span><span class="w">
+</span><span class="w">
+</span><span class="n">YEAR_DAYS</span> <span class="o">=</span> <span class="mf">365.24</span><span class="w">
+</span><span class="n">T0_DATE</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="p">(</span><span class="mi">2018</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">22</span><span class="p">)</span>  <span class="c1"># t = 0 of rate_vs_time_*.dat</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="k">def</span><span class="w"> </span><span class="nf">plot_dd_modulation</span><span class="p">(</span><span class="n">rate_file</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;
+    Plots the relative annual modulation of the rate of each target in rate_vs_time_nucleon.dat
+    (or rate_vs_time_electron.dat) and fits it with S0 + Sm cos(2 pi (t - t_max)/year).
+
+    Parameters:
+    rate_file (str): Path to the rate_vs_time_*.dat file.
+    &quot;&quot;&quot;</span><span class="w">
+</span>    <span class="c1"># header: t [days since 22-03-2018] dt [days] R_&lt;target&gt; [events/kg/dt] ...</span><span class="w">
+</span>    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">rate_file</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span><span class="w">
+</span>        <span class="n">targets</span> <span class="o">=</span> <span class="p">[</span><span class="n">name</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="s1">'</span><span class="s1">R_</span><span class="s1">'</span><span class="p">)</span><span class="p">:</span><span class="p">]</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">file</span><span class="o">.</span><span class="n">readline</span><span class="p">(</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="p">)</span> <span class="k">if</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">'</span><span class="s1">R_</span><span class="s1">'</span><span class="p">)</span><span class="p">]</span><span class="w">
+</span>    <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">rate_file</span><span class="p">,</span> <span class="n">ndmin</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span><span class="w">
+</span>    <span class="n">t</span><span class="p">,</span> <span class="n">dt</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="p">:</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="p">:</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="w">
+</span><span class="w">
+</span>    <span class="n">omega</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="n">YEAR_DAYS</span><span class="w">
+</span>    <span class="n">t_fine</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">YEAR_DAYS</span><span class="p">,</span> <span class="mi">400</span><span class="p">)</span><span class="w">
+</span>    <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">6</span><span class="p">)</span><span class="p">)</span><span class="w">
+</span>    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">target</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">targets</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="n">rate</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="p">:</span><span class="p">,</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">2</span><span class="p">]</span> <span class="o">/</span> <span class="n">dt</span>  <span class="c1"># events/kg/day in each time bin</span><span class="w">
+</span>        <span class="c1"># linear least squares: S0 + a cos(omega t) + b sin(omega t), with Sm = hypot(a, b)</span><span class="w">
+</span>        <span class="n">basis</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">(</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">t</span><span class="p">)</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">omega</span> <span class="o">*</span> <span class="n">t</span><span class="p">)</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">omega</span> <span class="o">*</span> <span class="n">t</span><span class="p">)</span><span class="p">]</span><span class="p">)</span><span class="w">
+</span>        <span class="n">S0</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">lstsq</span><span class="p">(</span><span class="n">basis</span><span class="p">,</span> <span class="n">rate</span><span class="p">,</span> <span class="n">rcond</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="w">
+</span>        <span class="n">Sm</span><span class="p">,</span> <span class="n">t_max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hypot</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span><span class="p">,</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arctan2</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span> <span class="o">/</span> <span class="n">omega</span><span class="p">)</span> <span class="o">%</span> <span class="n">YEAR_DAYS</span><span class="w">
+</span>        <span class="n">date_max</span> <span class="o">=</span> <span class="n">T0_DATE</span> <span class="o">+</span> <span class="n">datetime</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">t_max</span><span class="p">)</span><span class="p">)</span><span class="w">
+</span>        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s1">: S0 = </span><span class="si">{</span><span class="n">S0</span><span class="si">:</span><span class="s1">.3e</span><span class="si">}</span><span class="s1"> events/kg/day, Sm/S0 = </span><span class="si">{</span><span class="mi">100</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">Sm</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">S0</span><span class="si">:</span><span class="s1">.2f</span><span class="si">}</span><span class="s1"> %, </span><span class="s1">'</span><span class="w">
+</span>              <span class="sa">f</span><span class="s1">'</span><span class="s1">maximum on </span><span class="si">{</span><span class="n">date_max</span><span class="si">:</span><span class="s1">%B</span><span class="si">}</span><span class="s1"> </span><span class="si">{</span><span class="n">date_max</span><span class="o">.</span><span class="n">day</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span><span class="w">
+</span>        <span class="n">line</span><span class="p">,</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="mi">100</span> <span class="o">*</span> <span class="p">(</span><span class="n">rate</span> <span class="o">/</span> <span class="n">S0</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span><span class="p">,</span> <span class="s1">'</span><span class="s1">o</span><span class="s1">'</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">target</span><span class="p">)</span><span class="w">
+</span>        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">t_fine</span><span class="p">,</span> <span class="mi">100</span> <span class="o">*</span> <span class="n">Sm</span> <span class="o">/</span> <span class="n">S0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">omega</span> <span class="o">*</span> <span class="p">(</span><span class="n">t_fine</span> <span class="o">-</span> <span class="n">t_max</span><span class="p">)</span><span class="p">)</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">line</span><span class="o">.</span><span class="n">get_color</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="c1"># first day of each month on the time axis</span><span class="w">
+</span>    <span class="n">months</span> <span class="o">=</span> <span class="p">[</span><span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="p">(</span><span class="mi">2018</span> <span class="o">+</span> <span class="p">(</span><span class="mi">3</span> <span class="o">+</span> <span class="n">m</span><span class="p">)</span> <span class="o">/</span><span class="o">/</span> <span class="mi">12</span><span class="p">,</span> <span class="p">(</span><span class="mi">3</span> <span class="o">+</span> <span class="n">m</span><span class="p">)</span> <span class="o">%</span> <span class="mi">12</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">12</span><span class="p">)</span><span class="p">]</span><span class="w">
+</span>    <span class="n">plt</span><span class="o">.</span><span class="n">xticks</span><span class="p">(</span><span class="p">[</span><span class="p">(</span><span class="n">m</span> <span class="o">-</span> <span class="n">T0_DATE</span><span class="p">)</span><span class="o">.</span><span class="n">days</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">months</span><span class="p">]</span><span class="p">,</span> <span class="p">[</span><span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">m</span><span class="si">:</span><span class="s1">%b</span><span class="si">}</span><span class="s1">'</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">months</span><span class="p">]</span><span class="p">)</span><span class="w">
+</span>    <span class="n">plt</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">'</span><span class="s1">gray</span><span class="s1">'</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">0.8</span><span class="p">)</span><span class="w">
+</span>    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">'</span><span class="s1">Date (time bins of rate_vs_time_nucleon.dat)</span><span class="s1">'</span><span class="p">)</span><span class="w">
+</span>    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">'</span><span class="s1">$R(t)/S_0 - 1$ [</span><span class="s1">%</span><span class="s1">]</span><span class="s1">'</span><span class="p">)</span><span class="w">
+</span>    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">'</span><span class="s1">Annual modulation of the DM-nucleus rates</span><span class="s1">'</span><span class="p">)</span><span class="w">
+</span>    <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span>    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="n">plot_dd_modulation</span><span class="p">(</span><span class="s1">'</span><span class="s1">./plot_data/rate_vs_time_nucleon.dat</span><span class="s1">'</span><span class="p">)</span><span class="w">
+</span></pre></div></div>
+<img src="../_images/sphx_glr_plot_direct_detection_002.png" srcset="../_images/sphx_glr_plot_direct_detection_002.png" alt="Annual modulation of the DM-nucleus rates" class = "sphx-glr-single-img"/><div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Xe: S0 = 5.055e-06 events/kg/day, Sm/S0 = 2.43 %, maximum on June 2
+Ar: S0 = 1.169e-06 events/kg/day, Sm/S0 = 2.60 %, maximum on June 2
+Ge: S0 = 2.557e-06 events/kg/day, Sm/S0 = 2.53 %, maximum on June 2
+</pre></div>
+</div>
+<p>The rate peaks at the beginning of June, when the Earth velocity is aligned with the one of the Sun, and the modulated
+fraction is a few percent for this light DM. The year-integrated spectrum of <code class="docutils literal notranslate"><span class="pre">dRdE_modulation_nucleon.dat</span></code> gives
+the expected number of events of an exposure in kg yr, for instance above an energy threshold:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span class="k">def</span><span class="w"> </span><span class="nf">events_per_exposure</span><span class="p">(</span><span class="n">spectrum_file</span><span class="p">,</span> <span class="n">threshold_keV</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">exposure_kg_yr</span><span class="o">=</span><span class="mf">1.0e3</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;
+    Number of events above threshold_keV for an exposure in kg yr, from the drde_&lt;target&gt;_year columns
+    of dRdE_modulation_nucleon.dat (or dRdE_modulation_electron.dat), without efficiency.
+    &quot;&quot;&quot;</span><span class="w">
+</span>    <span class="c1"># header: E [keV] drde_&lt;target&gt;_avg [events/kg/day/keV] ... drde_&lt;target&gt;_year [events/kg/yr/keV] ...</span><span class="w">
+</span>    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">spectrum_file</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span><span class="w">
+</span>        <span class="n">names</span> <span class="o">=</span> <span class="n">file</span><span class="o">.</span><span class="n">readline</span><span class="p">(</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="p">)</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="p">]</span><span class="w">
+</span>    <span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="n">name</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">names</span> <span class="k">if</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">'</span><span class="s1">drde_</span><span class="s1">'</span><span class="p">)</span><span class="p">]</span><span class="w">
+</span>    <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">spectrum_file</span><span class="p">)</span><span class="w">
+</span>    <span class="n">energy</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="p">:</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="w">
+</span>    <span class="n">above</span> <span class="o">=</span> <span class="n">energy</span> <span class="o">&gt;</span><span class="o">=</span> <span class="n">threshold_keV</span><span class="w">
+</span>    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">columns</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="k">if</span> <span class="n">name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">'</span><span class="s1">_year</span><span class="s1">'</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>            <span class="n">target</span> <span class="o">=</span> <span class="n">name</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="s1">'</span><span class="s1">drde_</span><span class="s1">'</span><span class="p">)</span><span class="p">:</span><span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="s1">'</span><span class="s1">_year</span><span class="s1">'</span><span class="p">)</span><span class="p">]</span><span class="w">
+</span>            <span class="n">spectrum</span><span class="p">,</span> <span class="n">e</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">above</span><span class="p">,</span> <span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span><span class="p">,</span> <span class="n">energy</span><span class="p">[</span><span class="n">above</span><span class="p">]</span><span class="w">
+</span>            <span class="n">n_events</span> <span class="o">=</span> <span class="n">exposure_kg_yr</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">spectrum</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="p">]</span> <span class="o">+</span> <span class="n">spectrum</span><span class="p">[</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>  <span class="c1"># trapezoidal rule</span><span class="w">
+</span>            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s1">: </span><span class="si">{</span><span class="n">n_events</span><span class="si">:</span><span class="s1">.3e</span><span class="si">}</span><span class="s1"> events above </span><span class="si">{</span><span class="n">threshold_keV</span><span class="si">}</span><span class="s1"> keV in </span><span class="si">{</span><span class="n">exposure_kg_yr</span><span class="si">:</span><span class="s1">g</span><span class="si">}</span><span class="s1"> kg yr</span><span class="s1">'</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="n">events_per_exposure</span><span class="p">(</span><span class="s1">'</span><span class="s1">./plot_data/dRdE_modulation_nucleon.dat</span><span class="s1">'</span><span class="p">,</span> <span class="n">threshold_keV</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">exposure_kg_yr</span><span class="o">=</span><span class="mf">1.0e3</span><span class="p">)</span><span class="w">
+</span></pre></div></div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Xe: 9.125e-01 events above 1.0 keV in 1000 kg yr
+Ar: 3.242e-01 events above 1.0 keV in 1000 kg yr
+Ge: 6.129e-01 events above 1.0 keV in 1000 kg yr
+</pre></div>
+</div>
+</section>
 </section>
 <section id="electronic-recoils-with-xenonnt-and-xenon10-limits">
 <h2>2. Electronic Recoils with XENONnT and XENON10 limits<a class="headerlink" href="#electronic-recoils-with-xenonnt-and-xenon10-limits" title="Link to this heading">#</a></h2>
@@ -640,7 +788,7 @@ MadDM&gt; launch DD_ER_spin0
 <p>If your model has both DM-nucleon and DM-electron interactions, you can set both <code class="docutils literal notranslate"><span class="pre">direct_nucleon</span></code> and <code class="docutils literal notranslate"><span class="pre">direct_electron</span></code> modules to ON,
 and you will receive results for both types of interactions considered separately.</p>
 <p>You can set the model parameters in the <code class="docutils literal notranslate"><span class="pre">param_card.dat</span></code> by pressing 7, or by editing the file directly in the process folder (in this case <code class="docutils literal notranslate"><span class="pre">DD_ER_spin0/Cards/param_card.dat</span></code>).</p>
-<p>You can set the MadDM parameters (such as the halo parameters, recoil energy range and much more) in the <code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code> by pressing 8,
+<p>You can set the MadDM parameters (such as the halo parameters, the targets and much more) in the <code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code> by pressing 8,
 or by editing the file directly in the process folder (in this case <code class="docutils literal notranslate"><span class="pre">DD_ER_spin0/Cards/maddm_card.dat</span></code>).</p>
 <p>Note that in the <code class="docutils literal notranslate"><span class="pre">direct_electron</span></code> module, if the DM particle has a mass above 1 GeV, it will be ignored by default.
 To change this behavior, set <code class="docutils literal notranslate"><span class="pre">direct_electron_mode</span></code> to <code class="docutils literal notranslate"><span class="pre">always</span></code> in the <code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code> file, which you can do by pressing 8 after launching the process.</p>
@@ -708,7 +856,7 @@ Below is an example of how to plot the differential rates and number of events v
 </span><span class="w">
 </span><span class="n">plot_dRdE_er</span><span class="p">(</span><span class="s1">'</span><span class="s1">./plot_data/dRdE_electron.dat</span><span class="s1">'</span><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<img src="../_images/sphx_glr_plot_direct_detection_002.png" srcset="../_images/sphx_glr_plot_direct_detection_002.png" alt="Differential Recoil Rate" class = "sphx-glr-single-img"/><p>Plot the number of events vs scintillation signal for Electronic Recoils</p>
+<img src="../_images/sphx_glr_plot_direct_detection_003.png" srcset="../_images/sphx_glr_plot_direct_detection_003.png" alt="Differential Recoil Rate" class = "sphx-glr-single-img"/><p>Plot the number of events vs scintillation signal for Electronic Recoils</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span><span class="w">
 </span><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib</span><span class="nn">.</span><span class="nn">pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span><span class="w">
 </span><span class="w">
@@ -731,12 +879,12 @@ Below is an example of how to plot the differential rates and number of events v
 </span><span class="w">
 </span><span class="n">plot_dRdS2_er</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">./plot_data/dRdS2_electron_XENON10.dat</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s2">./plot_data/dRdS2_electron_XENON1T.dat</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<img src="../_images/sphx_glr_plot_direct_detection_003.png" srcset="../_images/sphx_glr_plot_direct_detection_003.png" alt="Differential Rate vs S2" class = "sphx-glr-single-img"/><section id="exiting-maddm">
+<img src="../_images/sphx_glr_plot_direct_detection_004.png" srcset="../_images/sphx_glr_plot_direct_detection_004.png" alt="Differential Rate vs S2" class = "sphx-glr-single-img"/><section id="exiting-maddm">
 <h4>Exiting MadDM<a class="headerlink" href="#exiting-maddm" title="Link to this heading">#</a></h4>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; quit
 </pre></div>
 </div>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 0.361 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 0.313 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorial-and-examples-plot-direct-detection-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../_downloads/ed55d6c604f326f38dd25a849d679b4e/plot_direct_detection.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">plot_direct_detection.ipynb</span></code></a></p>
@@ -803,7 +951,9 @@ Below is an example of how to plot the differential rates and number of events v
     <ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#nuclear-recoils-with-rapidd-and-lz-pico-60-limits">1. Nuclear Recoils with RAPIDD and LZ/PICO-60 limits</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#example-with-a-simplified-scalar-mediated-dm-model">Example with a simplified scalar-mediated DM model</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#limits-only-or-limits-and-rates">Limits only, or limits and rates</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#results">Results</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#annual-modulation-of-the-rates">Annual modulation of the rates</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#electronic-recoils-with-xenonnt-and-xenon10-limits">2. Electronic Recoils with XENONnT and XENON10 limits</a><ul class="pst-show_toc_level nav section-nav flex-column">

@@ -43,7 +43,15 @@ where ``run.txt`` should contain the commands you want to execute, one per line,
     generate direct
     output SCAN_example
     launch SCAN_example
+    direct_nucleon = ON
+    set limit
+    set direct_nucleon_targets xe, ar
     set MXd scan:range(50,700,25)
+
+After ``launch``, the lines answer the launch prompt: switches (``direct_nucleon = ON``, ``relic = ON``, ...), ``set`` commands
+for the cards and shortcuts such as ``set limit`` or ``set limit_and_rates`` for the direct detection mode. The run starts at the
+end of the file, as if Enter was pressed. Note that the switch names are those shown at the launch prompt: ``direct_nucleon`` and
+``direct_electron`` for direct detection (``direct`` is only the name of the process in ``generate direct``).
 
 
 .. _sphx_glr_download_tutorial_and_examples_scripts.py:

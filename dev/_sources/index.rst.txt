@@ -103,8 +103,9 @@ After importing your model and defining its dark matter candidate, generate the 
   output dm_combined
   launch dm_combined
 
-At the launch menu, ``1`` toggles relic density and ``4`` cycles through the continuum indirect modes.
-You can also enter ``relic = ON`` and ``indirect = sigmav`` for rates, or ``indirect = flux_earth`` for the propagated CosmiXsPPPC antiproton and antideuteron predictions.
+At the launch menu, ``1`` toggles relic density, ``2`` and ``3`` toggle direct detection for DM--nucleon (``direct_nucleon``) and DM--electron (``direct_electron``) scattering, and ``4`` cycles through the continuum indirect modes.
+You can also enter ``relic = ON``, ``direct_nucleon = ON``, ``direct_electron = ON`` and ``indirect = sigmav`` for rates, or ``indirect = flux_earth`` for the propagated CosmiXsPPPC antiproton and antideuteron predictions.
+``set limit`` computes only the direct detection cross sections and limits, ``set limit_and_rates`` (the default) also the recoil spectra (see the direct detection module below).
 For a gamma-ray line analysis, also run ``add indirect_spectral_features`` before ``output``.
 
 If the menu shows **No processes generated**, add the missing process at the main MadDM prompt and export a new output directory.
@@ -164,6 +165,7 @@ The ``maddm_card`` parameter ``direct_mode`` sets what the two modules compute.
 With ``limit`` (``set limit`` at the launch prompt), MadDM computes only the cross sections and compares them with the upper limits, which is faster.
 With ``limit_and_rates`` (the default, ``set limit_and_rates``), it also computes and saves the recoil spectra of the targets chosen with ``direct_nucleon_targets`` (one or more of ``xe``, ``ge``, ``ar``, ``f``) and ``direct_electron_targets`` (``xe`` and/or ``ar``), both ``xe`` by default.
 The XENON10 and XENON1T results need the xenon DM--electron rates, so they are computed only with ``limit_and_rates`` and ``xe`` among the electron targets.
+With ``limit_and_rates``, ``direct_modulation = True`` also computes the annual modulation of the DM--nucleon and DM--electron rates, in ``day_bins`` time bins of the year (see the :doc:`direct detection tutorial <tutorial_and_examples/plot_direct_detection>`).
 See :ref:`plotting` for the output files.
 
 MadDM also reports the xenon neutrino fog of `O'Hare (2021) <https://arxiv.org/abs/2109.03116>`__ at the DM mass, as a reference boundary rather than an exclusion limit.

@@ -18,8 +18,13 @@ the rate summed over the shells for each target, then the rate of each
 shell). With xenon among the electron targets, the run also writes the
 XENON10 and XENON1T S2 spectra (``dRdS2_electron_XENON10.dat``,
 ``dRdS2_electron_XENON1T.dat``) and the XENON10 signal per S2 bin
-(``signal_e_recoil.dat``). The run ``README.md`` lists the files that
-were produced.
+(``signal_e_recoil.dat``). With ``direct_modulation = True``, the run
+also writes the annual modulation: the rate of each target in each
+time bin of the year (``rate_vs_time_nucleon.dat``,
+``rate_vs_time_electron.dat``) and the spectra averaged over and
+integrated over the year (``dRdE_modulation_nucleon.dat``,
+``dRdE_modulation_electron.dat``). The run ``README.md`` lists the files
+that were produced.
 
 With Matplotlib installed, MadDM plots available source yields and
 direct-detection rates (``dRdE_nucleon.pdf`` and ``dRdE_electron.pdf``,

@@ -35,7 +35,7 @@ We enable the computation of the gamma-ray flux spectrum by setting:
 
 .. code-block:: text
 
-    MadDM> set indirect = flux_source
+    MadDM> indirect = flux_source
 
 We can choose to compute the gamma-ray spectra using either Pythia 8 or CosmiXs, entering ``pythia8`` or ``CosmiXs`` respectively:
 
@@ -100,7 +100,7 @@ Plot the Gamma-ray Spectra
 ==========================
 
 After running the above commands, you will find the output in the ``ID_spin1`` folder.
-The output will contain the gamma-ray spectra in the ``ID_spin1/Output/xxxx`` folder.
+With ``save_output spectra`` the run folder contains the gamma-ray spectra, for instance ``ID_spin1/output/run_01/gammas_spectrum_CosmiXs.dat``.
 Here's the gamma-ray spectra computed by MadDM using CosmiXs:
 """
 # sphinx_gallery_thumbnail_path = '_static/thumbnail/plot_indirect_detection_thumb.png'

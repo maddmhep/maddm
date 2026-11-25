@@ -517,7 +517,8 @@ If not specified, MadDM will automatically select the DM candidate using the fol
 <li><p>Have some non-zero couplings,</p></li>
 <li><p>Not decay into a pair of SM particles.</p></li>
 </ul>
-<p>Then, generate the direct detection (<code class="docutils literal notranslate"><span class="pre">direct</span></code>), indirect detection (<code class="docutils literal notranslate"><span class="pre">indirect</span></code>) or relic density (<code class="docutils literal notranslate"><span class="pre">relic_rensity</span></code>) processes with:</p>
+<p>Then, generate the direct detection (<code class="docutils literal notranslate"><span class="pre">direct</span></code> or <code class="docutils literal notranslate"><span class="pre">direct_detection</span></code>), indirect detection (<code class="docutils literal notranslate"><span class="pre">indirect</span></code> or <code class="docutils literal notranslate"><span class="pre">indirect_detection</span></code>),
+gamma-ray line (<code class="docutils literal notranslate"><span class="pre">spectral</span></code> or <code class="docutils literal notranslate"><span class="pre">indirect_spectral_features</span></code>) or relic density (<code class="docutils literal notranslate"><span class="pre">relic_density</span></code>) processes with:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; generate direct
 </pre></div>
 </div>
@@ -538,7 +539,7 @@ Once you launch the process, you will be prompted a selection menu to choose whi
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>    The following switches determine which programs are run:
 /====================== Description =======================|===================== values =====================|========== other options ===========\
 | 1. Compute the Relic Density                             |                relic = OFF                       |     ON                             |
-| 2. Compute direct detection - nucleon recoil             |               direct = ON                        |     OFF                            |
+| 2. Compute direct detection - nucleon recoil             |       direct_nucleon = ON                        |     OFF                            |
 | 3. Compute direct detection - electron recoil            |      direct_electron = ON                        |     OFF                            |
 | 4. Compute indirect detection/flux (cont spectrum)       |             indirect = sigmav                    |     flux_source|flux_earth|OFF     |
 | 5. Compute indirect detection in aX (line spectrum)      |             spectral = OFF                       |     Please install module          |
@@ -561,11 +562,22 @@ corresponding variable to ON:</p>
 </pre></div>
 </div>
 <p>Some modules can be set to specific values, such as:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set indirect = flux_source
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; indirect = flux_source
 </pre></div>
 </div>
+<p>Direct detection has two switches, <code class="docutils literal notranslate"><span class="pre">direct_nucleon</span></code> (DM-nucleon scattering) and <code class="docutils literal notranslate"><span class="pre">direct_electron</span></code> (DM-electron
+scattering, available if the model has DM-electron couplings). What they compute is set by <code class="docutils literal notranslate"><span class="pre">direct_mode</span></code> in the
+<code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code>, with two shortcuts:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set limit_and_rates
+MadDM&gt; set limit
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">limit_and_rates</span></code> (the default) computes the cross sections, compares them with the exclusion limits and saves the
+recoil spectra of the targets in <code class="docutils literal notranslate"><span class="pre">direct_nucleon_targets</span></code> (<code class="docutils literal notranslate"><span class="pre">xe</span></code>, <code class="docutils literal notranslate"><span class="pre">ge</span></code>, <code class="docutils literal notranslate"><span class="pre">ar</span></code>, <code class="docutils literal notranslate"><span class="pre">f</span></code>) and
+<code class="docutils literal notranslate"><span class="pre">direct_electron_targets</span></code> (<code class="docutils literal notranslate"><span class="pre">xe</span></code>, <code class="docutils literal notranslate"><span class="pre">ar</span></code>); <code class="docutils literal notranslate"><span class="pre">limit</span></code> computes only the cross sections and the limits, which is faster
+(for instance in scans). See the <a class="reference internal" href="plot_direct_detection.html"><span class="doc">direct detection tutorial</span></a> for the details.</p>
 <p>You can set the model parameters in the <code class="docutils literal notranslate"><span class="pre">param_card.dat</span></code> by pressing 7, or by editing the file directly in the process folder (in this case <code class="docutils literal notranslate"><span class="pre">DMspin1/Cards/param_card.dat</span></code>).</p>
-<p>You can set the MadDM parameters (such as the halo parameters, recoil energy range, and much more) in the <code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code> by pressing 8,
+<p>You can set the MadDM parameters (such as the halo parameters, the direct detection targets, and much more) in the <code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code> by pressing 8,
 or by editing the file directly in the process folder (in this case <code class="docutils literal notranslate"><span class="pre">DMspin1/Cards/maddm_card.dat</span></code>).</p>
 <p>Once you are all set, press Enter to launch the process. The results will be displayed in the terminal as shown below:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>INFO: MadDM Results
@@ -637,10 +649,15 @@ In the process folder, you will also find additional files produced by the diffe
 <section id="install-additional-tools">
 <h2>Install additional tools<a class="headerlink" href="#install-additional-tools" title="Link to this heading">#</a></h2>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; install pythia8
-MadDM&gt; install PPPC4DMID
+MadDM&gt; install cosmixs
+MadDM&gt; install RAPIDD
+MadDM&gt; install py_requirements
 MadDM&gt; quit
 </pre></div>
 </div>
+<p><code class="docutils literal notranslate"><span class="pre">pythia8</span></code> and <code class="docutils literal notranslate"><span class="pre">cosmixs</span></code> (CosmiXs source spectra) are used by indirect detection, <code class="docutils literal notranslate"><span class="pre">RAPIDD</span></code> by direct detection
+(recoil spectra and DM-electron scattering), and <code class="docutils literal notranslate"><span class="pre">py_requirements</span></code> installs <code class="docutils literal notranslate"><span class="pre">numpy</span></code>, <code class="docutils literal notranslate"><span class="pre">scipy</span></code> and <code class="docutils literal notranslate"><span class="pre">matplotlib</span></code>
+in the Python environment running MadDM. MadDM also offers to install them when a process first needs them.</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorial-and-examples-getting-started-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../_downloads/5706b72a0852079666e0294c81475e74/getting_started.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">getting_started.ipynb</span></code></a></p>

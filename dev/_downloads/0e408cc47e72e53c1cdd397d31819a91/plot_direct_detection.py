@@ -49,19 +49,50 @@ Next, create the process folder. In this case, we call it ``DD_NR_spin0``, but y
     MadDM> output DD_NR_spin0
     MadDM> launch DD_NR_spin0
 
-Select to run the ``direct`` module (but it should be already ON) by entering:
+Select to run the ``direct_nucleon`` module (but it should be already ON) by entering:
 
 .. code-block:: text
 
-    MadDM> direct = ON
+    MadDM> direct_nucleon = ON
 
 If your model has both DM-nucleon and DM-electron interactions, you can set both ``direct_nucleon`` and ``direct_electron`` modules to ON,
 and you will receive results for both types of interactions considered separately.
 
 You can set the model parameters in the ``param_card.dat`` by pressing 7, or by editing the file directly in the process folder (in this case ``DD_NR_spin0/Cards/param_card.dat``).
 
-You can set the MadDM parameters (such as the halo parameters, recoil energy range and much more) in the ``maddm_card.dat`` by pressing 8,
+You can set the MadDM parameters (such as the halo parameters, the targets and much more) in the ``maddm_card.dat`` by pressing 8,
 or by editing the file directly in the process folder (in this case ``DD_NR_spin0/Cards/maddm_card.dat``).
+
+Limits only, or limits and rates
+--------------------------------
+
+The ``maddm_card.dat`` parameter ``direct_mode`` sets what ``direct_nucleon`` and ``direct_electron`` compute. At the launch
+prompt you can set it with a shortcut:
+
+.. code-block:: text
+
+    MadDM> set limit_and_rates
+    MadDM> set limit
+
+* ``limit_and_rates`` (default): the cross sections and the comparison with the exclusion limits, plus the recoil spectra of
+  the selected targets computed with RAPIDD (``dRdE_nucleon.dat``, ``dRdE_electron.dat``) and, for DM-electron scattering in
+  xenon, the XENON10 and XENON1T S2 spectra and the XENON10 limit;
+* ``limit``: only the cross sections and the comparison with the exclusion limits (LZ 2024, PICO-60 and XENONnT), without
+  recoil spectra. It is faster, for instance in scans. The equivalent cross sections compared with LZ are computed in both modes.
+
+The targets of the recoil spectra are chosen in the ``maddm_card.dat`` (comma-separated lists, one column per target in the
+output files):
+
+.. code-block:: text
+
+    MadDM> set direct_nucleon_targets xe, ge, ar, f
+    MadDM> set direct_electron_targets xe, ar
+
+DM-nucleon scattering supports xenon (``xe``), germanium (``ge``), argon (``ar``) and fluorine (``f``); DM-electron
+scattering supports xenon and argon. Both lists are ``xe`` by default. Argon has no spin-dependent rate (no nuclear spin);
+fluorine is the target of the PICO-60 bubble chamber (C\\ :sub:`3`\\ F\\ :sub:`8`) and is dominated by the proton spin.
+The XENON10 and XENON1T results need ``xe`` among the electron targets. With ``limit_and_rates`` you can also compute the
+annual modulation of the rates (``set direct_modulation True``, see below).
 
 Once you are all set, you can run the process by pressing Enter. This module will first evaluate the DM-nucleon cross sections and the
 equivalent cross sections and compare them against the experimental limits from LZ 2024 and PICO-60.
@@ -152,6 +183,125 @@ def plot_dd_rates(dd_file):
 plot_dd_rates('./plot_data/dRdE_nucleon.dat')
 
 # %%
+# Annual modulation of the rates
+# ------------------------------
+#
+# The rates above use the annual-average halo, with the Earth velocity vector of March 9 (Eq. 12 of
+# `arXiv:2105.00599 <https://arxiv.org/abs/2105.00599>`_). Since the Earth moves around the Sun, the DM velocity
+# distribution seen by the detector changes during the year, and so do the SI and SD rates. To compute this annual
+# modulation, set ``direct_modulation`` to ``True`` in the ``maddm_card.dat`` (press 8, or use ``set``) before running:
+#
+# .. code-block:: text
+#
+#     MadDM> launch DD_NR_spin0
+#     MadDM> direct_nucleon = ON
+#     MadDM> set direct_nucleon_targets xe, ge, ar
+#     MadDM> set direct_modulation True
+#     MadDM> set day_bins 24
+#
+# The year (365.24 days) is divided in ``day_bins`` bins (default 12) of width :math:`\Delta t = 365.24/N_\mathrm{bins}`
+# days, and RAPIDD computes the halo and the recoil spectrum of each target at the bin centers
+# :math:`t_i = (i + 1/2)\,\Delta t`, in days since March 22. The Earth velocity has modulus ``vEarth_mod`` (29.8 km/s
+# by default) and the time-dependent direction of Eq. 11 of arXiv:2105.00599; ``vMP``, ``vescape``, ``vSun_*`` and
+# ``rhoDM`` are those of the card, as for the annual-average rates. Each bin needs its own halo table, so the run is
+# slower for many bins. The modulation needs ``direct_mode = limit_and_rates``; the equivalent cross sections and the
+# exclusion limits do not change (they always use the annual-average halo).
+#
+# The run folder then also contains:
+#
+# * ``rate_vs_time_nucleon.dat``: :math:`t_i` [days since March 22], :math:`\Delta t` [days] and, for each target,
+#   ``R_<target>`` :math:`= \Delta t \int \frac{dR}{dE}(t_i)\, dE` [events/kg per time bin]. The integral covers the
+#   whole energy grid of ``dRdE_nucleon.dat`` (0.01-40 keV), without threshold or efficiency;
+# * ``dRdE_modulation_nucleon.dat``: :math:`E_R` [keV] and, for each target, the spectrum averaged over the year
+#   ``drde_<target>_avg`` [events/kg/day/keV] and integrated over the year ``drde_<target>_year`` [events/kg/yr/keV].
+#   The averaged spectrum is close to the one of ``dRdE_nucleon.dat`` (here the total rates agree within 0.3%), except
+#   in the tail near the kinematic endpoint, which depends on the maximal DM velocity in the detector frame and is
+#   therefore set by the fastest time bins.
+#
+# The same flag gives the modulation of the DM-electron rates (``direct_electron``, see below), in
+# ``rate_vs_time_electron.dat`` and ``dRdE_modulation_electron.dat``, with the same format.
+#
+# The files used below were produced with the commands above (default model parameters, 10 GeV DM).
+# The rate of each time bin is fitted with :math:`R(t) = S_0 + S_m \cos[2\pi (t - t_\mathrm{max})/T]`, with
+# :math:`T` = 1 year, which gives the modulated fraction :math:`S_m/S_0` and the date of the maximum:
+
+import datetime
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+YEAR_DAYS = 365.24
+T0_DATE = datetime.date(2018, 3, 22)  # t = 0 of rate_vs_time_*.dat
+
+
+def plot_dd_modulation(rate_file):
+    """
+    Plots the relative annual modulation of the rate of each target in rate_vs_time_nucleon.dat
+    (or rate_vs_time_electron.dat) and fits it with S0 + Sm cos(2 pi (t - t_max)/year).
+
+    Parameters:
+    rate_file (str): Path to the rate_vs_time_*.dat file.
+    """
+    # header: t [days since 22-03-2018] dt [days] R_<target> [events/kg/dt] ...
+    with open(rate_file) as file:
+        targets = [name[len('R_'):] for name in file.readline().split() if name.startswith('R_')]
+    data = np.loadtxt(rate_file, ndmin=2)
+    t, dt = data[:, 0], data[:, 1]
+
+    omega = 2 * np.pi / YEAR_DAYS
+    t_fine = np.linspace(0, YEAR_DAYS, 400)
+    plt.figure(figsize=(10, 6))
+    for i, target in enumerate(targets):
+        rate = data[:, i + 2] / dt  # events/kg/day in each time bin
+        # linear least squares: S0 + a cos(omega t) + b sin(omega t), with Sm = hypot(a, b)
+        basis = np.column_stack([np.ones_like(t), np.cos(omega * t), np.sin(omega * t)])
+        S0, a, b = np.linalg.lstsq(basis, rate, rcond=None)[0]
+        Sm, t_max = np.hypot(a, b), (np.arctan2(b, a) / omega) % YEAR_DAYS
+        date_max = T0_DATE + datetime.timedelta(days=float(t_max))
+        print(f'{target}: S0 = {S0:.3e} events/kg/day, Sm/S0 = {100 * Sm / S0:.2f} %, '
+              f'maximum on {date_max:%B} {date_max.day}')
+        line, = plt.plot(t, 100 * (rate / S0 - 1), 'o', label=target)
+        plt.plot(t_fine, 100 * Sm / S0 * np.cos(omega * (t_fine - t_max)), color=line.get_color())
+
+    # first day of each month on the time axis
+    months = [datetime.date(2018 + (3 + m) // 12, (3 + m) % 12 + 1, 1) for m in range(12)]
+    plt.xticks([(m - T0_DATE).days for m in months], [f'{m:%b}' for m in months])
+    plt.axhline(0, color='gray', linewidth=0.8)
+    plt.xlabel('Date (time bins of rate_vs_time_nucleon.dat)')
+    plt.ylabel('$R(t)/S_0 - 1$ [%]')
+    plt.title('Annual modulation of the DM-nucleus rates')
+    plt.legend()
+    plt.show()
+
+plot_dd_modulation('./plot_data/rate_vs_time_nucleon.dat')
+
+# %%
+# The rate peaks at the beginning of June, when the Earth velocity is aligned with the one of the Sun, and the modulated
+# fraction is a few percent for this light DM. The year-integrated spectrum of ``dRdE_modulation_nucleon.dat`` gives
+# the expected number of events of an exposure in kg yr, for instance above an energy threshold:
+
+def events_per_exposure(spectrum_file, threshold_keV=1.0, exposure_kg_yr=1.0e3):
+    """
+    Number of events above threshold_keV for an exposure in kg yr, from the drde_<target>_year columns
+    of dRdE_modulation_nucleon.dat (or dRdE_modulation_electron.dat), without efficiency.
+    """
+    # header: E [keV] drde_<target>_avg [events/kg/day/keV] ... drde_<target>_year [events/kg/yr/keV] ...
+    with open(spectrum_file) as file:
+        names = file.readline().split()[1:]
+    columns = [name for name in names if name.startswith('drde_')]
+    data = np.loadtxt(spectrum_file)
+    energy = data[:, 0]
+    above = energy >= threshold_keV
+    for k, name in enumerate(columns):
+        if name.endswith('_year'):
+            target = name[len('drde_'):-len('_year')]
+            spectrum, e = data[above, k + 1], energy[above]
+            n_events = exposure_kg_yr * np.sum(np.diff(e) * (spectrum[1:] + spectrum[:-1]) / 2)  # trapezoidal rule
+            print(f'{target}: {n_events:.3e} events above {threshold_keV} keV in {exposure_kg_yr:g} kg yr')
+
+events_per_exposure('./plot_data/dRdE_modulation_nucleon.dat', threshold_keV=1.0, exposure_kg_yr=1.0e3)
+
+# %%
 # ---------------------------------------------------------
 # 2. Electronic Recoils with XENONnT and XENON10 limits
 # ---------------------------------------------------------
@@ -191,7 +341,7 @@ plot_dd_rates('./plot_data/dRdE_nucleon.dat')
 #
 # You can set the model parameters in the ``param_card.dat`` by pressing 7, or by editing the file directly in the process folder (in this case ``DD_ER_spin0/Cards/param_card.dat``).
 #
-# You can set the MadDM parameters (such as the halo parameters, recoil energy range and much more) in the ``maddm_card.dat`` by pressing 8,
+# You can set the MadDM parameters (such as the halo parameters, the targets and much more) in the ``maddm_card.dat`` by pressing 8,
 # or by editing the file directly in the process folder (in this case ``DD_ER_spin0/Cards/maddm_card.dat``).
 #
 # Note that in the ``direct_electron`` module, if the DM particle has a mass above 1 GeV, it will be ignored by default.

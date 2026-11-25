@@ -481,8 +481,13 @@ the rate summed over the shells for each target, then the rate of each
 shell). With xenon among the electron targets, the run also writes the
 XENON10 and XENON1T S2 spectra (<code class="docutils literal notranslate"><span class="pre">dRdS2_electron_XENON10.dat</span></code>,
 <code class="docutils literal notranslate"><span class="pre">dRdS2_electron_XENON1T.dat</span></code>) and the XENON10 signal per S2 bin
-(<code class="docutils literal notranslate"><span class="pre">signal_e_recoil.dat</span></code>). The run <code class="docutils literal notranslate"><span class="pre">README.md</span></code> lists the files that
-were produced.</p>
+(<code class="docutils literal notranslate"><span class="pre">signal_e_recoil.dat</span></code>). With <code class="docutils literal notranslate"><span class="pre">direct_modulation</span> <span class="pre">=</span> <span class="pre">True</span></code>, the run
+also writes the annual modulation: the rate of each target in each
+time bin of the year (<code class="docutils literal notranslate"><span class="pre">rate_vs_time_nucleon.dat</span></code>,
+<code class="docutils literal notranslate"><span class="pre">rate_vs_time_electron.dat</span></code>) and the spectra averaged over and
+integrated over the year (<code class="docutils literal notranslate"><span class="pre">dRdE_modulation_nucleon.dat</span></code>,
+<code class="docutils literal notranslate"><span class="pre">dRdE_modulation_electron.dat</span></code>). The run <code class="docutils literal notranslate"><span class="pre">README.md</span></code> lists the files
+that were produced.</p>
 <p>With Matplotlib installed, MadDM plots available source yields and
 direct-detection rates (<code class="docutils literal notranslate"><span class="pre">dRdE_nucleon.pdf</span></code> and <code class="docutils literal notranslate"><span class="pre">dRdE_electron.pdf</span></code>,
 one curve per target). With <code class="docutils literal notranslate"><span class="pre">direct_nucleon</span></code>, <code class="docutils literal notranslate"><span class="pre">DD_limits.pdf</span></code>

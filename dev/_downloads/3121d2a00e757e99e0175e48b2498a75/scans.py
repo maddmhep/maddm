@@ -9,7 +9,8 @@ Scan over a specified range of model parameters.
 1. Running a Scan
 =================
 
-First, you need to set up your model and process as usual. For example, if you want to scan over a simplified scalar dark matter model, you can do the following:
+First, you need to set up your model and process as usual. For example, to scan the DM-electron scattering of a simplified scalar-mediated
+dark matter model, you can do the following:
 
 .. code-block:: text
 
@@ -19,12 +20,16 @@ First, you need to set up your model and process as usual. For example, if you w
     MadDM> output SCAN_example
     MadDM> launch SCAN_example
 
+This model has only DM-electron couplings, so at the launch prompt only ``direct_electron`` is ON (``direct_nucleon`` is OFF).
 At the launch prompt, set the parameters you want to scan, using ``set MXd scan:`` followed by a python array or ``range`` function.
 For instance, if you want to scan the dark matter mass (MXd) from 50 GeV to <700 GeV in steps of 25 GeV, you can do:
 
 .. code-block:: text
 
     MadDM> set MXd scan:range(50,700,25)
+
+Note that ``direct_electron`` skips DM masses above 1 GeV unless ``direct_electron_mode`` is set to ``always``
+(``set direct_electron_mode always``): for DM-electron scattering a sub-GeV range, as in the examples below, is the relevant one.
 
 If you want to scan only over some specific values, you can also use python arrays, as follows:
 
@@ -38,9 +43,18 @@ or you can use list comprehension. For example, to scan over a logarithmic scale
 
     MadDM> set MXd scan:[10 ** (-2 + i * 0.2) for i in range(11)]
 
-Then press Enter to start the scan. For scans, you will find in the ``output`` directory a ``run_XX_YY`` folder containing the ``maddm.out`` file  for each ``YY`` iteration.
+If you only need the cross sections and the exclusion limits, and not the recoil spectra of each point, set ``direct_mode`` to ``limit``
+before starting the scan, which is faster (``set limit_and_rates``, the default, also computes the spectra and, for DM-electron
+scattering, the XENON10 limit):
+
+.. code-block:: text
+
+    MadDM> set limit
+
+Then press Enter to start the scan. For scans, you will find in the ``output`` directory a ``run_XX_YY`` folder for each ``YY`` iteration,
+with the ``MadDM_results.txt`` and ``maddm.out`` files and the output files kept by ``save_output``.
 You will also find a ``scan_run_XX.txt`` file that summarizes the scan parameters and results.
-You can also make a scan over multiple parameters at once. For example, if you want to scan over the dark matter mass ``MXd`` and the coupling ,``gsxd`` you can do:
+You can also make a scan over multiple parameters at once. For example, if you want to scan over the dark matter mass ``MXd`` and the coupling ``gsxd``, you can do:
 
 .. code-block:: text
 
@@ -51,8 +65,11 @@ Then press Enter to start the scan. MadDM will generate one run for each combina
 Once all values of that parameter are exhausted, it steps the second-to-last parameter and repeats the process, and so on, like nested ``for`` loops, starting from the outermost (first)
 parameter to the innermost (last).
 
-You will find the results of the scan in ``/SCAN_example/output/scan_run_01.txt``. In this example, this file will contain
-the pvalues for XENON10 and XENON1T for each value of the dark matter mass and coupling you scanned.
+You will find the results of the scan in ``SCAN_example/output/scan_run_01.txt``. In this example, this file will contain,
+for each value of the dark matter mass and coupling you scanned, the reference DM-electron cross section ``sigma_e``, the XENONnT
+limits ``lim_sigma_e`` and ``lim_sigma_e_rescaled`` and, with ``limit_and_rates``, the XENON10 limit ``lim_sigma_e_Xenon10`` and
+p-value ``pvalue_Xenon10``. For DM-nucleon scattering (``direct_nucleon``) the file contains the cross sections ``sigmaN_*``, the
+equivalent cross sections ``sigmaN_*_eq`` and their limits ``lim_sigmaN_*``.
 
 Exiting MadDM
 =============

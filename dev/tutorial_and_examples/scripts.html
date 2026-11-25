@@ -500,9 +500,16 @@ define darkmatter xd
 generate direct
 output SCAN_example
 launch SCAN_example
+direct_nucleon = ON
+set limit
+set direct_nucleon_targets xe, ar
 set MXd scan:range(50,700,25)
 </pre></div>
 </div>
+<p>After <code class="docutils literal notranslate"><span class="pre">launch</span></code>, the lines answer the launch prompt: switches (<code class="docutils literal notranslate"><span class="pre">direct_nucleon</span> <span class="pre">=</span> <span class="pre">ON</span></code>, <code class="docutils literal notranslate"><span class="pre">relic</span> <span class="pre">=</span> <span class="pre">ON</span></code>, …), <code class="docutils literal notranslate"><span class="pre">set</span></code> commands
+for the cards and shortcuts such as <code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">limit</span></code> or <code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">limit_and_rates</span></code> for the direct detection mode. The run starts at the
+end of the file, as if Enter was pressed. Note that the switch names are those shown at the launch prompt: <code class="docutils literal notranslate"><span class="pre">direct_nucleon</span></code> and
+<code class="docutils literal notranslate"><span class="pre">direct_electron</span></code> for direct detection (<code class="docutils literal notranslate"><span class="pre">direct</span></code> is only the name of the process in <code class="docutils literal notranslate"><span class="pre">generate</span> <span class="pre">direct</span></code>).</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorial-and-examples-scripts-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../_downloads/e0d31c9bfdd4a872341de765af37a612/scripts.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">scripts.ipynb</span></code></a></p>

@@ -67,10 +67,10 @@ Select to run the ``relic`` module (but it should be already ON) by entering:
 
     MadDM> relic = ON
 
-You can set the model parameters in the ``param_card.dat`` by pressing 6, or by editing the file directly in the process folder (in this case ``DD_NR_spin0/Cards/param_card.dat``).
+You can set the model parameters in the ``param_card.dat`` by pressing 7, or by editing the file directly in the process folder (in this case ``RD_spin1/Cards/param_card.dat``).
 
-You can set the MadDM parameters (such as the halo parameters, recoil energy range and much more) in the ``maddm_card.dat`` by pressing 7,
-or by editing the file directly in the process folder (in this case ``DD_NR_spin0/Cards/maddm_card.dat``).
+You can set the MadDM parameters (such as the relic density solver options and much more) in the ``maddm_card.dat`` by pressing 8,
+or by editing the file directly in the process folder (in this case ``RD_spin1/Cards/maddm_card.dat``).
 
 Once you are all set, you can run the process by pressing Enter. 
 

@@ -507,7 +507,7 @@ MadDM&gt; launch ID_spin1
 </pre></div>
 </div>
 <p>We enable the computation of the gamma-ray flux spectrum by setting:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set indirect = flux_source
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; indirect = flux_source
 </pre></div>
 </div>
 <p>We can choose to compute the gamma-ray spectra using either Pythia 8 or CosmiXs, entering <code class="docutils literal notranslate"><span class="pre">pythia8</span></code> or <code class="docutils literal notranslate"><span class="pre">CosmiXs</span></code> respectively:</p>
@@ -560,7 +560,7 @@ INFO: Results written in: /Users/yourname/yourprocessfolder/ID_spin1/output/run_
 <section id="plot-the-gamma-ray-spectra">
 <h2>Plot the Gamma-ray Spectra<a class="headerlink" href="#plot-the-gamma-ray-spectra" title="Link to this heading">#</a></h2>
 <p>After running the above commands, you will find the output in the <code class="docutils literal notranslate"><span class="pre">ID_spin1</span></code> folder.
-The output will contain the gamma-ray spectra in the <code class="docutils literal notranslate"><span class="pre">ID_spin1/Output/xxxx</span></code> folder.
+With <code class="docutils literal notranslate"><span class="pre">save_output</span> <span class="pre">spectra</span></code> the run folder contains the gamma-ray spectra, for instance <code class="docutils literal notranslate"><span class="pre">ID_spin1/output/run_01/gammas_spectrum_CosmiXs.dat</span></code>.
 Here’s the gamma-ray spectra computed by MadDM using CosmiXs:</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span class="w">
 </span></pre></div></div>
@@ -612,7 +612,7 @@ Here’s the gamma-ray spectra computed by MadDM using CosmiXs:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; quit
 </pre></div>
 </div>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 0.197 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 0.140 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorial-and-examples-plot-indirect-detection-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../_downloads/e9235bf4754b7e26127afbb81afabdab/plot_indirect_detection.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">plot_indirect_detection.ipynb</span></code></a></p>
