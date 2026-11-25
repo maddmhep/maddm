@@ -114,7 +114,7 @@ In this folder, you will find the cross sections in a file named ``MadDM_results
 With ``direct_mode = limit_and_rates`` (the default; type ``set limit`` to compute only the exclusion limits) you can also find
 the differential recoil rates in the ``dRdE_nucleon.dat`` file, which contains the differential recoil spectra vs energy
 for DM-nucleon interactions, one column per target chosen with ``direct_nucleon_targets`` in the ``maddm_card.dat``
-(one or more of ``xe``, ``ge``, ``ar``; default ``xe``). The spectra are computed with the chiral EFT structure factors
+(one or more of ``xe``, ``ge``, ``ar``, ``f``; default ``xe``). The spectra are computed with the chiral EFT structure factors
 (``dd_nuclear_responses = chiral_eft``, the default; ``nreft`` gives the one-body NREFT responses with the
 :math:`\\mathcal O_1` and :math:`\\mathcal O_4` couplings only). The file used below was produced with ``set direct_nucleon_targets xe, ge, ar``.
 Below is an example of how to plot the differential rates:
