@@ -95,7 +95,7 @@ prompt you can set it with a shortcut:
 
 * ``limit_and_rates`` (default): the cross sections and the comparison with the exclusion limits, plus the recoil spectra of
   the selected targets computed with RAPIDD (``dRdE_nucleon.dat``, ``dRdE_electron.dat``) and, for DM-electron scattering in
-  xenon, the XENON10 and XENON1T S2 spectra and the XENON10 limit;
+  xenon, the XENON10 and XENON1T S2 spectra and limits;
 * ``limit``: only the cross sections and the comparison with the exclusion limits (LZ 2024, PICO-60 and XENONnT), without
   recoil spectra. It is faster, for instance in scans. The equivalent cross sections compared with LZ are computed in both modes.
 
@@ -105,10 +105,11 @@ output files):
 .. code-block:: text
 
     MadDM> set direct_nucleon_targets xe, ge, ar, f
-    MadDM> set direct_electron_targets xe, ar
+    MadDM> set direct_electron_targets xe, ar, si
 
 DM-nucleon scattering supports xenon (``xe``), germanium (``ge``), argon (``ar``) and fluorine (``f``); DM-electron
-scattering supports xenon and argon. Both lists are ``xe`` by default. Argon has no spin-dependent rate (no nuclear spin);
+scattering supports xenon, argon and silicon (``si``, crystal response of QCDark2, in its own files). Both lists are ``xe`` by
+default. Argon has no spin-dependent rate (no nuclear spin);
 fluorine is the target of the PICO-60 bubble chamber (C\ :sub:`3`\ F\ :sub:`8`) and is dominated by the proton spin.
 The XENON10 and XENON1T results need ``xe`` among the electron targets. With ``limit_and_rates`` you can also compute the
 annual modulation of the rates (``set direct_modulation True``, see below).
@@ -169,7 +170,7 @@ for DM-nucleon interactions, one column per target chosen with ``direct_nucleon_
 :math:`\mathcal O_1` and :math:`\mathcal O_4` couplings only). The file used below was produced with ``set direct_nucleon_targets xe, ge, ar``.
 Below is an example of how to plot the differential rates:
 
-.. GENERATED FROM PYTHON SOURCE LINES 153-153
+.. GENERATED FROM PYTHON SOURCE LINES 154-154
 
 .. code-block:: Python
    :dedent: 1
@@ -181,7 +182,7 @@ Below is an example of how to plot the differential rates:
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 155-185
+.. GENERATED FROM PYTHON SOURCE LINES 156-186
 
 .. code-block:: Python
 
@@ -227,7 +228,7 @@ Below is an example of how to plot the differential rates:
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 186-227
+.. GENERATED FROM PYTHON SOURCE LINES 187-228
 
 Annual modulation of the rates
 ------------------------------
@@ -271,7 +272,7 @@ The files used below were produced with the commands above (default model parame
 The rate of each time bin is fitted with :math:`R(t) = S_0 + S_m \cos[2\pi (t - t_\mathrm{max})/T]`, with
 :math:`T` = 1 year, which gives the modulated fraction :math:`S_m/S_0` and the date of the maximum:
 
-.. GENERATED FROM PYTHON SOURCE LINES 227-278
+.. GENERATED FROM PYTHON SOURCE LINES 228-279
 
 .. code-block:: Python
 
@@ -346,13 +347,13 @@ The rate of each time bin is fitted with :math:`R(t) = S_0 + S_m \cos[2\pi (t - 
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 279-282
+.. GENERATED FROM PYTHON SOURCE LINES 280-283
 
 The rate peaks at the beginning of June, when the Earth velocity is aligned with the one of the Sun, and the modulated
 fraction is a few percent for this light DM. The year-integrated spectrum of ``dRdE_modulation_nucleon.dat`` gives
 the expected number of events of an exposure in kg yr, for instance above an energy threshold:
 
-.. GENERATED FROM PYTHON SOURCE LINES 282-304
+.. GENERATED FROM PYTHON SOURCE LINES 283-305
 
 .. code-block:: Python
 
@@ -393,7 +394,7 @@ the expected number of events of an exposure in kg yr, for instance above an ene
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 305-390
+.. GENERATED FROM PYTHON SOURCE LINES 306-406
 
 ---------------------------------------------------------
 2. Electronic Recoils with XENONnT and XENON10 limits
@@ -441,8 +442,10 @@ Note that in the ``direct_electron`` module, if the DM particle has a mass above
 To change this behavior, set ``direct_electron_mode`` to ``always`` in the ``maddm_card.dat`` file, which you can do by pressing 8 after launching the process.
 
 Once you are all set, you can run the process by pressing Enter. This module will compute the reference cross section :math:`\bar\sigma_e`
-and compare it with the XENONnT limit, both as published and rescaled to the RAPIDD atomic responses; with ``direct_mode = limit_and_rates``
-it will also compute the DM-electron recoil rates and compare them with the XENON10 S2-only data.
+and compare it with the XENONnT limit, both as published and rescaled to the RAPIDD atomic responses, and, in their mass range, with the
+DAMIC-M limit (published and rescaled to the RAPIDD silicon response) and the DarkSide-50 limit; with ``direct_mode = limit_and_rates``
+it will also compute the DM-electron recoil rates and compare them with the XENON10 and XENON1T S2-only data.
+Here we also ask for the silicon rates, with ``set direct_electron_targets xe, ar, si``.
 
 After running the above commands, the output will look like:
 
@@ -454,14 +457,24 @@ After running the above commands, the output will look like:
     ****** Direct detection - electron recoil [cm^2]:
     INFO: Sigma_e             All DM = 3.23e-43       ALLOWED     XENONnT ul       = 1.54e-41
     INFO: Sigma_e (rescaled)  All DM = 3.23e-43       ALLOWED     XENONnT ul       = 3.01e-41
+    INFO: Sigma_e             All DM = 3.23e-43       ALLOWED     DAMIC-M ul       = 1.59e-37
+    INFO: Sigma_e             All DM = 3.23e-43       ALLOWED     DAMIC-M; RAPIDD (QCDark2) ul = 2.02e-37
+    INFO: Sigma_e             All DM = 3.23e-43       ALLOWED     DarkSide-50 ul   = 2.73e-39
     INFO: Sigma_e             All DM = 3.23e-43       ALLOWED     XENON10 ul       = 4.73e-38
-    INFO: Recoil spectra: dRdE_electron.dat, dRdS2_electron_XENON10.dat, dRdS2_electron_XENON1T.dat in /Users/yourname/yourprocessfolder/DD_ER_spin0/output/run_01
+    INFO: Sigma_e             All DM = 3.23e-43       ALLOWED     XENON1T ul       = 3.04e-40
+    INFO: XENON10, XENON1T: not the strongest constraints, but the only ones computed from the recoil spectrum of the model (valid for any operator); the other limits are published curves for sigma_e (heavy mediator, F_DM = 1).
+    INFO: Recoil spectra: dRdE_electron.dat, dRdS2_electron_XENON10.dat, dRdS2_electron_XENON1T.dat, dRdE_electron_Si.dat, dRdQ_electron_Si.dat in /Users/yourname/yourprocessfolder/DD_ER_spin0/output/run_01
     INFO:
     INFO: Results written in: /Users/yourname/yourprocessfolder/DD_ER_spin0/output/run_01/MadDM_results.txt
 
 where ``All DM`` refers to the reference DM-electron cross section in case the DM particle contributes to the entire dark matter density of the universe,
-``ALLOWED`` indicates that the model is consistent with the corresponding upper limit, shown in the last column. The XENON10 limit is the cross section
+``ALLOWED`` indicates that the model is consistent with the corresponding upper limit, shown in the last column. The published and rescaled
+limits of XENONnT and DAMIC-M are two conventions for the same data (the rescaled ones use the RAPIDD atomic and silicon responses of the rates). The XENON10 limit is the cross section
 for which the p-value of the most constraining S2 bin falls below 0.1; the p-value itself is written in ``MadDM_results.txt``.
+The XENON1T limit is defined in the same way from the XENON1T S2-only data (one region of interest per DM mass,
+with the published background); both p-values are written in ``MadDM_results.txt``.
+XENON10 and XENON1T are weaker than XENONnT, DAMIC-M and DarkSide-50, but they are the only tests computed from the
+recoil spectrum of the model, valid for any operator; the other limits are published curves for sigma_e with a heavy mediator.
 
 Results
 -------
@@ -475,13 +488,16 @@ The raw output of the Fortran module of MadDM, such as the DM mass and the effec
 and the XENON10 signal in each S2 bin is in ``signal_e_recoil.dat``.
 
 With ``direct_mode = limit_and_rates`` (the default) you can also find the differential recoil spectra vs energy in ``dRdE_electron.dat``
-(for each target of ``direct_electron_targets``, ``xe`` and/or ``ar``, the rate summed over the shells and then the rate of each shell)
+(for each atom of ``direct_electron_targets``, ``xe`` and/or ``ar``, the rate summed over the shells and then the rate of each shell)
 and, for Xenon, the number of events vs scintillation signal in ``dRdS2_electron_XENON10.dat`` and ``dRdS2_electron_XENON1T.dat``.
-With ``direct_mode = limit`` (``set limit``) only sigma_e and the XENONnT limit are computed: the XENON10 and XENON1T results need the Xenon rates.
-The files used below were produced with ``set direct_electron_targets xe, ar``.
+With ``direct_mode = limit`` (``set limit``) only sigma_e and the published limits (XENONnT, DAMIC-M, DarkSide-50) are computed: the XENON10 and XENON1T results need the Xenon rates.
+For silicon (``si``) the rate is in ``dRdE_electron_Si.dat``, versus the deposited energy (0.1 to 50 eV), and in ``dRdQ_electron_Si.dat``,
+per number of electron-hole pairs (Ramanathan-Kurinsky ionization probabilities at 100 K), the quantity measured by skipper-CCD
+experiments such as DAMIC-M and SENSEI.
+The files used below were produced with ``set direct_electron_targets xe, ar, si``.
 Below is an example of how to plot the differential rates and number of events vs scintillation signal for electronic recoils:
 
-.. GENERATED FROM PYTHON SOURCE LINES 392-423
+.. GENERATED FROM PYTHON SOURCE LINES 408-439
 
 .. code-block:: Python
 
@@ -528,11 +544,11 @@ Below is an example of how to plot the differential rates and number of events v
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 424-425
+.. GENERATED FROM PYTHON SOURCE LINES 440-441
 
 Plot the number of events vs scintillation signal for Electronic Recoils
 
-.. GENERATED FROM PYTHON SOURCE LINES 425-447
+.. GENERATED FROM PYTHON SOURCE LINES 441-463
 
 .. code-block:: Python
 
@@ -570,7 +586,72 @@ Plot the number of events vs scintillation signal for Electronic Recoils
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 448-453
+.. GENERATED FROM PYTHON SOURCE LINES 464-465
+
+Plot the silicon rates: dR/dDelta E and the rate per number of electron-hole pairs
+
+.. GENERATED FROM PYTHON SOURCE LINES 465-491
+
+.. code-block:: Python
+
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    def plot_silicon(drde_file, drdq_file):
+        """
+        Read and plot dR/dDelta E (dRdE_electron_Si.dat) and dR/dQ (dRdQ_electron_Si.dat) of silicon.
+        """
+        E_keV, drde = np.loadtxt(drde_file, unpack=True)
+        Q, drdq = np.loadtxt(drdq_file, unpack=True)
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 4.5))
+        mask = drde > 0
+        ax1.plot(E_keV[mask] * 1e3, drde[mask])
+        ax1.set_yscale('log')
+        ax1.set_xlabel("Deposited energy $\\Delta E$ (eV)")
+        ax1.set_ylabel("dR/d$\\Delta E$ [events/kg/day/keV]")
+        ax1.set_title("Silicon (QCDark2, RPA screening)")
+        ax2.step(Q, drdq, where='mid')
+        ax2.set_yscale('log')
+        ax2.set_xlabel("Electron-hole pairs Q")
+        ax2.set_ylabel("dR/dQ [events/kg/day]")
+        ax2.set_title("Rate per number of e-h pairs")
+        plt.tight_layout()
+        plt.show()
+
+    plot_silicon('./plot_data/dRdE_electron_Si.dat', './plot_data/dRdQ_electron_Si.dat')
+
+
+
+
+.. image-sg:: /tutorial_and_examples/images/sphx_glr_plot_direct_detection_005.png
+   :alt: Silicon (QCDark2, RPA screening), Rate per number of e-h pairs
+   :srcset: /tutorial_and_examples/images/sphx_glr_plot_direct_detection_005.png
+   :class: sphx-glr-single-img
+
+
+
+
+
+.. GENERATED FROM PYTHON SOURCE LINES 492-508
+
+Heavy-mediator approximation
+----------------------------
+
+MadDM computes the direct detection rates in the contact (heavy-mediator) approximation. When a t-channel mediator is lighter
+than about 5 times the typical momentum transfer (about 50 MeV for xenon nuclei, 37 keV for electrons), when there are several
+t-channel mediators, or when an s/u-channel mediator is nearly degenerate with DM plus the SM fermion, MadDM prints a warning,
+e.g. for the model above with ``set MY0 0.0001``:
+
+.. code-block:: text
+
+    WARNING: DM-electron scattering: the t-channel mediator y0 (54) (M = 0.0001 GeV) is lighter than 5 q_ref (q_ref = 3.73e-05 GeV):
+    the rates are overestimated by about (1 + q_ref^2/M^2)^2 = 1.3. MadDM uses the heavy-mediator (contact) approximation: its rates
+    and the comparison with the limits (all heavy-mediator) are unreliable; light mediators are not implemented.
+
+and records the flags ``dd_light_mediator_warning`` (DM-nucleon) and ``dd_e_light_mediator_warning`` (DM-electron) in
+``MadDM_results.txt`` and in the scan output (0: no warning; see the documentation for the other values).
+
+.. GENERATED FROM PYTHON SOURCE LINES 510-515
 
 Exiting MadDM
 =============
@@ -582,7 +663,7 @@ Exiting MadDM
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 0.313 seconds)
+   **Total running time of the script:** (0 minutes 0.857 seconds)
 
 
 .. _sphx_glr_download_tutorial_and_examples_plot_direct_detection.py:

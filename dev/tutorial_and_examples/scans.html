@@ -516,7 +516,7 @@ For instance, if you want to scan the dark matter mass (MXd) from 50 GeV to &lt;
 </div>
 <p>If you only need the cross sections and the exclusion limits, and not the recoil spectra of each point, set <code class="docutils literal notranslate"><span class="pre">direct_mode</span></code> to <code class="docutils literal notranslate"><span class="pre">limit</span></code>
 before starting the scan, which is faster (<code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">limit_and_rates</span></code>, the default, also computes the spectra and, for DM-electron
-scattering, the XENON10 limit):</p>
+scattering, the XENON10 and XENON1T results):</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set limit
 </pre></div>
 </div>
@@ -533,9 +533,12 @@ Once all values of that parameter are exhausted, it steps the second-to-last par
 parameter to the innermost (last).</p>
 <p>You will find the results of the scan in <code class="docutils literal notranslate"><span class="pre">SCAN_example/output/scan_run_01.txt</span></code>. In this example, this file will contain,
 for each value of the dark matter mass and coupling you scanned, the reference DM-electron cross section <code class="docutils literal notranslate"><span class="pre">sigma_e</span></code>, the XENONnT
-limits <code class="docutils literal notranslate"><span class="pre">lim_sigma_e</span></code> and <code class="docutils literal notranslate"><span class="pre">lim_sigma_e_rescaled</span></code> and, with <code class="docutils literal notranslate"><span class="pre">limit_and_rates</span></code>, the XENON10 limit <code class="docutils literal notranslate"><span class="pre">lim_sigma_e_Xenon10</span></code> and
-p-value <code class="docutils literal notranslate"><span class="pre">pvalue_Xenon10</span></code>. For DM-nucleon scattering (<code class="docutils literal notranslate"><span class="pre">direct_nucleon</span></code>) the file contains the cross sections <code class="docutils literal notranslate"><span class="pre">sigmaN_*</span></code>, the
-equivalent cross sections <code class="docutils literal notranslate"><span class="pre">sigmaN_*_eq</span></code> and their limits <code class="docutils literal notranslate"><span class="pre">lim_sigmaN_*</span></code>.</p>
+limits <code class="docutils literal notranslate"><span class="pre">lim_sigma_e</span></code> and <code class="docutils literal notranslate"><span class="pre">lim_sigma_e_rescaled</span></code>, the DAMIC-M limits <code class="docutils literal notranslate"><span class="pre">lim_sigma_e_DAMICM</span></code> (published) and
+<code class="docutils literal notranslate"><span class="pre">lim_sigma_e_DAMICM_rescaled</span></code> (rescaled to the RAPIDD silicon response), the DarkSide-50 limit <code class="docutils literal notranslate"><span class="pre">lim_sigma_e_DS50</span></code> (-1 outside
+their mass range), with <code class="docutils literal notranslate"><span class="pre">limit_and_rates</span></code> the XENON10 and XENON1T limits and p-values <code class="docutils literal notranslate"><span class="pre">lim_sigma_e_Xenon10</span></code>, <code class="docutils literal notranslate"><span class="pre">pvalue_Xenon10</span></code>,
+<code class="docutils literal notranslate"><span class="pre">lim_sigma_e_Xenon1T</span></code>, <code class="docutils literal notranslate"><span class="pre">pvalue_Xenon1T</span></code> (the only tests computed from the recoil spectrum of the model), and the
+heavy-mediator flag <code class="docutils literal notranslate"><span class="pre">dd_e_light_mediator_warning</span></code> (0 if the contact approximation holds at that point). For DM-nucleon scattering (<code class="docutils literal notranslate"><span class="pre">direct_nucleon</span></code>) the file contains the cross sections <code class="docutils literal notranslate"><span class="pre">sigmaN_*</span></code>, the
+equivalent cross sections <code class="docutils literal notranslate"><span class="pre">sigmaN_*_eq</span></code>, their limits <code class="docutils literal notranslate"><span class="pre">lim_sigmaN_*</span></code> and the flag <code class="docutils literal notranslate"><span class="pre">dd_light_mediator_warning</span></code>.</p>
 </section>
 <section id="exiting-maddm">
 <h2>Exiting MadDM<a class="headerlink" href="#exiting-maddm" title="Link to this heading">#</a></h2>

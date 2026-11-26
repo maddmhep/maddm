@@ -541,18 +541,19 @@ MadDM&gt; set limit
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">limit_and_rates</span></code> (default): the cross sections and the comparison with the exclusion limits, plus the recoil spectra of
 the selected targets computed with RAPIDD (<code class="docutils literal notranslate"><span class="pre">dRdE_nucleon.dat</span></code>, <code class="docutils literal notranslate"><span class="pre">dRdE_electron.dat</span></code>) and, for DM-electron scattering in
-xenon, the XENON10 and XENON1T S2 spectra and the XENON10 limit;</p></li>
+xenon, the XENON10 and XENON1T S2 spectra and limits;</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">limit</span></code>: only the cross sections and the comparison with the exclusion limits (LZ 2024, PICO-60 and XENONnT), without
 recoil spectra. It is faster, for instance in scans. The equivalent cross sections compared with LZ are computed in both modes.</p></li>
 </ul>
 <p>The targets of the recoil spectra are chosen in the <code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code> (comma-separated lists, one column per target in the
 output files):</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; set direct_nucleon_targets xe, ge, ar, f
-MadDM&gt; set direct_electron_targets xe, ar
+MadDM&gt; set direct_electron_targets xe, ar, si
 </pre></div>
 </div>
 <p>DM-nucleon scattering supports xenon (<code class="docutils literal notranslate"><span class="pre">xe</span></code>), germanium (<code class="docutils literal notranslate"><span class="pre">ge</span></code>), argon (<code class="docutils literal notranslate"><span class="pre">ar</span></code>) and fluorine (<code class="docutils literal notranslate"><span class="pre">f</span></code>); DM-electron
-scattering supports xenon and argon. Both lists are <code class="docutils literal notranslate"><span class="pre">xe</span></code> by default. Argon has no spin-dependent rate (no nuclear spin);
+scattering supports xenon, argon and silicon (<code class="docutils literal notranslate"><span class="pre">si</span></code>, crystal response of QCDark2, in its own files). Both lists are <code class="docutils literal notranslate"><span class="pre">xe</span></code> by
+default. Argon has no spin-dependent rate (no nuclear spin);
 fluorine is the target of the PICO-60 bubble chamber (C<sub>3</sub>F<sub>8</sub>) and is dominated by the proton spin.
 The XENON10 and XENON1T results need <code class="docutils literal notranslate"><span class="pre">xe</span></code> among the electron targets. With <code class="docutils literal notranslate"><span class="pre">limit_and_rates</span></code> you can also compute the
 annual modulation of the rates (<code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">direct_modulation</span> <span class="pre">True</span></code>, see below).</p>
@@ -793,8 +794,10 @@ or by editing the file directly in the process folder (in this case <code class=
 <p>Note that in the <code class="docutils literal notranslate"><span class="pre">direct_electron</span></code> module, if the DM particle has a mass above 1 GeV, it will be ignored by default.
 To change this behavior, set <code class="docutils literal notranslate"><span class="pre">direct_electron_mode</span></code> to <code class="docutils literal notranslate"><span class="pre">always</span></code> in the <code class="docutils literal notranslate"><span class="pre">maddm_card.dat</span></code> file, which you can do by pressing 8 after launching the process.</p>
 <p>Once you are all set, you can run the process by pressing Enter. This module will compute the reference cross section <span class="math notranslate nohighlight">\(\bar\sigma_e\)</span>
-and compare it with the XENONnT limit, both as published and rescaled to the RAPIDD atomic responses; with <code class="docutils literal notranslate"><span class="pre">direct_mode</span> <span class="pre">=</span> <span class="pre">limit_and_rates</span></code>
-it will also compute the DM-electron recoil rates and compare them with the XENON10 S2-only data.</p>
+and compare it with the XENONnT limit, both as published and rescaled to the RAPIDD atomic responses, and, in their mass range, with the
+DAMIC-M limit (published and rescaled to the RAPIDD silicon response) and the DarkSide-50 limit; with <code class="docutils literal notranslate"><span class="pre">direct_mode</span> <span class="pre">=</span> <span class="pre">limit_and_rates</span></code>
+it will also compute the DM-electron recoil rates and compare them with the XENON10 and XENON1T S2-only data.
+Here we also ask for the silicon rates, with <code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">direct_electron_targets</span> <span class="pre">xe,</span> <span class="pre">ar,</span> <span class="pre">si</span></code>.</p>
 <p>After running the above commands, the output will look like:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>INFO: MadDM Results
 INFO: Local Galactic halo (SHM): rho = 0.3 GeV/cm^3, vMP = 238 km/s, vescape = 544 km/s
@@ -802,15 +805,25 @@ INFO:
 ****** Direct detection - electron recoil [cm^2]:
 INFO: Sigma_e             All DM = 3.23e-43       ALLOWED     XENONnT ul       = 1.54e-41
 INFO: Sigma_e (rescaled)  All DM = 3.23e-43       ALLOWED     XENONnT ul       = 3.01e-41
+INFO: Sigma_e             All DM = 3.23e-43       ALLOWED     DAMIC-M ul       = 1.59e-37
+INFO: Sigma_e             All DM = 3.23e-43       ALLOWED     DAMIC-M; RAPIDD (QCDark2) ul = 2.02e-37
+INFO: Sigma_e             All DM = 3.23e-43       ALLOWED     DarkSide-50 ul   = 2.73e-39
 INFO: Sigma_e             All DM = 3.23e-43       ALLOWED     XENON10 ul       = 4.73e-38
-INFO: Recoil spectra: dRdE_electron.dat, dRdS2_electron_XENON10.dat, dRdS2_electron_XENON1T.dat in /Users/yourname/yourprocessfolder/DD_ER_spin0/output/run_01
+INFO: Sigma_e             All DM = 3.23e-43       ALLOWED     XENON1T ul       = 3.04e-40
+INFO: XENON10, XENON1T: not the strongest constraints, but the only ones computed from the recoil spectrum of the model (valid for any operator); the other limits are published curves for sigma_e (heavy mediator, F_DM = 1).
+INFO: Recoil spectra: dRdE_electron.dat, dRdS2_electron_XENON10.dat, dRdS2_electron_XENON1T.dat, dRdE_electron_Si.dat, dRdQ_electron_Si.dat in /Users/yourname/yourprocessfolder/DD_ER_spin0/output/run_01
 INFO:
 INFO: Results written in: /Users/yourname/yourprocessfolder/DD_ER_spin0/output/run_01/MadDM_results.txt
 </pre></div>
 </div>
 <p>where <code class="docutils literal notranslate"><span class="pre">All</span> <span class="pre">DM</span></code> refers to the reference DM-electron cross section in case the DM particle contributes to the entire dark matter density of the universe,
-<code class="docutils literal notranslate"><span class="pre">ALLOWED</span></code> indicates that the model is consistent with the corresponding upper limit, shown in the last column. The XENON10 limit is the cross section
-for which the p-value of the most constraining S2 bin falls below 0.1; the p-value itself is written in <code class="docutils literal notranslate"><span class="pre">MadDM_results.txt</span></code>.</p>
+<code class="docutils literal notranslate"><span class="pre">ALLOWED</span></code> indicates that the model is consistent with the corresponding upper limit, shown in the last column. The published and rescaled
+limits of XENONnT and DAMIC-M are two conventions for the same data (the rescaled ones use the RAPIDD atomic and silicon responses of the rates). The XENON10 limit is the cross section
+for which the p-value of the most constraining S2 bin falls below 0.1; the p-value itself is written in <code class="docutils literal notranslate"><span class="pre">MadDM_results.txt</span></code>.
+The XENON1T limit is defined in the same way from the XENON1T S2-only data (one region of interest per DM mass,
+with the published background); both p-values are written in <code class="docutils literal notranslate"><span class="pre">MadDM_results.txt</span></code>.
+XENON10 and XENON1T are weaker than XENONnT, DAMIC-M and DarkSide-50, but they are the only tests computed from the
+recoil spectrum of the model, valid for any operator; the other limits are published curves for sigma_e with a heavy mediator.</p>
 </section>
 <section id="id2">
 <h3>Results<a class="headerlink" href="#id2" title="Link to this heading">#</a></h3>
@@ -820,10 +833,13 @@ Each time you launch the same process, MadDM creates a new folder <code class="d
 <p>The raw output of the Fortran module of MadDM, such as the DM mass and the effective DM-electron couplings, is in the <code class="docutils literal notranslate"><span class="pre">maddm.out</span></code> file,
 and the XENON10 signal in each S2 bin is in <code class="docutils literal notranslate"><span class="pre">signal_e_recoil.dat</span></code>.</p>
 <p>With <code class="docutils literal notranslate"><span class="pre">direct_mode</span> <span class="pre">=</span> <span class="pre">limit_and_rates</span></code> (the default) you can also find the differential recoil spectra vs energy in <code class="docutils literal notranslate"><span class="pre">dRdE_electron.dat</span></code>
-(for each target of <code class="docutils literal notranslate"><span class="pre">direct_electron_targets</span></code>, <code class="docutils literal notranslate"><span class="pre">xe</span></code> and/or <code class="docutils literal notranslate"><span class="pre">ar</span></code>, the rate summed over the shells and then the rate of each shell)
+(for each atom of <code class="docutils literal notranslate"><span class="pre">direct_electron_targets</span></code>, <code class="docutils literal notranslate"><span class="pre">xe</span></code> and/or <code class="docutils literal notranslate"><span class="pre">ar</span></code>, the rate summed over the shells and then the rate of each shell)
 and, for Xenon, the number of events vs scintillation signal in <code class="docutils literal notranslate"><span class="pre">dRdS2_electron_XENON10.dat</span></code> and <code class="docutils literal notranslate"><span class="pre">dRdS2_electron_XENON1T.dat</span></code>.
-With <code class="docutils literal notranslate"><span class="pre">direct_mode</span> <span class="pre">=</span> <span class="pre">limit</span></code> (<code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">limit</span></code>) only sigma_e and the XENONnT limit are computed: the XENON10 and XENON1T results need the Xenon rates.
-The files used below were produced with <code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">direct_electron_targets</span> <span class="pre">xe,</span> <span class="pre">ar</span></code>.
+With <code class="docutils literal notranslate"><span class="pre">direct_mode</span> <span class="pre">=</span> <span class="pre">limit</span></code> (<code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">limit</span></code>) only sigma_e and the published limits (XENONnT, DAMIC-M, DarkSide-50) are computed: the XENON10 and XENON1T results need the Xenon rates.
+For silicon (<code class="docutils literal notranslate"><span class="pre">si</span></code>) the rate is in <code class="docutils literal notranslate"><span class="pre">dRdE_electron_Si.dat</span></code>, versus the deposited energy (0.1 to 50 eV), and in <code class="docutils literal notranslate"><span class="pre">dRdQ_electron_Si.dat</span></code>,
+per number of electron-hole pairs (Ramanathan-Kurinsky ionization probabilities at 100 K), the quantity measured by skipper-CCD
+experiments such as DAMIC-M and SENSEI.
+The files used below were produced with <code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">direct_electron_targets</span> <span class="pre">xe,</span> <span class="pre">ar,</span> <span class="pre">si</span></code>.
 Below is an example of how to plot the differential rates and number of events vs scintillation signal for electronic recoils:</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span><span class="w">
 </span><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib</span><span class="nn">.</span><span class="nn">pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span><span class="w">
@@ -879,12 +895,53 @@ Below is an example of how to plot the differential rates and number of events v
 </span><span class="w">
 </span><span class="n">plot_dRdS2_er</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">./plot_data/dRdS2_electron_XENON10.dat</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s2">./plot_data/dRdS2_electron_XENON1T.dat</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<img src="../_images/sphx_glr_plot_direct_detection_004.png" srcset="../_images/sphx_glr_plot_direct_detection_004.png" alt="Differential Rate vs S2" class = "sphx-glr-single-img"/><section id="exiting-maddm">
+<img src="../_images/sphx_glr_plot_direct_detection_004.png" srcset="../_images/sphx_glr_plot_direct_detection_004.png" alt="Differential Rate vs S2" class = "sphx-glr-single-img"/><p>Plot the silicon rates: dR/dDelta E and the rate per number of electron-hole pairs</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span><span class="w">
+</span><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib</span><span class="nn">.</span><span class="nn">pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span><span class="w">
+</span><span class="w">
+</span><span class="k">def</span><span class="w"> </span><span class="nf">plot_silicon</span><span class="p">(</span><span class="n">drde_file</span><span class="p">,</span> <span class="n">drdq_file</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;
+    Read and plot dR/dDelta E (dRdE_electron_Si.dat) and dR/dQ (dRdQ_electron_Si.dat) of silicon.
+    &quot;&quot;&quot;</span><span class="w">
+</span>    <span class="n">E_keV</span><span class="p">,</span> <span class="n">drde</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">drde_file</span><span class="p">,</span> <span class="n">unpack</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="w">
+</span>    <span class="n">Q</span><span class="p">,</span> <span class="n">drdq</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">drdq_file</span><span class="p">,</span> <span class="n">unpack</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="w">
+</span>    <span class="n">fig</span><span class="p">,</span> <span class="p">(</span><span class="n">ax1</span><span class="p">,</span> <span class="n">ax2</span><span class="p">)</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">11</span><span class="p">,</span> <span class="mf">4.5</span><span class="p">)</span><span class="p">)</span><span class="w">
+</span>    <span class="n">mask</span> <span class="o">=</span> <span class="n">drde</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="w">
+</span>    <span class="n">ax1</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">E_keV</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">*</span> <span class="mf">1e3</span><span class="p">,</span> <span class="n">drde</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span><span class="p">)</span><span class="w">
+</span>    <span class="n">ax1</span><span class="o">.</span><span class="n">set_yscale</span><span class="p">(</span><span class="s1">'</span><span class="s1">log</span><span class="s1">'</span><span class="p">)</span><span class="w">
+</span>    <span class="n">ax1</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">Deposited energy $</span><span class="se">\\</span><span class="s2">Delta E$ (eV)</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span>    <span class="n">ax1</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">dR/d$</span><span class="se">\\</span><span class="s2">Delta E$ [events/kg/day/keV]</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span>    <span class="n">ax1</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">Silicon (QCDark2, RPA screening)</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span>    <span class="n">ax2</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">drdq</span><span class="p">,</span> <span class="n">where</span><span class="o">=</span><span class="s1">'</span><span class="s1">mid</span><span class="s1">'</span><span class="p">)</span><span class="w">
+</span>    <span class="n">ax2</span><span class="o">.</span><span class="n">set_yscale</span><span class="p">(</span><span class="s1">'</span><span class="s1">log</span><span class="s1">'</span><span class="p">)</span><span class="w">
+</span>    <span class="n">ax2</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">Electron-hole pairs Q</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span>    <span class="n">ax2</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">dR/dQ [events/kg/day]</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span>    <span class="n">ax2</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">Rate per number of e-h pairs</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span>    <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span>    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="n">plot_silicon</span><span class="p">(</span><span class="s1">'</span><span class="s1">./plot_data/dRdE_electron_Si.dat</span><span class="s1">'</span><span class="p">,</span> <span class="s1">'</span><span class="s1">./plot_data/dRdQ_electron_Si.dat</span><span class="s1">'</span><span class="p">)</span><span class="w">
+</span></pre></div></div>
+<img src="../_images/sphx_glr_plot_direct_detection_005.png" srcset="../_images/sphx_glr_plot_direct_detection_005.png" alt="Silicon (QCDark2, RPA screening), Rate per number of e-h pairs" class = "sphx-glr-single-img"/></section>
+<section id="heavy-mediator-approximation">
+<h3>Heavy-mediator approximation<a class="headerlink" href="#heavy-mediator-approximation" title="Link to this heading">#</a></h3>
+<p>MadDM computes the direct detection rates in the contact (heavy-mediator) approximation. When a t-channel mediator is lighter
+than about 5 times the typical momentum transfer (about 50 MeV for xenon nuclei, 37 keV for electrons), when there are several
+t-channel mediators, or when an s/u-channel mediator is nearly degenerate with DM plus the SM fermion, MadDM prints a warning,
+e.g. for the model above with <code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">MY0</span> <span class="pre">0.0001</span></code>:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>WARNING: DM-electron scattering: the t-channel mediator y0 (54) (M = 0.0001 GeV) is lighter than 5 q_ref (q_ref = 3.73e-05 GeV):
+the rates are overestimated by about (1 + q_ref^2/M^2)^2 = 1.3. MadDM uses the heavy-mediator (contact) approximation: its rates
+and the comparison with the limits (all heavy-mediator) are unreliable; light mediators are not implemented.
+</pre></div>
+</div>
+<p>and records the flags <code class="docutils literal notranslate"><span class="pre">dd_light_mediator_warning</span></code> (DM-nucleon) and <code class="docutils literal notranslate"><span class="pre">dd_e_light_mediator_warning</span></code> (DM-electron) in
+<code class="docutils literal notranslate"><span class="pre">MadDM_results.txt</span></code> and in the scan output (0: no warning; see the documentation for the other values).</p>
+<section id="exiting-maddm">
 <h4>Exiting MadDM<a class="headerlink" href="#exiting-maddm" title="Link to this heading">#</a></h4>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>MadDM&gt; quit
 </pre></div>
 </div>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 0.313 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 0.857 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorial-and-examples-plot-direct-detection-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../_downloads/ed55d6c604f326f38dd25a849d679b4e/plot_direct_detection.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">plot_direct_detection.ipynb</span></code></a></p>
@@ -958,7 +1015,8 @@ Below is an example of how to plot the differential rates and number of events v
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#electronic-recoils-with-xenonnt-and-xenon10-limits">2. Electronic Recoils with XENONnT and XENON10 limits</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">Example with a simplified scalar-mediated DM model</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id2">Results</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id2">Results</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#heavy-mediator-approximation">Heavy-mediator approximation</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#exiting-maddm">Exiting MadDM</a></li>
 </ul>
 </li>
