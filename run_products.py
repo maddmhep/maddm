@@ -17,6 +17,8 @@ FILE_GUIDE = (
     ('DD_limits.pdf', 'Equivalent SI and SD DM-nucleon cross sections of this run against the LZ limits (sigma_SD_p against PICO-60), the XLZD projection and the neutrino fog of DD_limits.json.'),
     ('dRdE_electron.dat', 'Differential electron recoil rates from RAPIDD (direct_mode = limit_and_rates) versus electron momentum and energy in keV: for each target of direct_electron_targets (xenon, argon) the rate summed over the shells, then the rate of each shell. Rates are in events per kg, day and keV.'),
     ('dRdE_electron.pdf', 'Total electron recoil spectra of the selected targets on a linear energy axis and a logarithmic rate axis.'),
+    ('dRdE_electron_Si.dat', 'Differential DM-electron scattering rate in silicon from RAPIDD (direct_electron_targets with si, direct_mode = limit_and_rates) versus the deposited energy Delta E in keV (0.1 to 50 eV): QCDark2 crystal response with RPA screening. Rate in events per kg, day and keV.'),
+    ('dRdQ_electron_Si.dat', 'DM-electron scattering rate in silicon per number Q = 1 ... 10 of electron-hole pairs (Ramanathan-Kurinsky ionization probabilities at 100 K), in events per kg and day.'),
     ('dRdS2_electron_XENON*.dat', 'RAPIDD xenon electron recoil signal in XENON10 or XENON1T as a function of S2 (XENON10: also the contribution of each shell).'),
     ('signal_e_recoil.dat', 'RAPIDD signal per XENON10 S2 bin.'),
     ('SHM.dat', 'SHM velocity table used by RAPIDD, written when vMP, vescape or vSun_* differ from the defaults.'),

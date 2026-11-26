@@ -26,9 +26,6 @@ ROOT = Path(__file__).resolve().parent
 FLUX_DIR = ROOT / 'ExpData' / 'CR_flux'
 PYTHON_REQUIREMENTS = ('numpy', 'scipy', 'matplotlib')
 BUILD_REQUIREMENTS = ('ninja', 'meson')
-# Keep archive installations on the same revision as the RAPIDD git submodule.
-RAPIDD_REVISION = 'ca700b9f3b92e9195f99ebeaf2f0946581f70c28'
-RAPIDD_REPOSITORY = 'https://github.com/cheekyparticle/RAPIDD_for_DM.git'
 ZLIB_ARCHIVE = (
     'https://zlib.net/fossils/zlib-1.3.2.tar.gz',
     'bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16',
@@ -215,33 +212,6 @@ def install_reweight_tools(heptools):
     remaining = missing_reweight_build_tools(bin_dir)
     if remaining:
         raise DataInstallError('Build executables are still missing: %s' % ', '.join(remaining))
-
-
-def install_rapidd_source(destination):
-    """Fetch the pinned submodule sources when MadDM was installed from a ZIP."""
-    destination = Path(destination)
-    if destination.exists() and any(destination.iterdir()):
-        raise DataInstallError('Incomplete RAPIDD sources in %s. Keep or move that directory '
-                               'before retrying; existing files have not been changed.' % destination)
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        with tempfile.TemporaryDirectory(prefix='.rapidd-', dir=destination.parent) as work:
-            source = Path(work) / 'source'
-            source.mkdir()
-            commands = (['git', 'init', '--quiet'],
-                        ['git', 'remote', 'add', 'origin', RAPIDD_REPOSITORY],
-                        ['git', 'fetch', '--depth=1', 'origin', RAPIDD_REVISION],
-                        ['git', 'checkout', '--detach', 'FETCH_HEAD'],
-                        ['git', 'submodule', 'update', '--init', '--recursive', '--depth=1'])
-            for command in commands:
-                subprocess.run(command, cwd=source, check=True)
-            if not all((source / name).is_file() for name in ('lib/CMakeLists.txt', 'rapidd/__init__.py')):
-                raise DataInstallError('The pinned RAPIDD checkout is incomplete.')
-            if destination.exists():
-                destination.rmdir()  # Only an empty directory can be replaced.
-            source.replace(destination)
-    except (OSError, subprocess.CalledProcessError) as error:
-        raise DataInstallError('Could not download RAPIDD: %s' % error) from error
 
 
 def install_gsl(heptools):

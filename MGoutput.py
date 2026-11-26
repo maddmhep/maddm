@@ -67,6 +67,12 @@ class MADDMProcCharacteristic(banner_mod.ProcCharacteristic):
         self.add_param('pdg_particle_map', {'':''})
         self.add_param('processes_names_map', {'':''})
         self.add_param('indirect_detection_asked_processes', [''])
+        # particles exchanged in the direct detection diagrams of the full Lagrangian (maddm_interface
+        # dd_exchanged_particles): mediator PDG codes and the SM fermion of each diagram, [0] if none
+        for channel in ('t', 'su'):
+            for kind in ('nucleon', 'electron'):
+                self.add_param('dd_%s_%s_mediators' % (channel, kind), [0])
+                self.add_param('dd_%s_%s_fermions' % (channel, kind), [0])
 
 #-------------------------------------------------------------------------#
 class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):

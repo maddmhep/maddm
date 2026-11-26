@@ -16,6 +16,7 @@ from . import data_install, scan_parameters, direct_references
 from .indirect import cr_config, indirect_compat
 import stat
 import shutil
+import warnings
 from copy import copy, deepcopy
 
 from . import MGoutput
@@ -92,14 +93,19 @@ __mnestlog0__ = -1.0E90
 
 # targets of the RAPIDD recoil spectra (maddm_card direct_nucleon_targets, direct_electron_targets)
 DD_NUCLEON_TARGETS = ('xe', 'ge', 'ar', 'f')
-DD_ELECTRON_TARGETS = ('xe', 'ar')
+DD_ELECTRON_TARGETS = ('xe', 'ar', 'si')
 
-# DM-electron scattering: sigma_e is compared with the XENONnT upper limit and with the XENON10 S2-only
-# data (arXiv:1703.00910: p-value of the most constraining S2 bin and the equivalent upper limit on sigma_e).
-# The XENON1T S2-only p-value is kept in the code but switched off; set to True to restore it.
+# DM-electron scattering: sigma_e is compared with the XENONnT upper limit (published and rescaled to the RAPIDD
+# atomic responses), with the DAMIC-M (published and rescaled to the RAPIDD silicon response) and DarkSide-50 upper
+# limits (ExpConstraints.DME_LIMITS, below 40 MeV, where XENONnT has no limit) and with the XENON10 S2-only data
+# (arXiv:1703.00910: p-value of the most constraining S2 bin and the equivalent upper limit on sigma_e) and the XENON1T
+# S2-only data (arXiv:1907.11485: p-value in the region of interest of the DM mass, with the published background).
+# XENON10 and XENON1T are not the strongest constraints, but the only ones computed from the recoil spectrum of the
+# model (any operator), while the published limits are curves for sigma_e (heavy mediator, F_DM = 1).
 __dme_use_xenon10_pvalue__ = True
-__dme_use_xenon1t_pvalue__ = False
+__dme_use_xenon1t_pvalue__ = True
 __dme_xenon10_cl__ = 0.9  # confidence level of the XENON10 limit (excluded if p-value < 1 - CL)
+__dme_xenon1t_cl__ = 0.9  # confidence level of the XENON1T test (excluded if p-value < 1 - CL), as arXiv:1907.11485
 
 # Published limits on the DM-nucleon cross sections: (limit key, cross section, experiment, verdict). The limit of
 # the row <key> is lim_sigmaN_<key> and is compared with sigmaN_<cross section>.
@@ -126,6 +132,109 @@ DD_ROWS_XLZD = (('SI_eq_XLZD', 'SI_eq'), ('SD_n_eq_XLZD', 'SD_n_eq'), ('SD_p_eq_
 DD_XLZD_NUCLEON_KEYS = ('SI_p_XLZD', 'SI_n_XLZD', 'SD_p_XLZD', 'SD_n_XLZD')
 
 
+class DDMediatorCheck:
+    """Validity of the heavy-mediator (contact) approximation of the direct detection results.
+
+    MadDM projects the full model on contact operators with all the external particles at rest (q = 0): a
+    t-channel mediator of mass M gives alpha = g g'/M^2 instead of g g'/(M^2 + q^2), so the rates and the cross
+    sections compared with the (heavy-mediator) limits are overestimated by (1 + q^2/M^2)^2. The particles exchanged
+    in the DD diagrams are found at generation time (maddm_interface.dd_exchanged_particles, proc_characteristics
+    dd_<t|su>_<nucleon|electron>_<mediators|fermions>); their masses are read from the param_card at each point.
+    Light-mediator rates are not implemented: this class only produces warnings and a flag (bit mask):
+      1  a t-channel mediator is lighter than T_CHANNEL_FACTOR q_ref (or massless: results invalid);
+      2  several t-channel mediators: not combined, the user must check that all of them are >> q;
+      4  an s/u-channel mediator (DM-fermion-mediator vertex) is nearly degenerate with DM + fermion (resonance),
+         where the contact treatment at the quark (hadronic scale) or electron (atomic scale) level breaks down.
+    s/u-channel mediators do not depend on q (propagator 1/(s - M^2), s ~ (m_chi + m_f)^2): no q warning for them.
+    Constants are class attributes (the unit tests exec the class alone).
+    """
+    T_CHANNEL_FACTOR = 5.            # warn if M < 5 q_ref: rate overestimate (1 + 1/25)^2 ~ 8%
+    E_REF_NUCLEUS_GEV = 1.e-5        # typical nuclear recoil energy (10 keV): q ~ sqrt(2 m_T E_R) ~ 50 MeV for Xe
+    Q_ELECTRON_GEV = 10. * 7.2973525643e-3 * 0.51099895e-3   # 10 alpha m_e ~ 37 keV (inner shells, Umklapp)
+    SU_DEGENERACY_QUARK_GEV = 1.     # hadronic scale: |M - m_chi - m_q| below it
+    SU_DEGENERACY_ELECTRON_GEV = 1.e-3   # atomic scale: |M - m_chi - m_e| below it
+    C_KMS = 299792.458
+    AMU_GEV = 0.93149410372
+    # nuclear targets (mean atomic mass, u): the direct_nucleon_targets and xenon (LZ limits)
+    TARGET_MASS_AU = {'xe': 131.293, 'ge': 72.630, 'ar': 39.948, 'f': 18.998403}
+    FERMION_MASS_GEV = {1: 4.67e-3, 2: 2.16e-3, 3: 0.0934, 4: 1.27, 5: 4.18, 6: 172.7, 11: 0.51099895e-3}
+    MASSLESS = (21, 22)              # gauge bosons without a mass entry in the param_card
+    FLAG_LIGHT, FLAG_SEVERAL, FLAG_SU_DEGENERATE = 1, 2, 4
+
+    @classmethod
+    def v_max(cls, card):
+        """largest DM speed in the lab frame [c]: vescape + |v_Sun| (vMP + vSun_*) + vEarth_mod"""
+        v_sun = math.sqrt(card['vSun_r']**2 + (card['vMP'] + card['vSun_phi'])**2 + card['vSun_theta']**2)
+        return (card['vescape'] + v_sun + card['vEarth_mod']) / cls.C_KMS
+
+    @classmethod
+    def q_ref_nucleus(cls, mdm, v_max, targets=('xe',)):
+        """typical momentum transfer [GeV] of DM-nucleus scattering: max over the targets T (and xenon) of
+        min(2 mu_T v_max, sqrt(2 m_T E_REF_NUCLEUS_GEV))"""
+        q = 0.
+        for t in set(str(x).lower() for x in targets) | {'xe'}:
+            if t not in cls.TARGET_MASS_AU:
+                continue
+            m_T = cls.TARGET_MASS_AU[t] * cls.AMU_GEV
+            mu = mdm * m_T / (mdm + m_T)
+            q = max(q, min(2. * mu * v_max, math.sqrt(2. * m_T * cls.E_REF_NUCLEUS_GEV)))
+        return q
+
+    @classmethod
+    def q_ref_electron(cls, mdm, v_max):
+        """typical momentum transfer [GeV] of DM-electron scattering: min(2 mdm v_max, 10 alpha m_e)"""
+        return min(2. * mdm * v_max, cls.Q_ELECTRON_GEV)
+
+    @classmethod
+    def check(cls, kind, mdm, q_ref, t_channel, su_channel):
+        """
+        kind: 'nucleon' or 'electron'; t_channel: list of (name, mass [GeV]) of the t-channel mediators;
+        su_channel: list of (name, mass [GeV], SM fermion mass [GeV]) of the s/u-channel mediators.
+        Returns (flag, invalid, messages): invalid is True if a t-channel mediator is massless (the q = 0
+        projection diverges: the DD results of this kind are set to -1).
+        """
+        target = 'DM-nucleon' if kind == 'nucleon' else 'DM-electron'
+        flag, invalid, messages = 0, False, []
+        light = []
+        for name, mass in t_channel:
+            if mass <= 0.:
+                invalid = True
+                light.append('%s is massless: the contact (q = 0) projection diverges and the %s results are set '
+                             'to -1' % (name, target))
+            elif mass < cls.T_CHANNEL_FACTOR * q_ref:
+                light.append('%s (M = %.3g GeV) is lighter than %g q_ref (q_ref = %.3g GeV): the rates are '
+                             'overestimated by about (1 + q_ref^2/M^2)^2 = %.3g'
+                             % (name, mass, cls.T_CHANNEL_FACTOR, q_ref, (1. + (q_ref / mass)**2)**2))
+        if light:
+            flag |= cls.FLAG_LIGHT
+        if len(t_channel) > 1:
+            flag |= cls.FLAG_SEVERAL
+            text = ('%s scattering has several t-channel mediators (%s): MadDM does not combine them and assumes '
+                    'all of them much heavier than the momentum transfer (q_ref = %.3g GeV); check that the model '
+                    'is consistent with the heavy-mediator approximation.'
+                    % (target, ', '.join('%s M = %.3g GeV' % (n, m) for n, m in t_channel), q_ref))
+            if light:
+                text += ' Below the threshold: ' + '; '.join(light) + '.'
+            messages.append(text)
+        elif light:
+            messages.append('%s scattering: the t-channel mediator %s.' % (target, light[0]))
+        if light and not invalid:
+            messages[-1] += (' MadDM uses the heavy-mediator (contact) approximation: its rates and the comparison '
+                             'with the limits (all heavy-mediator) are unreliable; light mediators are not implemented.')
+        threshold = cls.SU_DEGENERACY_QUARK_GEV if kind == 'nucleon' else cls.SU_DEGENERACY_ELECTRON_GEV
+        for name, mass, m_f in su_channel:
+            delta = mass - mdm - m_f
+            if abs(delta) < threshold:
+                flag |= cls.FLAG_SU_DEGENERATE
+                messages.append('%s scattering: the s/u-channel mediator %s (M = %.4g GeV) is nearly degenerate with '
+                                'DM + fermion (m_DM = %.4g GeV, M - m_DM - m_f = %.3g GeV, below %g GeV): close to '
+                                'the resonance the contact treatment at the %s level breaks down and the %s results '
+                                'are unreliable.' % (target, name, mass, mdm, delta, threshold,
+                                                     'quark (hadronic scale)' if kind == 'nucleon' else
+                                                     'electron (atomic scale)', target))
+        return flag, invalid, messages
+
+
 def rapidd_library_ready():
     """True if the RAPIDD library (git submodule vendor/RAPIDD_for_DM) is compiled."""
     import platform
@@ -140,6 +249,17 @@ class ExpConstraints:
     XLZD_EXPOSURES = ('200ty', '1000ty')
     # DM-nucleon limits are extrapolated linearly in the DM mass above their tables up to this mass [GeV] (_dd_limit)
     DD_EXTRAPOLATION_MAX = 1.e15
+    # DM-electron limits besides XENONnT (heavy mediator): (suffix of lim_sigma_e_<suffix>, key of the limit file,
+    # experiment). They are the strongest limits below the XENONnT threshold (40 MeV): DAMIC-M up to ~26 MeV,
+    # DarkSide-50 from ~26 to 40 MeV. DAMIC-M is given as published (QCDark1 crystal form factor with analytic
+    # screening) and rescaled to the RAPIDD silicon response (QCDark2 RPA dielectric function, the silicon target of
+    # direct_electron_targets; 2 MeV - 1 GeV): the two are alternative conventions of the same limit, like the
+    # XENONnT pair. DarkSide-50 already uses the argon responses of RAPIDD and is not rescaled.
+    DME_LIMITS = (('DAMICM', 'electron_damicm', 'DAMIC-M'),
+                  ('DAMICM_rescaled', 'electron_damicm_rescaled', 'DAMIC-M; RAPIDD (QCDark2)'),
+                  ('DS50', 'electron_ds50', 'DarkSide-50'))
+    # (published, rescaled) suffixes of lim_sigma_e_<suffix> that are two conventions of the same limit
+    DME_RESCALED_PAIRS = (('', 'rescaled'), ('DAMICM', 'DAMICM_rescaled'))
 
     def __init__(self):
 
@@ -156,11 +276,20 @@ class ExpConstraints:
             'sd_neutron': pjoin(rapidd_exp_dir, 'lz2024', 'LZ2024_SDn.dat'),
             # LZ 2024 SD-p (HEPData ins2841863): stronger than PICO-60 for 17 GeV < mDM < 1 TeV
             'sd_proton_lz': pjoin(rapidd_exp_dir, 'lz2024', 'LZ2024_SDp.dat'),
+            # XENONnT S2-only (arXiv:2601.11296), heavy mediator
             'electron'  : pjoin(rapidd_exp_dir, 'XENONnT', 'XENONnT_DMe_SI.dat'),
             # the same limit rescaled to the RAPIDD atomic responses (XENONnT uses the ionization form factors of
-            # Essig et al.): published limit x S_wimprates/S_RAPIDD in its region of interest, an estimate
+            # Essig et al., arXiv:1703.00910): published limit x S_wimprates/S_RAPIDD in its region of interest, an estimate
             # (vendor/RAPIDD_for_DM/examples/xenonnt_dme_limit_rapidd_ff.py)
-            'electron_rescaled': pjoin(rapidd_exp_dir, 'XENONnT', 'XENONnT_DMe_SI_RAPIDD_FF.dat')
+            'electron_rescaled': pjoin(rapidd_exp_dir, 'XENONnT', 'XENONnT_DMe_SI_RAPIDD_FF.dat'),
+            # DAMIC-M 2025 (arXiv:2503.14617, silicon, QCDark, official release), 0.75 MeV - 1 GeV
+            'electron_damicm': pjoin(rapidd_exp_dir, 'DAMIC-M', 'DAMIC-M_2025_DMe_heavy_QCDark.dat'),
+            # the same limit rescaled to the RAPIDD silicon response (QCDark2, RPA with local field effects): published
+            # limit x S_DAMIC-M/S_RAPIDD with S the signal with 2-4 e- weighted by the pattern efficiencies, an estimate
+            # (vendor/RAPIDD_for_DM/examples/damicm_dme_limit_rapidd.py), 2 MeV - 1 GeV
+            'electron_damicm_rescaled': pjoin(rapidd_exp_dir, 'DAMIC-M', 'DAMIC-M_2025_DMe_heavy_QCDark_RAPIDD.dat'),
+            # DarkSide-50 2023 (arXiv:2207.11968, argon, digitized), 14 MeV - 1 GeV
+            'electron_ds50': pjoin(rapidd_exp_dir, 'DarkSide50', 'DarkSide50_2023_DMe_heavy.dat')
         }
         # XLZD projections (maddm_card xlzd_limits): median 90% CL upper limits for 200 and 1000 tonne-years.
         # SI: XLZD Design Book (arXiv:2410.17137, Fig. 2); SD-p and SD-n: arXiv:2203.02309 (Fig. 7), 5 GeV - 1 TeV
@@ -172,7 +301,8 @@ class ExpConstraints:
         # so they are rescaled by rho_limit/rhoDM (rhoDM of the maddm_card, set_rhoDM). All of them use
         # 0.3 GeV/cm^3: PICO-60 (arXiv:1902.04031, stated), XENONnT S2-only (arXiv:2601.11296: wimprates with
         # the conventions of arXiv:2105.00599), LZ 2024 (arXiv:2410.17036: standard halo model with the
-        # conventions of arXiv:2105.00599, which LZ follows; the value is not repeated in the paper).
+        # conventions of arXiv:2105.00599, which LZ follows; the value is not repeated in the paper), DAMIC-M
+        # (arXiv:2503.14617: arXiv:2105.00599) and DarkSide-50 (arXiv:2207.11968, stated).
         # The limits set by the user (set dd_si_limits / dd_sd_limits) are also assumed at 0.3 GeV/cm^3.
         # The XLZD projections are taken at 0.3 GeV/cm^3 as well (standard halo model, not restated in the papers).
         self._dd_limit_rho = {'si': 0.3, 'sd_proton': 0.3, 'sd_neutron': 0.3, 'sd_proton_lz': 0.3, 'electron': 0.3,
@@ -281,6 +411,8 @@ class ExpConstraints:
             logger.info('XLZD projections (xlzd_limits): %s' % pjoin(os.path.dirname(self._dd_limit_file['si_xlzd_200ty']), 'XLZD_*.dat'))
             logger.info('DM-electron cross section: %s' % self._dd_limit_file['electron'])
             logger.info('DM-electron cross section (rescaled to the RAPIDD atomic responses): %s' % self._dd_limit_file['electron_rescaled'])
+            for _, key, experiment in self.DME_LIMITS:
+                logger.info('DM-electron cross section (%s): %s' % (experiment, self._dd_limit_file[key]))
         else:
             logger.info('Spin (in)dependent not available due to the missing python module: numpy')
 #        for chan in self._allowed_final_states:
@@ -405,10 +537,25 @@ class ExpConstraints:
         return self._dd_limit(key, mdm, 'SD-' + nucleon)
 
     #Returns a value in cm^2
-    def DMe_max(self, mdm, rescaled=False):
+    def DMe_max(self, mdm, rescaled=False, experiment='XENONnT'):
         ''' upper limit on the DM-electron reference cross section sigma_e (heavy mediator): the published XENONnT
-        limit, or (rescaled = True) the same limit rescaled to the RAPIDD atomic responses '''
-        key = 'electron_rescaled' if rescaled else 'electron'
+        limit, or (rescaled = True) the same limit rescaled to the RAPIDD atomic responses; with experiment = one
+        of the experiments of DME_LIMITS (DAMIC-M, DAMIC-M; RAPIDD (QCDark2), DarkSide-50), the limit of that
+        experiment (experiment = 'DAMIC-M' with rescaled = True is the same as 'DAMIC-M; RAPIDD (QCDark2)'). -1
+        outside the mass range of the limit. '''
+        if experiment == 'XENONnT':
+            key = 'electron_rescaled' if rescaled else 'electron'
+        else:
+            keys = dict((name, key) for _, key, name in self.DME_LIMITS)
+            if experiment not in keys:
+                raise ValueError('unknown DM-electron experiment %s: use XENONnT or one of %s'
+                                 % (experiment, ', '.join(keys)))
+            key = keys[experiment]
+            if rescaled:
+                if key + '_rescaled' not in keys.values():
+                    raise ValueError('no rescaled DM-electron limit for %s' % experiment)
+                key += '_rescaled'
+
         if not HAS_NUMPY:
             logger.warning("missing numpy module for DM-electron limit")
             return -1
@@ -417,7 +564,9 @@ class ExpConstraints:
             return -1
 
         if (mdm < np.min(self._dd_limit_mdm[key]) or mdm > np.max(self._dd_limit_mdm[key])):
-            logger.warning('Dark matter mass value '+str(mdm)+' is outside the range of DM-electron limit')
+            # the other experiments cover only part of the XENONnT range: no warning for them
+            (logger.warning if experiment == 'XENONnT' else logger.debug)(
+                'Dark matter mass value %s is outside the range of the %s DM-electron limit' % (mdm, experiment))
             return -1
         else:
             # the limit spans several decades with few points: interpolate in log-log
@@ -1740,6 +1889,8 @@ class MADDMRunCmd(cmd.CmdShell):
         self.str_processes = {}
 
         self.limits = ExpConstraints()
+        self._dme_skipped_reported = set()  # (target, reason) of the DM-electron targets skipped, reported once
+        self._dd_mediator_warned = set()  # heavy-mediator warnings already issued (check_dd_mediators)
         self.vave_indirect_cont_range = (3e-6, 1.4e-4)
         self.vave_indirect_line_range = (5e-4, 1e-3) # about 180--300 km/s
         self.options = options
@@ -1864,6 +2015,56 @@ class MADDMRunCmd(cmd.CmdShell):
         The spectra of the single time bins are not saved and the halo loop is silent."""
         return dict(modulation=bool(self.maddm_card['direct_modulation']), day_bins=int(self.maddm_card['day_bins']),
                     save_rates_per_bin=False, verbose=False)
+
+    # flag of the heavy-mediator check of each DD kind in the results (DDMediatorCheck bit mask)
+    DD_MEDIATOR_FLAG = {'nucleon': 'dd_light_mediator_warning', 'electron': 'dd_e_light_mediator_warning'}
+
+    def _warn_dd_once(self, key, message):
+        """logger.warning once per session for key (the scan output keeps the per-point flags)"""
+        if key not in self._dd_mediator_warned:
+            self._dd_mediator_warned.add(key)
+            logger.warning(message)
+
+    def _dd_mediator_mass(self, pdg):
+        """mass [GeV] of the particle pdg at the current point (param_card; 0 for the massless gauge bosons)"""
+        if abs(pdg) in DDMediatorCheck.MASSLESS:
+            return 0.
+        try:
+            return abs(float(self.param_card.get_value('mass', abs(pdg))))
+        except Exception:
+            return 0.
+
+    def _dd_mediator_name(self, pdg):
+        name = dict.get(self.pdg_particle_map, str(abs(pdg)), None)
+        return '%s (%d)' % (name, abs(pdg)) if name else 'PDG %d' % abs(pdg)
+
+    def check_dd_mediators(self, mdm, kinds):
+        """Heavy-mediator validity check (DDMediatorCheck) of the DD kinds ('nucleon', 'electron') at the current
+        param_card point. Warnings are issued once per session and condition; returns [(kind, flag, invalid)]."""
+        out = []
+        v_max = DDMediatorCheck.v_max(self.maddm_card)
+        for kind in kinds:
+            pairs = {}
+            for channel in ('t', 'su'):
+                try:
+                    meds = self.proc_characteristics['dd_%s_%s_mediators' % (channel, kind)]
+                    ferms = self.proc_characteristics['dd_%s_%s_fermions' % (channel, kind)]
+                except KeyError:  # process generated before the mediators were recorded
+                    meds, ferms = [], []
+                pairs[channel] = sorted(set((abs(int(m)), abs(int(f))) for m, f in zip(meds, ferms) if int(m) != 0))
+            t_meds = sorted(set(m for m, _ in pairs['t']))
+            t_channel = [(self._dd_mediator_name(m), self._dd_mediator_mass(m)) for m in t_meds]
+            su_channel = [(self._dd_mediator_name(m), self._dd_mediator_mass(m),
+                           DDMediatorCheck.FERMION_MASS_GEV.get(f, 0.)) for m, f in pairs['su']]
+            q_ref = (DDMediatorCheck.q_ref_nucleus(mdm, v_max, self.maddm_card['direct_nucleon_targets'])
+                     if kind == 'nucleon' else DDMediatorCheck.q_ref_electron(mdm, v_max))
+            flag, invalid, messages = DDMediatorCheck.check(kind, mdm, q_ref, t_channel, su_channel)
+            for message in messages:
+                # once per condition: the masses (and q_ref) change along a scan, the flag keeps the point
+                self._warn_dd_once((kind, flag, message.split(':')[0], tuple(t_meds),
+                                    tuple(m for m, _ in pairs['su'])), message)
+            out.append((kind, flag, invalid))
+        return out
 
     def _log_recoil_files(self, names):
         """Tell where the recoil spectra of the current run are (direct_mode = limit_and_rates)."""
@@ -1999,6 +2200,21 @@ class MADDMRunCmd(cmd.CmdShell):
                 else:
                     result[fields[0].split(':')[0]] = secure_float_f77(fields[1])
 
+        # validity of the heavy-mediator approximation of the DD results: warnings, flags dd_light_mediator_warning
+        # (DM-nucleon) and dd_e_light_mediator_warning (DM-electron); a massless t-channel mediator or non-finite
+        # alphas (the q = 0 projection diverges) make the DD results of that kind invalid (-1)
+        dd_kinds = (['nucleon'] if self.mode['direct_nucleon'] else []) + (['electron'] if electron_recoil else [])
+        for kind, flag, invalid in self.check_dd_mediators(mdm, dd_kinds):
+            result[self.DD_MEDIATOR_FLAG[kind]] = flag
+            for key in [k for k in alphaq_values if (k == 'alpha_e') == (kind == 'electron')]:
+                values = np.asarray(alphaq_values[key], dtype=float)
+                if values.size and (invalid or not np.all(np.isfinite(values))):
+                    if not invalid:
+                        self._warn_dd_once(('nonfinite', key), 'Non-finite %s from the q = 0 projection of the '
+                                           'DM-%s amplitude (massless mediator?): the %s results are set to -1.'
+                                           % (key, kind, 'DM-' + kind))
+                    alphaq_values[key] = np.full(4, -1.)
+
         np_names = ['g','nue','numu','nutau']
         
         if result['sigmav(xf)']!=-1:
@@ -2089,10 +2305,17 @@ class MADDMRunCmd(cmd.CmdShell):
                 rapidd_out_path = pjoin(self.dir_path,'output', self.run_name)
                 # default halo table, recomputed only if vescape, vmp or vSun differ from the default
                 halo_path = halo_path_from_card(self.maddm_card, rapidd_out_path)
-                result.update(DDrate_electron_save(self.maddm_card, alphaq_values, electron_info['dm_spin'],
-                                                   electron_info['M_e'], mdm, rapidd_out_path,
-                                                   targets=self.maddm_card['direct_electron_targets'],
-                                                   halo_path=halo_path, **self.rapidd_modulation_kwargs()))
+                with warnings.catch_warnings():
+                    # a skipped crystal target (si with couplings needing W_2 ... W_5) is reported below
+                    warnings.filterwarnings('ignore', message='.* skipped: ')
+                    result.update(DDrate_electron_save(self.maddm_card, alphaq_values, electron_info['dm_spin'],
+                                                       electron_info['M_e'], mdm, rapidd_out_path,
+                                                       targets=self.maddm_card['direct_electron_targets'],
+                                                       halo_path=halo_path, **self.rapidd_modulation_kwargs()))
+                for target, reason in result.pop('skipped_targets', {}).items():
+                    if (target, reason) not in self._dme_skipped_reported:
+                        self._dme_skipped_reported.add((target, reason))
+                        logger.warning('DM-electron rates: %s skipped (%s)' % (target, reason))
             elif electron_alphas_valid(alphaq_values):
                 # direct_mode = limit: reference cross section sigma_e only
                 from rapidd.calc_dRdE import electron_cross_section
@@ -2124,12 +2347,16 @@ class MADDMRunCmd(cmd.CmdShell):
             self.limits.set_rhoDM(self.maddm_card['rhoDM'])  # limit at the local DM density of the card
             self.last_results['lim_sigma_e'] = self.limits.DMe_max(mdm)
             self.last_results['lim_sigma_e_rescaled'] = self.limits.DMe_max(mdm, rescaled=True)
+            for suffix, _, experiment in ExpConstraints.DME_LIMITS:
+                self.last_results['lim_sigma_e_' + suffix] = self.limits.DMe_max(mdm, experiment=experiment)
             self.launch_direct_electron()
         elif self.mode['direct_electron']:
             # electron recoil skipped at this mass (auto mode): -1 placeholders keep the
             # scan summary columns aligned when a mass scan crosses direct_electron_dm_mass_max
             for key in ['sigma_e', 'lim_sigma_e', 'lim_sigma_e_rescaled',
-                        'lim_sigma_e_Xenon10', 'pvalue_Xenon10', 'pvalue_Xenon1T']:
+                        'lim_sigma_e_Xenon10', 'pvalue_Xenon10', 'lim_sigma_e_Xenon1T', 'pvalue_Xenon1T',
+                        self.DD_MEDIATOR_FLAG['electron']] + \
+                       ['lim_sigma_e_' + suffix for suffix, _, _ in ExpConstraints.DME_LIMITS]:
                 self.last_results[key] = -1
 #        if self.mode['indirect'] and not self._two2twoLO:
 #            with misc.MuteLogger(names=['madevent','madgraph'],levels=[50,50]):
@@ -2267,15 +2494,18 @@ class MADDMRunCmd(cmd.CmdShell):
                     order += ['lim_sigmaN_' + key for key in DD_XLZD_NUCLEON_KEYS]
                     order += ['lim_sigmaN_' + key for key, _ in DD_ROWS_XLZD]
                 order += list(direct_references.FOG_KEYS)
+                order.append(self.DD_MEDIATOR_FLAG['nucleon'])
 
 
             if self.mode['direct_electron']:
                 order += ['sigma_e', 'lim_sigma_e', 'lim_sigma_e_rescaled']
+                order += ['lim_sigma_e_' + suffix for suffix, _, _ in ExpConstraints.DME_LIMITS]
                 # XENON10 / XENON1T: only with the Xenon rates
                 if __dme_use_xenon10_pvalue__ and self.xenon_s2_results():
                     order += ['lim_sigma_e_Xenon10', 'pvalue_Xenon10']
                 if __dme_use_xenon1t_pvalue__ and self.xenon_s2_results():
-                    order += ['pvalue_Xenon1T']
+                    order += ['lim_sigma_e_Xenon1T', 'pvalue_Xenon1T']
+                order.append(self.DD_MEDIATOR_FLAG['electron'])
 
 
             order += [k for k in self.last_results if k.endswith(('_omitted_sigmav', '_omitted_fraction'))]
@@ -2385,6 +2615,7 @@ class MADDMRunCmd(cmd.CmdShell):
         self.last_results['pvalue_Xenon10'] = -1
         self.last_results['lim_sigma_e_Xenon10'] = -1
         self.last_results['pvalue_Xenon1T'] = -1
+        self.last_results['lim_sigma_e_Xenon1T'] = -1
 
         if not (__dme_use_xenon10_pvalue__ or __dme_use_xenon1t_pvalue__):
             return
@@ -2404,7 +2635,8 @@ class MADDMRunCmd(cmd.CmdShell):
         if self.last_results['DM_response'] == -1:
             return
 
-        from rapidd.stats import poisson_pvalue, binned_poisson_pvalue_min, poisson_upper_limit
+        from rapidd.stats import (poisson_pvalue, binned_poisson_pvalue_min, poisson_upper_limit,
+                                  poisson_upper_limit_signal)
 
         if __dme_use_xenon10_pvalue__ and 'Xenon10_signal' in self.last_results:
             # XENON10 S2-only (arXiv:1703.00910), no background subtraction: p-value P(n <= n_obs | s)
@@ -2426,7 +2658,14 @@ class MADDMRunCmd(cmd.CmdShell):
             Xenon1T_obs = self.last_results['Xenon1T_obs']
             # XENON1T results are -1 when the DM mass is outside the XENON1T table
             if Xenon1T_obs != -1:
-                self.last_results['pvalue_Xenon1T'] = poisson_pvalue(Xenon1T_obs,Xenon1T_sig+Xenon1T_bkg)
+                # S2-only (arXiv:1907.11485): p-value P(n <= n_obs | s + b) in the region of interest of the DM mass
+                self.last_results['pvalue_Xenon1T'] = float(poisson_pvalue(Xenon1T_obs, Xenon1T_sig + Xenon1T_bkg))
+                # equivalent upper limit on sigma_e (signal proportional to sigma_e, known background):
+                # sigma_e > lim  <=>  pvalue_Xenon1T < 1 - CL
+                sigma_e = self.last_results.get('sigma_e', -1)
+                if sigma_e > 0 and Xenon1T_sig > 0:
+                    s_up = poisson_upper_limit_signal(Xenon1T_obs, Xenon1T_bkg, __dme_xenon1t_cl__)
+                    self.last_results['lim_sigma_e_Xenon1T'] = float(sigma_e * s_up / Xenon1T_sig)
 
 
     def launch_multinest(self):
@@ -3976,7 +4215,6 @@ class MADDMRunCmd(cmd.CmdShell):
                 elif   n1 <= 0            : return 'No Theory Prediction'
 
             pval_Xenon10 = self.last_results.get('pvalue_Xenon10', -1)
-            pval_Xenon1T = self.last_results.get('pvalue_Xenon1T', -1)
             # XENON10 / XENON1T S2-only results exist only with the Xenon rates (direct_mode, direct_electron_targets)
             has_s2 = 'Xenon10_signal' in self.last_results
             sigma_e = self.last_results['sigma_e']
@@ -3987,14 +4225,26 @@ class MADDMRunCmd(cmd.CmdShell):
                 self.print_ind('Sigma_e', sigma_e * xsi, sigma_e, self.last_results['lim_sigma_e'], thermal=dm_scen, direc=False, exp='XENONnT')
                 # XENONnT limit rescaled to the RAPIDD atomic responses (estimate)
                 self.print_ind('Sigma_e (rescaled)', sigma_e * xsi, sigma_e, self.last_results['lim_sigma_e_rescaled'], thermal=dm_scen, direc=False, exp='XENONnT')
+                # DAMIC-M, DarkSide-50: shown only in their mass range
+                for suffix, _, experiment in ExpConstraints.DME_LIMITS:
+                    if self.last_results.get('lim_sigma_e_' + suffix, -1) > 0:
+                        self.print_ind('Sigma_e', sigma_e * xsi, sigma_e, self.last_results['lim_sigma_e_' + suffix],
+                                       thermal=dm_scen, direc=False, exp=experiment)
                 if __dme_use_xenon10_pvalue__ and has_s2:
                     # XENON10 S2-only: limit on sigma_e equivalent to p-value < 1 - CL
                     self.print_ind('Sigma_e', sigma_e * xsi, sigma_e, self.last_results.get('lim_sigma_e_Xenon10', -1),
                                    thermal=dm_scen, direc=False, exp='XENON10')
-            if __dme_use_xenon1t_pvalue__ and has_s2:
-                sig_1T = sigma_e if pval_Xenon1T != -1 else -1
-                logger.info( self.form_s('Sigma_e             All DM = ') + self.form_n(sig_1T) + self.form_s('      ' + det_message_screen(0.05,pval_Xenon1T)) + self.form_s('     Xenon1ton p_val  = ') + self.form_n(pval_Xenon1T))
-            self._log_recoil_files(['dRdE_electron.dat', 'dRdS2_electron_XENON10.dat', 'dRdS2_electron_XENON1T.dat'])
+            if __dme_use_xenon1t_pvalue__ and has_s2 and sigma_e >= 0:
+                # XENON1T S2-only: limit on sigma_e equivalent to p-value < 1 - CL (-1 outside the masses of
+                # the XENON1T table)
+                self.print_ind('Sigma_e', sigma_e * xsi, sigma_e, self.last_results.get('lim_sigma_e_Xenon1T', -1),
+                               thermal=dm_scen, direc=False, exp='XENON1T')
+            if (__dme_use_xenon10_pvalue__ or __dme_use_xenon1t_pvalue__) and has_s2 and sigma_e >= 0:
+                logger.info('XENON10, XENON1T: not the strongest constraints, but the only ones computed from the '
+                            'recoil spectrum of the model (valid for any operator); the other limits are published '
+                            'curves for sigma_e (heavy mediator, F_DM = 1).')
+            self._log_recoil_files(['dRdE_electron.dat', 'dRdS2_electron_XENON10.dat', 'dRdS2_electron_XENON1T.dat',
+                                    'dRdE_electron_Si.dat', 'dRdQ_electron_Si.dat'])
 
         # INDIRECT DETECTION
         detailled_keys = [k for k in self.last_results.keys() if k.startswith('taacsID#')]
@@ -4488,6 +4738,10 @@ class MADDMRunCmd(cmd.CmdShell):
                 out.write(form_s(D['n']) + '= ' + form_s('['+ form_n(cross) + ',' + form_n(ul) + ']' ) + '# '+exp + '\n')
             for line in direct_references.report(self.last_results, self.maddm_card['rhoDM']):
                 out.write(('' if line.startswith(direct_references.FOG_KEYS) else '# ')+line+'\n')
+            flag = self.last_results.get(self.DD_MEDIATOR_FLAG['nucleon'], -1)
+            out.write(form_s(self.DD_MEDIATOR_FLAG['nucleon']) + '= ' + form_s('%d' % flag) +
+                      '# heavy-mediator check: 0 ok; bits 1 light/massless t-channel mediator, 2 several t-channel '
+                      'mediators, 4 near-degenerate s/u-channel mediator\n')
 
         if direct_electron and (mdm <= self.maddm_card['direct_electron_dm_mass_max'] or self.maddm_card['direct_electron_mode']=='always'):
 
@@ -4503,13 +4757,23 @@ class MADDMRunCmd(cmd.CmdShell):
             out.write(form_s('Sigma_e ref.') + '= ' + form_s('['+ form_n(cross_DMe) + ',' + form_n(ul_DMe) + ']') + '# XENONnT\n')
             ul_DMe_rescaled = self.last_results['lim_sigma_e_rescaled']
             out.write(form_s('Sigma_e ref. (rescaled)') + '= ' + form_s('['+ form_n(cross_DMe) + ',' + form_n(ul_DMe_rescaled) + ']') + '# XENONnT rescaled to the RAPIDD atomic responses\n')
+            for suffix, _, experiment in ExpConstraints.DME_LIMITS:
+                ul = self.last_results.get('lim_sigma_e_' + suffix, -1)
+                note = ('DAMIC-M rescaled to the RAPIDD silicon response (QCDark2)' if suffix == 'DAMICM_rescaled'
+                        else '%s, published' % experiment)
+                out.write(form_s('Sigma_e ref. (%s)' % experiment) + '= ' + form_s('['+ form_n(cross_DMe) + ',' + form_n(ul) + ']') + '# %s\n' % note)
             has_s2 = 'Xenon10_signal' in self.last_results  # Xenon rates computed
             if __dme_use_xenon10_pvalue__ and has_s2:
                 ul_DMe_10 = self.last_results.get('lim_sigma_e_Xenon10', -1)
                 out.write(form_s('Sigma_e ref. (XENON10)') + '= ' + form_s('['+ form_n(cross_DMe) + ',' + form_n(ul_DMe_10) + ']') + '# XENON10 S2-only (arXiv:1703.00910), %d%% CL\n' % round(100*__dme_xenon10_cl__))
                 out.write(form_s('Xenon10_pvalue') + '= ' + form_s(form_n(pval10)) + '# all DM, most constraining S2 bin\n')
             if __dme_use_xenon1t_pvalue__ and has_s2:
-                out.write(form_s('Xenon1T_pvalue') + '= ' + form_s(form_n(pval1T)) + '\n')
+                ul_DMe_1T = self.last_results.get('lim_sigma_e_Xenon1T', -1)
+                out.write(form_s('Sigma_e ref. (XENON1T)') + '= ' + form_s('['+ form_n(cross_DMe) + ',' + form_n(ul_DMe_1T) + ']') + '# XENON1T S2-only (arXiv:1907.11485), %d%% CL\n' % round(100*__dme_xenon1t_cl__))
+                out.write(form_s('Xenon1T_pvalue') + '= ' + form_s(form_n(pval1T)) + '# XENON1T S2-only (arXiv:1907.11485), all DM, excluded below %.2g\n' % (1. - __dme_xenon1t_cl__))
+            flag = self.last_results.get(self.DD_MEDIATOR_FLAG['electron'], -1)
+            out.write(form_s(self.DD_MEDIATOR_FLAG['electron']) + '= ' + form_s('%d' % flag) +
+                      '# heavy-mediator check, as dd_light_mediator_warning\n')
         
 
         if indirect or spectral:      
@@ -5550,8 +5814,9 @@ When you are done with such edition, just press enter (or write 'done' or '0')
         logger.info("    limit:           only the cross sections and the exclusion limits")
         logger.info("    limit_and_rates: also the recoil spectra of direct_nucleon_targets (%s) in dRdE_nucleon.dat"
                     % ', '.join(DD_NUCLEON_TARGETS))
-        logger.info("                     and of direct_electron_targets (%s) in dRdE_electron.dat; with xe also"
+        logger.info("                     and of direct_electron_targets (%s) in dRdE_electron.dat (si: dRdE_electron_Si.dat"
                     % ', '.join(DD_ELECTRON_TARGETS))
+        logger.info("                     and dRdQ_electron_Si.dat, rate per electron-hole pair); with xe also")
         logger.info("                     dRdS2_electron_XENON10.dat, dRdS2_electron_XENON1T.dat and the XENON10/XENON1T results")
         logger.info("  A quick way to set it up is to type: 'set limit' or 'set limit_and_rates'")
         
@@ -6001,7 +6266,7 @@ class MadDMCard(banner_mod.RunCard):
         self.add_param('direct_nucleon_targets', ['xe'], typelist=str, include=False,
                        comment='targets of dRdE_nucleon.dat: one or more of xe, ge, ar, f')
         self.add_param('direct_electron_targets', ['xe'], typelist=str, include=False,
-                       comment='targets of dRdE_electron.dat: one or more of xe, ar')
+                       comment='targets of the DM-electron rates: one or more of xe, ar (dRdE_electron.dat), si (dRdE_electron_Si.dat, dRdQ_electron_Si.dat)')
         # nuclear structure of the DM-nucleus spectra saved with direct_mode = limit_and_rates: chiral EFT
         # (SI: Hoferichter, Klos, Menendez, Schwenk 2019; SD: Hoferichter, Menendez, Schwenk 2020, with the two-body
         # currents) or the one-body NREFT responses (O_1, O_4). The equivalent cross sections compared with the LZ

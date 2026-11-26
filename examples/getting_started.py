@@ -204,8 +204,9 @@ Install additional tools
     MadDM> quit
 
 ``pythia8`` and ``cosmixs`` (CosmiXs source spectra) are used by indirect detection, ``RAPIDD`` by direct detection
-(recoil spectra and DM-electron scattering), and ``py_requirements`` installs ``numpy``, ``scipy`` and ``matplotlib``
-in the Python environment running MadDM. MadDM also offers to install them when a process first needs them.
+(recoil spectra and DM-electron scattering; it is shipped with MadDM and ``install RAPIDD`` compiles it), and
+``py_requirements`` installs ``numpy``, ``scipy`` and ``matplotlib`` in the Python environment running MadDM. MadDM also
+offers to install them when a process first needs them.
 
 """
 

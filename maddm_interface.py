@@ -50,6 +50,38 @@ class bcolors:
 
 class DMError(Exception): pass
 
+
+# kinds of direct detection processes whose exchanged particles are recorded (proc_characteristics
+# dd_<channel>_<kind>_mediators / _fermions): the SM fermions of the processes DM f > DM f
+DD_MEDIATOR_KINDS = {'nucleon': tuple(range(1, 7)), 'electron': (11,)}
+
+
+def dd_exchanged_particles(amplitudes, fermions):
+    """Particles exchanged in the tree-level 2 -> 2 diagrams 'DM f > DM f' of the amplitudes (full Lagrangian),
+    for the SM fermions f (PDG codes, |id|). The external legs are numbered 1 (DM), 2 (f), 3 (DM), 4 (f): the
+    first vertex of a single-exchange diagram joins two of them, {1, 3} or {2, 4} for the t channel (the mediator
+    couples DM-DM and f-f), {1, 2}, {3, 4}, {1, 4} or {2, 3} for the s and u channels (DM-f-mediator vertex, e.g.
+    coloured or charged mediators). Diagrams with one vertex (contact interactions) or with more than two are
+    skipped. Returns {'t': set of (|mediator|, |f|), 'su': set of (|mediator|, |f|)}."""
+    out = {'t': set(), 'su': set()}
+    for amp in amplitudes:
+        legs = amp.get('process').get('legs')
+        if len(legs) != 4 or abs(legs[1].get('id')) not in fermions:
+            continue
+        fermion = abs(legs[1].get('id'))
+        for diagram in amp.get('diagrams'):
+            vertices = diagram.get('vertices')
+            if len(vertices) != 2:
+                continue
+            first = vertices[0].get('legs')
+            joined = frozenset(leg.get('number') for leg in first[:-1])
+            mediator = abs(first[-1].get('id'))
+            if joined in (frozenset((1, 3)), frozenset((2, 4))):
+                out['t'].add((mediator, fermion))
+            elif joined in (frozenset((1, 2)), frozenset((3, 4)), frozenset((1, 4)), frozenset((2, 3))):
+                out['su'].add((mediator, fermion))
+    return out
+
 # Root path
 MDMDIR = os.path.dirname(os.path.realpath( __file__ ))
 
@@ -243,22 +275,27 @@ class MadDM_interface(master_interface.MasterCmd):
                    [('lib', 'CMakeLists.txt'), ('rapidd', '__init__.py')])
 
     def install_rapidd(self):
-        """download (if needed) and compile RAPIDD. Return True on success"""
+        """check out the RAPIDD submodule (git clone without --recursive only) and compile RAPIDD. Return True
+        on success"""
 
         if not self.is_rapidd_downloaded():
+            # the MadDM release archives ship RAPIDD in vendor/RAPIDD_for_DM; only a git clone without
+            # --recursive lacks it, and then the submodule is checked out
+            if not (Path(MDMDIR) / '.git').exists():
+                logger.error("RAPIDD sources not found in %s. They are included in the MadDM release archives "
+                             "(maddm.tar.gz, maddm.zip): reinstall MadDM from them, or clone the repository with "
+                             "'git clone --recursive'." % self.rapidd_dir)
+                return False
             if not shutil.which('git'):
-                logger.error("git is required to download RAPIDD (git submodule vendor/RAPIDD_for_DM). "
+                logger.error("git is required to check out RAPIDD (git submodule vendor/RAPIDD_for_DM). "
                              "Please install git and run 'install RAPIDD'.")
                 return False
-            logger.info("Downloading RAPIDD in %s" % self.rapidd_dir, '$MG:BOLD')
+            logger.info("Checking out RAPIDD in %s" % self.rapidd_dir, '$MG:BOLD')
             try:
-                if (Path(MDMDIR) / '.git').exists():
-                    subprocess.run(['git', 'submodule', 'update', '--init', '--recursive',
-                                    pjoin('vendor', 'RAPIDD_for_DM')], check=True, cwd=MDMDIR)
-                else:
-                    data_install.install_rapidd_source(self.rapidd_dir)
-            except (OSError, subprocess.CalledProcessError, data_install.DataInstallError) as error:
-                logger.error("RAPIDD download failed: %s" % error)
+                subprocess.run(['git', 'submodule', 'update', '--init', '--recursive',
+                                pjoin('vendor', 'RAPIDD_for_DM')], check=True, cwd=MDMDIR)
+            except (OSError, subprocess.CalledProcessError) as error:
+                logger.error("RAPIDD checkout failed: %s" % error)
                 return False
             if not self.is_rapidd_downloaded():
                 logger.error("RAPIDD download failed: %s is incomplete" % self.rapidd_dir)
@@ -306,7 +343,7 @@ class MadDM_interface(master_interface.MasterCmd):
         if self.is_rapidd_downloaded():
             question = "RAPIDD (needed for direct detection) is not compiled. Do you want to compile it now?"
         else:
-            question = "RAPIDD (needed for direct detection) is not installed. Do you want to download and compile it now?"
+            question = "RAPIDD (needed for direct detection) is not installed. Do you want to check it out and compile it now?"
         ans = self.ask(question, 'y', ['y', 'n'])
         if ans == 'n':
             logger.warning("RAPIDD not installed: skipping DM-nucleon direct detection. "
@@ -348,6 +385,7 @@ class MadDM_interface(master_interface.MasterCmd):
         self._relic_off = True
         self._has_direct_nucleon = False
         self._has_direct_electron = False
+        self._dd_mediators = {}  # kind -> dd_exchanged_particles of the full-Lagrangian DD diagrams
         self._has_indirect = False
         self._has_spectral = False
         self.relic_generated_by_id = False # keep track if relic has been generated by id
@@ -983,6 +1021,7 @@ class MadDM_interface(master_interface.MasterCmd):
         self._relic_off = True
         self._has_direct_nucleon = False
         self._has_direct_electron = False
+        self._dd_mediators = {}  # kind -> dd_exchanged_particles of the full-Lagrangian DD diagrams
         self._has_indirect = False
         self._has_spectral = False
         self._forbid_fast  = False
@@ -1305,6 +1344,13 @@ class MadDM_interface(master_interface.MasterCmd):
         proc_charac['pdg_particle_map']       = self._pdg_particle_map
         proc_charac['processes_names_map']    = { **curr_processes_names_map, **tree_cont_processes_names_map, **tree_line_processes_names_map, **li_cont_processes_names_map, **li_line_processes_names_map }
         proc_charac['indirect_detection_asked_processes'] = indirect_detection_asked_processes
+        # particles exchanged in the DD diagrams (heavy-mediator validity warnings): parallel lists of the mediator
+        # and SM fermion PDG codes, [0] if none
+        for kind in DD_MEDIATOR_KINDS:
+            for channel in ('t', 'su'):
+                pairs = sorted(self._dd_mediators.get(kind, {}).get(channel, ())) or [(0, 0)]
+                proc_charac['dd_%s_%s_mediators' % (channel, kind)] = [m for m, _ in pairs]
+                proc_charac['dd_%s_%s_fermions' % (channel, kind)] = [f for _, f in pairs]
         proc_charac.write(proc_path)
 
     def _get_processes_from_amplitudes_list(self, amplitude_list):
@@ -1659,7 +1705,9 @@ class MadDM_interface(master_interface.MasterCmd):
         eff_operators_SD_electron = self.eff_operators_SD_electron[dm_spin]
         
         logger.info("Generating X Electron > X Electron diagrams from the full lagrangian...")
+        n_amps = len(self._curr_amps)
         has_direct = self.DiagramsDD_electron(eff_operators_SI_electron, eff_operators_SD_electron, 'QED', excluded_particles)
+        self._record_dd_mediators('electron', self._curr_amps[n_amps:])
 
         if not has_direct:
             logger.warning("No Direct Detection Feynman Diagram for DM-electron scattering.")
@@ -1699,7 +1747,9 @@ class MadDM_interface(master_interface.MasterCmd):
         eff_operators_SD = self.eff_operators_SD_nucleon[dm_spin]
         
         logger.info("Generating X Nucleon > X Nucleon diagrams from the full lagrangian...")
+        n_amps = len(self._curr_amps)
         has_direct = self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'QED', excluded_particles)
+        self._record_dd_mediators('nucleon', self._curr_amps[n_amps:])
 
         if not has_direct:
             logger.warning("No Direct Detection Feynman Diagram for DM-nucleus scattering.")
@@ -1723,6 +1773,15 @@ class MadDM_interface(master_interface.MasterCmd):
             self.DiagramsDD(eff_operators_SI, eff_operators_SD, 'SD+QED',excluded_particles)
 
         return True
+
+    def _record_dd_mediators(self, kind, amplitudes):
+        """Record the particles exchanged in the full-Lagrangian DD diagrams of kind ('nucleon', 'electron'), for
+        the heavy-mediator validity warnings of the run (their masses are read from the param_card at each point)."""
+        self._dd_mediators[kind] = dd_exchanged_particles(amplitudes, DD_MEDIATOR_KINDS[kind])
+        for channel, name in (('t', 't-channel'), ('su', 's/u-channel')):
+            if self._dd_mediators[kind][channel]:
+                logger.debug('DM-%s scattering, %s exchanged particles (PDG, fermion): %s'
+                             % (kind, name, sorted(self._dd_mediators[kind][channel])))
 
     #-----------------------------------------------------------------------#
     @misc.mute_logger(['madgraph','aloha','cmdprint'], [30,30,30])

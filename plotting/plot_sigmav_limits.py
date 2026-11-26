@@ -246,7 +246,11 @@ def fog_predictions(cols):
 def electron_label(key):
     return {'lim_sigma_e': 'XENONnT; published convention',
             'lim_sigma_e_rescaled': 'XENONnT; RAPIDD atomic responses',
-            'lim_sigma_e_Xenon10': 'XENON10; S2-only'}.get(key, key.replace('lim_sigma_e_', '').replace('_', ' '))
+            'lim_sigma_e_Xenon10': 'XENON10; S2-only',
+            'lim_sigma_e_Xenon1T': 'XENON1T; S2-only',
+            'lim_sigma_e_DAMICM': 'DAMIC-M; Si, QCDark',
+            'lim_sigma_e_DAMICM_rescaled': 'DAMIC-M; RAPIDD (QCDark2)',
+            'lim_sigma_e_DS50': 'DarkSide-50; Ar'}.get(key, key.replace('lim_sigma_e_', '').replace('_', ' '))
 
 
 def plot_style(show=False):

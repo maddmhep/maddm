@@ -80,7 +80,7 @@ The following packages can be installed with the ``install`` command at the MadD
 - ``install pythia8`` installs `Pythia 8 <https://pythia.org/>`__ with the MadGraph installer, together with `LHAPDF <https://www.lhapdf.org/index.html>`__, ``zlib`` and the MadGraph--Pythia interface (``mg5amc_py8_interface``).
 - ``install cosmixs`` installs the tabulated `CosmiXs <https://github.com/ajueid/CosmiXs>`__ source spectra; select them with ``indirect_flux_source_method = CosmiXs`` in the run card.
   On the first indirect generation, MadDM offers to install both Pythia 8 and the CosmiXs source spectra.
-- ``install RAPIDD`` downloads and compiles RAPIDD. MadDM also offers to do it automatically the first time you generate ``direct_detection``.
+- ``install RAPIDD`` compiles RAPIDD, which is shipped with MadDM in ``vendor/RAPIDD_for_DM`` (in a git clone without ``--recursive`` it first checks out the submodule). MadDM also offers to do it automatically the first time you generate ``direct_detection``.
 - ``install cosmixs_flux`` downloads the `CosmiXsPPPC <https://github.com/CosmiXsPPPC/CosmicRay-flux>`__ propagated fluxes.
   The first ``generate indirect_detection`` or ``add process indirect_detection`` downloads them automatically; use the command to prepare an existing process directory or to retry a failed download.
   The secondary fluxes are included with MadDM.
@@ -155,15 +155,27 @@ The direct-detection likelihood of the nested-sampling scans (``directSI``, ``di
 ``SigmaN_SI_p``, ``SigmaN_SI_n`` and ``SigmaN_SD_n`` are shown as information only, without a verdict; they and their limits (``lim_sigmaN_*``) stay in the scan output, together with ``sigmaN_SI_eq``, ``sigmaN_SD_n_eq``, ``sigmaN_SD_p_eq`` and their limits.
 The equivalent cross sections always use the chiral EFT; the ``maddm_card`` parameter ``dd_nuclear_responses`` (``chiral_eft``, default, or ``nreft``: one-body NREFT responses, :math:`\mathcal O_1` and :math:`\mathcal O_4` only) selects only the nuclear responses of the saved recoil spectra (with ``nreft``: DMFormFactor with the shell-model density matrices of `arXiv:2208.07945 <https://arxiv.org/abs/2208.07945>`__ for xenon and fluorine, the fits of `arXiv:1203.3542 <https://arxiv.org/abs/1203.3542>`__ for germanium and argon).
 
-For dark matter--electron scattering, the module evaluates the differential recoil spectrum in xenon and argon and, for xenon, the event rate as a function of the ionization (S2) signal for XENON10 and XENON1T, and compares the reference cross section :math:`\bar\sigma_e` with the XENONnT S2-only limit (heavy mediator, `arXiv:2601.11296 <https://arxiv.org/abs/2601.11296>`__).
+For dark matter--electron scattering, the module evaluates the differential recoil spectrum in xenon, argon and silicon and, for xenon, the event rate as a function of the ionization (S2) signal for XENON10 and XENON1T, and compares the reference cross section :math:`\bar\sigma_e` with the XENONnT S2-only limit (heavy mediator, `arXiv:2601.11296 <https://arxiv.org/abs/2601.11296>`__).
 That limit is computed by XENONnT with the ionization form factors of Essig et al.; with the atomic responses used by RAPIDD it would be about 2 times weaker.
 MadDM shows both: ``Sigma_e`` with the published limit and ``Sigma_e (rescaled)`` with the limit rescaled to the RAPIDD atomic responses (an estimate, ``vendor/RAPIDD_for_DM/lib/experiments/XENONnT/XENONnT_DMe_SI_RAPIDD_FF.dat``; ``lim_sigma_e_rescaled`` in the scan output).
+XENONnT covers 40 MeV -- 10 GeV. Below 40 MeV MadDM also shows, in their mass range, the published heavy-mediator limits of DAMIC-M (`arXiv:2503.14617 <https://arxiv.org/abs/2503.14617>`__, silicon CCDs, 0.75 MeV -- 1 GeV, the strongest up to about 26 MeV; ``lim_sigma_e_DAMICM``) and DarkSide-50 (`arXiv:2207.11968 <https://arxiv.org/abs/2207.11968>`__, liquid argon, 14 MeV -- 1 GeV, the strongest between about 26 and 40 MeV; ``lim_sigma_e_DS50``), with the experiment name in the last column.
+DarkSide-50 uses the same argon atomic responses and binding energies as RAPIDD (RHF bound states, continuum in a screened hydrogenic potential) and the same halo, and is not rescaled.
+The DAMIC-M limit uses the QCDark crystal form factor with an analytic (modified Thomas-Fermi) screening (official result; with the QEDark form factor of the XENONnT limit it would be 2--5 times stronger between 0.9 and 3 MeV, 1.4--1.8 times between 3 and 20 MeV and within 20% above 30 MeV).
+As for XENONnT, MadDM also shows it rescaled to the silicon response of RAPIDD, ``Sigma_e (DAMIC-M; RAPIDD (QCDark2))`` (``lim_sigma_e_DAMICM_rescaled``, 2 MeV -- 1 GeV): the published limit times :math:`S_{\rm DAMIC-M}/S_{\rm RAPIDD}`, with :math:`S` the signal with 2--4 electron-hole pairs weighted by the DAMIC-M pattern efficiencies (``vendor/RAPIDD_for_DM/examples/damicm_dme_limit_rapidd.py``; charge diffusion and pattern details are not modelled).
+The RAPIDD response gives 20--26% less signal above 3 MeV, so the rescaled limit is 1.25--1.36 times weaker; below 2 MeV the signal comes from the kinematic end point and only the published limit is shown.
+The published and rescaled curves are two conventions for the same data: the coupling--mass plots use one of the two (see :ref:`plotting`).
+
+The silicon rate (``si`` in ``direct_electron_targets``) uses the first crystal response of `arXiv:2105.02233 <https://arxiv.org/abs/2105.02233>`__ obtained from the RPA dielectric function with local field effects of QCDark2 (`arXiv:2603.12326 <https://arxiv.org/abs/2603.12326>`__), with the screening :math:`1/|\epsilon|^2` applied to the couplings to the electron density (the SI coupling of MadDM) and not to the spin couplings (SD), which use the independent-particle response without local field effects, as in Catena and Spaldin (`arXiv:2402.06817 <https://arxiv.org/abs/2402.06817>`__); the deposited energy :math:`\Delta E` up to 50 eV and :math:`q \le 25\,\alpha m_e`.
+The rate per number of electron-hole pairs uses the ionization probabilities of `Ramanathan and Kurinsky (2020) <https://arxiv.org/abs/2004.10709>`__ at 100 K.
+Silicon supports only the couplings whose DM response involves the first crystal response (the contact SI and SD couplings generated by MadDM are supported); for other couplings it is skipped with a warning.
 The cross section is also tested against the XENON10 S2-only data as reanalysed in `arXiv:1703.00910 <https://arxiv.org/abs/1703.00910>`__ (7 S2 bins, 15 kg day, no background subtraction): MadDM reports the p-value of the most constraining bin, :math:`P(n \le n_{\rm obs}\,|\,s)`, and the equivalent 90% CL upper limit on :math:`\bar\sigma_e`, ``Sigma_e (XENON10)`` (excluded when the p-value is below 0.1; ``lim_sigma_e_Xenon10`` and ``pvalue_Xenon10`` in the scan output).
-The p-value refers to all DM at the local density of the card.
+It is also tested against the XENON1T S2-only data (`arXiv:1907.11485 <https://arxiv.org/abs/1907.11485>`__, data release): MadDM reports the p-value :math:`P(n \le n_{\rm obs}\,|\,s + b)` in the region of interest of the DM mass, with the published background, and the equivalent 90% CL upper limit on :math:`\bar\sigma_e`, ``Sigma_e (XENON1T)`` (excluded when the p-value is below 0.1; ``lim_sigma_e_Xenon1T`` and ``pvalue_Xenon1T`` in the scan output; -1 outside the 10 MeV -- 10 GeV masses of the release).
+The p-values refer to all DM at the local density of the card.
+XENON10 and XENON1T are not the strongest constraints, but the only ones computed from the recoil spectrum of the model, so they apply to any operator (also velocity-dependent and spin couplings, light mediators); the XENONnT, DAMIC-M and DarkSide-50 limits are published curves for :math:`\bar\sigma_e` with a heavy mediator (:math:`F_{\rm DM} = 1`).
 
 The ``maddm_card`` parameter ``direct_mode`` sets what the two modules compute.
 With ``limit`` (``set limit`` at the launch prompt), MadDM computes only the cross sections and compares them with the upper limits, which is faster.
-With ``limit_and_rates`` (the default, ``set limit_and_rates``), it also computes and saves the recoil spectra of the targets chosen with ``direct_nucleon_targets`` (one or more of ``xe``, ``ge``, ``ar``, ``f``) and ``direct_electron_targets`` (``xe`` and/or ``ar``), both ``xe`` by default.
+With ``limit_and_rates`` (the default, ``set limit_and_rates``), it also computes and saves the recoil spectra of the targets chosen with ``direct_nucleon_targets`` (one or more of ``xe``, ``ge``, ``ar``, ``f``) and ``direct_electron_targets`` (one or more of ``xe``, ``ar``, ``si``), both ``xe`` by default.
 The XENON10 and XENON1T results need the xenon DM--electron rates, so they are computed only with ``limit_and_rates`` and ``xe`` among the electron targets.
 With ``limit_and_rates``, ``direct_modulation = True`` also computes the annual modulation of the DM--nucleon and DM--electron rates, in ``day_bins`` time bins of the year (see the :doc:`direct detection tutorial <tutorial_and_examples/plot_direct_detection>`).
 See :ref:`plotting` for the output files.
@@ -171,6 +183,18 @@ See :ref:`plotting` for the output files.
 MadDM also reports the xenon neutrino fog of `O'Hare (2021) <https://arxiv.org/abs/2109.03116>`__ at the DM mass, as a reference boundary rather than an exclusion limit.
 With ``direct_nucleon``, ``DD_limits.pdf`` compares the equivalent cross sections of the run (and :math:`\sigma_{\rm SD,p}` for PICO-60) with the limits, the XLZD projection and the neutrino fog as a function of the DM mass (see :ref:`plotting`).
 Above the highest tabulated mass, the DM--nucleon limits are extrapolated linearly in the DM mass up to :math:`10^{15}` GeV.
+
+.. _heavy-mediator-check:
+
+**Heavy-mediator approximation.**
+MadDM projects the full model on contact operators with all the external particles at rest, :math:`q = 0`: a t-channel mediator of mass :math:`M` is replaced by :math:`g g'/M^2` instead of :math:`g g'/(M^2 + q^2)`, so for light mediators the rates and the cross sections compared with the (heavy-mediator) limits are overestimated by :math:`(1 + q^2/M^2)^2`.
+Light-mediator rates are not implemented; MadDM finds the particles exchanged in the direct detection diagrams of the full Lagrangian when the processes are generated, reads their masses from the ``param_card`` at each point and warns when
+
+- a t-channel mediator is lighter than :math:`5\,q_{\rm ref}` (rate overestimated by more than about 8%); :math:`q_{\rm ref} = \min(2\mu_{\chi T} v_{\max}, \sqrt{2 m_T E_R})` with :math:`E_R = 10` keV for nuclei (about 50 MeV for xenon), :math:`q_{\rm ref} = \min(2 m_\chi v_{\max}, 10\,\alpha m_e)` (37 keV) for electrons, :math:`v_{\max} = v_{\rm esc} + v_{\rm lab}`. A massless t-channel mediator (e.g. a photon) makes the projection diverge: the direct detection results of that channel are set to -1;
+- there are several t-channel mediators (e.g. a new mediator and the Z or the Higgs): they are not combined, and the user should check that all of them are much heavier than :math:`q`;
+- an s- or u-channel mediator (a DM--quark or DM--electron--mediator vertex, e.g. coloured mediators) is nearly degenerate with dark matter plus the fermion, :math:`|M - m_\chi - m_f|` below 1 GeV for quarks (hadronic scale) or 1 MeV for electrons: close to the resonance the contact treatment breaks down. These mediators do not depend on :math:`q` and are otherwise fine.
+
+Each warning is printed once per session; the flags ``dd_light_mediator_warning`` (DM--nucleon) and ``dd_e_light_mediator_warning`` (DM--electron) record them for each point in ``MadDM_results.txt`` and in the scan output (0: no warning; sum of 1: light or massless t-channel mediator, 2: several t-channel mediators, 4: near-degenerate s/u-channel mediator).
 
 The upper limits on the cross sections (LZ 2024 SI, SD-neutron and SD-proton, PICO-60 SD-proton, XENONnT DM-electron), the XLZD projections and the neutrino fog assume a local dark matter density of :math:`0.3\,\mathrm{GeV\,cm^{-3}}`: they are rescaled by ``0.3/rhoDM``, with ``rhoDM`` the density of the ``maddm_card`` (see :ref:`galactic-halo`).
 
@@ -215,6 +239,8 @@ Citation
 
 If you are using this tool or the results obtained with it in a published work, please cite one or more of the previous references.
 A ``CITATION.bib`` file is available in the root of the `MadDM repository <https://github.com/maddmhep/maddm>`__.
+
+If you use MadDM, please cite also the works of other authors that it uses: for direct detection, RAPIDD (`arXiv:1802.03174 <https://arxiv.org/abs/1802.03174>`__) and the formalisms, nuclear, atomic and crystal responses and experimental results listed in the Citation sections of the `MadDM README <https://github.com/maddmhep/maddm#citation>`__ and of the RAPIDD README (``vendor/RAPIDD_for_DM/README.md``).
 
 .. toctree::
    :hidden:

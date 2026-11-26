@@ -88,28 +88,6 @@ class DataInstallTests(unittest.TestCase):
         self.manifest = dict(repository='https://github.com/test/data', revision='pinned',
                              sources=[])
 
-    def test_archive_rapidd_uses_pinned_revision_without_overwriting_sources(self):
-        destination = self.root/'vendor/RAPIDD_for_DM'
-        destination.mkdir(parents=True)
-        commands = []
-        def git(command, cwd, check):
-            commands.append(command)
-            if command[1] == 'checkout':
-                source = Path(cwd)
-                (source/'lib').mkdir()
-                (source/'rapidd').mkdir()
-                (source/'lib/CMakeLists.txt').write_text('fixture')
-                (source/'rapidd/__init__.py').write_text('')
-        with patch.object(data_install.subprocess, 'run', side_effect=git):
-            data_install.install_rapidd_source(destination)
-        self.assertTrue((destination/'lib/CMakeLists.txt').is_file())
-        self.assertIn(['git','fetch','--depth=1','origin',data_install.RAPIDD_REVISION],commands)
-        with patch.object(data_install.subprocess, 'run') as run:
-            with self.assertRaisesRegex(data_install.DataInstallError,'existing files'):
-                data_install.install_rapidd_source(destination)
-            run.assert_not_called()
-        self.assertEqual((destination/'lib/CMakeLists.txt').read_text(),'fixture')
-
     def flux_archive(self, species, correct=True):
         name = species + '.dat'
         contents = (species + '\n1 2 3\n').encode()

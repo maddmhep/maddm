@@ -8,8 +8,8 @@ With multiple mass columns, the last one is selected by default and reported.
 Use --mass-column 'mass#9000005' to choose explicitly.
 The CSV retains all scanned masses. Missing analyses are skipped.
 Electron cross sections use --electron-power (defaults to --dd-power).
-The rescaled electron limit is shown as an alternative to the published limit.
-Use --electron-limit-column lim_sigma_e_rescaled to include it in the envelope.
+The rescaled electron limits (XENONnT, DAMIC-M) are shown as alternatives to the published ones.
+Use --electron-limit-column lim_sigma_e_rescaled to include the rescaled ones in the envelope.
 Use --mass-column 'mass#9000005' (or --x-column) to choose the axis.
 Use --select 'BLOCK#1=0.1' to fix parameters; repeat for additional selections.
 Repeated x values are split by the other scanned inputs automatically.
@@ -370,10 +370,18 @@ def fog_predictions(cols):
             ('neutrino_fog_SD_n', 'sigmaN_SD_n_eq' if eq else 'sigmaN_SD_n', 'Xe neutrino fog; SD neutron')]
 
 
+# (published, rescaled) columns of the same DM-electron limit (MadDM ExpConstraints.DME_RESCALED_PAIRS)
+ELECTRON_PAIRS = (('lim_sigma_e', 'lim_sigma_e_rescaled'), ('lim_sigma_e_DAMICM', 'lim_sigma_e_DAMICM_rescaled'))
+
+
 def electron_label(key):
     return {'lim_sigma_e': 'XENONnT; published convention',
             'lim_sigma_e_rescaled': 'XENONnT; RAPIDD atomic responses',
-            'lim_sigma_e_Xenon10': 'XENON10; S2-only'}.get(key, key.replace('lim_sigma_e_', '').replace('_', ' '))
+            'lim_sigma_e_Xenon10': 'XENON10; S2-only',
+            'lim_sigma_e_Xenon1T': 'XENON1T; S2-only',
+            'lim_sigma_e_DAMICM': 'DAMIC-M; Si, QCDark',
+            'lim_sigma_e_DAMICM_rescaled': 'DAMIC-M; RAPIDD (QCDark2)',
+            'lim_sigma_e_DS50': 'DarkSide-50; Ar'}.get(key, key.replace('lim_sigma_e_', '').replace('_', ' '))
 
 
 def rescale(reference, prediction, target, power):
@@ -441,18 +449,32 @@ def _generate(input_path, *, outdir=None, mass_column=None, coupling=None, coupl
     primary_electron = electron_limit_column or choose(cols, ['lim_sigma_e', 'lim_sigma_e_rescaled'])
     if electron_limit_column and electron_limit_column not in electron_limits:
         electron_limits.append(electron_limit_column)
+    # The published and rescaled curves of XENONnT and DAMIC-M are two conventions for the same experiment: only
+    # one of each pair enters the exclusion envelope, the rescaled ones if the selected XENONnT column is rescaled
+    # (the published one if the other member of the pair is missing).
+    use_rescaled = bool(primary_electron) and primary_electron.endswith('_rescaled')
+    envelope_choice = {}
+    for published, rescaled in ELECTRON_PAIRS:
+        present = [k for k in (published, rescaled) if k in electron_limits]
+        if present:
+            preferred = rescaled if use_rescaled else published
+            for k in present:
+                envelope_choice[k] = k == (preferred if preferred in present else present[0])
+    if primary_electron in envelope_choice:
+        for published, rescaled in ELECTRON_PAIRS:
+            if primary_electron in (published, rescaled):
+                for k in (published, rescaled):
+                    if k in envelope_choice:
+                        envelope_choice[k] = k == primary_electron
     for index, limit_key in enumerate(electron_limits):
         suffix = limit_key[len('lim_sigma_e'):].strip('_')
         key = 'electron' + ('_' + suffix if suffix else '')
-        # The published and rescaled curves are two conventions for the same
-        # experiment. The selected convention enters the exclusion envelope.
-        alternative = limit_key in ('lim_sigma_e', 'lim_sigma_e_rescaled')
-        include = limit_key == primary_electron or not alternative
+        include = envelope_choice.get(limit_key, True)
         add(key, 'sigma_e', numeric(cols, limit_key), electron_power, include)
         targets[key] = limit_key
         dd_lines.append((key, electron_label(limit_key),
-                         ['#a12b89', '#cc72b2', '#7353a6'][index % 3],
-                         ':' if limit_key == 'lim_sigma_e_rescaled' else '-.'))
+                         ['#a12b89', '#cc72b2', '#7353a6', '#2f7f8a', '#b0702a'][index % 5],
+                         ':' if limit_key.endswith('_rescaled') else '-.'))
     fermi_rate = fermi_rate_column or choose(cols, ['Fermi_model_sigmav','tot_SM_xsec','tot_Xsec','taacsID'])
     pbar_rate = pbar_rate_column or choose(cols, ['AMS02_pbar_sigmav_model','AMS02_pbar_model_sigmav'])
     gce_rate = gce_rate_column or choose(cols, ['GCE_model_sigmav'])

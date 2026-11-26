@@ -18,7 +18,11 @@ the rate summed over the shells for each target, then the rate of each
 shell). With xenon among the electron targets, the run also writes the
 XENON10 and XENON1T S2 spectra (``dRdS2_electron_XENON10.dat``,
 ``dRdS2_electron_XENON1T.dat``) and the XENON10 signal per S2 bin
-(``signal_e_recoil.dat``). With ``direct_modulation = True``, the run
+(``signal_e_recoil.dat``). With silicon among the electron targets
+(``si``), the run writes ``dRdE_electron_Si.dat`` (rate versus the
+deposited energy, 0.1 to 50 eV, on its own grid) and
+``dRdQ_electron_Si.dat`` (rate per number of electron-hole pairs,
+1 to 10). With ``direct_modulation = True``, the run
 also writes the annual modulation: the rate of each target in each
 time bin of the year (``rate_vs_time_nucleon.dat``,
 ``rate_vs_time_electron.dat``) and the spectra averaged over and
@@ -105,9 +109,12 @@ If repeated rows remain within a slice, they are shown as points.
 The plots use base-ten logarithmic axes and vector PDF output.
 Uncomputed or out-of-range negative sentinels, zeros and NaNs are not
 plotted as positive constraints. The electron legend distinguishes the
-published XENONnT limit, its RAPIDD atomic-response rescaling and XENON10.
-The two XENONnT conventions do not both enter the coupling envelope;
-choose the desired one with ``--electron-limit-column``.
+published XENONnT limit, its RAPIDD atomic-response rescaling, XENON10, XENON1T,
+the published DAMIC-M limit, its rescaling to the RAPIDD silicon response
+("DAMIC-M; RAPIDD (QCDark2)") and DarkSide-50.
+The published and rescaled conventions of XENONnT and of DAMIC-M do not
+both enter the coupling envelope: the published ones are used by default,
+the rescaled ones with ``--electron-limit-column lim_sigma_e_rescaled``.
 A relic-only scan without a freeze-out rate uses the approximate inverse
 abundance scaling instead, marked in the coupling metadata.
 

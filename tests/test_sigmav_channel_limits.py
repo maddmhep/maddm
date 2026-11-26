@@ -178,6 +178,68 @@ class LookupTests(unittest.TestCase):
         self.assertEqual(constraints.PBAR_max(100., '5.-5', rho=.8), raw/4.)
         self.assertEqual(constraints.PBAR_max(100., '22.25', rho=.4), -1.)
 
+    def test_dm_electron_limits(self):
+        """XENONnT published/rescaled and the DAMIC-M, DarkSide-50 limits: table values, mass ranges, density"""
+        constraints = ENV['ExpConstraints']()
+        exp_dir = ROOT/'vendor'/'RAPIDD_for_DM'/'lib'/'experiments'
+        tables = {'DAMIC-M': exp_dir/'DAMIC-M'/'DAMIC-M_2025_DMe_heavy_QCDark.dat',
+                  'DAMIC-M; RAPIDD (QCDark2)': exp_dir/'DAMIC-M'/'DAMIC-M_2025_DMe_heavy_QCDark_RAPIDD.dat',
+                  'DarkSide-50': exp_dir/'DarkSide50'/'DarkSide50_2023_DMe_heavy.dat'}
+        self.assertEqual([name for _, _, name in constraints.DME_LIMITS], list(tables))
+        for name, path in tables.items():
+            masses, sigmas = np.loadtxt(path, unpack=True, usecols=(0, 1))
+            for m, s in zip(masses, sigmas):
+                self.assertAlmostEqual(constraints.DMe_max(m, experiment=name)/s, 1., places=10)
+            self.assertEqual(constraints.DMe_max(.5*masses[0], experiment=name), -1)
+            self.assertEqual(constraints.DMe_max(2.*masses[-1], experiment=name), -1)
+        # XENONnT starts at 40 MeV: below it DAMIC-M (to ~26 MeV), then DarkSide-50
+        self.assertEqual(constraints.DMe_max(.02), -1)
+        self.assertLess(constraints.DMe_max(.02, experiment='DAMIC-M'), constraints.DMe_max(.02, experiment='DarkSide-50'))
+        self.assertLess(constraints.DMe_max(.035, experiment='DarkSide-50'), constraints.DMe_max(.035, experiment='DAMIC-M'))
+        self.assertLess(constraints.DMe_max(.1), constraints.DMe_max(.1, experiment='DarkSide-50'))
+        self.assertGreater(constraints.DMe_max(.1, rescaled=True), constraints.DMe_max(.1))
+        at_03 = [constraints.DMe_max(.03, experiment=name) for name in tables]
+        constraints.set_rhoDM(.6)
+        for name, lim in zip(tables, at_03):
+            self.assertAlmostEqual(constraints.DMe_max(.03, experiment=name)/lim, .5, places=12)
+        with self.assertRaises(ValueError):
+            constraints.DMe_max(.1, experiment='SENSEI')
+        with self.assertRaises(ValueError):
+            constraints.DMe_max(.1, rescaled=True, experiment='DarkSide-50')
+
+    def test_electron_targets_match_rapidd(self):
+        """DD_ELECTRON_TARGETS (maddm_card direct_electron_targets) = DM-electron targets of the RAPIDD rate files"""
+        node = next(x for x in TREE.body if isinstance(x, ast.Assign)
+                    and getattr(x.targets[0], 'id', None) == 'DD_ELECTRON_TARGETS')
+        targets = ast.literal_eval(node.value)
+        self.assertEqual(targets, ('xe', 'ar', 'si'))
+        rp = str(ROOT/'vendor'/'RAPIDD_for_DM')
+        sys.path.insert(0, rp)
+        try:
+            from rapidd.calc_dRdE import ELECTRON_RATE_TARGETS
+        finally:
+            sys.path.remove(rp)
+        self.assertEqual(tuple(t.lower() for t in ELECTRON_RATE_TARGETS), targets)
+
+    def test_damicm_rescaled_limit(self):
+        """DAMIC-M rescaled to the RAPIDD silicon response: published limit / (S_RAPIDD/S_DAMIC-M), 2 MeV - 1 GeV,
+        weaker than the published one (QCDark2 with LFE gives less signal with 2-4 e-)"""
+        constraints = ENV['ExpConstraints']()
+        path = ROOT/'vendor'/'RAPIDD_for_DM'/'lib'/'experiments'/'DAMIC-M'/'DAMIC-M_2025_DMe_heavy_QCDark_RAPIDD.dat'
+        masses, sigmas, ratio, _ = np.loadtxt(path, unpack=True)
+        self.assertAlmostEqual(masses[0], 2e-3)
+        self.assertAlmostEqual(masses[-1], 1.)
+        self.assertTrue(np.all((ratio > 0.6) & (ratio < 0.9)))
+        for m, s, r in zip(masses, sigmas, ratio):
+            published = constraints.DMe_max(m, experiment='DAMIC-M')
+            self.assertAlmostEqual(s*r/published, 1., places=3)
+            self.assertEqual(constraints.DMe_max(m, rescaled=True, experiment='DAMIC-M'),
+                             constraints.DMe_max(m, experiment='DAMIC-M; RAPIDD (QCDark2)'))
+        # below 2 MeV only the published limit
+        self.assertGreater(constraints.DMe_max(1e-3, experiment='DAMIC-M'), 0)
+        self.assertEqual(constraints.DMe_max(1e-3, experiment='DAMIC-M; RAPIDD (QCDark2)'), -1)
+        self.assertEqual(ENV['ExpConstraints'].DME_RESCALED_PAIRS, (('', 'rescaled'), ('DAMICM', 'DAMICM_rescaled')))
+
 
 class RunTests(unittest.TestCase):
     def test_actual_numerical_collector_preserves_subprocess_names(self):

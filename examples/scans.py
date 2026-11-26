@@ -45,7 +45,7 @@ or you can use list comprehension. For example, to scan over a logarithmic scale
 
 If you only need the cross sections and the exclusion limits, and not the recoil spectra of each point, set ``direct_mode`` to ``limit``
 before starting the scan, which is faster (``set limit_and_rates``, the default, also computes the spectra and, for DM-electron
-scattering, the XENON10 limit):
+scattering, the XENON10 and XENON1T results):
 
 .. code-block:: text
 
@@ -67,9 +67,12 @@ parameter to the innermost (last).
 
 You will find the results of the scan in ``SCAN_example/output/scan_run_01.txt``. In this example, this file will contain,
 for each value of the dark matter mass and coupling you scanned, the reference DM-electron cross section ``sigma_e``, the XENONnT
-limits ``lim_sigma_e`` and ``lim_sigma_e_rescaled`` and, with ``limit_and_rates``, the XENON10 limit ``lim_sigma_e_Xenon10`` and
-p-value ``pvalue_Xenon10``. For DM-nucleon scattering (``direct_nucleon``) the file contains the cross sections ``sigmaN_*``, the
-equivalent cross sections ``sigmaN_*_eq`` and their limits ``lim_sigmaN_*``.
+limits ``lim_sigma_e`` and ``lim_sigma_e_rescaled``, the DAMIC-M limits ``lim_sigma_e_DAMICM`` (published) and
+``lim_sigma_e_DAMICM_rescaled`` (rescaled to the RAPIDD silicon response), the DarkSide-50 limit ``lim_sigma_e_DS50`` (-1 outside
+their mass range), with ``limit_and_rates`` the XENON10 and XENON1T limits and p-values ``lim_sigma_e_Xenon10``, ``pvalue_Xenon10``,
+``lim_sigma_e_Xenon1T``, ``pvalue_Xenon1T`` (the only tests computed from the recoil spectrum of the model), and the
+heavy-mediator flag ``dd_e_light_mediator_warning`` (0 if the contact approximation holds at that point). For DM-nucleon scattering (``direct_nucleon``) the file contains the cross sections ``sigmaN_*``, the
+equivalent cross sections ``sigmaN_*_eq``, their limits ``lim_sigmaN_*`` and the flag ``dd_light_mediator_warning``.
 
 Exiting MadDM
 =============

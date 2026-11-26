@@ -70,6 +70,30 @@ class ScanPlotsTests(unittest.TestCase):
         self.assertNotIn('electron_rescaled', meta['envelope_inputs'])
         self.assertEqual(meta['other_mass_columns'], ['mass#32'])
 
+    def test_damicm_published_and_rescaled_are_alternatives(self):
+        """only one convention of each published/rescaled pair (XENONnT, DAMIC-M) enters the envelope, following
+        --electron-limit-column"""
+        cols = self.base()
+        cols.update(sigma_e=np.array([1e-38,2e-38,3e-38]),
+                    lim_sigma_e=np.array([-1.,3e-39,5e-39]),
+                    lim_sigma_e_rescaled=np.array([-1.,2e-39,4e-39]),
+                    lim_sigma_e_DAMICM=np.array([1e-38,2e-38,3e-38]),
+                    lim_sigma_e_DAMICM_rescaled=np.array([1.3e-38,2.6e-38,3.9e-38]),
+                    lim_sigma_e_DS50=np.array([-1.,5e-38,6e-38]))
+        path = self.root/'damicm.txt'
+        scan_file(path, cols)
+        _, meta = COUPLING.generate(path, coupling=.2)
+        self.assertIn('electron_DAMICM', meta['envelope_inputs'])
+        self.assertNotIn('electron_DAMICM_rescaled', meta['envelope_inputs'])
+        self.assertIn('electron_DS50', meta['envelope_inputs'])
+        _, meta = COUPLING.generate(path, coupling=.2, electron_limit_column='lim_sigma_e_rescaled')
+        self.assertIn('electron_DAMICM_rescaled', meta['envelope_inputs'])
+        self.assertNotIn('electron_DAMICM', meta['envelope_inputs'])
+        self.assertIn('electron_rescaled', meta['envelope_inputs'])
+        self.assertNotIn('electron', meta['envelope_inputs'])
+        self.assertEqual(COUPLING.electron_label('lim_sigma_e_DAMICM_rescaled'), 'DAMIC-M; RAPIDD (QCDark2)')
+        self.assertEqual(SUMMARY.electron_label('lim_sigma_e_DAMICM_rescaled'), 'DAMIC-M; RAPIDD (QCDark2)')
+
     def test_direct_nucleon_uses_equivalent_cross_sections(self):
         """LZ / XLZD limits and the neutrino fog against sigmaN_*_eq, PICO-60 against sigmaN_SD_p; the sigma_p,
         sigma_n limits of the same scan are not plotted"""
