@@ -1001,7 +1001,54 @@ class ProcessExporterMadDM(export_v4.ProcessExporterFortranSA):
         to_replace['quark_masses'] = '\n           '.join(to_replace['quark_masses'])
         p = self.model.get_particle(11)
         to_replace['electron_mass'] = 'M_e = %s' % (p.get('mass'))
+        to_replace['eff_coupling_scaling'] = self.write_eff_coupling_scaling()
         writer.write(open(pjoin(MDMDIR, 'python_templates', 'direct_detection_RAPIDD.f')).read() % to_replace)
+
+    def write_eff_coupling_scaling(self):
+        """Body of the Fortran subroutine scale_eff_couplings(op, kexp, scaled) in
+        direct_detection_RAPIDD.f: for each effective operator (coupling order SIEFF*/SDEFF*)
+        multiply its couplings of order k by 2**(kexp*k/2), so that every effective amplitude
+        (total order 2) scales by 2**kexp. An operator is left out (scaled = .false., no
+        rescaling) if one of its couplings also enters other interactions. Only the couplings
+        declared in Source/MODEL/coupl.inc (i.e. used by the generated processes) are written."""
+
+        coupl_inc = pjoin(self.dir_path, 'Source', 'MODEL', 'coupl.inc')
+        if not os.path.exists(coupl_inc):
+            return ''
+        declared = set(re.findall(r'\b\w+\b', open(coupl_inc).read().upper()))
+
+        eff_couplings = {}   # operator -> {coupling name: order}
+        bad_ops = set()
+        other_couplings = set()
+        for inter in self.model.get('interactions'):
+            orders = inter.get('orders')
+            names = set(c.lstrip('-') for c in inter.get('couplings').values())
+            eff = [o for o, v in orders.items() if (o.startswith('SIEFF') or o.startswith('SDEFF')) and v > 0]
+            if len(eff) != 1:
+                other_couplings |= names
+                continue
+            op, k = eff[0], orders[eff[0]]
+            for name in names:
+                if eff_couplings.setdefault(op, {}).get(name, k) != k or k not in (1, 2):
+                    bad_ops.add(op)
+                eff_couplings[op][name] = k
+
+        lines = []
+        for op in sorted(eff_couplings):
+            couplings = eff_couplings[op]
+            in_other_op = any(name in eff_couplings[other] for other in eff_couplings if other != op
+                              for name in couplings)
+            if op in bad_ops or in_other_op or other_couplings & set(couplings):
+                continue
+            used = [(name, k) for name, k in sorted(couplings.items()) if name.upper() in declared]
+            if not used:
+                continue
+            lines.append("            if (op.eq.'%s') then" % op)
+            for name, k in used:
+                lines.append("                  %s = %s * 2d0**(kexp*%d/2)" % (name, name, k))
+            lines.append("                  scaled = .true.")
+            lines.append("            endif")
+        return '\n'.join(lines)
         
         
 

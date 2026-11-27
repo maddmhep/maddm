@@ -163,6 +163,8 @@ c-------------------------------------------------------------------------c
             double precision Minterf_SI_t, Minterf_SI_tx, Minterf_SD_t, Minterf_SD_tx
             double precision alpha_SI_even, alpha_SI_odd, alpha_SD_even, alpha_SD_odd
             logical found
+            character(6) op_SI, op_SD
+            double precision interference_ratio
 
             include 'maddm.inc'
             include 'coupl.inc'
@@ -262,29 +264,22 @@ c-------------------------------------------------------------------------------
 c           Compute the interference terms and use them to get the even and odd effective
 c           coefficients in the SI and SD case
 c--------------------------------------------------------------------------------
-            Minterf_SI_t = smatrix_dd_tot(p_ext, 1,1,j_tot_SI_dm_t) - max(0d0, smatrix_dd(p_ext,1,1,j_dm_t))
-     &              - smatrix_dd_eff(p_ext,1,1,j_eff_SI_dm_t)
-            Minterf_SI_t = 0.5d0*Minterf_SI_t
-            Minterf_SI_t = Minterf_SI_t / smatrix_dd_eff(p_ext,1,1,j_eff_SI_dm_t)
+            if (dm_spin.eq.1) then
+                  op_SI = 'SIEFFS'
+            else
+                  op_SI = 'SIEFFF'
+            endif
+            op_SD = 'SDEFFF'
 
-            Minterf_SI_tx = smatrix_dd_tot(p_ext, 1,1,j_tot_SI_dm_tx) - max(0d0, smatrix_dd(p_ext,1,1,j_dm_tx))
-     &                   - smatrix_dd_eff(p_ext,1,1,j_eff_SI_dm_tx)
-            Minterf_SI_tx = 0.5d0*Minterf_SI_tx
-            Minterf_SI_tx = Minterf_SI_tx / smatrix_dd_eff(p_ext,1,1,j_eff_SI_dm_tx)
+            Minterf_SI_t = interference_ratio(p_ext, j_dm_t, j_eff_SI_dm_t, j_tot_SI_dm_t, op_SI)
+            Minterf_SI_tx = interference_ratio(p_ext, j_dm_tx, j_eff_SI_dm_tx, j_tot_SI_dm_tx, op_SI)
 
             alpha_SI_even = 0.5d0 * (Minterf_SI_t + Minterf_SI_tx)
             alpha_SI_odd  = 0.5d0 * (Minterf_SI_t - Minterf_SI_tx)
 
             if(dm_spin.ne.1) then
-                  Minterf_SD_t = smatrix_dd_tot(p_ext, 1,1,j_tot_SD_dm_t) - max(0d0, smatrix_dd(p_ext,1,1,j_dm_t))
-     &                         - smatrix_dd_eff(p_ext,1,1,j_eff_SD_dm_t)
-                  Minterf_SD_t = 0.5d0*Minterf_SD_t
-                  Minterf_SD_t = Minterf_SD_t / smatrix_dd_eff(p_ext,1,1,j_eff_SD_dm_t)
-
-                  Minterf_SD_tx = smatrix_dd_tot(p_ext, 1,1,j_tot_SD_dm_tx) - max(0d0, smatrix_dd(p_ext,1,1,j_dm_tx))
-     &                         - smatrix_dd_eff(p_ext,1,1,j_eff_SD_dm_tx)
-                  Minterf_SD_tx = 0.5d0*Minterf_SD_tx
-                  Minterf_SD_tx = Minterf_SD_tx / smatrix_dd_eff(p_ext,1,1,j_eff_SD_dm_tx)
+                  Minterf_SD_t = interference_ratio(p_ext, j_dm_t, j_eff_SD_dm_t, j_tot_SD_dm_t, op_SD)
+                  Minterf_SD_tx = interference_ratio(p_ext, j_dm_tx, j_eff_SD_dm_tx, j_tot_SD_dm_tx, op_SD)
 
                   alpha_SD_even = 0.5d0 * (Minterf_SD_t + Minterf_SD_tx)
                   alpha_SD_odd  = 0.5d0 * (Minterf_SD_t - Minterf_SD_tx)
@@ -295,6 +290,92 @@ c           found stays .false. if the alphas are not finite (e.g. smatrix_dd_ef
             found = .true.
 
       end subroutine get_dm_target_alpha
+
+
+c-------------------------------------------------------------------------c
+      double precision function interference_ratio(p_ext, j_full, j_eff, j_tot, op)
+c-------------------------------------------------------------------------c
+c                                                                         c
+c Re(M_full M_eff*) / |M_eff|^2 for the effective operator op (coupling   c
+c order SIEFFS, SIEFFF or SDEFFF) at unit effective coupling, i.e. the    c
+c effective coefficient (alpha) of the model for that operator.           c
+c                                                                         c
+c It is extracted from |M_tot|^2 - |M_full|^2 - |M_eff|^2. The effective  c
+c couplings are first rescaled by c = 2**kexp (couplings of order k by    c
+c c**(k/2), so that M_eff -> c M_eff), with c chosen so that |M_eff| is   c
+c of the order of |M_full|: otherwise, for a model coefficient much       c
+c smaller than the unit effective coupling (e.g. a feeble or kinetically  c
+c mixed mediator), the interference is lost in the double precision       c
+c cancellation and alpha comes out as zero. kexp is even, so the          c
+c rescaling and its inverse are exact powers of two.                      c
+c                                                                         c
+c-------------------------------------------------------------------------c
+            implicit none
+
+            double precision p_ext(0:3,4)
+            integer j_full, j_eff, j_tot
+            character(*) op
+            double precision M_full, M_eff1, M_eff, M_tot, M_interf
+            integer kexp
+            logical scaled, restored
+
+            include 'maddm.inc'
+
+            M_full = max(0d0, smatrix_dd(p_ext,1,1,j_full))
+            M_eff1 = smatrix_dd_eff(p_ext,1,1,j_eff)
+
+            kexp = 0
+            if ((M_full.gt.0d0).and.(M_eff1.gt.0d0)) then
+c                 |M_eff(c)/M_full| ~ 1 for c = sqrt(M_full/M_eff1), rounded to 2**kexp
+                  kexp = 2*nint(log(M_full/M_eff1)/(4d0*log(2d0)))
+                  kexp = max(-1000, min(1000, kexp))
+            endif
+
+            scaled = .false.
+            if (kexp.ne.0) call scale_eff_couplings(op, kexp, scaled)
+            if (.not.scaled) kexp = 0
+
+            if (scaled) then
+                  M_eff = smatrix_dd_eff(p_ext,1,1,j_eff)
+            else
+                  M_eff = M_eff1
+            endif
+            M_tot = smatrix_dd_tot(p_ext,1,1,j_tot)
+
+            if (scaled) call scale_eff_couplings(op, -kexp, restored)
+
+c           An interference below the rounding error of the subtraction is zero (e.g. the SD
+c           operator for a vector mediator): it would otherwise give a ~1e-32 relative noise
+            M_interf = M_tot - M_full - M_eff
+            if (abs(M_interf).le.1d3*epsilon(1d0)*(abs(M_tot) + M_full + abs(M_eff))) M_interf = 0d0
+
+            interference_ratio = 0.5d0*M_interf / M_eff * 2d0**kexp
+
+      end function interference_ratio
+
+
+c-------------------------------------------------------------------------c
+      subroutine scale_eff_couplings(op, kexp, scaled)
+c-------------------------------------------------------------------------c
+c                                                                         c
+c Multiply the couplings of the effective operator op by 2**(kexp*k/2),   c
+c k being the coupling order (written by MGoutput.py from the model       c
+c interactions). scaled is .false. if op has no couplings that can be     c
+c rescaled alone (missing, or shared with other interactions).            c
+c                                                                         c
+c-------------------------------------------------------------------------c
+            implicit none
+
+            character(*) op
+            integer kexp
+            logical scaled
+
+            include 'coupl.inc'
+
+            scaled = .false.
+%(eff_coupling_scaling)s
+
+      end subroutine scale_eff_couplings
 
 
 
