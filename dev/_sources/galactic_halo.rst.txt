@@ -83,7 +83,7 @@ thresholds or narrow resonances. The LMC mixture has smooth--smooth,
 smooth--LMC and LMC--LMC pair weights :math:`[1-f]^2`,
 :math:`2f[1-f]` and :math:`f^2`. The bulk drift contributes to the
 cross pairs but cancels in same-component pairs. The default
-``mw_velocity_model = shm`` enables distribution averaging for all
+``mw_velocity_model = halo`` enables distribution averaging for all
 the profiles above; ``fixed`` is the legacy single-speed option for
 the annihilation (the profile then enters only the recoil rates). Indirect detection computes the velocity integral
 without requiring an installed RAPIDD library. Dwarf analyses retain
