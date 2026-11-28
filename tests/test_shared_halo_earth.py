@@ -39,19 +39,6 @@ class HaloTests(unittest.TestCase):
                 self.assertAlmostEqual(quad(eta, 0., escape+boost, points=[abs(escape-boost)])[0], 1., places=11)
                 self.assertEqual(eta(escape+boost+1.), 0.)
 
-    def test_rapidd_table_uses_configured_motion_and_vendor_length(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            default = Path(tmp)/'vendor.dat'
-            default.write_text('200 2\n')
-            path = Path(tmp)/'SHM.dat'
-            halo_model.write_recoil_halo(path, {}, default)
-            self.assertEqual(path.read_text().splitlines()[0], '200 0')
-            data = np.loadtxt(path, skiprows=1)
-            self.assertEqual(data.shape, (200, 2))
-            self.assertAlmostEqual(trapezoid(data[:, 1], data[:, 0]), 1., places=4)
-            halo_model.write_recoil_halo(path, {'vEarth_mod': 0.}, default)
-            self.assertFalse(np.array_equal(data, np.loadtxt(path, skiprows=1)))
-
 
 class EarthFluxTests(unittest.TestCase):
     mixture = dict(status='ok', total_sigmav_cm3s=SIGMAV_REF, branching={'bb': 1.})

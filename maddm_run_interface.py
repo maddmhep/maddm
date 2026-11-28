@@ -2128,11 +2128,6 @@ class MADDMRunCmd(cmd.CmdShell):
                 self._mw_shm_rule = halo_model.galactic_rule(velocity_profile, self.maddm_card['mw_shm_npts'])
         except ValueError as error:
             raise InvalidMaddmCard(str(error)) from error
-        # the RAPIDD direct detection rates always use the SHM (vMP, vescape, vSun_*)
-        if not velocity_profile.is_shm and (self.mode['direct_nucleon'] or self.mode['direct_electron']):
-            logger.warning('halo_velocity_profile = %s is used only for the Galactic annihilation rates: '
-                           'the direct detection rates use the SHM (vMP = %s km/s, vescape = %s km/s).',
-                           velocity_profile.name, self.maddm_card['vMP'], self.maddm_card['vescape'])
         if self.maddm_card['sigmav_method'] == 'inclusive' and (self.mode['indirect'] or self.mode['spectral']):
             halo_model.write_rule(self.dir_path, self._mw_shm_rule)
         else:
@@ -2272,13 +2267,14 @@ class MADDMRunCmd(cmd.CmdShell):
                 from rapidd.calc_dRdE import equivalent_sigma_mdm
                 from rapidd.core import halo_path_from_card
                 rapidd_out_path = pjoin(self.dir_path,'output', self.run_name)
-                # default halo table, recomputed only if vescape, vmp or vSun differ from the default
+                # halo table of halo_velocity_profile and its parameters (the default table for the default SHM)
                 halo_path = halo_path_from_card(self.maddm_card, rapidd_out_path)
                 # cross sections in cm^2
                 result['sigmaN_SI_p'], result['sigmaN_SI_n'] = sigmaSI_nucleon_mdm(self.maddm_card, alphaq_values, mdm)
                 result['sigmaN_SD_p'], result['sigmaN_SD_n'] = sigmaSD_nucleon_mdm(self.maddm_card, alphaq_values, mdm)
-                # cross sections equivalent to the model in LZ (always with the chiral EFT structure factors and
-                # the halo of the card); -1 (no verdict) if the reference models have no LZ signal at this mass
+                # cross sections equivalent to the model in LZ (always with the chiral EFT structure factors; the model
+                # with the halo of the card, the reference models of the published curves with the default SHM);
+                # -1 (no verdict) if the reference models have no LZ signal at this mass
                 for key, value in equivalent_sigma_mdm(self.maddm_card, alphaq_values, mdm,
                                                        halo_path=halo_path).items():
                     result[key] = value if np.isfinite(value) else -1
@@ -2303,7 +2299,7 @@ class MADDMRunCmd(cmd.CmdShell):
                 from rapidd.calc_dRdE import DDrate_electron_save
                 from rapidd.core import halo_path_from_card
                 rapidd_out_path = pjoin(self.dir_path,'output', self.run_name)
-                # default halo table, recomputed only if vescape, vmp or vSun differ from the default
+                # halo table of halo_velocity_profile and its parameters (the default table for the default SHM)
                 halo_path = halo_path_from_card(self.maddm_card, rapidd_out_path)
                 with warnings.catch_warnings():
                     # a skipped crystal target (si with couplings needing W_2 ... W_5) is reported below
@@ -2333,7 +2329,7 @@ class MADDMRunCmd(cmd.CmdShell):
         # Galactic velocity distribution of the annihilation rates (Halo_velocity.json, MW_relative_speed.dat)
         if self.mode['indirect'] or self.mode['spectral']:
             halo_model.write_velocity_diagnostics(pjoin(self.dir_path, 'output', self.run_name),
-                self.maddm_card, velocity_profile, self._mw_shm_rule, None,
+                self.maddm_card, velocity_profile, self._mw_shm_rule,
                 write_grid=self._output_level != 'off')
 
         self.last_results = result
@@ -6118,7 +6114,7 @@ class MadDMCard(banner_mod.RunCard):
 
     def add_unknown_entry(self, name, value, *args, **opts):
         # Retired settings in old cards must not be registered or sent to Fortran.
-        if name.strip().lower() in ('indirect_flux_earth_method', 'gce_rho_sun', 'pbar_rho_sun'):
+        if name.strip().lower() in ('indirect_flux_earth_method', 'gce_rho_sun', 'pbar_rho_sun', 'halo_lmc_azimuth_deg'):
             return
         return super(MadDMCard, self).add_unknown_entry(name, value, *args, **opts)
 

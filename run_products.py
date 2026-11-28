@@ -21,7 +21,7 @@ FILE_GUIDE = (
     ('dRdQ_electron_Si.dat', 'DM-electron scattering rate in silicon per number Q = 1 ... 10 of electron-hole pairs (Ramanathan-Kurinsky ionization probabilities at 100 K), in events per kg and day.'),
     ('dRdS2_electron_XENON*.dat', 'RAPIDD xenon electron recoil signal in XENON10 or XENON1T as a function of S2 (XENON10: also the contribution of each shell).'),
     ('signal_e_recoil.dat', 'RAPIDD signal per XENON10 S2 bin.'),
-    ('SHM.dat', 'SHM velocity table used by RAPIDD, written when vMP, vescape or vSun_* differ from the defaults.'),
+    ('<profile>.dat', 'Halo velocity table used by RAPIDD for halo_velocity_profile (e.g. SHM.dat, Lisanti.dat), written unless the SHM has the default vMP, vescape and vSun_*.'),
     ('rate_vs_time_*.dat', 'Annual modulation (direct_modulation = True): RAPIDD nuclear or electron recoil rate of each target in each time bin of the year.'),
     ('dRdE_modulation_*.dat', 'Annual modulation (direct_modulation = True): RAPIDD differential nuclear or electron recoil rate of each target, averaged over the year and integrated over it.'),
     ('Halo_velocity.json', 'Local density and velocity distribution settings for the Galactic annihilation rates.'),

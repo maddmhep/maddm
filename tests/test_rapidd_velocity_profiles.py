@@ -4,6 +4,7 @@ import ctypes
 import json
 import math
 import os
+import sys
 import tempfile
 import unittest
 
@@ -20,8 +21,9 @@ class VelocityProfilesTests(unittest.TestCase):
         numeric = halo.velocity_profile(dict(card, halo_velocity_profile='shm_numeric'))
         self.assertEqual(default.name, 'SHM')
         self.assertEqual(halo.galactic_rule(default), halo.relative_speed_rule(202., 480.))
-        np.testing.assert_allclose(halo.recoil_halo_table(card, 200, default),
-                                   halo.recoil_halo_table(card, 200, numeric), rtol=1e-8, atol=1e-13)
+        speeds = np.linspace(0., 760., 39)
+        np.testing.assert_allclose(halo.mean_inverse_speed(speeds, 202., 480., 250.),
+                                   numeric.primary.eta(speeds, 250.), rtol=1e-8, atol=1e-13)
         self.assertAlmostEqual(halo.rms_speed(halo.galactic_rule(default)),
                                halo.rms_speed(halo.galactic_rule(numeric)), places=12)
 
@@ -81,28 +83,21 @@ class VelocityProfilesTests(unittest.TestCase):
         self.assertEqual(halo.galactic_rule(halo.velocity_profile(dict(card, halo_lmc_fraction=1.))),
                          halo.relative_speed_rule(110., 155.))
 
-    def test_lab_direction_changes_recoil_but_not_annihilation(self):
-        card = {'halo_velocity_profile':'SHM_wLMC', 'halo_lmc_fraction':.2}
-        p = halo.velocity_profile(card)
-        vb = halo.lmc_bulk_velocity(p, card)
-        ref = np.array([11.1+29.2, 238.+12.2-.1, 7.3+5.9])
-        self.assertAlmostEqual(np.dot(vb,ref)/(np.linalg.norm(vb)*np.linalg.norm(ref)), p.cosb)
-        other = dict(card, halo_lmc_azimuth_deg=90.)
-        self.assertEqual(halo.galactic_rule(p), halo.galactic_rule(halo.velocity_profile(other)))
-        a, b = halo.recoil_halo_table(card, 200), halo.recoil_halo_table(other, 200)
-        self.assertFalse(np.array_equal(a, b))
-        for x, eta in (a.T, b.T):
-            self.assertAlmostEqual(trapezoid(eta, x), 1., delta=2.e-5)
-            self.assertTrue(np.all(np.diff(eta) <= 1.e-13))
+    def test_lmc_direction_does_not_change_annihilation(self):
+        card = {'halo_velocity_profile': 'SHM_wLMC', 'halo_lmc_fraction': .2}
+        rule = halo.galactic_rule(halo.velocity_profile(card))
+        self.assertEqual(rule, halo.galactic_rule(halo.velocity_profile(dict(card, halo_lmc_cosb=.3))))
 
-    def test_reject_invalid_profiles_and_fixed_speed_combination(self):
+    def test_reject_invalid_profiles(self):
         for opts in ({'halo_velocity_profile':'unknown'}, {'halo_velocity_profile':'SHM_beta','halo_beta':1.2},
                      {'halo_velocity_profile':'Lisanti','halo_lisanti_k':.05},
                      {'halo_velocity_profile':'SHM_wLMC','halo_lmc_fraction':1.1},
-                     {'halo_velocity_profile':'SHM_wLMC','halo_lmc_cosb':1.5},
-                     {'halo_velocity_profile':'Lisanti','mw_velocity_model':'fixed'}):
+                     {'halo_velocity_profile':'SHM_wLMC','halo_lmc_cosb':1.5}):
             with self.subTest(card=opts), self.assertRaises(ValueError):
                 halo.velocity_profile(opts)
+        # with fixed-speed annihilation the profile is still read (it enters the recoil rates)
+        fixed = halo.velocity_profile({'halo_velocity_profile': 'Lisanti', 'mw_velocity_model': 'fixed'})
+        self.assertEqual(fixed.name, 'Lisanti')
 
     def test_saved_tables_and_metadata_use_selected_profile(self):
         card = {'halo_velocity_profile': 'Lisanti', 'halo_lisanti_k': 1.7, 'rhoDM': .47}
@@ -110,31 +105,27 @@ class VelocityProfilesTests(unittest.TestCase):
         rule = halo.galactic_rule(profile)
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            default = root/'vendor.dat'
-            default.write_text('200 2\n')
-            halo.write_recoil_halo(root/'DD_halo.dat', card, default, profile)
-            halo.write_velocity_diagnostics(root, card, profile, rule, 'DD_halo.dat')
+            halo.write_velocity_diagnostics(root, card, profile, rule)
             data = json.loads((root/halo.VELOCITY_OUTPUT).read_text())
             self.assertEqual((data['halo_velocity_profile'], data['halo_lisanti_k']), ('Lisanti', 1.7))
-            self.assertEqual(data['rapidd_recoil_halo_file'], 'DD_halo.dat')
+            self.assertEqual(data['rhoDM_gev_cm3'], .47)
             np.testing.assert_allclose(np.loadtxt(root/data['mw_quadrature_file']), np.array(rule)*[halo.C_KMS, 1.])
-            np.testing.assert_allclose(np.loadtxt(root/'DD_halo.dat', skiprows=1), halo.recoil_halo_table(card, 200))
 
     @unittest.skipUnless(os.environ.get('MADDM_RAPIDD_TEST_LIB'), 'requires the optional RAPIDD shared library')
     def test_fixed_lab_eta_matches_rapidd_c(self):
-        # Standalone comparison is at one lab speed, so annual averaging and
-        # the azimuth convention do not enter the comparison.
+        # Standalone comparison at one lab speed.
         lib = ctypes.CDLL(os.environ['MADDM_RAPIDD_TEST_LIB'])
         f = lib.halo_f
         f.argtypes = [ctypes.c_char_p]+[ctypes.c_double]*6+[ctypes.c_int]+[ctypes.c_double]*5
         f.restype = ctypes.c_double
-        for profile in ('SHM', 'SHM_numeric', 'Lisanti', 'SHM_wLMC'):
+        for profile in ('SHM', 'SHM_numeric', 'SHM_beta', 'Lisanti', 'SHM_wLMC'):
             for vmin in (80., 350., 680., 850.):
                 with self.subTest(profile=profile, threshold=vmin):
                     expected = f(profile.encode(), vmin, 544., 238., 0., 250., 1.5, 0,
                                  .006, 570., -.71, 100., 200.)
-                    if profile == 'Lisanti':
-                        p = halo.velocity_profile({'halo_velocity_profile': profile})
+                    if profile in ('Lisanti', 'SHM_beta'):
+                        # SHM_beta with the beta = 0 of the C call: the hard-cutoff SHM
+                        p = halo.velocity_profile({'halo_velocity_profile': profile, 'halo_beta': 0.})
                         actual = p.primary.eta(vmin, 250.)
                     else:
                         actual = halo.mean_inverse_speed(vmin, 238., 544., 250.)
@@ -142,6 +133,76 @@ class VelocityProfilesTests(unittest.TestCase):
                         drift = math.sqrt(570.**2+250.**2-2*570.*250.*(-.71))
                         actual = .994*actual+.006*halo.mean_inverse_speed(vmin, 100., 200., drift)
                     self.assertAlmostEqual(float(actual), expected, delta=max(1.e-10, 2.e-5*expected))
+
+
+RAPIDD_DIR = Path(__file__).resolve().parents[1]/'vendor'/'RAPIDD_for_DM'
+RAPIDD_LIB = RAPIDD_DIR/'lib'/'build'/('libRAPIDD.dylib' if sys.platform == 'darwin' else 'libRAPIDD.so')
+
+# card entries of the MadDM defaults plus a non-default value of every profile parameter
+SHARED_CARD = {'vmp': 225., 'vescape': 520., 'vSun_r': 11.1, 'vSun_phi': 12.2, 'vSun_theta': 7.3,
+               'vEarth_mod': 29.8, 'halo_beta': .6, 'halo_lisanti_k': 2.2, 'halo_lmc_fraction': .15,
+               'halo_lmc_vb': 540., 'halo_lmc_sigb': 90., 'halo_lmc_vcut': 180., 'halo_lmc_cosb': -.5}
+
+
+@unittest.skipUnless(RAPIDD_LIB.is_file(), 'requires the RAPIDD shared library')
+class SharedDirectIndirectHaloTests(unittest.TestCase):
+    """Direct detection (RAPIDD tables) and MW annihilation read the same card selection."""
+
+    @classmethod
+    def setUpClass(cls):
+        if str(RAPIDD_DIR) not in sys.path:
+            sys.path.insert(0, str(RAPIDD_DIR))
+        import rapidd.core
+        cls.core = rapidd.core
+
+    def test_rapidd_reads_the_profile_and_parameters_of_annihilation(self):
+        for name in halo.PROFILE_NAMES:
+            with self.subTest(profile=name):
+                card = dict(SHARED_CARD, halo_velocity_profile=name.lower())
+                mw = halo.velocity_profile(card)
+                dd = self.core.halo_kwargs_from_card(card)
+                self.assertEqual(dd['profile'], mw.name)
+                self.assertEqual((dd['v0'], dd['vesc']), (mw.primary.scale, mw.primary.cutoff))
+                if name == 'SHM_beta':
+                    self.assertEqual(dd['beta'], mw.primary.parameter)
+                elif name == 'Lisanti':
+                    self.assertEqual(dd['k_lisanti'], mw.primary.parameter)
+                elif name == 'SHM_wLMC':
+                    self.assertEqual((dd['w'], dd['vb'], dd['sigb'], dd['vcut'], dd['cosb']),
+                                     (mw.fraction, mw.bulk_speed, mw.stream.scale, mw.stream.cutoff, mw.cosb))
+
+    def test_rapidd_table_is_the_lab_eta_of_the_annihilation_law(self):
+        """The RAPIDD annual-average table (eta_0 and eta_2) of every profile is the lab-frame boost of
+        the Galactic law averaged by the annihilation rates."""
+        ve = self.core.lab_frame_speed_annual_avg(SHARED_CARD['vmp'], (11.1, 12.2, 7.3))
+        with tempfile.TemporaryDirectory() as tmp:
+            for name in halo.PROFILE_NAMES:
+                with self.subTest(profile=name):
+                    card = dict(SHARED_CARD, halo_velocity_profile=name)
+                    path = self.core.halo_path_from_card(card, tmp)
+                    self.assertEqual(Path(path).name, name+'.dat')
+                    table = np.loadtxt(path, skiprows=1)
+                    v, eta0, eta2 = table[:, 0], table[:, 1], table[:, 3]
+                    p = halo.velocity_profile(card)
+                    laws = [(1-p.fraction, p.primary, ve)]
+                    if p.stream is not None:
+                        drift = math.sqrt(p.bulk_speed**2+ve**2-2*p.bulk_speed*ve*p.cosb)
+                        laws.append((p.fraction, p.stream, drift))
+                    want0 = sum(f*law.eta(v, b) for f, law, b in laws)
+                    np.testing.assert_allclose(eta0, want0, rtol=2e-5, atol=1e-5*want0.max())
+                    # eta_2 = int_{v>vmin} v f d^3v = vmin^2 eta_0(vmin) + 2 int_{vmin} x eta_0(x) dx
+                    for vmin, value in zip(v[::20], eta2[::20]):
+                        want2 = sum(f*(vmin**2*float(law.eta(vmin, b))
+                                       + 2*quad(lambda x: x*law.eta(x, b), vmin, law.cutoff+b, limit=200)[0])
+                                    for f, law, b in laws)
+                        self.assertAlmostEqual(value, want2, delta=2e-4*eta2[0])
+
+    def test_equivalent_reference_uses_the_standard_shm(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            card = dict(SHARED_CARD, halo_velocity_profile='SHM_beta', halo_beta=1.)
+            self.assertNotEqual(self.core.halo_path_from_card(card, tmp), self.core.halo_path)
+            default = dict(SHARED_CARD, vmp=238., vescape=544.)
+            self.assertEqual(self.core.halo_path_from_card(default, tmp), self.core.halo_path)
 
 
 if __name__ == '__main__':

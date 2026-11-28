@@ -63,8 +63,8 @@
 #
 ###################################################################################
 
-# galactic halo DM constants: vMP, vescape and rhoDM are shared by the RAPIDD direct detection rates
-# (always SHM) and the Galactic indirect detection signals (halo_velocity_profile).
+# galactic halo DM constants: halo_velocity_profile (with its parameters below), vMP, vescape and rhoDM
+# are shared by the RAPIDD direct detection rates and the Galactic indirect detection signals.
 # The annual-average rates use the fixed Earth velocity vector of March 9 (Eq. 12 of
 # arXiv:2105.00599) and do not depend on vEarth_mod; vEarth_mod (modulus of the Earth
 # velocity, km/s) is used only by the annual modulation (Eq. 11).
@@ -75,15 +75,14 @@
    %(vSun_theta)s  = vSun_theta
    %(vescape)s     = vescape  ! The escape velocity of WIMPS in the Halo (km/s)
    %(rhodm)s       = rhoDM   ! The local DM density (GeV/cm^3), shared by direct and Galactic indirect detection; the direct detection limits (at 0.3) are rescaled by 0.3/rhoDM
-   %(halo_velocity_profile)s = halo_velocity_profile # SHM, SHM_numeric, SHM_beta, SHM_wLMC, Lisanti (Galactic annihilation only; direct detection uses SHM)
+   %(halo_velocity_profile)s = halo_velocity_profile # SHM, SHM_numeric, SHM_beta, SHM_wLMC, Lisanti (direct detection and Galactic annihilation)
    %(halo_beta)s = halo_beta # SHM_beta only: 1 smooths the cutoff, 0 gives hard SHM
    %(halo_lisanti_k)s = halo_lisanti_k # Lisanti only
    %(halo_lmc_fraction)s = halo_lmc_fraction # SHM_wLMC only; local density fraction
    %(halo_lmc_vb)s = halo_lmc_vb # LMC Galactic bulk speed [km/s]
    %(halo_lmc_sigb)s = halo_lmc_sigb # LMC Maxwellian scale [km/s]
    %(halo_lmc_vcut)s = halo_lmc_vcut # LMC rest-frame cutoff [km/s]
-   %(halo_lmc_cosb)s = halo_lmc_cosb # Cosine with the RAPIDD reference lab direction
-   %(halo_lmc_azimuth_deg)s = halo_lmc_azimuth_deg # Galactic orientation about that direction [deg]
+   %(halo_lmc_cosb)s = halo_lmc_cosb # Cosine between the LMC bulk and the lab velocity (direct detection only)
 
 # Direct detection output (direct_nucleon and direct_electron), quick setup: 'set limit' or 'set limit_and_rates'
 #  - limit: only the cross sections and the exclusion limits (faster, no recoil spectra)

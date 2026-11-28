@@ -18,8 +18,7 @@ PROFILE_INPUTS = (
     ('halo_lmc_vb', 570., 'SHM_wLMC: Galactic bulk speed [km/s]'),
     ('halo_lmc_sigb', 100., 'SHM_wLMC: Maxwellian scale about the bulk [km/s]'),
     ('halo_lmc_vcut', 200., 'SHM_wLMC: cutoff about the bulk [km/s]'),
-    ('halo_lmc_cosb', -.71, 'SHM_wLMC: cosine with the RAPIDD reference lab direction'),
-    ('halo_lmc_azimuth_deg', 0., 'SHM_wLMC: azimuth from the projected Galactic radial axis [deg]'),
+    ('halo_lmc_cosb', -.71, 'SHM_wLMC: cosine between the LMC bulk and the lab velocity (direct detection only)'),
 )
 
 

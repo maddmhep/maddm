@@ -1,4 +1,8 @@
-"""Shared Galactic velocity settings for recoil and annihilation rates."""
+"""Shared Galactic velocity settings for recoil and annihilation rates.
+
+The card selection (halo_velocity_profile, vMP, vescape and the profile parameters) defines both
+the Galactic pair average of the annihilation rates (galactic_rule) and the RAPIDD direct detection
+halo tables (rapidd.core.halo_kwargs_from_card), with the same velocity laws."""
 from dataclasses import dataclass
 from functools import lru_cache
 import json
@@ -26,7 +30,6 @@ class VelocityProfile:
     fraction: float = 0.
     bulk_speed: float = 0.
     cosb: float = 0.
-    azimuth: float = 0.
 
     @property
     def is_shm(self):
@@ -42,7 +45,7 @@ class VelocityProfile:
         elif self.stream is not None:
             result.update(halo_lmc_fraction=self.fraction, halo_lmc_vb=self.bulk_speed,
                           halo_lmc_sigb=self.stream.scale, halo_lmc_vcut=self.stream.cutoff,
-                          halo_lmc_cosb=self.cosb, halo_lmc_azimuth_deg=self.azimuth)
+                          halo_lmc_cosb=self.cosb)
         return result
 
 
@@ -55,14 +58,13 @@ def parameters(card):
 
 
 def velocity_profile(card):
-    """Read the single card selection consumed by RAPIDD and Galactic ID."""
+    """Read the single card selection consumed by RAPIDD and Galactic ID (with mw_velocity_model = fixed
+    the annihilation rates use fixed speeds and the selection enters only the RAPIDD recoil rates)."""
     names = {p.casefold(): p for p in PROFILE_NAMES}
     raw = str(value(card, 'halo_velocity_profile', 'SHM')).strip()
     if raw.casefold() not in names:
         raise ValueError('halo_velocity_profile must be one of '+', '.join(PROFILE_NAMES))
     name = names[raw.casefold()]
-    if name != 'SHM' and value(card, 'mw_velocity_model', 'shm') == 'fixed':
-        raise ValueError('A RAPIDD profile selection requires mw_velocity_model=shm (distribution averaging)')
     v0, vesc = parameters(card)
 
     def get(key):
@@ -83,15 +85,14 @@ def velocity_profile(card):
         return VelocityProfile(name, RadialLaw(v0, vesc, 'lisanti', k))
     primary = RadialLaw(v0, vesc)
     if name == 'SHM_wLMC':
-        fraction, vb, width, cut, cosb, azimuth = [get(k) for k in (
-            'halo_lmc_fraction', 'halo_lmc_vb', 'halo_lmc_sigb', 'halo_lmc_vcut',
-            'halo_lmc_cosb', 'halo_lmc_azimuth_deg')]
+        fraction, vb, width, cut, cosb = [get(k) for k in (
+            'halo_lmc_fraction', 'halo_lmc_vb', 'halo_lmc_sigb', 'halo_lmc_vcut', 'halo_lmc_cosb')]
         if not (0. <= fraction <= 1. and -1. <= cosb <= 1.):
             raise ValueError('Require 0 <= halo_lmc_fraction <= 1 and -1 <= halo_lmc_cosb <= 1')
         if not (0. <= vb < .1*C_KMS and 0. < width < .1*C_KMS and
                 0. < cut and vb+cut < .1*C_KMS and cut/width >= .05):
             raise ValueError('Require positive LMC width and cutoff, vcut/sigb >= 0.05, and vb+vcut < 0.1 c')
-        return VelocityProfile(name, primary, RadialLaw(width, cut), fraction, vb, cosb, azimuth)
+        return VelocityProfile(name, primary, RadialLaw(width, cut), fraction, vb, cosb)
     return VelocityProfile(name, primary)
 
 
@@ -163,28 +164,6 @@ def earth_speed(card, days):
     return np.linalg.norm(earth_velocity(card, days), axis=0)
 
 
-def lmc_bulk_velocity(profile, card):
-    """Lift RAPIDD's reference lab angle to one fixed Galactic vector."""
-    if profile.bulk_speed == 0.:
-        return np.zeros(3)
-    sun, orbit = _lab_motion_parameters(card)
-    # RAPIDD's representative March 9 velocity; this sets the direction
-    # used by cosb. The DD table uses the time-dependent lab vector instead.
-    ref = sun+(orbit/29.8)*np.array([29.2, -.1, 5.9])
-    speed = np.linalg.norm(ref)
-    if speed < 1.e-10:
-        raise ValueError('The LMC angle requires a nonzero reference lab velocity')
-    e0 = ref/speed
-    radial = np.array([1., 0., 0.])
-    e1 = radial-e0[0]*e0
-    if np.linalg.norm(e1) < 1.e-10:
-        e1 = np.array([0., 1., 0.])-e0[1]*e0
-    e1 /= np.linalg.norm(e1)
-    angle = math.radians(profile.azimuth)
-    perp = math.cos(angle)*e1+math.sin(angle)*np.cross(e0, e1)
-    return profile.bulk_speed*(profile.cosb*e0+math.sqrt(1.-profile.cosb**2)*perp)
-
-
 def mean_inverse_speed(vmin, v0, vesc, boost):
     """Analytic lab-frame SHM integral in (km/s)^-1; includes b≥vesc."""
     x = np.asarray(vmin, float)/v0
@@ -200,40 +179,7 @@ def mean_inverse_speed(vmin, v0, vesc, boost):
            np.where(x <= z-y, prefactor*whole, np.where(x < z+y, prefactor*tail, 0.))))
 
 
-def recoil_halo_table(card, n, profile=None):
-    """Annual mean eta from the same Galactic law used by galactic_rule."""
-    if profile is None:
-        profile = velocity_profile(card)
-    day, weight = np.polynomial.legendre.leggauss(48)
-    lab = earth_velocity(card, (day+1)*365.25/2.)
-    components = []
-    if profile.fraction < 1.:
-        components.append((1-profile.fraction, profile.primary, np.linalg.norm(lab, axis=0)))
-    if profile.fraction:
-        stream_lab = lab-lmc_bulk_velocity(profile, card)[:, None]
-        components.append((profile.fraction, profile.stream, np.linalg.norm(stream_lab, axis=0)))
-    endpoint = max(law.cutoff+max(boost) for _, law, boost in components)
-    grid = np.linspace(0., endpoint, n)
-    eta = np.zeros_like(grid)
-    for fraction, law, boosts in components:
-        for w, boost in zip(weight/2, boosts):
-            if law.shape == 'maxwell' and profile.name != 'SHM_numeric':
-                integral = mean_inverse_speed(grid, law.scale, law.cutoff, boost)
-            else:
-                integral = law.eta(grid, boost)
-            eta += fraction*w*integral
-    return np.column_stack((grid, eta))
-
-
-def write_recoil_halo(path, card, rapidd_default_table, profile=None):
-    """Write the annual mean eta for RAPIDD's O1/O4 recoil-rate calculation."""
-    with open(rapidd_default_table) as default:
-        n = int(default.readline().split()[0])  # C reader uses the vendor's fixed table size
-    table = recoil_halo_table(card, n, profile)
-    np.savetxt(path, table, fmt='%.10e', header='%d 0' % n, comments='')
-
-
-def write_velocity_diagnostics(directory, card, profile, rule, recoil_file=None, *, write_grid=True):
+def write_velocity_diagnostics(directory, card, profile, rule, *, write_grid=True):
     directory = Path(directory)
     data = profile.metadata()
     data.update(rhoDM_gev_cm3=local_density(card),
@@ -246,10 +192,6 @@ def write_velocity_diagnostics(directory, card, profile, rule, recoil_file=None,
             data['mw_quadrature_file'] = rule_file
         data.update(mw_shm_npts=len(rule),
                     mw_rms_relative_speed_kms=rms_speed(rule)*C_KMS)
-    if recoil_file:
-        data.update(rapidd_recoil_halo_file=recoil_file, rapidd_lab_frame='annual mean')
-        if profile.fraction:
-            data['lmc_bulk_velocity_galactic_kms'] = lmc_bulk_velocity(profile, card).tolist()
     (directory/VELOCITY_OUTPUT).write_text(json.dumps(data, indent=2, allow_nan=False)+'\n')
 
 
