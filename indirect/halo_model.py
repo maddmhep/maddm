@@ -183,7 +183,7 @@ def write_velocity_diagnostics(directory, card, profile, rule, *, write_grid=Tru
     directory = Path(directory)
     data = profile.metadata()
     data.update(rhoDM_gev_cm3=local_density(card),
-                mw_velocity_model=value(card, 'mw_velocity_model', 'shm'))
+                mw_velocity_model=value(card, 'mw_velocity_model', 'halo'))
     if rule is not None:
         rule_file = 'MW_relative_speed.dat'
         if write_grid:

@@ -2124,7 +2124,7 @@ class MADDMRunCmd(cmd.CmdShell):
         self._mw_shm_rule = None
         try:
             velocity_profile = halo_model.velocity_profile(self.maddm_card)
-            if self.maddm_card['mw_velocity_model'] == 'shm' and (self.mode['indirect'] or self.mode['spectral']):
+            if self.maddm_card['mw_velocity_model'] == 'halo' and (self.mode['indirect'] or self.mode['spectral']):
                 self._mw_shm_rule = halo_model.galactic_rule(velocity_profile, self.maddm_card['mw_shm_npts'])
         except ValueError as error:
             raise InvalidMaddmCard(str(error)) from error
@@ -3129,7 +3129,7 @@ class MADDMRunCmd(cmd.CmdShell):
         rule = getattr(self, '_mw_shm_rule', None)
         if rule is not None:
             profile = halo_model.velocity_profile(self.maddm_card)
-            return dict(**profile.metadata(), velocity_model='shm', nodes=len(rule),
+            return dict(**profile.metadata(), velocity_model='halo', nodes=len(rule),
                         velocity=halo_model.rms_speed(rule), rate_velocity_convention='RMS relative speed / c')
         return dict(velocity_model='fixed',
                     velocity=pbar_interface.card_value(self.maddm_card, 'vave_indirect_pbar', .00075),
@@ -4693,7 +4693,7 @@ class MADDMRunCmd(cmd.CmdShell):
         if indirect or spectral:
             halo = self._mw_velocity_info()
             out.write('mw_velocity_model = %s\n' % halo['velocity_model'])
-            if halo['velocity_model'] == 'shm':
+            if halo['velocity_model'] == 'halo':
                 out.write('mw_shm_rms_relative_speed_kms = %.10e\nmw_shm_npts = %d\n' %
                           (halo['velocity']*halo_model.C_KMS, halo['nodes']))
 
@@ -6284,7 +6284,7 @@ class MadDMCard(banner_mod.RunCard):
                        comment='derive AMS-02 antiproton limits from two-body CosmiXsPPPC fluxes')
         self.add_param('vave_indirect_pbar', .00075, include=True,
                        comment='Legacy fixed-speed mode only (vave in units of c)')
-        self.add_param('mw_velocity_model', 'shm', allowed=['shm', 'fixed'], include=False,
+        self.add_param('mw_velocity_model', 'halo', allowed=['halo', 'fixed'], include=False,
                        comment='Galactic annihilation: average over halo_velocity_profile or legacy fixed speed')
         self.add_param('halo_velocity_profile', 'SHM', allowed=cr_config.PROFILE_NAMES, include=False,
                        comment='Shared Galactic velocity law for RAPIDD recoils and annihilation')

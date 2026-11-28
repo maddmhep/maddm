@@ -121,7 +121,7 @@
    %(indirect_flux_source_method)s   = indirect_flux_source_method ! pythia8, PPPC4DMID, PPPC4DMID_ew 
 
 # Galactic indirect detection: relative-speed average and CosmiXsPPPC charged tables
-   %(mw_velocity_model)s = mw_velocity_model # shm averages halo_velocity_profile; fixed uses legacy single speeds
+   %(mw_velocity_model)s = mw_velocity_model # halo averages over halo_velocity_profile; fixed uses legacy single speeds
    %(mw_shm_npts)s = mw_shm_npts # relative-speed quadrature nodes
    %(pbar_limits)s = pbar_limits
    %(pbar_plot)s = pbar_plot # save PDF after a successful flux fit
